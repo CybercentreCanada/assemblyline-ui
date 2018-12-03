@@ -1,0 +1,4 @@
+werkzeug
+python-socketio
+flask
+flask-socketio
