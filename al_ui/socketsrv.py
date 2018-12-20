@@ -11,7 +11,7 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
 datastore = forge.get_datastore()
-#classification = forge.get_classification()
+classification = forge.get_classification()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.ui.secret_key

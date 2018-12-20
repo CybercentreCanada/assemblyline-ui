@@ -7,7 +7,7 @@ from flask import abort, current_app, Blueprint, jsonify, make_response, request
 from sys import exc_info
 from traceback import format_tb
 
-from assemblyline.common.charset import safe_str
+from assemblyline.common.str_utils import safe_str
 
 from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, LOGGER, \
     RATE_LIMITER, CLASSIFICATION, KV_SESSION

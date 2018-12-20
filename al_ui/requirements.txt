@@ -2,3 +2,5 @@ werkzeug
 python-socketio
 flask
 flask-socketio
+eventlet
+python_u2flib_server

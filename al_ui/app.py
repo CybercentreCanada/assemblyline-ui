@@ -2,40 +2,41 @@ import logging
 
 from flask import Flask
 
-from al_ui.api_base import api
-from al_ui.apiv3.alert import alert_api
-from al_ui.apiv3.authentication import auth_api
-from al_ui.apiv3.bundle import bundle_api
-from al_ui.apiv3.controller import controller_api
-from al_ui.apiv3.core import apiv3
-from al_ui.apiv3.dashboard import dashboard_api
-from al_ui.apiv3.error import error_api
-from al_ui.apiv3.file import file_api
-from al_ui.apiv3.hash_search import hash_search_api
-from al_ui.apiv3.help import help_api
-from al_ui.apiv3.heuristics import heuristics_api
-from al_ui.apiv3.host import host_api
-from al_ui.apiv3.ingest import ingest_api
-from al_ui.apiv3.live import live_api
-from al_ui.apiv3.proxy import proxy
-from al_ui.apiv3.search import search_api
-from al_ui.apiv3.seed import seed_api
-from al_ui.apiv3.service import service_api
-from al_ui.apiv3.signature import signature_api
-from al_ui.apiv3.submission import submission_api
-from al_ui.apiv3.submit import submit_api
-from al_ui.apiv3.tc_signature import tc_sigs_api
-from al_ui.apiv3.u2f import u2f_api
-from al_ui.apiv3.ui import ui_api
-from al_ui.apiv3.user import user_api
-from al_ui.apiv3.vm import vm_api
-from al_ui.apiv3.workflow import workflow_api
+from al_ui.api.base import api
+from al_ui.api.v3.alert import alert_api
+from al_ui.api.v3.authentication import auth_api
+from al_ui.api.v3.bundle import bundle_api
+from al_ui.api.v3.controller import controller_api
+from al_ui.api.v3.core import apiv3
+from al_ui.api.v3.dashboard import dashboard_api
+from al_ui.api.v3.error import error_api
+from al_ui.api.v3.file import file_api
+from al_ui.api.v3.hash_search import hash_search_api
+from al_ui.api.v3.help import help_api
+from al_ui.api.v3.heuristics import heuristics_api
+from al_ui.api.v3.host import host_api
+from al_ui.api.v3.ingest import ingest_api
+from al_ui.api.v3.live import live_api
+from al_ui.api.v3.proxy import proxy
+from al_ui.api.v3.search import search_api
+from al_ui.api.v3.seed import seed_api
+from al_ui.api.v3.service import service_api
+from al_ui.api.v3.signature import signature_api
+from al_ui.api.v3.submission import submission_api
+from al_ui.api.v3.submit import submit_api
+from al_ui.api.v3.tc_signature import tc_sigs_api
+from al_ui.api.v3.u2f import u2f_api
+from al_ui.api.v3.ui import ui_api
+from al_ui.api.v3.user import user_api
+from al_ui.api.v3.vm import vm_api
+from al_ui.api.v3.workflow import workflow_api
 from al_ui.error import errors
-from al_ui.views import views
+# TODO: Let's do views later...
+# from al_ui.views import views
 
 from al_ui import config
-from assemblyline.al.common import forge
-from assemblyline.al.common.security import generate_async_keys
+from assemblyline.common import forge
+from assemblyline.common.security import generate_async_keys
 
 context = forge.get_ui_context()
 register_site_specific_routes = context.register_site_specific_routes
@@ -77,7 +78,8 @@ app.register_blueprint(tc_sigs_api)
 app.register_blueprint(u2f_api)
 app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
-app.register_blueprint(views)
+# TODO: Let's do views later...
+# app.register_blueprint(views)
 app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
 
@@ -95,7 +97,7 @@ def main():
     if config.PROFILE:
         from werkzeug.contrib.profiler import ProfilerMiddleware
         app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
-    print app.url_map
+    print(app.url_map)
     app.jinja_env.cache = {}
     app.run(host="0.0.0.0", debug=False)
 

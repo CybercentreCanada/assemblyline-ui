@@ -1,8 +1,8 @@
 
-from assemblyline.al.common import forge
+from assemblyline.common import forge
 from assemblyline.al.common.codec import encode_file
-from assemblyline.al.common.queue import NamedQueue
-from assemblyline.al.common.security import verify_password, get_totp_token
+from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline.common.security import verify_password, get_totp_token
 from al_ui.config import config, APP_ID
 from al_ui.http_exceptions import AuthenticationException
 from u2flib_server.u2f import complete_authentication

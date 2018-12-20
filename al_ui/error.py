@@ -2,9 +2,9 @@
 from flask import Blueprint, render_template, request, redirect
 from sys import exc_info
 from traceback import format_tb
-from urllib import quote
+from urllib.parse import quote
 
-from al_ui.apiv3.core import make_api_response
+from al_ui.api.base import make_api_response
 from al_ui.config import AUDIT, AUDIT_LOG, LOGGER, config
 from al_ui.helper.views import redirect_helper
 from al_ui.http_exceptions import AccessDeniedException, QuotaExceededException
@@ -53,7 +53,7 @@ def handle_500(e):
         return handle_403(e)
 
     if isinstance(e, QuotaExceededException):
-        return make_api_response("", e.message, 503)
+        return make_api_response("", str(e), 503)
 
     trace = exc_info()[2]
     log_with_traceback(LOGGER, trace, "Exception", is_exception=True)
