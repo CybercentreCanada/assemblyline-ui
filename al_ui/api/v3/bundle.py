@@ -2,15 +2,15 @@
 import os
 import uuid
 
-from assemblyline.al.common import forge
-from assemblyline.al.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
+from assemblyline.common import forge
+from assemblyline.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle
-from al_ui.apiv3 import core
+from al_ui.api.v3 import core
 from al_ui.config import STORAGE
-from al_ui.api_base import api_login, make_api_response, stream_file_response
+from al_ui.api.base import api_login, make_api_response, stream_file_response
 from flask import request
 
-from assemblyline.al.common.classification import InvalidClassification
+from assemblyline.common.classification import InvalidClassification
 
 SUB_API = 'bundle'
 
@@ -54,16 +54,16 @@ def create_bundle(sid, **kwargs):
             f_size = os.path.getsize(temp_target_file)
             return stream_file_response(open(temp_target_file, 'rb'), "%s.al_bundle" % sid, f_size)
         except SubmissionNotFound as snf:
-            return make_api_response("", "Submission %s does not exist. [%s]" % (sid, snf.message), 404)
+            return make_api_response("", "Submission %s does not exist. [%s]" % (sid, str(snf)), 404)
         except BundlingException as be:
             return make_api_response("",
-                                     "An error occured while bundling submission %s. [%s]" % (sid, be.message),
+                                     "An error occured while bundling submission %s. [%s]" % (sid, str(be)),
                                      404)
         finally:
             try:
                 if temp_target_file:
                     os.remove(temp_target_file)
-            except:
+            except Exception:
                 pass
     else:
         return make_api_response("", "You are not allowed create a bundle for this submission...", 403)
@@ -71,7 +71,7 @@ def create_bundle(sid, **kwargs):
 
 @bundle_api.route("/import/", methods=["POST"])
 @api_login(required_priv=['W'], allow_readonly=False)
-def import_bundle(**kwargs):
+def import_bundle(**_):
     """
     Import a bundle file into the system
 
@@ -98,8 +98,8 @@ def import_bundle(**kwargs):
         bundle_import(current_bundle, working_dir=WORKING_DIR, min_classification=min_classification)
         return make_api_response({'success': True})
     except InvalidClassification as ice:
-        return make_api_response({'success': False}, err=ice.message, status_code=400)
+        return make_api_response({'success': False}, err=str(ice), status_code=400)
     except SubmissionAlreadyExist as sae:
-        return make_api_response({'success': False}, err=sae.message, status_code=409)
+        return make_api_response({'success': False}, err=str(sae), status_code=409)
     except IncompleteBundle as ib:
-        return make_api_response({'success': False}, err=ib.message, status_code=400)
+        return make_api_response({'success': False}, err=str(ib), status_code=400)

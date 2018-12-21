@@ -3,8 +3,8 @@ import uuid
 
 from assemblyline.al.core.controller import ControllerClient
 from assemblyline.al.core.agents import ServiceAgentClient
-from al_ui.api_base import api_login, make_api_response
-from al_ui.apiv3 import core
+from al_ui.api.base import api_login, make_api_response
+from al_ui.api.v3 import core
 
 SUB_API = 'controller'
 controller_api = core.make_subapi_blueprint(SUB_API)

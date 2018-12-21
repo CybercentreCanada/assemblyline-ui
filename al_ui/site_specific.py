@@ -1,11 +1,12 @@
 
+from u2flib_server.u2f import complete_authentication
+
 from assemblyline.common import forge
-from assemblyline.al.common.codec import encode_file
-from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline.common.codec import encode_file
 from assemblyline.common.security import verify_password, get_totp_token
+from assemblyline.remote.datatypes.queues.named import NamedQueue
 from al_ui.config import config, APP_ID
 from al_ui.http_exceptions import AuthenticationException
-from u2flib_server.u2f import complete_authentication
 
 APP_NAME = "Assemblyline"
 TEMPLATE_PREFIX = {}
@@ -340,9 +341,9 @@ def validate_2fa(username, otp_token, u2f_challenge, u2f_response, storage):
         raise AuthenticationException("Unknown 2FA Authentication error")
 
 
-apikey_handler = forge.get_site_specific_apikey_handler()
-dn_handler = forge.get_site_specific_dn_handler()
-userpass_handler = forge.get_site_specific_userpass_handler()
+apikey_handler = forge.get_site_specific_apikey_handler(config=config)
+dn_handler = forge.get_site_specific_dn_handler(config=config)
+userpass_handler = forge.get_site_specific_userpass_handler(config=config)
 
 context = {
     'TEMPLATE_PREFIX': TEMPLATE_PREFIX,

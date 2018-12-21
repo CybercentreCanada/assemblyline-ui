@@ -1,13 +1,14 @@
-from flask import request
-from os.path import basename
+import concurrent.futures
 import re
-from assemblyline.common.charset import safe_str
+import os
 
-from assemblyline.common.concurrency import execute_concurrently
+from flask import request
+from assemblyline.common.str_utils import safe_str
+
 from assemblyline.common.hexdump import hexdump
-from assemblyline.al.common import forge
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response, make_file_response
+from assemblyline.common import forge
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_file_response
 from al_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS
 from al_ui.helper.result import format_result
 from al_ui.helper.user import load_user_settings
@@ -63,7 +64,7 @@ def download_file(srl, **kwargs):
         if name == "": 
             name = srl
         else:
-            name = basename(name)
+            name = os.path.basename(name)
         name = safe_str(name)
 
         file_format = request.args.get('format', params['download_encoding'])
@@ -335,17 +336,16 @@ def get_file_results(srl, **kwargs):
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         output = {"file_info": {}, "results": [], "tags": []}
-        plan = [
-            (STORAGE.list_file_active_keys, (srl, user["access_control"]), "results"),
-            (STORAGE.list_file_parents, (srl, user["access_control"]), "parents"),
-            (STORAGE.list_file_childrens, (srl, user["access_control"]), "children"),
-            (STORAGE.get_file_submission_meta, (srl, user["access_control"]), "meta"),
-        ]
-        temp = execute_concurrently(plan)
-        active_keys, alternates = temp['results']
-        output['parents'] = temp['parents']
-        output['childrens'] = temp['children']
-        output['metadata'] = temp['meta']
+        with concurrent.futures.ThreadPoolExecutor(4) as executor:
+            res_ac = executor.submit(STORAGE.list_file_active_keys, srl, user["access_control"])
+            res_parents = executor.submit(STORAGE.list_file_parents, srl, user["access_control"])
+            res_children = executor.submit(STORAGE.list_file_childrens, srl, user["access_control"])
+            res_meta = executor.submit(STORAGE.get_file_submission_meta, srl, user["access_control"])
+
+        active_keys, alternates = res_ac.results()
+        output['parents'] = res_parents.results()
+        output['childrens'] = res_children.results()
+        output['metadata'] = res_meta.results()
 
         output['file_info'] = file_obj
         output['results'] = [] 
@@ -371,7 +371,7 @@ def get_file_results(srl, **kwargs):
                 if "result" in res:
                     if 'tags' in res['result']:
                         output['tags'].extend(res['result']['tags'])
-            except:
+            except Exception:
                 pass
         
         return make_api_response(output)

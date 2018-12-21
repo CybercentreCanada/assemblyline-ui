@@ -1,7 +1,7 @@
 
 from flask import current_app, Blueprint, request
 
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response
 from al_ui.config import config
 
 API_PREFIX = "/api/v3"

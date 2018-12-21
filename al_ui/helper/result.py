@@ -1,10 +1,9 @@
 
 import json
 
-from assemblyline.al.common import forge
-from assemblyline.al.common.classification import InvalidClassification
+from assemblyline.common import forge
+from assemblyline.common.classification import InvalidClassification
 
-config = forge.get_config()
 from al_ui.config import CLASSIFICATION
 
 
@@ -44,7 +43,7 @@ def format_result(user_classification, r, min_classification):
             oversized['oversized'] = True
             r = format_result(user_classification, oversized, min_classification)
         
-    except Exception:  # pylint:disable=W0702
+    except Exception:
         pass
 
     # Drop sections user does not have access and set others to at least min classification

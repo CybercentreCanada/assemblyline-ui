@@ -23,7 +23,7 @@ def get_default_service_list(srv_list=None, default_selection=None):
 
         if grp == SYSTEM_SERVICE_CATEGORY_NAME:
             continue
-        if not services.has_key(grp):
+        if grp not in services:
             services[grp] = []
 
         services[grp].append({"name": item["name"],
@@ -31,7 +31,7 @@ def get_default_service_list(srv_list=None, default_selection=None):
                               "selected": (grp in default_selection or item['name'] in default_selection),
                               "is_external": item["is_external"]})
     
-    return [{"name": k, "selected": k in default_selection, "services": v} for k, v in services.iteritems()]
+    return [{"name": k, "selected": k in default_selection, "services": v} for k, v in services.items()]
 
 
 def simplify_services(services):

@@ -13,7 +13,7 @@ from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, AUDIT, AUDI
     RATE_LIMITER, CLASSIFICATION, KV_SESSION
 from al_ui.helper.user import login, add_access_control
 from al_ui.http_exceptions import AccessDeniedException, QuotaExceededException
-from al_ui.config import config, dn_parser
+from al_ui.config import config, DN_PARSER
 from al_ui.logger import log_with_traceback
 from assemblyline.common.isotime import now
 
@@ -88,8 +88,8 @@ class api_login(object):
 
             if requestor:
                 user = None
-                if ("C=" in requestor or "c=" in requestor) and dn_parser:
-                    requestor_chain = [dn_parser(x.replace("<", "").replace(">", ""))
+                if ("C=" in requestor or "c=" in requestor) and DN_PARSER:
+                    requestor_chain = [DN_PARSER(x.replace("<", "").replace(">", ""))
                                        for x in requestor.split("><")]
                     requestor_chain.reverse()
                 else:
@@ -144,9 +144,9 @@ class api_login(object):
                     json_blob = {}
 
                 params_list = list(args) + \
-                    ["%s=%s" % (k, v) for k, v in kwargs.iteritems() if k in AUDIT_KW_TARGET] + \
+                    ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
                     ["%s=%s" % (k, v) for k, v in request.args.iteritems() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in json_blob.iteritems() if k in AUDIT_KW_TARGET]
+                    ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
 
                 if len(params_list) != 0:
                     AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname,
@@ -210,7 +210,7 @@ def make_api_response(data, err="", status_code=200, cookies=None):
                          status_code)
 
     if isinstance(cookies, dict):
-        for k, v in cookies.iteritems():
+        for k, v in cookies.items():
             resp.set_cookie(k, v)
 
     return resp

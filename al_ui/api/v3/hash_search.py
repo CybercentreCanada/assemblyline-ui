@@ -1,11 +1,12 @@
+import concurrent.futures
+
 from flask import request
 
-from assemblyline.common.concurrency import execute_concurrently
-from assemblyline.common.importing import module_attribute_by_name
-from al_ui.api_base import api_login, make_api_response
-from al_ui.apiv3 import core
+from assemblyline.common.importing import load_module_by_path
+from al_ui.api.base import api_login, make_api_response
+from al_ui.api.v3 import core
 from al_ui.config import LOGGER, config
-from assemblyline.al.datasource.common import hash_type
+from assemblyline.datasource.common import hash_type
 
 SUB_API = 'hash_search'
 
@@ -25,6 +26,7 @@ def create_query_datasource(ds):
         }
     return query_datasource
 
+
 sources = {}
 # noinspection PyBroadException
 try:
@@ -35,7 +37,7 @@ try:
         try:
             classpath = settings['classpath']
             cfg = settings['config']
-            if isinstance(cfg, basestring):
+            if isinstance(cfg, str):
                 path = cfg
                 cfg = config
                 for point in path.split('.'):
@@ -43,16 +45,16 @@ try:
                         if not cfg['enabled']:
                             raise SkipDatasource()
                     cfg = cfg.get(point)
-            cls = module_attribute_by_name(classpath)
+            cls = load_module_by_path(classpath)
             obj = cls(LOGGER, **cfg)
             sources[name] = create_query_datasource(obj)
         except SkipDatasource:
             continue
-        except:  # pylint: disable=W0702
+        except Exception:
             LOGGER.exception(
                 "Problem creating %s datasource (%s)", name, classpath
             )
-except:  # pylint: disable=W0702
+except Exception:
     LOGGER.exception("No datasources")
 
 
@@ -120,7 +122,7 @@ def search_hash(file_hash, *args, **kwargs):
     # noinspection PyBroadException
     try:
         max_timeout = float(max_timeout)
-    except:  # pylint: disable=W0702
+    except Exception:
         max_timeout = 2.0
 
     if len(db_list) == 0 and len(invalid_sources) == 0:

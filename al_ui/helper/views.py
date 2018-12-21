@@ -6,14 +6,13 @@ from datetime import timedelta
 from flask import redirect, render_template, request, abort, current_app, make_response, session as flsk_session
 from functools import update_wrapper
 
-from assemblyline.al.common.forge import get_ui_context, get_config
 
+from assemblyline.common.forge import get_ui_context, get_config
+from assemblyline.common.isotime import now
 from al_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, \
     BUILD_NO, AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, SYSTEM_NAME, get_template_prefix, KV_SESSION
-
 from al_ui.helper.user import login
 from al_ui.http_exceptions import AccessDeniedException
-from assemblyline.common.isotime import now
 
 config = get_config()
 context = get_ui_context()
@@ -35,7 +34,7 @@ def redirect_helper(path):
 
 
 def angular_safe(value):
-    if isinstance(value, basestring):
+    if isinstance(value, str):
         return value.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}").replace("'", "\\'")
 
     return value
@@ -109,9 +108,9 @@ class protected_renderer(object):
                 if not isinstance(json_blob, dict):
                     json_blob = {}
                 params_list = list(args) + \
-                    ["%s=%s" % (k, v) for k, v in kwargs.iteritems() if k in AUDIT_KW_TARGET] + \
+                    ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
                     ["%s=%s" % (k, v) for k, v in request.args.iteritems() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in json_blob.iteritems() if k in AUDIT_KW_TARGET]
+                    ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
                 AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname, user['classification'],
                                                       func.func_name,
                                                       ", ".join(params_list)))
@@ -151,9 +150,9 @@ def crossdomain(origin=None, methods=None, headers=None, max_age=21600, attach_t
     """This decorator can be use to allow a page to do cross domain XMLHttpRequests"""
     if methods is not None:
         methods = ", ".join(sorted(x.upper() for x in methods))
-    if headers is not None and not isinstance(headers, basestring):
+    if headers is not None and not isinstance(headers, str):
         headers = ', '.join(x.upper() for x in headers)
-    if not isinstance(origin, basestring):
+    if not isinstance(origin, str):
         origin = ', '.join(origin)
     if isinstance(max_age, timedelta):
         # noinspection PyUnresolvedReferences

@@ -1,14 +1,14 @@
 
-import copy
-
-from assemblyline.common.charset import safe_str
-from assemblyline.common.user_defaults import ACCOUNT_DEFAULT, ACCOUNT_USER_MODIFIABLE, SETTINGS_DEFAULT
-from assemblyline.al.common import forge
-from assemblyline.al.common.remote_datatypes import Hash
+from assemblyline.common.str_utils import safe_str
+from assemblyline.common import forge
+from assemblyline.odm.models.user import User
+from assemblyline.odm.models.user_options import UserOptions
+from assemblyline.remote.datatypes.hash import Hash
 from al_ui.config import LOGGER, STORAGE
 from al_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from al_ui.http_exceptions import AccessDeniedException, InvalidDataException, QuotaExceededException
 
+ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "groups", "password"]
 config = forge.get_config()
 Classification = forge.get_classification()
 
@@ -133,8 +133,10 @@ def login(uname, path=None):
 
 
 def save_user_account(username, data, user):
-    data = validate_settings(data, ACCOUNT_DEFAULT, exceptions=['avatar', 'agrees_with_tos',
-                                                                'dn', 'password', 'otp_sk', 'u2f_devices'])
+    # TODO: Not sure how that works now with the models...
+    # data = validate_settings(data, ACCOUNT_DEFAULT, exceptions=['avatar', 'agrees_with_tos',
+    #                                                             'dn', 'password', 'otp_sk', 'u2f_devices'])
+    data = User(data)
 
     if username != data['uname']:
         raise AccessDeniedException("You are not allowed to change the username.")
@@ -144,8 +146,11 @@ def save_user_account(username, data, user):
 
     current = STORAGE.get_user_account(username)
     if current:
-        current = validate_settings(current, ACCOUNT_DEFAULT,
-                                    exceptions=['avatar', 'agrees_with_tos', 'dn', 'password', 'otp_sk', 'u2f_devices'])
+        # TODO: Not sure how that works now with the models...
+        # current = validate_settings(current, ACCOUNT_DEFAULT,
+        #                                     exceptions=['avatar', 'agrees_with_tos',
+        #                                                 'dn', 'password', 'otp_sk', 'u2f_devices'])
+        current = User(current)
         
         if not user['is_admin']:
             for key in current.iterkeys():
@@ -164,14 +169,20 @@ def save_user_account(username, data, user):
 
 
 def get_default_user_settings(user):
-    out = copy.deepcopy(SETTINGS_DEFAULT)
+    # TODO: Not sure how that works now with the models...
+    # out = copy.deepcopy(SETTINGS_DEFAULT)
+    out = UserOptions()
+
     out['classification'] = Classification.default_user_classification(user)
     out['services'] = ["Extraction", "Static Analysis", "Filtering", "Antivirus", "Post-Processing"]
     return out
 
 
 def load_user_settings(user):
-    default_settings = copy.deepcopy(SETTINGS_DEFAULT)
+    # TODO: Not sure how that works now with the models...
+    # default_settings = copy.deepcopy(SETTINGS_DEFAULT)
+    default_settings = UserOptions()
+
     default_settings['classification'] = Classification.default_user_classification(user)
     options = STORAGE.get_user_options(user['uname'])
     srv_list = [x for x in STORAGE.list_services() if x['enabled']]
@@ -213,8 +224,10 @@ def remove_ui_specific_options(task):
 
 
 def save_user_settings(username, data):
-    data = validate_settings(data, SETTINGS_DEFAULT)
-    
+    # TODO: Not sure how that works now with the models...
+    # data = validate_settings(data, SETTINGS_DEFAULT)
+    data = UserOptions(data)
+
     data["service_spec"] = None
     data["services"] = simplify_services(data["services"])
     
@@ -230,7 +243,7 @@ def validate_settings(data, defaults, exceptions=None):
             data[key] = defaults[key]
         else:
             if key not in exceptions \
-                    and not (isinstance(data[key], basestring) and isinstance(defaults[key], basestring)) \
+                    and not (isinstance(data[key], str) and isinstance(defaults[key], str)) \
                     and not isinstance(data[key], type(defaults[key])):
                 raise Exception("Wrong data type for parameter [%s]" % key)
             else:
@@ -238,10 +251,10 @@ def validate_settings(data, defaults, exceptions=None):
                 if key == 'u2f_devices':
                     continue
 
-                if isinstance(item, basestring):
+                if isinstance(item, str):
                     data[key] = item.replace("{", "").replace("}", "")
                 elif isinstance(item, list):
-                    if len(item) > 0 and isinstance(item[0], basestring):
+                    if len(item) > 0 and isinstance(item[0], str):
                         data[key] = [i.replace("{", "").replace("}", "") for i in item]
 
     to_del = []

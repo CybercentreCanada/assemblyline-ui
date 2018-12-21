@@ -6,9 +6,11 @@ from al_ui.api.base import api
 from al_ui.api.v3.alert import alert_api
 from al_ui.api.v3.authentication import auth_api
 from al_ui.api.v3.bundle import bundle_api
-from al_ui.api.v3.controller import controller_api
+# TODO: Controller does not have a place in v4
+# from al_ui.api.v3.controller import controller_api
 from al_ui.api.v3.core import apiv3
-from al_ui.api.v3.dashboard import dashboard_api
+# TODO: Will delay dashboard for now since I'm not sure how to deal with service listing just yet
+# from al_ui.api.v3.dashboard import dashboard_api
 from al_ui.api.v3.error import error_api
 from al_ui.api.v3.file import file_api
 from al_ui.api.v3.hash_search import hash_search_api
@@ -51,7 +53,8 @@ app.config.update(
     PREFERRED_URL_SCHEME='https'
 )
 
-app.register_blueprint(controller_api)
+# TODO: Controller does not have a place in v4
+# app.register_blueprint(controller_api)
 app.register_blueprint(api)
 app.register_blueprint(apiv3)
 app.register_blueprint(auth_api)

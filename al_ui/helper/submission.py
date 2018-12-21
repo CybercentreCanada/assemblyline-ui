@@ -1,10 +1,10 @@
 import requests
 import os
 import socket
-from urlparse import urlparse
+from urllib.parse import urlparse
 
-from assemblyline.al.common import forge
-from assemblyline.common.charset import safe_str
+from assemblyline.common import forge
+from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 
 config = forge.get_config()

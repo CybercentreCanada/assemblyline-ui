@@ -1,11 +1,13 @@
 
 from flask import request
-from assemblyline.al.common import forge, queue
-from assemblyline.al.core.datastore import SearchException
-from al_ui.apiv3 import core
-from al_ui.config import STORAGE, config
-from al_ui.api_base import api_login, make_api_response
 from riak import RiakError
+
+from assemblyline.common import forge
+from assemblyline.datastore import SearchException
+from assemblyline.remote.datatypes.queues.priority import PriorityQueue
+from al_ui.api.v3 import core
+from al_ui.config import STORAGE, config
+from al_ui.api.base import api_login, make_api_response
 
 DATABASE_NUM = 4
 SUB_API = 'alert'
@@ -88,7 +90,7 @@ def alerts_statistics(**kwargs):
                                                               time_slice=time_slice))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -135,7 +137,7 @@ def alerts_labels(**kwargs):
                                                               field_list=['label']).get('label', []))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -182,7 +184,7 @@ def alerts_priorities(**kwargs):
                                                               field_list=['priority']).get('priority', []))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -229,7 +231,7 @@ def alerts_statuses(**kwargs):
                                                               field_list=['status']).get('status', []))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -287,7 +289,7 @@ def list_alerts(**kwargs):
                                                      time_slice=time_slice))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -347,7 +349,7 @@ def list_grouped_alerts(field, **kwargs):
                                                              time_offset=-300.0))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -426,7 +428,7 @@ def add_labels_by_batch(labels, **kwargs):
     Result example:
     { "status": "QUEUED" }
     """
-    action_queue = queue.PriorityQueue('alert-actions', db=DATABASE_NUM)
+    action_queue = PriorityQueue('alert-actions', db=DATABASE_NUM)
     labels = set(labels.upper().split(","))
 
     user = kwargs['user']
@@ -527,7 +529,7 @@ def change_priority_by_batch(priority, **kwargs):
     Result example:
     {"status": "QUEUED"}
     """
-    action_queue = queue.PriorityQueue('alert-actions', db=DATABASE_NUM)
+    action_queue = PriorityQueue('alert-actions', db=DATABASE_NUM)
     priority = priority.upper()
 
     user = kwargs['user']
@@ -628,7 +630,7 @@ def change_status_by_batch(status, **kwargs):
     Result example:
     {"status": "QUEUED"}
     """
-    action_queue = queue.PriorityQueue('alert-actions', db=DATABASE_NUM)
+    action_queue = PriorityQueue('alert-actions', db=DATABASE_NUM)
     status = status.upper()
 
     user = kwargs['user']
@@ -726,7 +728,7 @@ def take_ownership_by_batch(**kwargs):
     Result example:
     { "success": true }
     """
-    action_queue = queue.PriorityQueue('alert-actions', db=DATABASE_NUM)
+    action_queue = PriorityQueue('alert-actions', db=DATABASE_NUM)
 
     user = kwargs['user']
     q = request.args.get('q', None)
@@ -812,7 +814,7 @@ def find_related_alert_ids(**kwargs):
     try:
         return make_api_response([x['event_id'] for x in
                                   STORAGE.stream_search('alert', q, fq=fq_list, access_control=user['access_control'])])
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:

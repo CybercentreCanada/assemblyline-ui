@@ -1,7 +1,8 @@
-from assemblyline.common.concurrency import execute_concurrently
+import concurrent.futures
+
 from assemblyline.al.service.list_queue_sizes import get_service_queue_length
-from al_ui.api_base import api_login, make_api_response
-from al_ui.apiv3 import core
+from al_ui.api.base import api_login, make_api_response
+from al_ui.api.v3 import core
 from al_ui.config import config, STORAGE
 
 SUB_API = 'dashboard'
@@ -41,7 +42,10 @@ def get_expiry_(**_):
         return STORAGE.direct_search(bucket, "__expiry_ts__:[NOW/DAY TO NOW/DAY-2DAY]",
                                      args=[("rows", "0"), ("timeAllowed", "500")])['response']['numFound'] == 0
 
-    return make_api_response(execute_concurrently([(run_query, (b, ), b) for b in EXPIRY_BUCKET_LIST]))
+    with concurrent.futures.ThreadPoolExecutor(len(EXPIRY_BUCKET_LIST)) as executor:
+        res = {b: executor.submit(run_query, b) for b in EXPIRY_BUCKET_LIST}
+
+    return make_api_response({k: v.result() for k, v in res})
 
 
 @dashboard_api.route("/queues/", methods=["GET"])

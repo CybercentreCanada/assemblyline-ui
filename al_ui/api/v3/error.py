@@ -1,12 +1,12 @@
 
 from flask import request
-from assemblyline.al.common import forge
-from al_ui.apiv3 import core
+from assemblyline.common import forge
+from al_ui.api.v3 import core
 from al_ui.config import STORAGE
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response
 from riak import RiakError
 
-from assemblyline.al.core.datastore import SearchException
+from assemblyline.datastore import SearchException
 
 config = forge.get_config()
 
@@ -80,7 +80,7 @@ def list_errors(**kwargs):
     try:
         return make_api_response(STORAGE.list_errors(query, start=offset, rows=length,
                                                      access_control=user["access_control"]))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:

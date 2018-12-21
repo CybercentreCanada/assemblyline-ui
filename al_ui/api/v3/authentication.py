@@ -4,21 +4,20 @@ import hashlib
 import pyqrcode
 import re
 
-from cStringIO import StringIO
+from io import StringIO
 from flask import request, session as flsk_session
 from passlib.hash import bcrypt
 
 from al_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue
 from al_ui.http_exceptions import AuthenticationException
 from al_ui.site_specific import default_authenticator
-from assemblyline.al.common import forge
-from al_ui.apiv3 import core
-from al_ui.api_base import make_api_response, api_login
-from assemblyline.al.common.auth_email import send_signup_email, send_reset_email
-from assemblyline.al.common.security import generate_random_secret, load_async_key, get_totp_token, \
-    check_password_requirements, get_password_hash, get_password_requirement_message
+from assemblyline.common import forge
+from al_ui.api.v3 import core
+from al_ui.api.base import make_api_response, api_login
+from assemblyline.common.auth_email import send_signup_email, send_reset_email
+from assemblyline.common.security import generate_random_secret, load_async_key, get_totp_token, \
+    check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
 from assemblyline.common.isotime import now
-from assemblyline.deployment.getters import get_random_password
 
 SUB_API = 'auth'
 
