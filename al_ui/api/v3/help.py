@@ -1,9 +1,8 @@
 import re
 
-from assemblyline.al.service.base import ServiceBase
-from al_ui.api_base import api_login, make_api_response
-from assemblyline.al.common import forge
-from al_ui.apiv3 import core
+from al_ui.api.base import api_login, make_api_response
+from assemblyline.common import forge
+from al_ui.api.v3 import core
 from al_ui.config import STORAGE
 
 SUB_API = 'help'
@@ -137,6 +136,10 @@ def get_systems_constants(**_):
         "tag_contexts": []
     }
     """
+    # TODO: can those default be pulled from the alv4_service repo? That would make it a dependency but that ok.
+    default_accept = ".*"
+    default_reject = "empty"
+
     accepts_map = {}
     rejects_map = {}
     default_list = []
@@ -144,9 +147,9 @@ def get_systems_constants(**_):
     for srv in STORAGE.list_services():
         name = srv.get('name', None)
         if name:
-            accept = srv.get('accepts', ".*")
-            reject = srv.get('rejects', "empty")
-            if accept == ServiceBase.SERVICE_ACCEPTS and reject == ServiceBase.SERVICE_REJECTS:
+            accept = srv.get('accepts', default_accept)
+            reject = srv.get('rejects', default_reject)
+            if accept == default_accept and reject == default_reject:
                 default_list.append(name)
             else:
                 accepts_map[name] = re.compile(accept)

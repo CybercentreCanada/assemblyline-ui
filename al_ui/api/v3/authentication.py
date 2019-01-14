@@ -277,7 +277,7 @@ def login(**_):
                 "session_duration": config.ui.get('session_duration', 3600)
             }, cookies={'XSRF-TOKEN': xsrf_token})
         except AuthenticationException as wpe:
-            return make_api_response("", wpe.message, 401)
+            return make_api_response("", str(wpe), 401)
 
     return make_api_response("", "Not enough information to proceed with authentication", 401)
 

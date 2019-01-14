@@ -1,12 +1,11 @@
 
 from flask import request
-
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
-from al_ui.config import STORAGE
-from assemblyline.al.core.datastore import SearchException
-
 from riak import RiakError
+
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
+from al_ui.config import STORAGE
+from assemblyline.datastore import SearchException
 
 ACCEPTABLE_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'signature']
 ACCESS_CONTROL_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'emptyresult', 'signature']
@@ -64,7 +63,7 @@ def search_all(*_, **kwargs):
     try:
         return make_api_response(STORAGE.search_all(query, start=offset, rows=length,
                                                     access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -115,7 +114,7 @@ def search_alerts(*_, **kwargs):
     try:
         return make_api_response(STORAGE.search_alert(query, start=offset, rows=length,
                                                       access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -166,7 +165,7 @@ def advanced_search(bucket, **kwargs):
 
     try:
         return make_api_response(STORAGE.direct_search(bucket, query, args, df=df, __access_control__=fq))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -227,8 +226,8 @@ def deep_search(bucket, **kwargs):
         
         return make_api_response({"length": len(out), "items": out})
     except SearchException as ex:
-        if "org.apache.solr.search.SyntaxError" in ex.message:
-            return make_api_response("", ex.message, 400)
+        if "org.apache.solr.search.SyntaxError" in str(ex):
+            return make_api_response("", str(ex), 400)
         else:
             return make_api_response("", "You can't just ask for everything. Make your query more precise.", 406)
 
@@ -275,7 +274,7 @@ def inspect_search(bucket, **kwargs):
     try:
         result = STORAGE.direct_search(bucket, query, args, __access_control__=user['access_control'])
         return make_api_response({"count": result.get('response', {}).get("numFound", 0)})
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -365,7 +364,7 @@ def search_files(**kwargs):
     try:
         return make_api_response(STORAGE.search_file(query, start=offset, rows=length,
                                                      access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -416,7 +415,7 @@ def search_results(**kwargs):
     try:
         return make_api_response(STORAGE.search_result(query, start=offset, rows=length,
                                                        access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -467,7 +466,7 @@ def search_signatures(**kwargs):
     try:
         return make_api_response(STORAGE.search_signature(query, start=offset, rows=length,
                                                           access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -518,7 +517,7 @@ def search_submissions(**kwargs):
     try:
         return make_api_response(STORAGE.search_submission(query, start=offset, rows=length,
                                                            access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:

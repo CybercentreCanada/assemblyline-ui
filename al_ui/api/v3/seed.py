@@ -1,11 +1,10 @@
 
 from flask import request
 
-from assemblyline.al.common.service_utils import get_merged_svc_config
-from assemblyline.common.importing import module_attribute_by_name
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
-from al_ui.config import STORAGE, LOGGER
+from assemblyline.common import forge
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
+from al_ui.config import STORAGE
 
 SUB_API = 'seed'
 seed_api = core.make_subapi_blueprint(SUB_API)
@@ -142,15 +141,15 @@ def get_source_seed(**kwargs):
      ...
     }
     """
-    seed_module = STORAGE.get_blob("seed_module")
-    if not seed_module:
+    seed_yml = STORAGE.get_blob("seed_yml")
+    if not seed_yml:
         return make_api_response({})
-    seed = module_attribute_by_name(seed_module)
-    services_to_register = seed['services']['master_list']
+    seed = forge.get_config(yml_config=seed_yml, static=True)
 
-    for service, svc_detail in services_to_register.iteritems():
-        seed['services']['master_list'][service] = get_merged_svc_config(service, svc_detail, LOGGER)
+    # TODO: Should we still need to merged the service configuration ?
+    #services_to_register = seed['services']['master_list']
+
+    #for service, svc_detail in services_to_register.iteritems():
+    #    seed['services']['master_list'][service] = get_merged_svc_config(service, svc_detail, LOGGER)
 
     return make_api_response(seed)
-
-

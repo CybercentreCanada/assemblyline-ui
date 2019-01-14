@@ -6,13 +6,12 @@ import glob
 import uuid
 
 from flask import request
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
 from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, STORAGE, F_READ_CHUNK_SIZE
 from al_ui.helper.service import ui_to_dispatch_task
 from al_ui.helper.user import check_submission_quota
-from assemblyline.al.core.submission import SubmissionWrapper
-from assemblyline.al.common import forge
+from assemblyline.common import forge
 config = forge.get_config()
 
 SUB_API = 'ui'
@@ -40,15 +39,15 @@ def reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks):
     target_file = os.path.join(target_dir, flow_filename)
     try:
         os.makedirs(target_dir)
-    except:
+    except Exception:
         pass
     
     try:
         os.unlink(target_file)
-    except:
+    except Exception:
         pass
     
-    for my_file in xrange(int(flow_total_chunks)):
+    for my_file in range(int(flow_total_chunks)):
         with open(target_file, "a") as t:
             chunk = str(my_file + 1)
             cur_chunk_file = os.path.join(mydir, "chunk.part%s" % chunk)
@@ -70,7 +69,7 @@ def validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
     if len(in_dir_files) != int(flow_total_chunks):
         return False
     
-    for i in xrange(int(flow_total_chunks) - 1):
+    for i in range(int(flow_total_chunks) - 1):
         myfile = os.path.join(mydir, 'chunk.part' + str(i + 1))
         if not os.path.getsize(myfile) == int(flow_chunk_size):
             return False
@@ -192,7 +191,7 @@ def flowjs_upload_chunk(**kwargs):
     myfile = os.path.join(mydir, 'chunk.part' + flow_chunk_number)
     try:
         os.makedirs(mydir)
-    except:
+    except Exception:
         pass
     f = open(myfile, "wb")
     file_obj = request.files['file']
@@ -277,12 +276,12 @@ def start_ui_submission(ui_sid, **kwargs):
         for myfile in request_files:
             try:
                 os.unlink(myfile)
-            except:
+            except Exception:
                 pass
         
         # Remove dirs
         for fpath in request_dirs:
             try:
                 os.rmdir(fpath)
-            except:
+            except Exception:
                 pass

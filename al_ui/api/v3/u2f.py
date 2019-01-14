@@ -2,8 +2,8 @@
 from flask import session, request
 from u2flib_server.u2f import begin_registration, begin_authentication, complete_registration
 
-from al_ui.apiv3 import core
-from al_ui.api_base import make_api_response, api_login
+from al_ui.api.v3 import core
+from al_ui.api.base import make_api_response, api_login
 from al_ui.config import STORAGE, APP_ID
 
 SUB_API = 'u2f'
@@ -114,7 +114,7 @@ def bind(name, **kwargs):
     try:
         device, cert = complete_registration(current_enroll, data, [APP_ID])
     except Exception as e:
-        return make_api_response({'success': False}, err=e.message, status_code=400)
+        return make_api_response({'success': False}, err=str(e), status_code=400)
 
     u2f_devices = user.get('u2f_devices', {})
     if isinstance(u2f_devices, list):

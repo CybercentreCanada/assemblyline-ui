@@ -2,11 +2,11 @@
 from copy import deepcopy
 from flask import request
 
-from assemblyline.al.common.heuristics import list_all_heuristics
-from al_ui.apiv3 import core
-from assemblyline.al.common import forge
+from assemblyline.common.heuristics import list_all_heuristics
+from al_ui.api.v3 import core
+from assemblyline.common import forge
 from al_ui.config import STORAGE
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response
 
 SUB_API = 'heuristics'
 

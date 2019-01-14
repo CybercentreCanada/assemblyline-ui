@@ -1,18 +1,19 @@
 
 from flask import request
 
-from assemblyline.al.common.security import get_password_hash, check_password_requirements, \
+from assemblyline.common.security import get_password_hash, check_password_requirements, \
     get_password_requirement_message
-from assemblyline.al.core.datastore import SearchException
+from assemblyline.datastore import SearchException
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.user_defaults import ACCOUNT_DEFAULT
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
 from al_ui.config import STORAGE, CLASSIFICATION, config
 from al_ui.helper.service import ui_to_dispatch_task
-from al_ui.helper.user import load_user_settings, save_user_settings, save_user_account, validate_settings
+from al_ui.helper.user import load_user_settings, save_user_settings, save_user_account
 from al_ui.http_exceptions import AccessDeniedException, InvalidDataException
 from riak import RiakError
+
+from assemblyline.odm.models.user import User
 
 SUB_API = 'user'
 user_api = core.make_subapi_blueprint(SUB_API)
@@ -63,9 +64,7 @@ def add_user_account(username, **_):
                 return make_api_response({"success": False}, error_msg, 469)
             data['password'] = get_password_hash(new_pass)
 
-        STORAGE.save_user(username, validate_settings(data, ACCOUNT_DEFAULT,
-                                                      exceptions=['avatar', 'agrees_with_tos',
-                                                                  'dn', 'password', 'otp_sk', 'u2f_devices']))
+        STORAGE.save_user(username, User(data))
         return make_api_response({"success": True})
     else:
         return make_api_response({"success": False}, "The username you are trying to add already exists.", 400)
@@ -196,11 +195,11 @@ def get_user_account(username, **kwargs):
     user['u2f_devices'] = u2f_devices.keys()
     user['u2f_enabled'] = len(u2f_devices) != 0
 
-    if "api_quota" not in user:
-        user['api_quota'] = ACCOUNT_DEFAULT.get('api_quota', 10)
+    # if "api_quota" not in user:
+    #     user['api_quota'] = ACCOUNT_DEFAULT.get('api_quota', 10)
     
-    if "submission_quota" not in user:
-        user['submission_quota'] = ACCOUNT_DEFAULT.get('submission_quota', 5)
+    # if "submission_quota" not in user:
+    #     user['submission_quota'] = ACCOUNT_DEFAULT.get('submission_quota', 5)
 
     if "load_avatar" in request.args:
         user['avatar'] = STORAGE.get_user_avatar(username)
@@ -399,7 +398,7 @@ def list_users(**_):
     
     try:
         return make_api_response(STORAGE.list_users(start=offset, rows=length, query=query))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -525,10 +524,10 @@ def set_user_account(username, **kwargs):
             data['password'] = old_user.get('password', None)
 
         return make_api_response({"success": save_user_account(username, data, kwargs['user'])})
-    except AccessDeniedException, e:
-        return make_api_response({"success": False}, e.message, 403)
-    except InvalidDataException, e:
-        return make_api_response({"success": False}, e.message, 400)
+    except AccessDeniedException as e:
+        return make_api_response({"success": False}, str(e), 403)
+    except InvalidDataException as e:
+        return make_api_response({"success": False}, str(e), 400)
 
 
 @user_api.route("/avatar/<username>/", methods=["POST"])

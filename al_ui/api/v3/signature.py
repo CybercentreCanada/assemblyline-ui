@@ -6,14 +6,15 @@ from hashlib import md5
 from riak import RiakError
 from textwrap import dedent
 
-from assemblyline.al.core.datastore import SearchException
+from assemblyline.common.yara import YaraParser
+from assemblyline.datastore import SearchException
 from assemblyline.common.isotime import iso_to_epoch
-from assemblyline.al.common import forge
-from assemblyline.al.common.remote_datatypes import ExclusionWindow
-from assemblyline.al.common.transport.local import TransportLocal
-from al_ui.api_base import api_login, make_api_response, make_file_response
-from al_ui.apiv3 import core
-from al_ui.config import LOGGER, STORAGE, ORGANISATION, YARA_PARSER
+from assemblyline.common import forge
+from assemblyline.remote.datatypes.lock import Lock
+from assemblyline.filestore.transport.local import TransportLocal
+from al_ui.api.base import api_login, make_api_response, make_file_response
+from al_ui.api.v3 import core
+from al_ui.config import LOGGER, STORAGE, ORGANISATION
 
 SUB_API = 'signature'
 
@@ -76,8 +77,8 @@ def add_signature(**kwargs):
     key = "%sr.%s" % (data['meta']['id'], data['meta']['rule_version'])
     yara_version = data['meta'].get('yara_version', None)
     data['depends'], data['modules'] = \
-        YARA_PARSER.parse_dependencies(data['condition'], YARA_PARSER.YARA_MODULES.get(yara_version, None))
-    res = YARA_PARSER.validate_rule(data)
+        YaraParser.parse_dependencies(data['condition'], YaraParser.YARA_MODULES.get(yara_version, None))
+    res = YaraParser.validate_rule(data)
     if res['valid']:
         query = "name:{name} AND NOT _yz_rk:{sid}*"
         other = STORAGE.direct_search(
@@ -272,7 +273,7 @@ def download_signatures(**kwargs):
     if response:
         return response
 
-    with ExclusionWindow(query_hash, 30):
+    with Lock(query_hash, 30):
         response = _get_cached_signatures(
             signature_cache, last_modified, query_hash
         )
@@ -424,7 +425,7 @@ def download_signatures(**kwargs):
             //
             """).format(query=query, error=error, last_modified=last_modified)
 
-        rule_file_bin = header + YARA_PARSER().dump_rule_file(signature_list)
+        rule_file_bin = header + YaraParser().dump_rule_file(signature_list)
         rule_file_bin = rule_file_bin
 
         signature_cache.save(query_hash, rule_file_bin)
@@ -515,7 +516,7 @@ def list_signatures(**kwargs):
     try:
         return make_api_response(STORAGE.list_signatures(start=offset, rows=length, query=query,
                                                          access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
@@ -583,7 +584,7 @@ def set_signature(sid, rev, **kwargs):
         if not user['is_admin'] and "global" in data['type']:
             return make_api_response("", "Only admins are allowed to add global signatures.", 403)
 
-        if YARA_PARSER.require_bump(data, old_data):
+        if YaraParser.require_bump(data, old_data):
             data['meta']['rule_version'] = STORAGE.get_last_rev_for_id(sid) + 1 
             data['meta']['creation_date'] = datetime.date.today().isoformat()
             if 'modification_date' in data['meta']:
@@ -603,8 +604,8 @@ def set_signature(sid, rev, **kwargs):
         data['meta']['last_saved_by'] = user['uname']
         yara_version = data['meta'].get('yara_version', None)
         data['depends'], data['modules'] = \
-            YARA_PARSER.parse_dependencies(data['condition'], YARA_PARSER.YARA_MODULES.get(yara_version, None))
-        res = YARA_PARSER.validate_rule(data)
+            YaraParser.parse_dependencies(data['condition'], YaraParser.YARA_MODULES.get(yara_version, None))
+        res = YaraParser.validate_rule(data)
         if res['valid']:
             data['warning'] = res.get('warning', None)
             STORAGE.save_signature(key, data)

@@ -1,6 +1,6 @@
-from al_ui.apiv3 import core
+from al_ui.api.v3 import core
 from al_ui.config import STORAGE
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response
 from flask import request
 from al_ui.http_exceptions import AccessDeniedException
 

@@ -7,11 +7,11 @@ from flask import request
 
 from assemblyline.common import identify
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.al.common import forge
-from assemblyline.al.common.queue import NamedQueue, MultiQueue
-from al_ui.apiv3 import core
+from assemblyline.common import forge
+from assemblyline.remote.datatypes.queues.named import NamedQueue
+from al_ui.api.v3 import core
 from al_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import remove_ui_specific_options
 
@@ -19,7 +19,10 @@ SUB_API = 'ingest'
 ingest_api = core.make_subapi_blueprint(SUB_API)
 ingest_api._doc = "Ingest files for large volume processing"
 
-ingest = MultiQueue(
+# TODO: We will assume that middleman will not be sharded that the new version will work with any number of middleman
+#       working the same queue.
+ingest = NamedQueue(
+    "m-ingest",
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port,
     db=config.core.redis.persistent.db)
@@ -243,7 +246,7 @@ def ingest_single_file(**kwargs):
             }
             msg.update(digests)
 
-            ingest.push(forge.determine_ingest_queue(sha256), msg)
+            ingest.push(msg)
 
             return make_api_response({"success": True})
         finally:

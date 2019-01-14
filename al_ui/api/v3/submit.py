@@ -6,15 +6,15 @@ import shutil
 from uuid import uuid4
 from flask import request
 
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
 from al_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import check_submission_quota, get_default_user_settings, load_user_settings, \
     remove_ui_specific_options
 from al_ui.helper.service import simplify_services, ui_to_dispatch_task
-from assemblyline.al.common import forge
-from assemblyline.al.core.submission import SubmissionWrapper
+from assemblyline.common import forge
+
 config = forge.get_config()
 
 SUB_API = 'submit'

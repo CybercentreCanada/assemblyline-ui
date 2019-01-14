@@ -71,7 +71,6 @@ def search_hash(file_hash, *args, **kwargs):
 
     Arguments:(optional)
     db          => | separated list of data sources
-    show_timers => Display time it took to query each sources
     max_timeout => Maximum execution time for the call in seconds
 
     Data Block:
@@ -114,10 +113,6 @@ def search_hash(file_hash, *args, **kwargs):
         for x in invalid_sources:
             db_list.remove(x)
 
-    show_timers = request.args.get('show_timers', False)
-    if show_timers:
-        show_timers = show_timers.lower() == 'true'
-
     max_timeout = request.args.get('max_timeout', "2")
     # noinspection PyBroadException
     try:
@@ -128,27 +123,11 @@ def search_hash(file_hash, *args, **kwargs):
     if len(db_list) == 0 and len(invalid_sources) == 0:
         db_list = sources.keys()
 
-    plan = [(sources[x], (file_hash.lower(), user), x) for x in db_list]
-    res = execute_concurrently(plan, calculate_timers=show_timers, max_timeout=max_timeout)
+    with concurrent.futures.ThreadPoolExecutor(len(db_list)) as executor:
+        res = {db: executor.submit(sources[db], file_hash.lower(), user) for db in db_list}
 
-    data = {}
-    for x in db_list:
-        if x not in res:
-            if x in res["_timeout_"]:
-                data[x] = {"items": [], "error": "Service reached the maximum execution time. [%s seconds]" %
-                                                 max_timeout}
-            elif x in res["_exception_"]:
-                exception = res["_exception_"][x]
-                e = "%s: %s" % (exception.__class__.__name__, str(exception))
-                data[x] = {"items": [], "error": "Exception occured while querying datasource. [%s]" % e}
-            else:
-                data[x] = {"items": [], "error": "Service is currently not available."}
-        else:
-            data[x] = res[x]
-
-    if show_timers:
-        data['_timers_'] = res.get("_timers_", {})
-    return make_api_response(data)
+    # TODO: Timeout part needs some love. Can't be done through dictionary comprehension.
+    return make_api_response({k: v.result(timeout=max_timeout) for k, v in res})
 
 
 # noinspection PyUnusedLocal

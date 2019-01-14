@@ -1,11 +1,11 @@
 
 from flask import request
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
 from al_ui.config import STORAGE
 from al_ui.helper.result import format_result
 from al_ui.http_exceptions import AccessDeniedException
-from assemblyline.al.common import forge
+from assemblyline.common import forge
 config = forge.get_config()
 
 SUB_API = 'service'
@@ -403,5 +403,5 @@ def set_service(servicename, **_):
             raise AccessDeniedException("You are not allowed to change the service name.")
         
         return make_api_response({"success": STORAGE.save_service(servicename, data)})
-    except AccessDeniedException, e:
-        return make_api_response({"success": False}, e.message, 403)
+    except AccessDeniedException as e:
+        return make_api_response({"success": False}, str(e), 403)

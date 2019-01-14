@@ -1,7 +1,7 @@
 
 from flask import request
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
 from al_ui.config import STORAGE
 from al_ui.http_exceptions import AccessDeniedException
 
@@ -170,5 +170,5 @@ def set_virtual_machine(vm, **_):
             raise AccessDeniedException("You are not allowed to change the virtual machine name.")
         
         return make_api_response({"success": STORAGE.save_virtualmachine(vm, data)})
-    except AccessDeniedException, e:
-        return make_api_response({"success": False}, e.message, 403)
+    except AccessDeniedException as e:
+        return make_api_response({"success": False}, str(e), 403)

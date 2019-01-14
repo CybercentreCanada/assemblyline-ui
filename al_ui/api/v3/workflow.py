@@ -1,13 +1,12 @@
 import uuid
 
 from flask import request
-
-from al_ui.apiv3 import core
-from al_ui.api_base import api_login, make_api_response
-from al_ui.config import STORAGE, CLASSIFICATION
 from riak import RiakError
 
-from assemblyline.al.core.datastore import SearchException
+from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response
+from al_ui.config import STORAGE, CLASSIFICATION
+from assemblyline.datastore import SearchException
 from assemblyline.common.isotime import now_as_iso
 
 SUB_API = 'workflow'
@@ -21,7 +20,7 @@ def verify_query(query):
     try:
         STORAGE.search_alert(query)
     except SearchException as error:
-        return False, error.message
+        return False, str(error)
     except Exception:  # If an error occurred in this block we are 100% blaming the user query
         return False, 'Invalid Query'
     return True, ''
@@ -248,7 +247,7 @@ def list_workflows(**kwargs):
     try:
         return make_api_response(STORAGE.list_workflows(start=offset, rows=length, query=query,
                                                         access_control=user['access_control']))
-    except RiakError, e:
+    except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:

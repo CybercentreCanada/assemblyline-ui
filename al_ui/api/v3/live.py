@@ -1,18 +1,17 @@
 
 from flask import request
 
-from assemblyline.al.common import forge
-config = forge.get_config()
-from assemblyline.al.common.queue import NamedQueue, reply_queue_name
-from assemblyline.al.core.submission import SubmissionWrapper
-from al_ui.api_base import api_login, make_api_response
-from al_ui.apiv3 import core
+from assemblyline.common import forge
+from assemblyline.remote.datatypes import reply_queue_name
+from assemblyline.remote.datatypes.queues.named import NamedQueue
+from al_ui.api.base import api_login, make_api_response
+from al_ui.api.v3 import core
 from al_ui.config import STORAGE
-from assemblyline.al.core.dispatch import DispatchClient
 
 SUB_API = 'live'
 
 Classification = forge.get_classification()
+config = forge.get_config()
 
 live_api = core.make_subapi_blueprint(SUB_API)
 live_api._doc = "Interact with live processing messages"
@@ -135,7 +134,16 @@ def outstanding_services(sid, **kwargs):
     user = kwargs['user']
     
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(DispatchClient.get_outstanding_services(sid))
+        # TODO: this was supposed to be a task the message should probably be a model
+        #       also maybe we should go back to something like the dispatch client.
+        state = 'oustanding_services'
+        reply_name = reply_queue_name(state)
+        NamedQueue('control-queue').push({
+            'sid': sid,
+            'state': state,
+            'watch_queue': reply_name
+        })
+        return make_api_response(NamedQueue(reply_name).pop(timeout=5))
     else:
         return make_api_response({}, "You are not allowed to access this submissions.", 403)
 
@@ -162,8 +170,16 @@ def setup_watch_queue(sid, **kwargs):
     user = kwargs['user']
     
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
+        # TODO: this was supposed to be a task the message should probably be a model
+        #       also maybe we should go back to something like the dispatch client.
         watch_queue = reply_queue_name(request.args.get('suffix', "WQ"))
-        SubmissionWrapper.watch(sid, watch_queue)
+
+        NamedQueue('control-queue').push({
+            'state': 'watch',
+            'priority': config.submissions.max.priority,
+            'sid': sid,
+            'watch_queue': watch_queue
+        })
         return make_api_response({"wq_id": watch_queue})
     else:
         return make_api_response("", "You are not allowed to access this submissions.", 403)

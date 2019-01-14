@@ -1,7 +1,7 @@
 # coding:utf-8
 # Copyright 2011 litl, LLC. All Rights Reserved.
 
-import httplib
+import http.client
 import re
 
 from al_ui.config import config
@@ -74,14 +74,14 @@ def proxy_request(requested_file="", **_):
         form_data = None
 
     if scheme == "http":
-        conn = httplib.HTTPConnection(hostname, port)
+        conn = http.client.HTTPConnection(hostname, port)
         conn.request(request.method, path, body=form_data, headers=request_headers)
         resp = conn.getresponse()
     else:
-        if not verify and '_create_unverified_context' in dir(httplib.ssl):
-            conn = httplib.HTTPSConnection(hostname, port, context=httplib.ssl._create_unverified_context())
+        if not verify and '_create_unverified_context' in dir(http.client.ssl):
+            conn = http.client.HTTPSConnection(hostname, port, context=http.client.ssl._create_unverified_context())
         else:
-            conn = httplib.HTTPSConnection(hostname, port)
+            conn = http.client.HTTPSConnection(hostname, port)
         conn.request(request.method, path, body=form_data, headers=request_headers)
         resp = conn.getresponse()
 

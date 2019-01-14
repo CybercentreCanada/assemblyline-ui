@@ -3,9 +3,9 @@ from operator import itemgetter
 
 from flask import request
 
-from assemblyline.al.common import forge
-from al_ui.api_base import api_login, make_api_response
-from al_ui.apiv3 import core
+from assemblyline.common import forge
+from al_ui.api.base import api_login, make_api_response
+from al_ui.api.v3 import core
 from al_ui.config import STORAGE
 
 SUB_API = 'tc_signature'
@@ -48,12 +48,12 @@ def _validate_signature(data):
     if not isinstance(data, dict):
         raise InvalidSignatureError("Not a dictionary object")
 
-    for key, value in data.iteritems():
+    for key, value in data.items():
         if key not in TC_SIG_DEFAULT:
             raise InvalidSignatureError("Invalid key [%s]" % key)
         else:
             if not isinstance(value, type(TC_SIG_DEFAULT[key])) \
-                    and not (isinstance(value, basestring) and isinstance(TC_SIG_DEFAULT[key], basestring)):
+                    and not (isinstance(value, str) and isinstance(TC_SIG_DEFAULT[key], str)):
                 if value is None:
                     if key not in TC_SIG_ALLOWED_NULL:
                         raise InvalidSignatureError("Key '%s' not allowed to be None" % key)
