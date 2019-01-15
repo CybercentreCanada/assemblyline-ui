@@ -60,7 +60,7 @@ app.register_blueprint(apiv3)
 app.register_blueprint(auth_api)
 app.register_blueprint(alert_api)
 app.register_blueprint(bundle_api)
-app.register_blueprint(dashboard_api)
+#app.register_blueprint(dashboard_api)
 app.register_blueprint(errors)
 app.register_blueprint(error_api)
 app.register_blueprint(file_api)
@@ -87,12 +87,6 @@ app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
 
 register_site_specific_routes(app)
-
-if config.config.auth.get('encrypted_login', True):
-    if not config.STORAGE.get_blob('id_rsa'):
-        public_key, private_key = generate_async_keys(key_size=config.config.ui.get('rsa_key_size', 2048))
-        config.STORAGE.save_blob('id_rsa.pub', public_key)
-        config.STORAGE.save_blob('id_rsa', private_key)
 
 
 def main():

@@ -33,7 +33,6 @@ SYSTEM_NAME = config.system.name
 BUILD_MASTER = version.SYSTEM_VERSION
 BUILD_LOWER = version.FRAMEWORK_VERSION
 BUILD_NO = version.BUILD_MINOR
-GIT_PATH = config.ui.install_path
 
 TEMP_DIR_CHUNKED = "/tmp/al_ui/flowjs/chunked/"
 TEMP_DIR = "/tmp/al_ui/flowjs/full/"

@@ -11,6 +11,8 @@ from al_ui.http_exceptions import AuthenticationException
 APP_NAME = "Assemblyline"
 TEMPLATE_PREFIX = {}
 
+basic_dn_parser = None
+
 nonpersistent_config = {
     'host': config.core.redis.nonpersistent.host,
     'port': config.core.redis.nonpersistent.port,

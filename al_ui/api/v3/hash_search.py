@@ -30,14 +30,15 @@ def create_query_datasource(ds):
 sources = {}
 # noinspection PyBroadException
 try:
-    for name, settings in config.datasources.iteritems():
+    for name, settings in config.datasources.items():
         name = name.lower()
         classpath = 'unknown'
         # noinspection PyBroadException
         try:
-            classpath = settings['classpath']
-            cfg = settings['config']
+            classpath = settings.classpath
+            cfg = settings.config
             if isinstance(cfg, str):
+                # TODO: this needs testing that can only be done when a service datasource is available.
                 path = cfg
                 cfg = config
                 for point in path.split('.'):
