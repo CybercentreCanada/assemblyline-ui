@@ -33,18 +33,19 @@ def handle_404(_):
 
 @errors.app_errorhandler(403)
 def handle_403(e):
+    error_message = str(e)
     trace = exc_info()[2]
     if AUDIT:
         log_with_traceback(AUDIT_LOG, trace, "Access Denied")
 
     if request.path.startswith("/api/"):
-        return make_api_response("", "Access Denied (%s) [%s]" % (request.path, e.message), 403)
+        return make_api_response("", "Access Denied (%s) [%s]" % (request.path, error_message), 403)
     else:
-        if e.message.startswith("User") and e.message.endswith("is disabled"):
-            return render_template('403e.html', exception=e.message,
+        if error_message.startswith("User") and str(e).endswith("is disabled"):
+            return render_template('403e.html', exception=error_message,
                                    email=config.ui.get("email", "")), 403
         else:
-            return render_template('403.html', exception=e.message), 403
+            return render_template('403.html', exception=error_message), 403
 
 
 @errors.app_errorhandler(500)

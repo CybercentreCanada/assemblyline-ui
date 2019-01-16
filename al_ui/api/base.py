@@ -1,6 +1,5 @@
 
 import functools
-import json
 import uuid
 
 from flask import abort, current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response
@@ -34,7 +33,8 @@ class api_login(object):
         self.username_key = username_key
         self.audit = audit and AUDIT
         self.required_priv = required_priv
-        self.check_xsrf_token = check_xsrf_token
+        # self.check_xsrf_token = check_xsrf_token  # TODO: xsrf token validation turned off for testing turn it back on
+        self.check_xsrf_token = False
         self.allow_readonly = allow_readonly
 
     def __call__(self, func):
@@ -54,7 +54,6 @@ class api_login(object):
             if not session:
                 abort(401)
             else:
-                session = json.loads(session)
                 cur_time = now()
                 if session.get('expire_at', 0) < cur_time:
                     KV_SESSION.pop(session_id)
@@ -82,9 +81,9 @@ class api_login(object):
             temp_user = login(logged_in_uname)
 
             # Terms of Service
-            if not request.path == "/api/v3/user/tos/%s/" % logged_in_uname:
-                if not temp_user.get('agrees_with_tos', False) and config.ui.get("tos", None) is not None:
-                    raise AccessDeniedException("Agree to Terms of Service before you can make any API calls.")
+            if not request.path == "/api/v3/user/tos/%s/" % logged_in_uname \
+                    and not temp_user.get('agrees_with_tos', False) and config.ui.tos != "":
+                raise AccessDeniedException("Agree to Terms of Service before you can make any API calls.")
 
             if requestor:
                 user = None
@@ -205,7 +204,7 @@ def make_api_response(data, err="", status_code=200, cookies=None):
 
     resp = make_response(jsonify({"api_response": data,
                                   "api_error_message": err,
-                                  "api_server_version": "%s.%s :: %s" % (BUILD_MASTER, BUILD_LOWER, BUILD_NO),
+                                  "api_server_version": "%s.%s.%s" % (BUILD_MASTER, BUILD_LOWER, BUILD_NO),
                                   "api_status_code": status_code}),
                          status_code)
 
@@ -360,13 +359,13 @@ def site_map(**kwargs):
         for item in rule.methods:
             if item != "OPTIONS" and item != "HEAD":
                 methods.append(item)
-        protected = func.func_dict.get('protected', False)
-        admin_only = func.func_dict.get('require_admin', False)
-        audit = func.func_dict.get('audit', False)
-        priv = func.func_dict.get('required_priv', '')
-        allow_readonly = func.func_dict.get('allow_readonly', True)
+        protected = func.__dict__.get('protected', False)
+        admin_only = func.__dict__.get('require_admin', False)
+        audit = func.__dict__.get('audit', False)
+        priv = func.__dict__.get('required_priv', '')
+        allow_readonly = func.__dict__.get('allow_readonly', True)
 
-        if config.ui.get('read_only') and not allow_readonly:
+        if config.ui.read_only and not allow_readonly:
             continue
 
         if "unsafe_only" in request.args and protected:

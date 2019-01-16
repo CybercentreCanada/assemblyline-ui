@@ -62,16 +62,16 @@ def get_api_documentation(**kwargs):
                     methods.append(item)
             
             func = current_app.view_functions[rule.endpoint]
-            require_admin = func.func_dict.get('require_admin', False)
-            allow_readonly = func.func_dict.get('allow_readonly', True)
+            require_admin = func.__dict__.get('require_admin', False)
+            allow_readonly = func.__dict__.get('allow_readonly', True)
 
-            if config.ui.get('read_only') and not allow_readonly:
+            if config.ui.read_only and not allow_readonly:
                 continue
 
             if not admin_user and require_admin:
                 continue
 
-            doc_string = func.func_doc
+            doc_string = func.__doc__
             func_title = " ".join([x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".")+1:].split("_")])
             blueprint = rule.endpoint[rule.endpoint.index(".")+1:rule.endpoint.rindex(".")]
             if not blueprint:
@@ -96,7 +96,7 @@ def get_api_documentation(**kwargs):
                 api_id = rule.endpoint.replace("apiv3.", "").replace(".", "_")
                 
             api_list.append({
-                "protected": func.func_dict.get('protected', False),
+                "protected": func.__dict__.get('protected', False),
                 "require_admin": require_admin,
                 "name": func_title,
                 "id": api_id,
@@ -104,6 +104,6 @@ def get_api_documentation(**kwargs):
                 "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
                 "methods": methods, "description": description,
                 "complete": "[INCOMPLETE]" not in description,
-                "required_priv": func.func_dict.get('required_priv', "")
+                "required_priv": func.__dict__.get('required_priv', "")
             })
     return make_api_response({"apis": api_list, "blueprints": api_blueprints})

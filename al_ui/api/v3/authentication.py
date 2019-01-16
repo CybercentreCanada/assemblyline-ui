@@ -1,5 +1,4 @@
 
-import base64
 import hashlib
 import pyqrcode
 import re
@@ -15,7 +14,7 @@ from assemblyline.common import forge
 from al_ui.api.v3 import core
 from al_ui.api.base import make_api_response, api_login
 from assemblyline.common.auth_email import send_signup_email, send_reset_email
-from assemblyline.common.security import generate_random_secret, load_async_key, get_totp_token, \
+from assemblyline.common.security import generate_random_secret, get_totp_token, \
     check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
 from assemblyline.common.isotime import now
 
@@ -146,7 +145,7 @@ def get_reset_link(**_):
      "success": true
     }
     """
-    if not config.auth.internal.get('signup', {}).get('enabled', False):
+    if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
     data = request.json
@@ -159,31 +158,6 @@ def get_reset_link(**_):
         send_reset_email(email, key)
         get_reset_queue(key).add(email)
     return make_api_response({"success": True})
-
-
-# noinspection PyBroadException
-@auth_api.route("/init/", methods=["GET"])
-def init(**_):
-    """
-    Initialize secured handshake by downloading the server public
-    key to encrypt the password
-
-    Variables:
-    None
-
-    Arguments:
-    None
-
-    Data Block:
-    None
-
-    Result example:
-    -----BEGIN PUBLIC KEY----- ....
-    """
-    if config.auth.get('encrypted_login', True):
-        return make_api_response(STORAGE.get_blob('id_rsa.pub'))
-    else:
-        return make_api_response(None)
 
 
 # noinspection PyBroadException,PyPropertyAccess
@@ -224,15 +198,6 @@ def login(**_):
     apikey = data.get('apikey', None)
     u2f_response = data.get('u2f_response', None)
 
-    if config.auth.get('encrypted_login', True):
-        private_key = load_async_key(STORAGE.get_blob('id_rsa'), use_pkcs=True)
-
-        if password and private_key:
-            password = private_key.decrypt(base64.b64decode(password), "ERROR")
-
-        if apikey and private_key:
-            apikey = private_key.decrypt(base64.b64decode(apikey), "ERROR")
-
     try:
         otp = int(data.get('otp', 0) or 0)
     except Exception:
@@ -255,7 +220,7 @@ def login(**_):
 
         try:
             logged_in_uname, priv = default_authenticator(auth, request, flsk_session, STORAGE)
-            session_duration = config.ui.get('session_duration', 3600)
+            session_duration = config.ui.session_duration
             cur_time = now()
             xsrf_token = generate_random_secret()
             current_session = {
@@ -267,14 +232,14 @@ def login(**_):
                 'username': logged_in_uname,
                 'xsrf_token': xsrf_token
             }
-            session_id = hashlib.sha512(str(current_session)).hexdigest()
+            session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
             current_session['expire_at'] = cur_time + session_duration
             flsk_session['session_id'] = session_id
             KV_SESSION.add(session_id, current_session)
             return make_api_response({
                 "username": logged_in_uname,
                 "privileges": priv,
-                "session_duration": config.ui.get('session_duration', 3600)
+                "session_duration": session_duration
             }, cookies={'XSRF-TOKEN': xsrf_token})
         except AuthenticationException as wpe:
             return make_api_response("", str(wpe), 401)
@@ -310,6 +275,7 @@ def logout(**_):
         return make_api_response("", err="No user logged in?", status_code=400)
 
 
+# noinspection PyBroadException
 @auth_api.route("/reset_pwd/", methods=["GET", "POST"])
 def reset_pwd(**_):
     """
@@ -333,7 +299,7 @@ def reset_pwd(**_):
      "success": true
     }
     """
-    if not config.auth.internal.get('signup', {}).get('enabled', False):
+    if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
     data = request.json
@@ -348,8 +314,8 @@ def reset_pwd(**_):
         if password != password_confirm:
             return make_api_response({"success": False}, err="Password mismatch", status_code=400)
 
-        if not check_password_requirements(password, **config.auth.internal.get('password_requirements', {})):
-            error_msg = get_password_requirement_message(**config.auth.internal.get('password_requirements', {}))
+        if not check_password_requirements(password, **config.auth.internal.password_requirements):
+            error_msg = get_password_requirement_message(**config.auth.internal.password_requirements)
             return make_api_response({"success": False}, error_msg, 469)
 
         try:
@@ -441,7 +407,7 @@ def signup(**_):
      "success": true
     }
     """
-    if not config.auth.internal.get('signup', {}).get('enabled', False):
+    if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
     data = request.json
@@ -469,8 +435,8 @@ def signup(**_):
 
     if password_confirm != password:
         return make_api_response("", "Passwords do not match", 469)
-    if not check_password_requirements(password, **config.auth.internal.get('password_requirements', {})):
-        error_msg = get_password_requirement_message(**config.auth.internal.get('password_requirements', {}))
+    if not check_password_requirements(password, **config.auth.internal.password_requirements):
+        error_msg = get_password_requirement_message(**config.auth.internal.password_requirements)
         return make_api_response({"success": False}, error_msg, 469)
 
     password = get_password_hash(password)
@@ -479,7 +445,7 @@ def signup(**_):
         return make_api_response({"success": False}, "Invalid email address", 466)
 
     email_valid = False
-    for r in config.auth.internal.get('signup', {}).get('valid_email_patterns', []):
+    for r in config.auth.internal.signup.valid_email_patterns:
         matcher = re.compile(r)
         if matcher.findall(email):
             email_valid = True

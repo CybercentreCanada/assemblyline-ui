@@ -248,7 +248,7 @@ def default_authenticator(auth, req, ses, storage):
 def validate_apikey(username, apikey, storage):
     # This function identifies the user via the internal API key functionality
     #   NOTE: It is not recommended to overload this function but you can still do it
-    if config.auth.get('allow_apikeys', True):
+    if config.auth.allow_apikeys:
         if apikey:
             user_data = storage.get_user(username)
             if user_data:
@@ -273,9 +273,9 @@ def validate_userpass(username, password, storage):
     # You can overload this to pass username/password to an LDAP server for exemple
     if config.auth.internal.enabled:
         if username and password:
-            user = storage.get_user(username)
+            user = storage.user.get(username)
             if user:
-                if verify_password(password, user.get('password', None)):
+                if verify_password(password, user.password):
                     return username, ["R", "W", "E"]
 
             raise AuthenticationException("Wrong username or password")
@@ -292,11 +292,11 @@ def validate_2fa(username, otp_token, u2f_challenge, u2f_response, storage):
     report_errors = False
 
     # Get user
-    user_data = storage.get_user(username)
+    user_data = storage.user.get(username)
 
     # Test u2f
-    if config.auth.get('allow_u2f', True):
-        u2f_devices = user_data.get('u2f_devices', {})
+    if config.auth.allow_u2f:
+        u2f_devices = user_data.u2f_devices
         if isinstance(u2f_devices, list):
             u2f_devices = {"default": d for d in u2f_devices}
 
@@ -313,8 +313,8 @@ def validate_2fa(username, otp_token, u2f_challenge, u2f_response, storage):
                     u2f_error = True
 
     # Test OTP
-    if config.auth.get('allow_2fa', True):
-        otp_sk = user_data.get('otp_sk', None)
+    if config.auth.allow_2fa:
+        otp_sk = user_data.otp_sk
         if otp_sk:
             # OTP is enabled for user
             otp_enabled = True

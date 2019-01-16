@@ -38,7 +38,6 @@ from al_ui.error import errors
 
 from al_ui import config
 from assemblyline.common import forge
-from assemblyline.common.security import generate_async_keys
 
 context = forge.get_ui_context()
 register_site_specific_routes = context.register_site_specific_routes

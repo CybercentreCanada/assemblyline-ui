@@ -30,8 +30,8 @@ ORGANISATION = config.system.organisation
 SYSTEM_SERVICE_CATEGORY_NAME = config.services.system_category
 SYSTEM_NAME = config.system.name
 
-BUILD_MASTER = version.SYSTEM_VERSION
-BUILD_LOWER = version.FRAMEWORK_VERSION
+BUILD_MASTER = version.FRAMEWORK_VERSION
+BUILD_LOWER = version.SYSTEM_VERSION
 BUILD_NO = version.BUILD_MINOR
 
 TEMP_DIR_CHUNKED = "/tmp/al_ui/flowjs/chunked/"
@@ -111,7 +111,7 @@ LOGGER = logging.getLogger('assemblyline.ui')
 if DEBUG:
     AUDIT_LOG.setLevel(logging.DEBUG)
     config.logging.log_to_console = True
-    fh = logging.FileHandler(os.path.join(config.logging.directory, 'alui_audit.log'))
+    fh = logging.FileHandler(os.path.join(config.logging.log_directory, 'alui_audit.log'))
     fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter(AL_LOG_FORMAT))
     AUDIT_LOG.addHandler(fh)

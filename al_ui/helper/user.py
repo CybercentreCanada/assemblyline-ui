@@ -4,7 +4,7 @@ from assemblyline.common import forge
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_options import UserOptions
 from assemblyline.remote.datatypes.hash import Hash
-from al_ui.config import LOGGER, STORAGE
+from al_ui.config import LOGGER, STORAGE, CLASSIFICATION
 from al_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from al_ui.http_exceptions import AccessDeniedException, InvalidDataException, QuotaExceededException
 
@@ -57,7 +57,7 @@ def check_submission_quota(user, num=1):
         
 
 def login(uname, path=None):
-    user = STORAGE.get_user_account(uname)
+    user = STORAGE.user.get(uname).as_primitives()
     if not user:
         raise AccessDeniedException("User %s does not exists" % uname)
     
@@ -114,20 +114,20 @@ def login(uname, path=None):
             user["kibana_dashboards"] = []
             user["admin_menu"] = []
 
-    user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['allow_2fa'] = config.auth.get('allow_2fa', True)
-    user['allow_apikeys'] = config.auth.get('allow_apikeys', True)
-    user['allow_u2f'] = config.auth.get('allow_u2f', True)
+    user['2fa_enabled'] = user.pop('otp_sk', "") != ""
+    user['allow_2fa'] = config.auth.allow_2fa
+    user['allow_apikeys'] = config.auth.allow_apikeys
+    user['allow_u2f'] = config.auth.allow_u2f
     user['apikeys'] = [x[0] for x in user.get('apikeys', [])]
-    user['c12n_enforcing'] = config.system.classification.definition.enforce
-    user['has_password'] = user.pop('password', None) is not None
+    user['c12n_enforcing'] = CLASSIFICATION.enforce
+    user['has_password'] = user.pop('password', "") != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled
     u2f_devices = user.get('u2f_devices', {})
     if isinstance(u2f_devices, list):
         u2f_devices = {"default": d for d in u2f_devices}
     user['u2f_devices'] = u2f_devices.keys()
     user['u2f_enabled'] = len(u2f_devices) != 0
-    user['read_only'] = config.ui.get('read_only', False)
+    user['read_only'] = config.ui.read_only
 
     return user
 
