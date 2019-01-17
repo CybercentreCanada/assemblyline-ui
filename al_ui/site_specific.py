@@ -250,11 +250,11 @@ def validate_apikey(username, apikey, storage):
     #   NOTE: It is not recommended to overload this function but you can still do it
     if config.auth.allow_apikeys:
         if apikey:
-            user_data = storage.get_user(username)
+            user_data = storage.user.get(username)
             if user_data:
-                for _, key, priv in user_data.get('apikeys', []):
-                    if verify_password(apikey, key):
-                        return username, priv
+                for key in user_data.apikeys:
+                    if verify_password(apikey, key.password):
+                        return username, key.acl
 
             raise AuthenticationException("Invalid apikey")
 

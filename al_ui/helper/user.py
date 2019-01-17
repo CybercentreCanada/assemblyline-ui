@@ -118,7 +118,7 @@ def login(uname, path=None):
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_u2f'] = config.auth.allow_u2f
-    user['apikeys'] = [x[0] for x in user.get('apikeys', [])]
+    user['apikeys'] = [x['name'] for x in user['apikeys']]
     user['c12n_enforcing'] = CLASSIFICATION.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled
@@ -128,6 +128,7 @@ def login(uname, path=None):
     user['u2f_devices'] = u2f_devices.keys()
     user['u2f_enabled'] = len(u2f_devices) != 0
     user['read_only'] = config.ui.read_only
+    user['authenticated'] = True
 
     return user
 

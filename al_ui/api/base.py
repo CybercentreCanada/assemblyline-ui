@@ -47,6 +47,12 @@ class api_login(object):
     def __call__(self, func):
         @functools.wraps(func)
         def base(*args, **kwargs):
+            if 'user' in kwargs:
+                if kwargs['user'].get('authenticated', False):
+                    return func(*args, **kwargs)
+                else:
+                    raise AccessDeniedException("Invalid pre-authenticated user")
+
             if not self.allow_readonly and config.ui.get('read_only', False):
                 return make_api_response({}, "Method not allowed in read-only mode", 403)
 
