@@ -28,7 +28,7 @@ from al_ui.api.v4.authentication import auth_api
 # from al_ui.api.v3.tc_signature import tc_sigs_api
 # from al_ui.api.v3.u2f import u2f_api
 # from al_ui.api.v3.ui import ui_api
-# from al_ui.api.v3.user import user_api
+from al_ui.api.v4.user import user_api
 # from al_ui.api.v3.vm import vm_api
 # from al_ui.api.v3.workflow import workflow_api
 from al_ui.error import errors
@@ -77,7 +77,7 @@ app.register_blueprint(errors)
 # app.register_blueprint(tc_sigs_api)
 # app.register_blueprint(u2f_api)
 # app.register_blueprint(ui_api)
-# app.register_blueprint(user_api)
+app.register_blueprint(user_api)
 # app.register_blueprint(views)
 # app.register_blueprint(vm_api)
 # app.register_blueprint(workflow_api)
