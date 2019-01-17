@@ -19,13 +19,21 @@ from assemblyline.common.isotime import now
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
+# TODO: When testing is done XSRF should be turned back on
+XSRF_ENABLED = False
+
+
+def make_subapi_blueprint(name, api_version=3):
+    """ Create a flask Blueprint for a subapi in a standard way. """
+    return Blueprint(f"apiv{api_version}.{name}", name, url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
+
 
 ####################################
 # API Helper func and decorators
 # noinspection PyPep8Naming
 class api_login(object):
     def __init__(self, require_admin=False, username_key='username',
-                 audit=True, required_priv=None, check_xsrf_token=True, allow_readonly=True):
+                 audit=True, required_priv=None, check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
         if required_priv is None:
             required_priv = ["E"]
 
@@ -33,8 +41,7 @@ class api_login(object):
         self.username_key = username_key
         self.audit = audit and AUDIT
         self.required_priv = required_priv
-        # self.check_xsrf_token = check_xsrf_token  # TODO: xsrf token validation turned off for testing turn it back on
-        self.check_xsrf_token = False
+        self.check_xsrf_token = check_xsrf_token
         self.allow_readonly = allow_readonly
 
     def __call__(self, func):

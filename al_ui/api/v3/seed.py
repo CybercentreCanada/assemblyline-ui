@@ -2,12 +2,11 @@
 from flask import request
 
 from assemblyline.common import forge
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 
 SUB_API = 'seed'
-seed_api = core.make_subapi_blueprint(SUB_API)
+seed_api = make_subapi_blueprint(SUB_API)
 seed_api._doc = "Manage configuration seeds"
 
 

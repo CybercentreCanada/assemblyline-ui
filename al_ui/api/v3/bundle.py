@@ -2,21 +2,21 @@
 import os
 import uuid
 
+from flask import request
+
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle
-from al_ui.api.v3 import core
-from al_ui.config import STORAGE
-from al_ui.api.base import api_login, make_api_response, stream_file_response
-from flask import request
-
 from assemblyline.common.classification import InvalidClassification
+from al_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
+from al_ui.config import STORAGE
+
 
 SUB_API = 'bundle'
 
 Classification = forge.get_classification()
 
-bundle_api = core.make_subapi_blueprint(SUB_API)
+bundle_api = make_subapi_blueprint(SUB_API)
 bundle_api._doc = "Create and restore submission bundles"
 
 WORKING_DIR = "/tmp/al_ui"

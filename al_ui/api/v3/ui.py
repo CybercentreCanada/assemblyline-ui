@@ -6,19 +6,18 @@ import glob
 import uuid
 
 from flask import request
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
+
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, STORAGE, F_READ_CHUNK_SIZE
 from al_ui.helper.service import ui_to_dispatch_task
 from al_ui.helper.user import check_submission_quota
 from assemblyline.common import forge
+
+Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'ui'
-
-Classification = forge.get_classification()
-
-ui_api = core.make_subapi_blueprint(SUB_API)
+ui_api = make_subapi_blueprint(SUB_API)
 ui_api._doc = "UI specific operations"
 
 

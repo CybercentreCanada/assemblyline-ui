@@ -1,45 +1,39 @@
-
 from flask import current_app, Blueprint, request
 
 from al_ui.api.base import api_login, make_api_response
 from al_ui.config import config
 
-API_PREFIX = "/api/v3"
-apiv3 = Blueprint("apiv3", __name__, url_prefix=API_PREFIX)
-apiv3._doc = "Api Documentation"
-
-
-def make_subapi_blueprint(name):
-    """ Create a flask Blueprint for a subapi in a standard way. """
-    return Blueprint("apiv3." + name, name, url_prefix='/'.join([API_PREFIX, name]))
+API_PREFIX = "/api/v4"
+apiv4 = Blueprint("apiv4", __name__, url_prefix=API_PREFIX)
+apiv4._doc = "Version 4 Api Documentation"
 
 
 #####################################
 # API DOCUMENTATION
 # noinspection PyProtectedMember,PyBroadException
-@apiv3.route("/")
+@apiv4.route("/")
 @api_login(audit=False, required_priv=['R', 'W'])
 def get_api_documentation(**kwargs):
     """
     Full API doc.
-    
-    Loop through all registered API paths and display their documentation. 
+
+    Loop through all registered API paths and display their documentation.
     Returns a list of API definition.
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     [                            # LIST of:
-     {'name': "Api Doc",                # Name of the api 
+     {'name': "Api Doc",                # Name of the api
       'path': "/api/path/<variable>/",  # API path
-      'ui_only': false,                 # Is UI only API 
+      'ui_only': false,                 # Is UI only API
       'methods': ["GET", "POST"],       # Allowed HTTP methods
       'description': "API doc.",        # API documentation
       'id': "api_doc",                  # Unique ID for the API
@@ -56,11 +50,11 @@ def get_api_documentation(**kwargs):
     for rule in current_app.url_map.iter_rules():
         if rule.rule.startswith(request.path):
             methods = []
-            
+
             for item in rule.methods:
                 if item != "OPTIONS" and item != "HEAD":
                     methods.append(item)
-            
+
             func = current_app.view_functions[rule.endpoint]
             require_admin = func.__dict__.get('require_admin', False)
             allow_readonly = func.__dict__.get('allow_readonly', True)
@@ -72,29 +66,29 @@ def get_api_documentation(**kwargs):
                 continue
 
             doc_string = func.__doc__
-            func_title = " ".join([x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".")+1:].split("_")])
-            blueprint = rule.endpoint[rule.endpoint.index(".")+1:rule.endpoint.rindex(".")]
+            func_title = " ".join([x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
+            blueprint = rule.endpoint[rule.endpoint.index(".") + 1:rule.endpoint.rindex(".")]
             if not blueprint:
                 blueprint = "documentation"
-            
+
             if blueprint not in api_blueprints:
                 try:
                     doc = current_app.blueprints[rule.endpoint[:rule.endpoint.rindex(".")]]._doc
                 except Exception:
                     doc = ""
-                    
+
                 api_blueprints[blueprint] = doc
-            
+
             try:
                 description = "\n".join([x[4:] for x in doc_string.splitlines()])
             except Exception:
                 description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
-            
-            if rule.endpoint == "apiv3.api_doc":
+
+            if rule.endpoint == "apiv4.api_doc":
                 api_id = "documentation_api_doc"
             else:
-                api_id = rule.endpoint.replace("apiv3.", "").replace(".", "_")
-                
+                api_id = rule.endpoint.replace("apiv4.", "").replace(".", "_")
+
             api_list.append({
                 "protected": func.__dict__.get('protected', False),
                 "require_admin": require_admin,

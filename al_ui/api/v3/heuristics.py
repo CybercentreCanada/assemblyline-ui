@@ -2,17 +2,16 @@
 from copy import deepcopy
 from flask import request
 
-from assemblyline.common.heuristics import list_all_heuristics
-from al_ui.api.v3 import core
 from assemblyline.common import forge
+from assemblyline.common.heuristics import list_all_heuristics
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
-from al_ui.api.base import api_login, make_api_response
 
-SUB_API = 'heuristics'
 
 Classification = forge.get_classification()
 
-heuristics_api = core.make_subapi_blueprint(SUB_API)
+SUB_API = 'heuristics'
+heuristics_api = make_subapi_blueprint(SUB_API)
 heuristics_api._doc = "View the different heuristics of the system"
 
 HEUR, HEUR_MAP = list_all_heuristics(STORAGE.list_services())

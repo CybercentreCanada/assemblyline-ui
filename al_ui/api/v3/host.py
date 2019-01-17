@@ -1,11 +1,12 @@
-from al_ui.api.v3 import core
-from al_ui.config import STORAGE
-from al_ui.api.base import api_login, make_api_response
+
 from flask import request
+
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from al_ui.config import STORAGE
 from al_ui.http_exceptions import AccessDeniedException
 
 SUB_API = 'host'
-host_api = core.make_subapi_blueprint(SUB_API)
+host_api = make_subapi_blueprint(SUB_API)
 host_api._doc = "Manage the different processing nodes"
 
 

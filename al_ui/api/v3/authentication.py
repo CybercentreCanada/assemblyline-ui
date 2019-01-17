@@ -3,32 +3,30 @@ import hashlib
 import pyqrcode
 import re
 
-from io import StringIO
 from flask import request, session as flsk_session
+from io import StringIO
 from passlib.hash import bcrypt
 
+from assemblyline.common import forge
+from assemblyline.common.auth_email import send_signup_email, send_reset_email
+from assemblyline.common.isotime import now
+from assemblyline.common.security import generate_random_secret, get_totp_token, \
+    check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
+from al_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from al_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue
 from al_ui.http_exceptions import AuthenticationException
 from al_ui.site_specific import default_authenticator
-from assemblyline.common import forge
-from al_ui.api.v3 import core
-from al_ui.api.base import make_api_response, api_login
-from assemblyline.common.auth_email import send_signup_email, send_reset_email
-from assemblyline.common.security import generate_random_secret, get_totp_token, \
-    check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
-from assemblyline.common.isotime import now
-
-SUB_API = 'auth'
 
 Classification = forge.get_classification()
-
-auth_api = core.make_subapi_blueprint(SUB_API)
-auth_api._doc = "Allow user to authenticate to the web server"
 API_PRIV_MAP = {
     "READ": ["R"],
     "READ_WRITE": ["R", "W"],
     "WRITE": ["W"]
 }
+
+SUB_API = 'auth'
+auth_api = make_subapi_blueprint(SUB_API)
+auth_api._doc = "Allow user to authenticate to the web server"
 
 
 @auth_api.route("/apikey/<name>/<priv>/", methods=["GET"])

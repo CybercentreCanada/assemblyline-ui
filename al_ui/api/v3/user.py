@@ -1,12 +1,11 @@
 
 from flask import request
 
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import get_password_hash, check_password_requirements, \
     get_password_requirement_message
 from assemblyline.datastore import SearchException
-from assemblyline.common.isotime import now_as_iso
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, CLASSIFICATION, config
 from al_ui.helper.service import ui_to_dispatch_task
 from al_ui.helper.user import load_user_settings, save_user_settings, save_user_account
@@ -16,7 +15,7 @@ from riak import RiakError
 from assemblyline.odm.models.user import User
 
 SUB_API = 'user'
-user_api = core.make_subapi_blueprint(SUB_API)
+user_api = make_subapi_blueprint(SUB_API)
 user_api._doc = "Manage the different users of the system"
 
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]

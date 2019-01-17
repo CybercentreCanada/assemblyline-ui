@@ -3,25 +3,22 @@ import base64
 import os
 import shutil
 
-from uuid import uuid4
 from flask import request
+from uuid import uuid4
 
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
+from assemblyline.common import forge
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import check_submission_quota, get_default_user_settings, load_user_settings, \
     remove_ui_specific_options
 from al_ui.helper.service import simplify_services, ui_to_dispatch_task
-from assemblyline.common import forge
 
+Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'submit'
-
-Classification = forge.get_classification()
-
-submit_api = core.make_subapi_blueprint(SUB_API)
+submit_api = make_subapi_blueprint(SUB_API)
 submit_api._doc = "Submit files to the system"
 
 STRIP_KW = ['download_encoding', 'hide_raw_results', 'expand_min_score', 'service_spec', 'services', 'description',

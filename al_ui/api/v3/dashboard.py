@@ -1,12 +1,12 @@
+
 import concurrent.futures
 
 from assemblyline.al.service.list_queue_sizes import get_service_queue_length
-from al_ui.api.base import api_login, make_api_response
-from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import config, STORAGE
 
 SUB_API = 'dashboard'
-dashboard_api = core.make_subapi_blueprint(SUB_API)
+dashboard_api = make_subapi_blueprint(SUB_API)
 dashboard_api._doc = "Display systems health"
 
 EXPIRY_BUCKET_LIST = ["submission", "file", "alert", "result", "error", "filescore"]

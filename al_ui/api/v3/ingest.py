@@ -5,18 +5,16 @@ import shutil
 from uuid import uuid4
 from flask import request
 
-from assemblyline.common import identify
+from assemblyline.common import forge, identify
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common import forge
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
-from al_ui.api.base import api_login, make_api_response
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import remove_ui_specific_options
 
 SUB_API = 'ingest'
-ingest_api = core.make_subapi_blueprint(SUB_API)
+ingest_api = make_subapi_blueprint(SUB_API)
 ingest_api._doc = "Ingest files for large volume processing"
 
 # TODO: We will assume that middleman will not be sharded that the new version will work with any number of middleman

@@ -2,13 +2,11 @@
 from flask import session, request
 from u2flib_server.u2f import begin_registration, begin_authentication, complete_registration
 
-from al_ui.api.v3 import core
-from al_ui.api.base import make_api_response, api_login
+from al_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from al_ui.config import STORAGE, APP_ID
 
 SUB_API = 'u2f'
-
-u2f_api = core.make_subapi_blueprint(SUB_API)
+u2f_api = make_subapi_blueprint(SUB_API)
 u2f_api._doc = "Perfom 2-Factor authentication with a FIDO U2F USB Key"
 
 U2F_CLIENT_ERROR_MAP = {

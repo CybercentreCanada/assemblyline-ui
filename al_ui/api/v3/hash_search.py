@@ -3,14 +3,12 @@ import concurrent.futures
 from flask import request
 
 from assemblyline.common.importing import load_module_by_path
-from al_ui.api.base import api_login, make_api_response
-from al_ui.api.v3 import core
-from al_ui.config import LOGGER, config
 from assemblyline.datasource.common import hash_type
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from al_ui.config import LOGGER, config
 
 SUB_API = 'hash_search'
-
-hash_search_api = core.make_subapi_blueprint(SUB_API)
+hash_search_api = make_subapi_blueprint(SUB_API)
 hash_search_api._doc = "Search hashes through multiple data sources"
 
 

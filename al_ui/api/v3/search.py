@@ -2,16 +2,15 @@
 from flask import request
 from riak import RiakError
 
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
-from al_ui.config import STORAGE
 from assemblyline.datastore import SearchException
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from al_ui.config import STORAGE
 
 ACCEPTABLE_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'signature']
 ACCESS_CONTROL_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'emptyresult', 'signature']
 
 SUB_API = 'search'
-search_api = core.make_subapi_blueprint(SUB_API)
+search_api = make_subapi_blueprint(SUB_API)
 search_api._doc = "Perform search queries"
 
 

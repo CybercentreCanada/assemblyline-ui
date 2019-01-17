@@ -1,3 +1,4 @@
+
 import datetime
 import os
 
@@ -6,23 +7,21 @@ from hashlib import md5
 from riak import RiakError
 from textwrap import dedent
 
+from assemblyline.common import forge
+from assemblyline.common.isotime import iso_to_epoch
 from assemblyline.common.yara import YaraParser
 from assemblyline.datastore import SearchException
-from assemblyline.common.isotime import iso_to_epoch
-from assemblyline.common import forge
-from assemblyline.remote.datatypes.lock import Lock
 from assemblyline.filestore.transport.local import TransportLocal
-from al_ui.api.base import api_login, make_api_response, make_file_response
-from al_ui.api.v3 import core
+from assemblyline.remote.datatypes.lock import Lock
+from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import LOGGER, STORAGE, ORGANISATION
 
-SUB_API = 'signature'
 
 Classification = forge.get_classification()
-
 config = forge.get_config()
 
-signature_api = core.make_subapi_blueprint(SUB_API)
+SUB_API = 'signature'
+signature_api = make_subapi_blueprint(SUB_API)
 signature_api._doc = "Perform operations on signatures"
 
 

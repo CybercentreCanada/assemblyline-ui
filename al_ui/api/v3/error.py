@@ -1,20 +1,18 @@
 
 from flask import request
-from assemblyline.common import forge
-from al_ui.api.v3 import core
-from al_ui.config import STORAGE
-from al_ui.api.base import api_login, make_api_response
 from riak import RiakError
 
+from assemblyline.common import forge
 from assemblyline.datastore import SearchException
+from al_ui.config import STORAGE
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
+
+Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'error'
-
-Classification = forge.get_classification()
-
-error_api = core.make_subapi_blueprint(SUB_API)
+error_api = make_subapi_blueprint(SUB_API)
 error_api._doc = "Perform operations on service errors"
 
 

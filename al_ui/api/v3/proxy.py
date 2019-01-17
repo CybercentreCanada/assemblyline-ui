@@ -4,12 +4,11 @@
 import http.client
 import re
 
-from al_ui.config import config
-
 from base64 import b64encode
 from flask import abort, Blueprint, request, Response, url_for
 from werkzeug.datastructures import Headers
 
+from al_ui.config import config
 from al_ui.helper.views import protected_renderer
 
 proxy = Blueprint('proxy', __name__)

@@ -4,16 +4,14 @@ from flask import request
 from assemblyline.common import forge
 from assemblyline.remote.datatypes import reply_queue_name
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from al_ui.api.base import api_login, make_api_response
-from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
-
-SUB_API = 'live'
 
 Classification = forge.get_classification()
 config = forge.get_config()
 
-live_api = core.make_subapi_blueprint(SUB_API)
+SUB_API = 'live'
+live_api = make_subapi_blueprint(SUB_API)
 live_api._doc = "Interact with live processing messages"
 
 

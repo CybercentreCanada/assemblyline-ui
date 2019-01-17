@@ -1,20 +1,17 @@
+
 from copy import deepcopy
+from flask import request
 from operator import itemgetter
 
-from flask import request
-
 from assemblyline.common import forge
-from al_ui.api.base import api_login, make_api_response
-from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 
-SUB_API = 'tc_signature'
-
 Classification = forge.get_classification()
-
 config = forge.get_config()
 
-tc_sigs_api = core.make_subapi_blueprint(SUB_API)
+SUB_API = 'tc_signature'
+tc_sigs_api = make_subapi_blueprint(SUB_API)
 tc_sigs_api._doc = "Perform operations on tagcheck signatures"
 
 

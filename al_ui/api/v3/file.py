@@ -1,30 +1,28 @@
 import concurrent.futures
-import re
 import os
+import re
 
 from flask import request
-from assemblyline.common.str_utils import safe_str
 
-from assemblyline.common.hexdump import hexdump
 from assemblyline.common import forge
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response, make_file_response
+from assemblyline.common.hexdump import hexdump
+from assemblyline.common.str_utils import safe_str
+from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS
 from al_ui.helper.result import format_result
 from al_ui.helper.user import load_user_settings
 
-SUB_API = 'file'
-
 Classification = forge.get_classification()
-
 config = forge.get_config()
 context = forge.get_ui_context()
 encode_file = context.encode_file
 
-file_api = core.make_subapi_blueprint(SUB_API)
-file_api._doc = "Perform operations on files"
 FILTER_RAW = ''.join([(len(repr(chr(x))) == 3) and chr(x) or chr(x) == '\\' and chr(x) or chr(x) == "\x09" and chr(x)
                       or chr(x) == "\x0d" and chr(x) or chr(x) == "\x0a" and chr(x) or '.' for x in range(256)])
+
+SUB_API = 'file'
+file_api = make_subapi_blueprint(SUB_API)
+file_api._doc = "Perform operations on files"
 
 
 @file_api.route("/download/<srl>/", methods=["GET"])

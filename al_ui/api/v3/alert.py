@@ -5,9 +5,8 @@ from riak import RiakError
 from assemblyline.common import forge
 from assemblyline.datastore import SearchException
 from assemblyline.remote.datatypes.queues.priority import PriorityQueue
-from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, config
-from al_ui.api.base import api_login, make_api_response
 
 DATABASE_NUM = 4
 SUB_API = 'alert'
@@ -15,7 +14,7 @@ QUEUE_PRIORITY = -2
 
 Classification = forge.get_classification()
 
-alert_api = core.make_subapi_blueprint(SUB_API)
+alert_api = make_subapi_blueprint(SUB_API)
 alert_api._doc = "Perform operations on alerts"
 
 

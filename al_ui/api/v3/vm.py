@@ -1,12 +1,12 @@
 
 from flask import request
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
+
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 from al_ui.http_exceptions import AccessDeniedException
 
 SUB_API = 'vm'
-vm_api = core.make_subapi_blueprint(SUB_API)
+vm_api = make_subapi_blueprint(SUB_API)
 vm_api._doc = "Manage the different Virtual machines of the system"
 
 

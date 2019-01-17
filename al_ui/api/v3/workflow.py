@@ -3,14 +3,13 @@ import uuid
 from flask import request
 from riak import RiakError
 
-from al_ui.api.v3 import core
-from al_ui.api.base import api_login, make_api_response
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, CLASSIFICATION
-from assemblyline.datastore import SearchException
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.datastore import SearchException
 
 SUB_API = 'workflow'
-workflow_api = core.make_subapi_blueprint(SUB_API)
+workflow_api = make_subapi_blueprint(SUB_API)
 workflow_api._doc = "Manage the different workflows of the system"
 
 

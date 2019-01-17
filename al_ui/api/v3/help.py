@@ -1,15 +1,15 @@
+
 import re
 
-from al_ui.api.base import api_login, make_api_response
 from assemblyline.common import forge
-from al_ui.api.v3 import core
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 
 SUB_API = 'help'
 constants = forge.get_constants()
 config = forge.get_config()
 
-help_api = core.make_subapi_blueprint(SUB_API)
+help_api = make_subapi_blueprint(SUB_API)
 help_api._doc = "Provide information about the system configuration"
 
 
