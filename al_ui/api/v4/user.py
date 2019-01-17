@@ -15,7 +15,7 @@ from riak import RiakError
 from assemblyline.odm.models.user import User
 
 SUB_API = 'user'
-user_api = make_subapi_blueprint(SUB_API)
+user_api = make_subapi_blueprint(SUB_API, api_version=4)
 user_api._doc = "Manage the different users of the system"
 
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
