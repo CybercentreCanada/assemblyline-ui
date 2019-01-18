@@ -232,13 +232,16 @@ def get_user_avatar(username, **_):
     Result example:
     "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD..."
     """
-    avatar = STORAGE.get_user_avatar(username)
-    return make_api_response(avatar)
+    avatar = STORAGE.user_avatar.get(username)
+    if avatar:
+        return make_api_response(avatar)
+    else:
+        return make_api_response(None, "No avatar for specified user", 404)
 
 
 @user_api.route("/avatar/<username>/", methods=["POST"])
 @api_login(audit=False)
-def set_user_avatar(username, **_):
+def set_user_avatar(username, **kwargs):
     """
     Sets the user's Avatar
 
@@ -256,11 +259,17 @@ def set_user_avatar(username, **_):
      "success": true    # Was saving the avatar successful ?
     }
     """
-    data = request.json
-    if not isinstance(data, str) or not STORAGE.set_user_avatar(username, data):
-        make_api_response({"success": False}, "Data block should be a base64 encoded image "
-                                              "that starts with 'data:image/<format>;base64,'")
+    if username != kwargs['user']['uname']:
+        return make_api_response({"success": False}, "Cannot save the avatar of another user.", 403)
 
+    data = request.data
+    if data:
+        data = data.decode('utf-8')
+        if not isinstance(data, str) or not STORAGE.user_avatar.save(username, data):
+            make_api_response({"success": False}, "Data block should be a base64 encoded image "
+                                                  "that starts with 'data:image/<format>;base64,'", 400)
+    else:
+        STORAGE.user_avatar.delete(username)
     return make_api_response({"success": True})
 
 
@@ -296,7 +305,7 @@ def add_to_user_favorite(username, favorite_type, **_):
 
     data = request.json
     if 'name' not in data or 'query' not in data:
-        return make_api_response({}, "Wrong format for favorite.", 500)
+        return make_api_response({}, "Wrong format for favorite.", 400)
 
     favorites = {
         "alert": [],
@@ -305,13 +314,13 @@ def add_to_user_favorite(username, favorite_type, **_):
         "submission": [],
         "error": []
     }
-    res_favorites = STORAGE.get_user_favorites(username)
+    res_favorites = STORAGE.user_favorites.get(username)
     if res_favorites:
         favorites.update(res_favorites)
 
     favorites[favorite_type].append(data)
 
-    return make_api_response({"success": STORAGE.set_user_favorites(username, favorites)})
+    return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
 
 @user_api.route("/favorites/<username>/", methods=["GET"])
@@ -345,7 +354,7 @@ def get_user_favorites(username, **kwargs):
         "submission": [],
         "error": []
     }
-    res_favorites = STORAGE.get_user_favorites(username)
+    res_favorites = STORAGE.user_favorites.get(username, as_obj=False)
 
     if res_favorites:
         if username == "__global__" or username != user['uname']:
@@ -388,15 +397,20 @@ def remove_user_favorite(username, favorite_type, **_):
         return make_api_response({}, "%s is not a valid favorite type" % favorite_type, 500)
 
     name = request.data or "None"
-    try:
-        favorites = STORAGE.get_user_favorites(username)
+    name = name.decode("utf-8")
+    removed = False
+    favorites = STORAGE.user_favorites.get(username, as_obj=False)
+    if favorites:
         for fav in favorites[favorite_type]:
             if fav['name'] == name:
                 favorites[favorite_type].remove(fav)
-    except Exception:
-        return make_api_response({}, "Favorite does not exists, (%s)" % name, 404)
+                removed = True
+                break
 
-    return make_api_response({"success": STORAGE.set_user_favorites(username, favorites)})
+    if removed:
+        return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
+    else:
+        return make_api_response({}, f"Favorite '{name}' does not exists for {favorite_type} page", 404)
 
 
 @user_api.route("/favorites/<username>/", methods=["POST"])
@@ -413,8 +427,9 @@ def set_user_favorites(username, **_):
 
     Data Block:
     {                   # Dictionary of
-     "<name_of_query>":   # Named queries
-        "*:*",              # The actual query to run
+     "alert": [
+               "<name_of_query>":   # Named queries
+               "*:*",              # The actual query to run
      ...
     }
 
@@ -434,10 +449,10 @@ def set_user_favorites(username, **_):
 
     for key in data:
         if key not in favorites:
-            return make_api_response("", err="Invalid favorite type (%s)" % key, status_code=500)
+            return make_api_response("", err="Invalid favorite type (%s)" % key, status_code=400)
 
     favorites.update(data)
-    return make_api_response({"success": STORAGE.set_user_favorites(username, data)})
+    return make_api_response({"success": STORAGE.user_favorites.save(username, data)})
 
 
 ######################################################
@@ -456,8 +471,8 @@ def list_users(**_):
 
     Arguments:
     offset        =>  Offset in the user bucket
-    length        =>  Max number of user returned
-    filter        =>  Filter to apply to the user list
+    query         =>  Filter to apply to the user list
+    rows          =>  Max number of user returned
 
     Data Block:
     None
@@ -479,11 +494,11 @@ def list_users(**_):
     }
     """
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', None)
+    length = int(request.args.get('rows', 100))
+    query = request.args.get('query', "*")
 
     try:
-        return make_api_response(STORAGE.list_users(start=offset, rows=length, query=query))
+        return make_api_response(STORAGE.user.search(query, offset=offset, rows=length, as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
