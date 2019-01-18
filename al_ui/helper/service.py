@@ -1,5 +1,6 @@
 
 from al_ui.config import STORAGE, SYSTEM_SERVICE_CATEGORY_NAME
+from assemblyline.odm.models.user_options import DEFAULT_SRV_SEL
 
 
 def get_default_service_spec(srv_list=None):
@@ -13,9 +14,9 @@ def get_default_service_spec(srv_list=None):
 
 def get_default_service_list(srv_list=None, default_selection=None):
     if not default_selection:
-        default_selection = ["Extraction", "Static Analysis", "Filtering", "Antivirus", "Post-Processing"]
+        default_selection = DEFAULT_SRV_SEL
     if not srv_list:
-        srv_list = STORAGE.list_services()
+        srv_list = STORAGE.list_services(as_obj=False)
     
     services = {}
     for item in srv_list:
