@@ -498,14 +498,14 @@ def list_users(**_):
 ######################################################
 
 
-@user_api.route("/settings/<username>/", methods=["GET"])
+@user_api.route("/options/<username>/", methods=["GET"])
 @api_login(audit=False, required_priv=['R', 'W'])
-def get_user_settings(username, **kwargs):
+def get_user_options(username, **kwargs):
     """
-    Load the user's settings.
+    Load the user's options.
 
     Variables:
-    username    => Name of the user you want to get the settings for
+    username    => Name of the user you want to get the options for
 
     Arguments:
     None
@@ -533,18 +533,18 @@ def get_user_settings(username, **kwargs):
     user = kwargs['user']
 
     if username != user['uname']:
-        user = STORAGE.get_user_account(username)
+        user = STORAGE.user.get(username, as_obj=False)
     return make_api_response(load_user_settings(user))
 
 
-@user_api.route("/settings/<username>/", methods=["POST"])
+@user_api.route("/options/<username>/", methods=["POST"])
 @api_login()
-def set_user_settings(username, **_):
+def set_user_options(username, **_):
     """
-    Save the user's settings.
+    Save the user's options.
     
     Variables: 
-    username    => Name of the user you want to set the settings for
+    username    => Name of the user you want to set the options for
     
     Arguments: 
     None
@@ -571,11 +571,13 @@ def set_user_settings(username, **_):
      "success"': True              # Was saving the params successful ?
     }
     """
-    if save_user_settings(username, request.json):
-        return make_api_response({"success": True})
-    else:
-        return make_api_response({"success": False}, "Failed to save user's options", 500)
-
+    try:
+        if save_user_settings(username, request.json):
+            return make_api_response({"success": True})
+        else:
+            return make_api_response({"success": False}, "Failed to save user's options", 500)
+    except ValueError as e:
+        return make_api_response({"success": False}, str(e), 400)
 
 ######################################################
 # User's default submission parameters
