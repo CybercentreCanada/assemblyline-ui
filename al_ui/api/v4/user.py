@@ -55,15 +55,15 @@ def add_user_account(username, **_):
     if "{" in username or "}" in username:
         return make_api_response({"success": False}, "You can't use '{}' in the username", 412)
 
-    if not STORAGE.get_user_account(username):
+    if not STORAGE.user.get(username):
         new_pass = data.pop('new_pass', None)
         if new_pass:
-            if not check_password_requirements(new_pass, **config.auth.internal.get('password_requirements', {})):
-                error_msg = get_password_requirement_message(**config.auth.internal.get('password_requirements', {}))
+            if not check_password_requirements(new_pass, **config.auth.internal.password_requirements):
+                error_msg = get_password_requirement_message(**config.auth.internal.password_requirements)
                 return make_api_response({"success": False}, error_msg, 469)
             data['password'] = get_password_hash(new_pass)
 
-        STORAGE.save_user(username, User(data))
+        STORAGE.user.save(username, User(data))
         return make_api_response({"success": True})
     else:
         return make_api_response({"success": False}, "The username you are trying to add already exists.", 400)
