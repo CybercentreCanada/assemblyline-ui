@@ -223,14 +223,10 @@ def remove_ui_specific_options(task):
 
 
 def save_user_settings(username, data):
-    # TODO: Not sure how that works now with the models...
-    # data = validate_settings(data, SETTINGS_DEFAULT)
-    data = UserOptions(data)
-
-    data["service_spec"] = None
+    data["service_spec"] = {}
     data["services"] = simplify_services(data["services"])
     
-    return STORAGE.set_user_options(username, data)
+    return STORAGE.user_options.save(username, data)
 
 
 def validate_settings(data, defaults, exceptions=None):
