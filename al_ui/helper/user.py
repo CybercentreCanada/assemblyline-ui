@@ -181,18 +181,18 @@ def get_default_user_settings(user):
 
 def load_user_settings(user):
     # TODO: Not sure how that works now with the models...
-    # default_settings = copy.deepcopy(SETTINGS_DEFAULT)
-    default_settings = UserOptions()
+    default_settings = UserOptions({
+        "classification": Classification.default_user_classification(user)}).as_primitives()
 
-    default_settings['classification'] = Classification.default_user_classification(user)
-    options = STORAGE.get_user_options(user['uname'])
-    srv_list = [x for x in STORAGE.list_services() if x['enabled']]
+    options = STORAGE.user_options.get(user['uname'])
+    srv_list = [x.as_primitives() for x in STORAGE.list_services() if x.enabled]
     if not options:
         def_srv_list = None
         options = default_settings
     else:
+        options = options.as_primitives()
         # Make sure all defaults are there
-        for key, item in default_settings.iteritems():
+        for key, item in default_settings.items():
             if key not in options:
                 options[key] = item
         

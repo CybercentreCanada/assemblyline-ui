@@ -157,13 +157,13 @@ class api_login(object):
 
                 params_list = list(args) + \
                     ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in request.args.iteritems() if k in AUDIT_KW_TARGET] + \
+                    ["%s=%s" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET] + \
                     ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
 
                 if len(params_list) != 0:
                     AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname,
                                                           user['classification'],
-                                                          func.func_name,
+                                                          func.__name__,
                                                           ", ".join(params_list)))
 
             # Save user credential in user kwarg for future reference
