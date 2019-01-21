@@ -123,8 +123,6 @@ def login(uname, path=None):
     user['has_password'] = user.pop('password', "") != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled
     u2f_devices = user.get('u2f_devices', {})
-    if isinstance(u2f_devices, list):
-        u2f_devices = {"default": d for d in u2f_devices}
     user['u2f_devices'] = u2f_devices.keys()
     user['u2f_enabled'] = len(u2f_devices) != 0
     user['read_only'] = config.ui.read_only
@@ -134,10 +132,7 @@ def login(uname, path=None):
 
 
 def save_user_account(username, data, user):
-    # TODO: Not sure how that works now with the models...
-    # data = validate_settings(data, ACCOUNT_DEFAULT, exceptions=['avatar', 'agrees_with_tos',
-    #                                                             'dn', 'password', 'otp_sk', 'u2f_devices'])
-    data = User(data)
+    data = User(data).as_primitives()
 
     if username != data['uname']:
         raise AccessDeniedException("You are not allowed to change the username.")
@@ -145,38 +140,26 @@ def save_user_account(username, data, user):
     if username != user['uname'] and not user['is_admin']:
         raise AccessDeniedException("You are not allowed to change another user then yourself.")
 
-    current = STORAGE.get_user_account(username)
+    current = STORAGE.user.get(username, as_obj=False)
     if current:
-        # TODO: Not sure how that works now with the models...
-        # current = validate_settings(current, ACCOUNT_DEFAULT,
-        #                                     exceptions=['avatar', 'agrees_with_tos',
-        #                                                 'dn', 'password', 'otp_sk', 'u2f_devices'])
-        current = User(current)
-        
         if not user['is_admin']:
-            for key in current.iterkeys():
+            for key in current.keys():
                 if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
                     raise AccessDeniedException("Only Administrators can change the value of the field [%s]." % key)
     else:
         raise InvalidDataException("You cannot save a user that does not exists [%s]." % username)
 
-    if not data['avatar']:
-        STORAGE.delete_user(data['uname'] + "_avatar")
+    avatar = data.pop('avatar', None)
+    if avatar is None:
+        STORAGE.user_avatar.delete(username)
     else:
-        STORAGE.set_user_avatar(username, data['avatar'])
-    data['avatar'] = None
-        
-    return STORAGE.set_user_account(username, data)
+        STORAGE.user_avatar.save(username, avatar)
+
+    return STORAGE.user.save(username, data)
 
 
 def get_default_user_settings(user):
-    # TODO: Not sure how that works now with the models...
-    # out = copy.deepcopy(SETTINGS_DEFAULT)
-    out = UserOptions()
-
-    out['classification'] = Classification.default_user_classification(user)
-    out['services'] = ["Extraction", "Static Analysis", "Filtering", "Antivirus", "Post-Processing"]
-    return out
+    return UserOptions({"classification": Classification.default_user_classification(user)}).as_primitives()
 
 
 def load_user_settings(user):
@@ -227,37 +210,3 @@ def save_user_settings(username, data):
     data["services"] = simplify_services(data["services"])
     
     return STORAGE.user_options.save(username, data)
-
-
-def validate_settings(data, defaults, exceptions=None):
-    if not exceptions:
-        exceptions = []
-
-    for key in defaults.iterkeys():
-        if key not in data:
-            data[key] = defaults[key]
-        else:
-            if key not in exceptions \
-                    and not (isinstance(data[key], str) and isinstance(defaults[key], str)) \
-                    and not isinstance(data[key], type(defaults[key])):
-                raise Exception("Wrong data type for parameter [%s]" % key)
-            else:
-                item = data[key]
-                if key == 'u2f_devices':
-                    continue
-
-                if isinstance(item, str):
-                    data[key] = item.replace("{", "").replace("}", "")
-                elif isinstance(item, list):
-                    if len(item) > 0 and isinstance(item[0], str):
-                        data[key] = [i.replace("{", "").replace("}", "") for i in item]
-
-    to_del = []
-    for key in data.iterkeys():
-        if key not in defaults:
-            to_del.append(key)
-            
-    for key in to_del:
-        del(data[key])
-        
-    return data

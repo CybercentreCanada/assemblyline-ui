@@ -58,12 +58,19 @@ def add_user_account(username, **_):
     if not STORAGE.user.get(username):
         new_pass = data.pop('new_pass', None)
         if new_pass:
-            if not check_password_requirements(new_pass, **config.auth.internal.password_requirements):
-                error_msg = get_password_requirement_message(**config.auth.internal.password_requirements)
+            password_requirements = config.auth.internal.password_requirements.as_primitives()
+            if not check_password_requirements(new_pass, **password_requirements):
+                error_msg = get_password_requirement_message(**password_requirements)
                 return make_api_response({"success": False}, error_msg, 469)
             data['password'] = get_password_hash(new_pass)
 
-        STORAGE.user.save(username, User(data))
+        # Data's username as to match the API call username
+        data['uname'] = username
+
+        try:
+            STORAGE.user.save(username, User(data))
+        except ValueError as e:
+            return make_api_response({"success": False}, str(e), 400)
         return make_api_response({"success": True})
     else:
         return make_api_response({"success": False}, "The username you are trying to add already exists.", 400)
@@ -98,27 +105,19 @@ def get_user_account(username, **kwargs):
     if username != kwargs['user']['uname'] and not kwargs['user']['is_admin']:
         return make_api_response({}, "You are not allow to view other users then yourself.", 403)
 
-    user = STORAGE.get_user_account(username)
+    user = STORAGE.user.get(username, as_obj=False)
     if not user:
         return make_api_response({}, "User %s does not exists" % username, 404)
 
-    user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['apikeys'] = [x[0] for x in user.get('apikeys', [])]
-    user['has_password'] = user.pop('password', None) is not None
+    user['2fa_enabled'] = user.pop('otp_sk', "") != ""
+    user['apikeys'] = [x['name'] for x in user.get('apikeys', [])]
+    user['has_password'] = user.pop('password', "") != ""
     u2f_devices = user.get('u2f_devices', {})
-    if isinstance(u2f_devices, list):
-        u2f_devices = {"default": d for d in u2f_devices}
-    user['u2f_devices'] = u2f_devices.keys()
+    user['u2f_devices'] = list(u2f_devices.keys())
     user['u2f_enabled'] = len(u2f_devices) != 0
 
-    # if "api_quota" not in user:
-    #     user['api_quota'] = ACCOUNT_DEFAULT.get('api_quota', 10)
-    
-    # if "submission_quota" not in user:
-    #     user['submission_quota'] = ACCOUNT_DEFAULT.get('submission_quota', 5)
-
     if "load_avatar" in request.args:
-        user['avatar'] = STORAGE.get_user_avatar(username)
+        user['avatar'] = STORAGE.user_avatar.get(username)
         
     return make_api_response(user)
 
@@ -143,12 +142,13 @@ def remove_user_account(username, **_):
      "success": true  # Was the remove successful?
     } 
     """
-    remove_list = [username,
-                   "%s_avatar" % username,
-                   "%s_options" % username,
-                   "%s_favorites" % username]
-    for key in remove_list:
-        STORAGE.delete_user(key)
+    user_deleted = STORAGE.user.delete(username)
+    avatar_deleted = STORAGE.user_avatar.delete(username)
+    favorites_deleted = STORAGE.user_favorites.delete(username)
+    options_deleted = STORAGE.user_options.delete(username)
+
+    if not user_deleted or not avatar_deleted or not favorites_deleted or not options_deleted:
+        return make_api_response({"success": False})
 
     return make_api_response({"success": True})
 
@@ -185,17 +185,18 @@ def set_user_account(username, **kwargs):
         data = request.json
         new_pass = data.pop('new_pass', None)
 
-        old_user = STORAGE.get_user(username)
+        old_user = STORAGE.user.get(username, as_obj=False)
         if not old_user:
             return make_api_response({"success": False}, "User %s does not exists" % username, 404)
 
         data['apikeys'] = old_user.get('apikeys', [])
-        data['otp_sk'] = old_user.get('otp_sk', None)
+        data['otp_sk'] = old_user.get('otp_sk', "")
         data['u2f_devices'] = old_user.get('u2f_devices', {})
 
         if new_pass:
-            if not check_password_requirements(new_pass, **config.auth.internal.get('password_requirements', {})):
-                error_msg = get_password_requirement_message(**config.auth.internal.get('password_requirements', {}))
+            password_requirements = config.auth.internal.password_requirements.as_primitives()
+            if not check_password_requirements(new_pass, **password_requirements):
+                error_msg = get_password_requirement_message(**password_requirements)
                 return make_api_response({"success": False}, error_msg, 469)
             data['password'] = get_password_hash(new_pass)
             data.pop('new_pass_confirm', None)
@@ -593,6 +594,7 @@ def set_user_options(username, **_):
             return make_api_response({"success": False}, "Failed to save user's options", 500)
     except ValueError as e:
         return make_api_response({"success": False}, str(e), 400)
+
 
 ######################################################
 # User's default submission parameters
