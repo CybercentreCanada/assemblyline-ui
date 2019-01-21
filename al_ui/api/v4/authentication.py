@@ -115,7 +115,7 @@ def disable_otp(**kwargs):
     """
     uname = kwargs['user']['uname']
     user_data = STORAGE.user.get(uname)
-    user_data.otp_sk = ""
+    user_data.otp_sk = None
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
 
@@ -359,7 +359,7 @@ def setup_otp(**kwargs):
     uname = kwargs['user']['uname']
 
     user_data = STORAGE.user.get(uname)
-    if user_data.otp_sk != "":
+    if user_data.otp_sk is not None:
         return make_api_response("", err="OTP already set for this user", status_code=400)
 
     secret_key = generate_random_secret()

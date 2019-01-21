@@ -114,7 +114,7 @@ def login(uname, path=None):
             user["kibana_dashboards"] = []
             user["admin_menu"] = []
 
-    user['2fa_enabled'] = user.pop('otp_sk', "") != ""
+    user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_u2f'] = config.auth.allow_u2f

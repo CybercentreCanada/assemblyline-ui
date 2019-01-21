@@ -53,7 +53,7 @@ class api_login(object):
                 else:
                     raise AccessDeniedException("Invalid pre-authenticated user")
 
-            if not self.allow_readonly and config.ui.get('read_only', False):
+            if not self.allow_readonly and config.ui.read_only:
                 return make_api_response({}, "Method not allowed in read-only mode", 403)
 
             # Login

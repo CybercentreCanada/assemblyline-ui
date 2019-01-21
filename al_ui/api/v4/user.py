@@ -109,7 +109,7 @@ def get_user_account(username, **kwargs):
     if not user:
         return make_api_response({}, "User %s does not exists" % username, 404)
 
-    user['2fa_enabled'] = user.pop('otp_sk', "") != ""
+    user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['apikeys'] = [x['name'] for x in user.get('apikeys', [])]
     user['has_password'] = user.pop('password', "") != ""
     u2f_devices = user.get('u2f_devices', {})
@@ -190,7 +190,7 @@ def set_user_account(username, **kwargs):
             return make_api_response({"success": False}, "User %s does not exists" % username, 404)
 
         data['apikeys'] = old_user.get('apikeys', [])
-        data['otp_sk'] = old_user.get('otp_sk', "")
+        data['otp_sk'] = old_user.get('otp_sk', None)
         data['u2f_devices'] = old_user.get('u2f_devices', {})
 
         if new_pass:
@@ -496,7 +496,7 @@ def list_users(**_):
     """
     offset = int(request.args.get('offset', 0))
     length = int(request.args.get('rows', 100))
-    query = request.args.get('query', "*")
+    query = request.args.get('query', "*:*")
 
     try:
         return make_api_response(STORAGE.user.search(query, offset=offset, rows=length, as_obj=False))

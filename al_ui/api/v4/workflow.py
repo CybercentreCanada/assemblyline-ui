@@ -1,15 +1,15 @@
-import uuid
 
 from flask import request
 from riak import RiakError
 
-from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from al_ui.config import STORAGE, CLASSIFICATION
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore import SearchException
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from al_ui.config import STORAGE, CLASSIFICATION
+from assemblyline.odm.models.workflow import Workflow
 
 SUB_API = 'workflow'
-workflow_api = make_subapi_blueprint(SUB_API)
+workflow_api = make_subapi_blueprint(SUB_API, api_version=4)
 workflow_api._doc = "Manage the different workflows of the system"
 
 
@@ -17,12 +17,10 @@ workflow_api._doc = "Manage the different workflows of the system"
 def verify_query(query):
     """Ensure that a workflow query can be executed."""
     try:
-        STORAGE.search_alert(query)
-    except SearchException as error:
-        return False, str(error)
+        STORAGE.alert.search(query, rows=0)
     except Exception:  # If an error occurred in this block we are 100% blaming the user query
-        return False, 'Invalid Query'
-    return True, ''
+        return False
+    return True
 
 
 @workflow_api.route("/", methods=["PUT"])
@@ -64,21 +62,21 @@ def add_workflow(**kwargs):
     if not query:
         return make_api_response({"success": False}, err="Query field is required", status_code=400)
 
-    success, _ = verify_query(query)
-    if not success:
+    if not verify_query(query):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
 
     uname = kwargs['user']['uname']
-    date = now_as_iso()
     data.update({
         "creator": uname,
-        "creation_date": date,
-        "edited_by": uname,
-        "last_edit": date
+        "edited_by": uname
     })
+    try:
+        workflow_data = Workflow(data)
+    except ValueError as e:
+        return make_api_response({'success': False}, err=str(e), status_code=400)
 
-    STORAGE.save_workflow(str(uuid.uuid4()), data)
-    return make_api_response({"success": True})
+    return make_api_response({"success": STORAGE.workflow.save(workflow_data.workflow_id, workflow_data),
+                              "workflow_id": workflow_data.workflow_id})
 
 
 @workflow_api.route("/<workflow_id>/", methods=["POST"])
@@ -118,22 +116,20 @@ def edit_workflow(workflow_id, **kwargs):
     if not query:
         return make_api_response({"success": False}, err="Query field is required", status_code=400)
 
-    success, _ = verify_query(query)
-    if not success:
+    if not verify_query(query):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
 
-    wf = STORAGE.get_workflow(workflow_id)
+    wf = STORAGE.workflow.get(workflow_id, as_obj=False)
     if wf:
         uname = kwargs['user']['uname']
-        date = now_as_iso()
-
-        data.update({
+        wf.update(data)
+        wf.update({
             "edited_by": uname,
-            "last_edit": date
+            "last_edit": now_as_iso(),
+            "workflow_id": workflow_id
         })
 
-        STORAGE.save_workflow(workflow_id, data)
-        return make_api_response({"success": True})
+        return make_api_response({"success": STORAGE.workflow.save(workflow_id, wf)})
     else:
         return make_api_response({"success": False},
                                  err="Workflow ID %s does not exist" % workflow_id,
@@ -163,12 +159,11 @@ def get_workflow(workflow_id, **kwargs):
      "priority": "LOW",          # Priority of the workflow
      "status": "MALICIOUS",      # Status of the workflow
      "query": "*:*"              # Query to match the data
-    } 
+    }
     """
-    user = kwargs['user']
-    wf = STORAGE.get_workflow(workflow_id)
+    wf = STORAGE.workflow.get(workflow_id, as_obj=False)
     if wf:
-        if CLASSIFICATION.is_accessible(user['classification'], wf['classification']):
+        if CLASSIFICATION.is_accessible(kwargs['user']['classification'], wf['classification']):
             return make_api_response(wf)
         else:
             return make_api_response({},
@@ -202,8 +197,8 @@ def list_workflow_labels(**kwargs):
       ...
     ]
     """
-    user = kwargs['user']
-    return make_api_response(STORAGE.list_workflow_labels(access_control=user['access_control']))
+    access_control = kwargs['user']['access_control']
+    return make_api_response(list(STORAGE.workflow.field_analysis("labels", access_control=access_control).keys()))
 
 
 @workflow_api.route("/list/", methods=["GET"])
@@ -217,9 +212,9 @@ def list_workflows(**kwargs):
     
     Arguments: 
     offset        =>  Offset in the workflow bucket
-    length        =>  Max number of workflow returned
-    filter        =>  Filter to apply to the workflow list
-    
+    query         =>  Filter to apply to the workflow list
+    rows          =>  Max number of workflow returned
+
     Data Block:
     None
     
@@ -240,12 +235,12 @@ def list_workflows(**kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', None)
+    length = int(request.args.get('rows', 100))
+    query = request.args.get('query', "*:*")
     
     try:
-        return make_api_response(STORAGE.list_workflows(start=offset, rows=length, query=query,
-                                                        access_control=user['access_control']))
+        return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=length,
+                                                         access_control=user['access_control'], as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
@@ -275,10 +270,9 @@ def remove_workflow(workflow_id, **_):
      "success": true  # Was the remove successful?
     } 
     """
-    wf = STORAGE.get_workflow(workflow_id)
+    wf = STORAGE.workflow.get(workflow_id)
     if wf:
-        STORAGE.delete_workflow(workflow_id)
-        return make_api_response({"success": True})
+        return make_api_response({"success": STORAGE.workflow.delete(workflow_id)})
     else:
         return make_api_response({"success": False},
                                  err="Workflow ID %s does not exist" % workflow_id,
