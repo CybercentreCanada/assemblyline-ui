@@ -634,7 +634,7 @@ def get_user_submission_params(username, **kwargs):
     user = kwargs['user']
 
     if username != "__CURRENT__" and username != user['uname']:
-        user = STORAGE.user.get(username)
+        user = STORAGE.user.get(username, as_obj=False)
 
     params = load_user_settings(user)
     dispatch_task = ui_to_dispatch_task(params, kwargs['user']['uname'])
