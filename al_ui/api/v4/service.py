@@ -263,7 +263,7 @@ def set_service(servicename, **_):
         return make_api_response({"success": False}, "The service you are trying to modify does not exist", 404)
 
     if 'name' in data and servicename != data['name']:
-        return make_api_response({"success": False}, "You cannot change de service name", 400)
+        return make_api_response({"success": False}, "You cannot change the service name", 400)
 
     current_service.update(data)
 

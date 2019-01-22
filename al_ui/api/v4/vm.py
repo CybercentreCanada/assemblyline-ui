@@ -3,10 +3,9 @@ from flask import request
 
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
-from al_ui.http_exceptions import AccessDeniedException
 
 SUB_API = 'vm'
-vm_api = make_subapi_blueprint(SUB_API)
+vm_api = make_subapi_blueprint(SUB_API, api_version=4)
 vm_api._doc = "Manage the different Virtual machines of the system"
 
 
@@ -40,10 +39,11 @@ def add_virtual_machine(vm, **_):
     """
     data = request.json
     
-    if not STORAGE.get_virtualmachine(vm):
-        STORAGE.save_virtualmachine(vm, data)
-
-        return make_api_response({"success": True})
+    if not STORAGE.vm.get(vm):
+        if STORAGE.service.get(vm):
+            return make_api_response({"success": STORAGE.vm.save(vm, data)})
+        else:
+            return make_api_response({"success": False}, "You cannot add a vm which as no matching service name", 400)
     else:
         return make_api_response({"success": False}, "You cannot add a vm that already exists...", 400)
 
@@ -76,7 +76,11 @@ def get_virtual_machine(vm, **_):
      virtual_disk_url: "img.qcow2"   # Name of the virtual disk to download
     }                
     """
-    return make_api_response(STORAGE.get_virtualmachine(vm))
+    vm_data = STORAGE.vm.get(vm, as_obj=False)
+    if vm_data:
+        return make_api_response(vm_data)
+    else:
+        return make_api_response("", err=f"{vm} virtual machine does not exist", status_code=404)
 
 
 @vm_api.route("/list/", methods=["GET"])
@@ -110,7 +114,11 @@ def list_virtual_machine(**_):
         },
     ...]
     """
-    return make_api_response(STORAGE.list_virtualmachines())
+    out = []
+    for item in STORAGE.vm.stream_search(f"{STORAGE.ds.ID}:*"):
+        out.append(STORAGE.vm.get(item.id, as_obj=False))
+
+    return make_api_response(out)
 
 
 @vm_api.route("/<vm>/", methods=["DELETE"])
@@ -131,8 +139,7 @@ def remove_virtual_machine(vm, **_):
     Result example:
     {"success": True}    # Was is a success 
     """
-    STORAGE.delete_virtualmachine(vm)
-    return make_api_response({"success": True})
+    return make_api_response({"success": STORAGE.vm.delete(vm)})
 
 
 @vm_api.route("/<vm>/", methods=["POST"])
@@ -164,11 +171,14 @@ def set_virtual_machine(vm, **_):
     {"success": true }    #Saving the virtual machine info succeded
     """
     data = request.json
-    
-    try:
-        if vm != data['name']:
-            raise AccessDeniedException("You are not allowed to change the virtual machine name.")
-        
-        return make_api_response({"success": STORAGE.save_virtualmachine(vm, data)})
-    except AccessDeniedException as e:
-        return make_api_response({"success": False}, str(e), 403)
+    current_vm = STORAGE.vm.get(vm, as_obj=False)
+
+    if not current_vm:
+        return make_api_response({"success": False}, "The virtual machine you are trying to modify does not exist", 404)
+
+    if 'name' in data and vm != data['name']:
+        return make_api_response({"success": False}, "You cannot change the virtual machine name", 400)
+
+    current_vm.update(data)
+
+    return make_api_response({"success": STORAGE.vm.save(vm, current_vm)})
