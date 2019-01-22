@@ -14,7 +14,7 @@ SUB_API = 'heuristics'
 heuristics_api = make_subapi_blueprint(SUB_API)
 heuristics_api._doc = "View the different heuristics of the system"
 
-HEUR, HEUR_MAP = list_all_heuristics(STORAGE.list_services())
+HEUR, HEUR_MAP = list_all_heuristics(STORAGE.list_all_services())
 
 
 @heuristics_api.route("/<heuristic_id>/", methods=["GET"])

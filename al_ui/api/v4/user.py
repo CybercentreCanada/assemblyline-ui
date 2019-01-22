@@ -502,11 +502,11 @@ def list_users(**_):
     }
     """
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('rows', 100))
+    rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "*:*")
 
     try:
-        return make_api_response(STORAGE.user.search(query, offset=offset, rows=length, as_obj=False))
+        return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)

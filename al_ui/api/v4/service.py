@@ -1,9 +1,11 @@
 
 from flask import request
+from riak import RiakError
 
 from assemblyline.common import forge
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
+from assemblyline.datastore import SearchException
 
 config = forge.get_config()
 
@@ -152,12 +154,15 @@ def get_service(servicename, **_):
 
 @service_api.route("/list/", methods=["GET"])
 @api_login(audit=False, required_priv=['R'], allow_readonly=False)
-def list_services(**__):
+def list_services(**kwargs):
     """
     List all service configurations of the system.
     
     Variables:
-    None
+    offset       => Offset at which we start giving services
+    query        => Query to apply on the virtual machines list
+    rows         => Numbers of services to return
+    all          => Return all services
 
     Arguments: 
     None
@@ -179,17 +184,25 @@ def list_services(**__):
          ...
      ]
     """
-    resp = [{'accepts': x.get('accepts', None),
-             'category': x.get('category', None),
-             'classpath': x.get('classpath', None),
-             'description': x.get('description', None),
-             'enabled': x.get('enabled', False),
-             'name': x.get('name', None),
-             'rejects': x.get('rejects', None),
-             'stage': x.get('stage', None)}
-            for x in STORAGE.list_services(as_obj=False)]
+    user = kwargs['user']
+    offset = int(request.args.get('offset', 0))
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
+    all = "all" in request.args
 
-    return make_api_response(resp)
+    try:
+        if all:
+            return make_api_response(STORAGE.list_all_services(access_control=user['access_control'], as_obj=False))
+        else:
+            return make_api_response(STORAGE.service.search(query, offset=offset, rows=rows,
+                                                            access_control=user['access_control'], as_obj=False))
+    except RiakError as e:
+        if e.value == "Query unsuccessful check the logs.":
+            return make_api_response("", "The specified search query is not valid.", 400)
+        else:
+            raise
+    except SearchException:
+        return make_api_response("", "The specified search query is not valid.", 400)
 
 
 @service_api.route("/<servicename>/", methods=["DELETE"])

@@ -235,11 +235,11 @@ def list_workflows(**kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('rows', 100))
+    rows = int(request.args.get('rows', 100))
     query = request.args.get('query', f"{STORAGE.ds.ID}:*")
     
     try:
-        return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=length,
+        return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=rows,
                                                          access_control=user['access_control'], as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":

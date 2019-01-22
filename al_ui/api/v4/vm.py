@@ -93,8 +93,8 @@ def list_virtual_machine(**_):
     
     Variables:
     offset       => Offset at which we start giving virtual machines
-    length       => Numbers of virtual machines to return
-    filter       => Filter to apply on the virtual machines list
+    query        => Query to apply on the virtual machines list
+    rows         => Numbers of virtual machines to return
     
     Arguments: 
     None
@@ -117,11 +117,11 @@ def list_virtual_machine(**_):
     ...]
     """
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('rows', 100))
+    rows = int(request.args.get('rows', 100))
     query = request.args.get('query', f"{STORAGE.ds.ID}:*")
 
     try:
-        return make_api_response(STORAGE.vm.search(query, offset=offset, rows=length, as_obj=False))
+        return make_api_response(STORAGE.vm.search(query, offset=offset, rows=rows, as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
