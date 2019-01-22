@@ -210,7 +210,13 @@ def remove_service(servicename, **_):
     Result example:
     {"success": true}  # Has the deletion succeeded
     """
-    return make_api_response({"success": STORAGE.service.delete(servicename)})
+    svc = STORAGE.service.get(servicename)
+    if svc:
+        return make_api_response({"success": STORAGE.service.delete(servicename)})
+    else:
+        return make_api_response({"success": False},
+                                 err=f"Service {servicename} does not exist",
+                                 status_code=404)
 
 
 @service_api.route("/<servicename>/", methods=["POST"])

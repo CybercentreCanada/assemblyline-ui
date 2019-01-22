@@ -1,8 +1,10 @@
 
 from flask import request
+from riak import RiakError
 
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
+from assemblyline.datastore import SearchException
 
 SUB_API = 'vm'
 vm_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -114,11 +116,19 @@ def list_virtual_machine(**_):
         },
     ...]
     """
-    out = []
-    for item in STORAGE.vm.stream_search(f"{STORAGE.ds.ID}:*"):
-        out.append(STORAGE.vm.get(item.id, as_obj=False))
+    offset = int(request.args.get('offset', 0))
+    length = int(request.args.get('rows', 100))
+    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
 
-    return make_api_response(out)
+    try:
+        return make_api_response(STORAGE.vm.search(query, offset=offset, rows=length, as_obj=False))
+    except RiakError as e:
+        if e.value == "Query unsuccessful check the logs.":
+            return make_api_response("", "The specified search query is not valid.", 400)
+        else:
+            raise
+    except SearchException:
+        return make_api_response("", "The specified search query is not valid.", 400)
 
 
 @vm_api.route("/<vm>/", methods=["DELETE"])
@@ -139,7 +149,13 @@ def remove_virtual_machine(vm, **_):
     Result example:
     {"success": True}    # Was is a success 
     """
-    return make_api_response({"success": STORAGE.vm.delete(vm)})
+    vm_data = STORAGE.vm.get(vm)
+    if vm_data:
+        return make_api_response({"success": STORAGE.vm.delete(vm)})
+    else:
+        return make_api_response({"success": False},
+                                 err=f"VM {vm} does not exist",
+                                 status_code=404)
 
 
 @vm_api.route("/<vm>/", methods=["POST"])

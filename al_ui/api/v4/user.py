@@ -142,15 +142,22 @@ def remove_user_account(username, **_):
      "success": true  # Was the remove successful?
     } 
     """
-    user_deleted = STORAGE.user.delete(username)
-    avatar_deleted = STORAGE.user_avatar.delete(username)
-    favorites_deleted = STORAGE.user_favorites.delete(username)
-    options_deleted = STORAGE.user_options.delete(username)
 
-    if not user_deleted or not avatar_deleted or not favorites_deleted or not options_deleted:
-        return make_api_response({"success": False})
+    user_data = STORAGE.user.get(username)
+    if user_data:
+        user_deleted = STORAGE.user.delete(username)
+        avatar_deleted = STORAGE.user_avatar.delete(username)
+        favorites_deleted = STORAGE.user_favorites.delete(username)
+        options_deleted = STORAGE.user_options.delete(username)
 
-    return make_api_response({"success": True})
+        if not user_deleted or not avatar_deleted or not favorites_deleted or not options_deleted:
+            return make_api_response({"success": False})
+
+        return make_api_response({"success": True})
+    else:
+        return make_api_response({"success": False},
+                                 err=f"User {username} does not exist",
+                                 status_code=404)
 
 
 @user_api.route("/<username>/", methods=["POST"])
