@@ -153,16 +153,15 @@ def get_service(servicename, **_):
 
 
 @service_api.route("/list/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False)
-def list_services(**kwargs):
+@api_login(require_admin=True, audit=False, required_priv=['R'], allow_readonly=False)
+def list_services(**_):
     """
-    List all service configurations of the system.
+    List the different service of the system.
     
     Variables:
     offset       => Offset at which we start giving services
     query        => Query to apply on the virtual machines list
     rows         => Numbers of services to return
-    all          => Return all services
 
     Arguments: 
     None
@@ -184,18 +183,12 @@ def list_services(**kwargs):
          ...
      ]
     """
-    user = kwargs['user']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', f"{STORAGE.ds.ID}:*")
-    all = "all" in request.args
 
     try:
-        if all:
-            return make_api_response(STORAGE.list_all_services(access_control=user['access_control'], as_obj=False))
-        else:
-            return make_api_response(STORAGE.service.search(query, offset=offset, rows=rows,
-                                                            access_control=user['access_control'], as_obj=False))
+        return make_api_response(STORAGE.service.search(query, offset=offset, rows=rows, as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
@@ -203,6 +196,38 @@ def list_services(**kwargs):
             raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
+
+
+@service_api.route("/all/", methods=["GET"])
+@api_login(audit=False, required_priv=['R'], allow_readonly=False)
+def list_all_services(**_):
+    """
+    List all service configurations of the system.
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+     [
+        {'accepts': ".*"
+         'category': 'Extraction',
+         'classpath': 'al_services.alsvc_extract.Extract',
+         'description': "Extracts some stuff",
+         'enabled': True,
+         'name': 'Extract',
+         'rejects': 'empty'
+         'stage': 'CORE'
+         },
+         ...
+     ]
+    """
+    return make_api_response(STORAGE.list_all_services(as_obj=False))
 
 
 @service_api.route("/<servicename>/", methods=["DELETE"])
