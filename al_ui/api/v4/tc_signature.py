@@ -1,65 +1,26 @@
 
-from copy import deepcopy
 from flask import request
-from operator import itemgetter
+from riak import RiakError
 
 from assemblyline.common import forge
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
+from assemblyline.datastore import SearchException
+from assemblyline.odm.models.tc_signature import DRAFT_STATUSES, DEPLOYED_STATUSES
 
 Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'tc_signature'
-tc_sigs_api = make_subapi_blueprint(SUB_API)
+tc_sigs_api = make_subapi_blueprint(SUB_API, api_version=4)
 tc_sigs_api._doc = "Perform operations on tagcheck signatures"
 
 
-TC_SIG_DEFAULT = {
-    "callback": "",
-    "classification": "U",
-    "comment": "",
-    "implant_family": "",
-    "score": "HIGH",
-    "status": "DEPLOYED",
-    "threat_actor": "",
-    "values": [""]
-}
-TC_SIG_ALLOWED_NULL = ['callback', 'classification', 'comment', 'implant_family', 'threat_actor']
-
-
-class InvalidSignatureError(Exception):
-    pass
-
-
-# noinspection PyBroadException
-def validate_signature(data):
-    try:
-        _validate_signature(data)
-    except Exception:
+def is_valid_status(data, user):
+    status = data.pop('al_status', None)
+    if status in DEPLOYED_STATUSES and not user.get('is_admin', False):
         return False
     return True
-
-
-def _validate_signature(data):
-    if not isinstance(data, dict):
-        raise InvalidSignatureError("Not a dictionary object")
-
-    for key, value in data.items():
-        if key not in TC_SIG_DEFAULT:
-            raise InvalidSignatureError("Invalid key [%s]" % key)
-        else:
-            if not isinstance(value, type(TC_SIG_DEFAULT[key])) \
-                    and not (isinstance(value, str) and isinstance(TC_SIG_DEFAULT[key], str)):
-                if value is None:
-                    if key not in TC_SIG_ALLOWED_NULL:
-                        raise InvalidSignatureError("Key '%s' not allowed to be None" % key)
-                else:
-                    raise InvalidSignatureError("Invalid value for key [%s]" % key)
-
-    for key in TC_SIG_DEFAULT.keys():
-        if key not in data:
-            raise InvalidSignatureError("Missing key [%s]" % key)
 
 
 @tc_sigs_api.route("/<name>/", methods=["PUT"])
@@ -91,26 +52,20 @@ def add_signature(name, **kwargs):
     """
     user = kwargs['user']
     data = request.json
-    
+    data['name'] = name
+
     if not Classification.is_accessible(user['classification'], data.get('classification',
                                                                          Classification.UNRESTRICTED)):
         return make_api_response("", "You are not allowed to add a signature with "
                                      "higher classification than yours", 403)
 
-    sigs = STORAGE.get_blob('tagcheck_signatures')
-    
-    if not sigs:
-        sigs = {}
+    if not is_valid_status(data, user):
+        return make_api_response("", "Only admins are allowed to deploy or disable signatures", 403)
 
-    if name in sigs:
+    if STORAGE.tc_signature.get(name):
         return make_api_response({"success": False}, "Signature name already exists", 400)
     else:
-        if validate_signature(data):
-            sigs[name] = data
-            STORAGE.save_blob('tagcheck_signatures', sigs)
-        else:
-            return make_api_response({"success": False}, "Invalid signature data", 400)
-    return make_api_response({"success": True})
+        return make_api_response({"success": STORAGE.tc_signature.save(name, data)})
 
 
 # noinspection PyPep8Naming
@@ -133,64 +88,24 @@ def change_status(name, status, **kwargs):
     Result example:
     { "success" : true }      #If saving the rule was a success or not
     """
-    DEPLOYED_STATUSES = ['DEPLOYED', 'DISABLED']
-    DRAFT_STATUSES = ['STAGING', 'TESTING']
-
+    # TODO: A user should not be able to change the signature status if it's already in a deployed state
     user = kwargs['user']
 
     if status not in DRAFT_STATUSES and status not in DEPLOYED_STATUSES:
         return make_api_response("", "Invalid status %s." % status, 400)
 
     if not user['is_admin'] and status in DEPLOYED_STATUSES:
-        return make_api_response("",
-                                 "Only admins are allowed to change the signature status to a deployed status.",
-                                 403)
+        return make_api_response("", "Only admins are allowed to deploy or disable signatures", 403)
 
-    sigs = STORAGE.get_blob('tagcheck_signatures')
-    if not sigs or name not in sigs:
-        return make_api_response("", "Signature not found. (%s)" % name, 404)
+    sig = STORAGE.tc_signature.get(name)
+    if not sig:
+        return make_api_response("", f"Signature not found. ({name})", 404)
     else:
-        if not Classification.is_accessible(user['classification'], sigs[name].get('classification',
-                                                                                   Classification.UNRESTRICTED)):
+        if not Classification.is_accessible(user['classification'], sig.classification):
             return make_api_response("", "You are not allowed change status on this signature", 403)
     
-        sigs[name]['status'] = status
-        STORAGE.save_blob('tagcheck_signatures', sigs)
-        return make_api_response({"success": True})
-
-
-# noinspection PyPep8Naming
-@tc_sigs_api.route("/<name>/", methods=["DELETE"])
-@api_login(required_priv=['W'], allow_readonly=False, require_admin=True)
-def delete(name, **kwargs):
-    """
-    Delete a tagcheck signature from the system
-
-    Variables:
-    name    =>  signature name
-
-    Arguments:
-    None
-
-    Data Block:
-    None
-
-    Result example:
-    { "success" : true }      #If deleting the rule was a success or not
-    """
-    user = kwargs['user']
-
-    sigs = STORAGE.get_blob('tagcheck_signatures')
-    if not sigs or name not in sigs:
-        return make_api_response("", "Signature does not exist. (%s)" % name, 404)
-    else:
-        if not Classification.is_accessible(user['classification'], sigs[name].get('classification',
-                                                                                   Classification.UNRESTRICTED)):
-            return make_api_response("", "You are not allowed to delete this signature", 403)
-
-        del sigs[name]
-        STORAGE.save_blob('tagcheck_signatures', sigs)
-        return make_api_response({"success": True})
+        sig.al_status = status
+        return make_api_response({"success": STORAGE.tc_signature.save(name, sig)})
 
 
 @tc_sigs_api.route("/<name>/", methods=["GET"])
@@ -221,16 +136,13 @@ def get_signature(name, **kwargs):
     }
     """
     user = kwargs['user']
-    sigs = STORAGE.get_blob('tagcheck_signatures')
-    if sigs and name in sigs:
-        if sigs[name]['classification'] == "None":
-            sigs[name]['classification'] = Classification.UNRESTRICTED
-        if not Classification.is_accessible(user['classification'],
-                                            sigs[name].get('classification', Classification.UNRESTRICTED)):
+    sig = STORAGE.tc_signature.get(name, as_obj=False)
+    if sig:
+        if not Classification.is_accessible(user['classification'], sig['classification']):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
-        return make_api_response(sigs[name])
+        return make_api_response(sig)
     else:
-        return make_api_response("", "Signature not found. (%s)" % name, 404)
+        return make_api_response("", f"Signature not found. ({name})", 404)
 
 
 @tc_sigs_api.route("/list/", methods=["GET"])
@@ -244,9 +156,9 @@ def list_signatures(**kwargs):
     
     Arguments: 
     offset       => Offset at which we start giving signatures
-    length       => Numbers of signatures to return
-    filter       => Filter to apply on the signature list
-    
+    query        => Query to apply on the signature list
+    rows         => Numbers of signatures to return
+
     Data Block:
     None
     
@@ -269,46 +181,50 @@ def list_signatures(**kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*").lower()
+    length = int(request.args.get('rows', 100))
+    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
 
-    output = {"total": 0, "offset": offset, "count": length, "items": []}
-    sigs = STORAGE.get_blob('tagcheck_signatures')
+    try:
+        return make_api_response(STORAGE.tc_signature.search(query, offset=offset, rows=length,
+                                                             access_control=user['access_control'], as_obj=False))
+    except RiakError as e:
+        if e.value == "Query unsuccessful check the logs.":
+            return make_api_response("", "The specified search query is not valid.", 400)
+        else:
+            raise
+    except SearchException:
+        return make_api_response("", "The specified search query is not valid.", 400)
 
-    if not sigs:
-        return make_api_response(output)
 
-    if query == "*":
-        items = []
-        for sig_name in sorted(sigs.keys()):
-            sig_val = sigs[sig_name]
-            if sig_val['classification'] == "None":
-                sig_val['classification'] = Classification.UNRESTRICTED
-            if user and Classification.is_accessible(user['classification'], sig_val['classification']):
-                cur_item = deepcopy(sig_val)
-                cur_item['name'] = sig_name
-                items.append(cur_item)
-        output['items'] = sorted(items[offset:offset + length], key=itemgetter('name'))
-        output['total'] = len(items)
-    elif query:
-        filtered = []
-        for sig_name in sorted(sigs.keys()):
-            sig_val = sigs[sig_name]
-            if sig_val['classification'] == "None":
-                sig_val['classification'] = Classification.UNRESTRICTED
-            for cur_key, cur_val in sig_val.iteritems():
-                temp_val = str(cur_val)
-                if query in temp_val.lower() and user \
-                        and Classification.is_accessible(user['classification'], sig_val['classification']):
-                    cur_item = deepcopy(sig_val)
-                    cur_item['name'] = sig_name
-                    filtered.append(cur_item)
-                    break
+# noinspection PyPep8Naming
+@tc_sigs_api.route("/<name>/", methods=["DELETE"])
+@api_login(required_priv=['W'], allow_readonly=False, require_admin=True)
+def remove_signature(name, **kwargs):
+    """
+    Delete a tagcheck signature from the system
 
-        output["items"] = sorted(filtered[offset:offset + length], key=itemgetter('name'))
-        output["total"] = len(filtered)
+    Variables:
+    name    =>  signature name
 
-    return make_api_response(output)
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    { "success" : true }      #If deleting the rule was a success or not
+    """
+    user = kwargs['user']
+
+    sig = STORAGE.tc_signature.get(name)
+    if not sig:
+        return make_api_response("", f"Signature does not exist. ({name})", 404)
+    else:
+        if not Classification.is_accessible(user['classification'], sig.classification):
+            return make_api_response("", "You are not allowed to delete this signature", 403)
+
+        return make_api_response({"success": STORAGE.tc_signature.delete(name)})
 
 
 @tc_sigs_api.route("/<name>/", methods=["POST"])
@@ -338,22 +254,24 @@ def set_signature(name, **kwargs):
     Result example:
     {"success": true}      #If saving the rule was a success or not
     """
+    # TODO: A user should not be able to change the signature status if it's already in a deployed state
     user = kwargs['user']
     data = request.json
+
+    if 'name' in data and name != data['name']:
+        return make_api_response({"success": False}, "You cannot change the tagcheck signature name", 400)
+
+    if not is_valid_status(data, user):
+        return make_api_response("", "Only admins are allowed to deploy or disable signatures", 403)
 
     if not Classification.is_accessible(user['classification'], data.get('classification',
                                                                          Classification.UNRESTRICTED)):
         return make_api_response("", "You are not allowed to add a signature with "
                                      "higher classification than yours", 403)
 
-    sigs = STORAGE.get_blob('tagcheck_signatures')
-    if sigs and name in sigs:
-        if validate_signature(data):
-            sigs[name] = data
-            STORAGE.save_blob('tagcheck_signatures', sigs)
-        else:
-            return make_api_response({"success": False}, "Invalid signature data", 400)
+    sig = STORAGE.tc_signature.get(name, as_obj=False)
+    if sig:
+        sig.update(data)
+        return make_api_response({"success": STORAGE.tc_signature.save(name, sig)})
     else:
         return make_api_response({"success": False}, "Signature does not exist", 404)
-
-    return make_api_response({"success": True})
