@@ -1,12 +1,12 @@
-
 from flask import request
 from riak import RiakError
 
 from assemblyline.common import forge
-from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from al_ui.config import STORAGE
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.tc_signature import DRAFT_STATUSES, DEPLOYED_STATUSES
+from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from al_ui.config import STORAGE
+from al_ui.http_exceptions import AccessDeniedException
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -16,11 +16,20 @@ tc_sigs_api = make_subapi_blueprint(SUB_API, api_version=4)
 tc_sigs_api._doc = "Perform operations on tagcheck signatures"
 
 
-def is_valid_status(data, user):
-    status = data.pop('al_status', None)
-    if status in DEPLOYED_STATUSES and not user.get('is_admin', False):
-        return False
-    return True
+def test_status(data, user, sig=None):
+    if sig is None:
+        sig_status = None
+    else:
+        sig_status = sig.get('al_status', None)
+
+    data_status = data.get('al_status', sig_status)
+
+    if data_status != sig_status and not user.get('is_admin', False):
+        if data_status in DEPLOYED_STATUSES:
+            raise AccessDeniedException("Only admins are allowed to deploy or disable signatures")
+        elif sig_status in DEPLOYED_STATUSES:
+            raise AccessDeniedException("Only admins are allowed to change a signature already in "
+                                        "deployed or disabled status")
 
 
 @tc_sigs_api.route("/<name>/", methods=["PUT"])
@@ -59,13 +68,15 @@ def add_signature(name, **kwargs):
         return make_api_response("", "You are not allowed to add a signature with "
                                      "higher classification than yours", 403)
 
-    if not is_valid_status(data, user):
-        return make_api_response("", "Only admins are allowed to deploy or disable signatures", 403)
+    test_status(data, user)
 
     if STORAGE.tc_signature.get(name):
         return make_api_response({"success": False}, "Signature name already exists", 400)
     else:
-        return make_api_response({"success": STORAGE.tc_signature.save(name, data)})
+        try:
+            return make_api_response({"success": STORAGE.tc_signature.save(name, data)})
+        except ValueError as e:
+            return make_api_response({}, err=str(e), status_code=400)
 
 
 # noinspection PyPep8Naming
@@ -88,23 +99,21 @@ def change_status(name, status, **kwargs):
     Result example:
     { "success" : true }      #If saving the rule was a success or not
     """
-    # TODO: A user should not be able to change the signature status if it's already in a deployed state
     user = kwargs['user']
 
     if status not in DRAFT_STATUSES and status not in DEPLOYED_STATUSES:
         return make_api_response("", "Invalid status %s." % status, 400)
 
-    if not user['is_admin'] and status in DEPLOYED_STATUSES:
-        return make_api_response("", "Only admins are allowed to deploy or disable signatures", 403)
-
-    sig = STORAGE.tc_signature.get(name)
+    sig = STORAGE.tc_signature.get(name, as_obj=False)
     if not sig:
         return make_api_response("", f"Signature not found. ({name})", 404)
     else:
-        if not Classification.is_accessible(user['classification'], sig.classification):
+        test_status({'al_status': status}, user, sig)
+
+        if not Classification.is_accessible(user['classification'], sig['classification']):
             return make_api_response("", "You are not allowed change status on this signature", 403)
     
-        sig.al_status = status
+        sig['al_status'] = status
         return make_api_response({"success": STORAGE.tc_signature.save(name, sig)})
 
 
@@ -254,15 +263,11 @@ def set_signature(name, **kwargs):
     Result example:
     {"success": true}      #If saving the rule was a success or not
     """
-    # TODO: A user should not be able to change the signature status if it's already in a deployed state
     user = kwargs['user']
     data = request.json
 
     if 'name' in data and name != data['name']:
         return make_api_response({"success": False}, "You cannot change the tagcheck signature name", 400)
-
-    if not is_valid_status(data, user):
-        return make_api_response("", "Only admins are allowed to deploy or disable signatures", 403)
 
     if not Classification.is_accessible(user['classification'], data.get('classification',
                                                                          Classification.UNRESTRICTED)):
@@ -271,7 +276,11 @@ def set_signature(name, **kwargs):
 
     sig = STORAGE.tc_signature.get(name, as_obj=False)
     if sig:
+        test_status(data, user, sig)
         sig.update(data)
-        return make_api_response({"success": STORAGE.tc_signature.save(name, sig)})
+        try:
+            return make_api_response({"success": STORAGE.tc_signature.save(name, sig)})
+        except ValueError as e:
+            return make_api_response({}, err=str(e), status_code=400)
     else:
         return make_api_response({"success": False}, "Signature does not exist", 404)
