@@ -15,6 +15,15 @@ errors = Blueprint("errors", __name__)
 
 ######################################
 # Custom Error page
+@errors.app_errorhandler(400)
+def handle_400(e):
+    error_message = str(e)
+    if request.path.startswith("/api/"):
+        return make_api_response("", error_message, 400)
+    else:
+        return render_template('400.html'), 400
+
+
 @errors.app_errorhandler(401)
 def handle_401(_):
     if request.path.startswith("/api/"):
