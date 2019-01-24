@@ -74,11 +74,12 @@ def list_errors(**kwargs):
     query = request.args.get('query', f"{STORAGE.ds.ID}:*")
 
     try:
-        return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False))
+        return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
+                                                      sort="created desc"))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)
         else:
             raise
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. ({str(e)})", 400)

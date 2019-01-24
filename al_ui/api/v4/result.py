@@ -13,9 +13,9 @@ result_api = make_subapi_blueprint(SUB_API, api_version=4)
 result_api._doc = "Manage the different services"
 
 
-@result_api.route("/multiple/keys/", methods=["POST"])
+@result_api.route("/multiple_keys/", methods=["POST"])
 @api_login(audit=False, required_priv=['R'])
-def get_multiple_service_keys(**kwargs):
+def get_multiple_service_results(**kwargs):
     """
     Get multiple result and error keys at the same time
 
@@ -38,11 +38,11 @@ def get_multiple_service_keys(**kwargs):
     user = kwargs['user']
     data = request.json
 
-    errors = STORAGE.get_errors_dict(data['error'])
-    results = STORAGE.get_results_dict(data['result'])
+    errors = {cache_key: STORAGE.error.get(cache_key, as_obj=False) for cache_key in data['error']}
+    results = {cache_key: STORAGE.result.get(cache_key, as_obj=False) for cache_key in data['result']}
 
-    srls = list(set([x[:64] for x in results.keys()]))
-    file_infos = STORAGE.get_files_dict(srls)
+    file_hashes = list(set([x[:64] for x in results.keys()]))
+    file_infos = {file_hash: STORAGE.file.get(file_hash, as_obj=False) for file_hash in file_hashes}
     for r_key in results.keys():
         r_value = format_result(user['classification'], results[r_key], file_infos[r_key[:64]]['classification'])
         if not r_value:
@@ -63,7 +63,7 @@ def get_service_error(cache_key, **_):
 
     Variables:
     cache_key     => Service result cache key
-                     as (SRL.ServiceName)
+                     as SHA256.ServiceName.ServiceVersion.Configuration.e
 
     Arguments:
     None
@@ -72,18 +72,16 @@ def get_service_error(cache_key, **_):
     None
 
     Result example:
-    {"response": {                   # Service Response
-         "milestones": {},              # Timing object
-         "supplementary": [],           # Supplementary files
-         "status": "FAIL",              # Status
-         "service_version": "",         # Service Version
-         "service_name": "NSRL",        # Service Name
-         "extracted": [],               # Extracted files
-         "score": 0,                    # Service Score
-         "message": "Err Message"},     # Error Message
-     "result": []}                   # Result objets
+    {"created": "1900-01-01T00:00:00Z",   # Time at which the error was created
+     "response": {                        # Service Response
+         "message": "Err message",           # Error Message
+         "service_debug_info": "",           # Infromation about where the job was processed
+         "service_name": "NSRL",             # Service Name
+         "service_version": "",              # Service Version
+         "status": "FAIL"}                   # Status
+     "sha256": "123456...123456"}         # SHA256 of the files in error
     """
-    data = STORAGE.get_error(cache_key)
+    data = STORAGE.error.get(cache_key, as_obj=False)
     if data is None:
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
@@ -98,7 +96,7 @@ def get_service_result(cache_key, **kwargs):
 
     Variables:
     cache_key         => Service result cache key
-                         as SRL.ServiceName.ServiceVersion.ConfigHash
+                         as SHA256.ServiceName.ServiceVersion.Configuration
 
     Arguments:
     None
@@ -138,11 +136,11 @@ def get_service_result(cache_key, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.get_result(cache_key)
+    data = STORAGE.result.get(cache_key, as_obj=False)
     if data is None:
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
-    cur_file = STORAGE.get_file(cache_key[:64])
+    cur_file = STORAGE.file.get(cache_key[:64], as_obj=False)
     data = format_result(user['classification'], data, cur_file['classification'])
     if not data:
         return make_api_response("", "You are not allowed to view the results for this key", 403)
