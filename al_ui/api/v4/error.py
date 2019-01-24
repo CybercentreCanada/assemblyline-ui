@@ -12,7 +12,7 @@ Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'error'
-error_api = make_subapi_blueprint(SUB_API)
+error_api = make_subapi_blueprint(SUB_API, api_version=4)
 error_api._doc = "Perform operations on service errors"
 
 
@@ -37,9 +37,9 @@ def get_error(error_key, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.get_error(error_key)
+    data = STORAGE.error.get(error_key, as_obj=False)
     
-    if user and data and Classification.is_accessible(user['classification'], data['classification']):
+    if user and data:
         return make_api_response(data)
     else:
         return make_api_response("", "You are not allowed to see this error...", 403)
@@ -56,8 +56,8 @@ def list_errors(**kwargs):
     
     Arguments: 
     offset       => Offset at which we start giving errors
-    length       => Numbers of errors to return
-    filter       => Filter to apply to the error list
+    query        => Query to apply to the error list
+    rows         => Numbers of errors to return
     
     Data Block:
     None
@@ -69,15 +69,12 @@ def list_errors(**kwargs):
      "items": []                  # List of error blocks
     }
     """
-    user = kwargs['user']
-    
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*")
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
 
     try:
-        return make_api_response(STORAGE.list_errors(query, start=offset, rows=length,
-                                                     access_control=user["access_control"]))
+        return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False))
     except RiakError as e:
         if e.value == "Query unsuccessful check the logs.":
             return make_api_response("", "The specified search query is not valid.", 400)

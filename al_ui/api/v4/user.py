@@ -503,7 +503,7 @@ def list_users(**_):
     """
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "*:*")
+    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
 
     try:
         return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, as_obj=False))
