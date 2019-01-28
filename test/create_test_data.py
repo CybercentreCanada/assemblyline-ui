@@ -66,12 +66,14 @@ for fh in file_hashes:
     other_files = list(set(file_hashes) - {fh})
 
     for x in range(4):
-        r = random_model_obj(EmptyResult)
+        # Get a random result key
+        r = random_model_obj(Result)
         r.sha256 = fh
-
-        key = r.build_key()
+        key = f"{r.build_key()}.e"
         result_keys.append(key)
-        ds.emptyresult.save(key, r)
+
+        # Save an empty result using that key
+        ds.emptyresult.save(key, random_model_obj(EmptyResult))
         print(f"\t{key}")
 
 print("\nCreating 2 Errors per file...")

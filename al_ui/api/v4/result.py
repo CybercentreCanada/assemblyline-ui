@@ -3,7 +3,7 @@ from flask import request
 
 from assemblyline.common import forge
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from al_ui.config import STORAGE
+from al_ui.config import STORAGE, CLASSIFICATION
 from al_ui.helper.result import format_result
 
 config = forge.get_config()
@@ -38,11 +38,10 @@ def get_multiple_service_results(**kwargs):
     user = kwargs['user']
     data = request.json
 
-    errors = {cache_key: STORAGE.error.get(cache_key, as_obj=False) for cache_key in data['error']}
-    results = {cache_key: STORAGE.result.get(cache_key, as_obj=False) for cache_key in data['result']}
+    errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False)
+    results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False)
 
-    file_hashes = list(set([x[:64] for x in results.keys()]))
-    file_infos = {file_hash: STORAGE.file.get(file_hash, as_obj=False) for file_hash in file_hashes}
+    file_infos = STORAGE.file.multiget(list(set([x[:64] for x in results.keys()])), as_dictionary=True, as_obj=False)
     for r_key in results.keys():
         r_value = format_result(user['classification'], results[r_key], file_infos[r_key[:64]]['classification'])
         if not r_value:
@@ -88,7 +87,7 @@ def get_service_error(cache_key, **_):
     return make_api_response(data)
 
 
-@result_api.route("/result/<path:cache_key>/", methods=["GET"])
+@result_api.route("/<path:cache_key>/", methods=["GET"])
 @api_login(required_priv=['R'])
 def get_service_result(cache_key, **kwargs):
     """
@@ -136,7 +135,9 @@ def get_service_result(cache_key, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.result.get(cache_key, as_obj=False)
+
+    data = STORAGE.get_single_result(cache_key, CLASSIFICATION, as_obj=False)
+
     if data is None:
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
