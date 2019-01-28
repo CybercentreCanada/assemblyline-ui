@@ -2,6 +2,7 @@ import random
 
 from assemblyline.common.security import get_password_hash
 from assemblyline.common import forge
+from assemblyline.odm.models.emptyresult import EmptyResult
 from assemblyline.odm.models.error import Error
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
@@ -36,12 +37,12 @@ for x in range(20):
     ds.file.save(f.sha256, f)
     print(f"\t{f.sha256}")
 
-print("\nCreating 10 Results per file...")
+print("\nCreating 6 Results per file...")
 result_keys = []
 for fh in file_hashes:
     other_files = list(set(file_hashes) - {fh})
 
-    for x in range(10):
+    for x in range(6):
         r = random_model_obj(Result)
         r.sha256 = fh
 
@@ -58,6 +59,19 @@ for fh in file_hashes:
         key = r.build_key()
         result_keys.append(key)
         ds.result.save(key, r)
+        print(f"\t{key}")
+
+print("\nCreating 4 EmptyResults per file...")
+for fh in file_hashes:
+    other_files = list(set(file_hashes) - {fh})
+
+    for x in range(4):
+        r = random_model_obj(EmptyResult)
+        r.sha256 = fh
+
+        key = r.build_key()
+        result_keys.append(key)
+        ds.emptyresult.save(key, r)
         print(f"\t{key}")
 
 print("\nCreating 2 Errors per file...")
