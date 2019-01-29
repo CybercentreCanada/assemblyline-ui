@@ -13,6 +13,7 @@ from assemblyline.odm.randomizer import random_model_obj, SERVICES
 
 print("Loading datastore...")
 ds = forge.get_datastore()
+config = forge.get_config()
 
 print("\nCreating user object...")
 user_data = User({"name": "Admin user", "password": get_password_hash("admin"), "uname": "admin", "is_admin": True})
@@ -24,9 +25,17 @@ print(f"\tU:{user_data.uname}    P:{user_data.uname}")
 
 print("\nCreating services...")
 for svc in SERVICES:
-    service_data = Service({"class_name": svc, "classpath": f"assemblyline_services.{svc.lower()}.{svc}", "name": svc,
-                            "realm": "bitbucket", "repo": f"alsvc_{svc.lower()}", "enabled": True})
-    ds.service.save('PEFile', service_data)
+    service_data = Service({
+        "class_name": svc,
+        "classpath": f"assemblyline_services.{svc.lower()}.{svc}",
+        "name": svc,
+        "realm": "bitbucket",
+        "repo": f"alsvc_{svc.lower()}",
+        "enabled": True,
+        "category": random.choice(config.services.categories),
+        "stage": random.choice(config.services.stages)
+    })
+    ds.service.save(service_data.name, service_data)
     print(f'\t{svc}')
 
 print("\nCreating 20 Files...")

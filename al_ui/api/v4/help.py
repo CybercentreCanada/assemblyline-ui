@@ -4,12 +4,13 @@ import re
 from assemblyline.common import forge
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
+from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
 
 SUB_API = 'help'
 constants = forge.get_constants()
 config = forge.get_config()
 
-help_api = make_subapi_blueprint(SUB_API)
+help_api = make_subapi_blueprint(SUB_API, api_version=4)
 help_api._doc = "Provide information about the system configuration"
 
 
@@ -61,14 +62,14 @@ def get_system_configuration(**_):
     def get_config_item(parent, cur_item):
         if "." in cur_item:
             key, remainder = cur_item.split(".", 1)
-            return get_config_item(parent[key], remainder)
+            return get_config_item(parent.get(key, {}), remainder)
         else:
             return parent.get(cur_item, None)
 
     cat_map = {}
     stg_map = {}
 
-    for srv in STORAGE.list_services():
+    for srv in STORAGE.list_all_services(as_obj=False):
         name = srv.get('name', None)
         cat = srv.get('category', None)
         if cat and name:
@@ -83,16 +84,15 @@ def get_system_configuration(**_):
             stg_map[stg] = temp_stg
 
     shareable_config_items = [
-        "core.middleman.max_extracted",
-        "core.middleman.max_supplementary",
+        "core.middleman.default_max_extracted",
+        "core.middleman.default_max_supplementary",
         "services.categories",
-        "services.limits.max_extracted",
-        "services.limits.max_supplementary",
         "services.stages",
         "services.system_category",
-        "submissions.max.priority",
-        "submissions.max.size",
-        "submissions.ttl",
+        "submission.default_max_extracted",
+        "submission.default_max_supplementary",
+        "submission.dtl",
+        "submission.max_file_size",
         "ui.allow_raw_downloads",
         "ui.audit",
         "ui.download_encoding",
@@ -100,8 +100,9 @@ def get_system_configuration(**_):
     ]
 
     out = {}
+    config_dict = config.as_primitives()
     for item in shareable_config_items:
-        out[item] = get_config_item(config, item)
+        out[item] = get_config_item(config_dict, item)
 
     out["services.categories"] = [[x, cat_map.get(x, [])] for x in out.get("services.categories", None)]
     out["services.stages"] = [[x, stg_map.get(x, [])] for x in out.get("services.stages", None)]
@@ -136,26 +137,23 @@ def get_systems_constants(**_):
         "tag_contexts": []
     }
     """
-    # TODO: can those default be pulled from the alv4_service repo? That would make it a dependency but that ok.
-    default_accept = ".*"
-    default_reject = "empty"
-
     accepts_map = {}
     rejects_map = {}
     default_list = []
 
-    for srv in STORAGE.list_services():
+    for srv in STORAGE.list_all_services(as_obj=False):
         name = srv.get('name', None)
         if name:
-            accept = srv.get('accepts', default_accept)
-            reject = srv.get('rejects', default_reject)
-            if accept == default_accept and reject == default_reject:
+            accept = srv.get('accepts', DEFAULT_SERVICE_ACCEPTS)
+            reject = srv.get('rejects', DEFAULT_SERVICE_REJECTS)
+            if accept == DEFAULT_SERVICE_ACCEPTS and reject == DEFAULT_SERVICE_REJECTS:
                 default_list.append(name)
             else:
                 accepts_map[name] = re.compile(accept)
                 rejects_map[name] = re.compile(reject)
 
     out = {
+        "max_priority": constants.MAX_PRIORITY,
         "priorities": constants.PRIORITIES,
         "file_types": [[t,
                         sorted([x for x in accepts_map.keys()
