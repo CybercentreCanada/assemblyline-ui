@@ -1,8 +1,11 @@
 
+import concurrent.futures
+
 from flask import request
 from riak import RiakError
 
 from assemblyline.common import forge
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore import SearchException
 from assemblyline.remote.datatypes.queues.priority import PriorityQueue
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -14,8 +17,56 @@ QUEUE_PRIORITY = -2
 
 Classification = forge.get_classification()
 
-alert_api = make_subapi_blueprint(SUB_API)
+alert_api = make_subapi_blueprint(SUB_API, api_version=4)
 alert_api._doc = "Perform operations on alerts"
+
+ALERT_OFFSET = -300.0
+USE_DS_UPDATE = True
+
+
+def get_timming_filter(start_time, time_slice):
+    if time_slice:
+        if start_time:
+            return f"reporting_ts:[{start_time}-{time_slice} TO {start_time}]"
+        else:
+            return f"reporting_ts:[{STORAGE.ds.now}-{time_slice} TO {STORAGE.ds.now}]"
+    elif start_time:
+        return f"reporting_ts:[* TO {start_time}]"
+
+    return None
+
+
+def get_stats_for_fields(fields, query, start_time, time_slice, access_control):
+    if time_slice and config.ui.read_only:
+        time_slice += config.ui.read_only_offset
+    timming_filter = get_timming_filter(start_time, time_slice)
+
+    filters = [x for x in request.args.getlist("fq") if x != ""]
+    if timming_filter:
+        filters.append(timming_filter)
+
+    try:
+        if isinstance(fields, list):
+            with concurrent.futures.ThreadPoolExecutor(len(fields)) as executor:
+                res = {field: executor.submit(STORAGE.alert.field_analysis,
+                                              field,
+                                              query=query,
+                                              filters=filters,
+                                              limit=100,
+                                              access_control=access_control)
+                       for field in fields}
+
+            return make_api_response({k: v.result() for k, v in res.items()})
+        else:
+            return make_api_response(STORAGE.alert.field_analysis(fields, query=query, filters=filters,
+                                                                  limit=100, access_control=access_control))
+    except SearchException:
+        return make_api_response("", "The specified search query is not valid.", 400)
+    except RiakError as e:
+        if e.value == "Query unsuccessful check the logs.":
+            return make_api_response("", "The specified search query is not valid.", 400)
+        else:
+            raise
 
 
 @alert_api.route("/<alert_key>/", methods=["GET"])
@@ -42,9 +93,12 @@ def get_alert(alert_key, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.get_alert(alert_key)
+    data = STORAGE.alert.get(alert_key, as_obj=False)
+
+    if not data:
+        return make_api_response("", "This alert does not exists...", 404)
     
-    if user and data and Classification.is_accessible(user['classification'], data['classification']):
+    if user and Classification.is_accessible(user['classification'], data['classification']):
         return make_api_response(data)
     else:
         return make_api_response("", "You are not allowed to see this alert...", 403)
@@ -60,10 +114,10 @@ def alerts_statistics(**kwargs):
     None
 
     Arguments:
+    fq           => Post filter queries (you can have multiple of those)
+    query        => Query to apply to the alert list
     start_time   => Time offset at which to list alerts
     time_slice   => Length after the start time that we query
-    filter       => Filter to apply to the alert list
-    fq           => Post filter queries (you can have multiple of those)
 
     Data Block:
     None
@@ -73,27 +127,14 @@ def alerts_statistics(**kwargs):
     """
     user = kwargs['user']
 
-    query = request.args.get('filter', "*")
+    query = request.args.get('query', "*")
     if not query:
         query = "*"
     start_time = request.args.get('start_time', None)
     time_slice = request.args.get('time_slice', None)
-    if time_slice and config.ui.get('read_only', False):
-        time_slice += config.ui.get('read_only_offset', "")
-    filter_queries = [x for x in request.args.getlist("fq") if x != ""]
+    alert_statistics_fields = config.ui.statistics.alert
 
-    try:
-        return make_api_response(STORAGE.get_alert_statistics(query, access_control=user['access_control'],
-                                                              fq_list=filter_queries,
-                                                              start_time=start_time,
-                                                              time_slice=time_slice))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
+    return get_stats_for_fields(alert_statistics_fields, query, start_time, time_slice, user['access_control'])
 
 
 @alert_api.route("/labels/", methods=["GET"])
@@ -106,10 +147,10 @@ def alerts_labels(**kwargs):
     None
 
     Arguments:
+    fq           => Post filter queries (you can have multiple of those)
+    query        => Query to apply to the alert list
     start_time   => Time offset at which to list alerts
     time_slice   => Length after the start time that we query
-    filter       => Filter to apply to the alert list
-    fq           => Post filter queries (you can have multiple of those)
 
     Data Block:
     None
@@ -119,28 +160,13 @@ def alerts_labels(**kwargs):
     """
     user = kwargs['user']
 
-    query = request.args.get('filter', "*")
+    query = request.args.get('query', "*")
     if not query:
         query = "*"
     start_time = request.args.get('start_time', None)
     time_slice = request.args.get('time_slice', None)
-    if time_slice and config.ui.get('read_only', False):
-        time_slice += config.ui.get('read_only_offset', "")
-    filter_queries = [x for x in request.args.getlist("fq") if x != ""]
 
-    try:
-        return make_api_response(STORAGE.get_alert_statistics(query, access_control=user['access_control'],
-                                                              fq_list=filter_queries,
-                                                              start_time=start_time,
-                                                              time_slice=time_slice,
-                                                              field_list=['label']).get('label', []))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
+    return get_stats_for_fields("label", query, start_time, time_slice, user['access_control'])
 
 
 @alert_api.route("/priorities/", methods=["GET"])
@@ -153,10 +179,10 @@ def alerts_priorities(**kwargs):
     None
 
     Arguments:
+    fq           => Post filter queries (you can have multiple of those)
+    query        => Query to apply to the alert list
     start_time   => Time offset at which to list alerts
     time_slice   => Length after the start time that we query
-    filter       => Filter to apply to the alert list
-    fq           => Post filter queries (you can have multiple of those)
 
     Data Block:
     None
@@ -166,28 +192,13 @@ def alerts_priorities(**kwargs):
     """
     user = kwargs['user']
 
-    query = request.args.get('filter', "*")
+    query = request.args.get('query', "*")
     if not query:
         query = "*"
     start_time = request.args.get('start_time', None)
     time_slice = request.args.get('time_slice', None)
-    if time_slice and config.ui.get('read_only', False):
-        time_slice += config.ui.get('read_only_offset', "")
-    filter_queries = [x for x in request.args.getlist("fq") if x != ""]
 
-    try:
-        return make_api_response(STORAGE.get_alert_statistics(query, access_control=user['access_control'],
-                                                              fq_list=filter_queries,
-                                                              start_time=start_time,
-                                                              time_slice=time_slice,
-                                                              field_list=['priority']).get('priority', []))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
+    return get_stats_for_fields("priority", query, start_time, time_slice, user['access_control'])
 
 
 @alert_api.route("/statuses/", methods=["GET"])
@@ -200,10 +211,10 @@ def alerts_statuses(**kwargs):
     None
 
     Arguments:
+    fq           => Post filter queries (you can have multiple of those)
+    query        => Query to apply to the alert list
     start_time   => Time offset at which to list alerts
     time_slice   => Length after the start time that we query
-    filter       => Filter to apply to the alert list
-    fq           => Post filter queries (you can have multiple of those)
 
     Data Block:
     None
@@ -213,28 +224,13 @@ def alerts_statuses(**kwargs):
     """
     user = kwargs['user']
 
-    query = request.args.get('filter', "*")
+    query = request.args.get('query', "*")
     if not query:
         query = "*"
     start_time = request.args.get('start_time', None)
     time_slice = request.args.get('time_slice', None)
-    if time_slice and config.ui.get('read_only', False):
-        time_slice += config.ui.get('read_only_offset', "")
-    filter_queries = [x for x in request.args.getlist("fq") if x != ""]
 
-    try:
-        return make_api_response(STORAGE.get_alert_statistics(query, access_control=user['access_control'],
-                                                              fq_list=filter_queries,
-                                                              start_time=start_time,
-                                                              time_slice=time_slice,
-                                                              field_list=['status']).get('status', []))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
+    return get_stats_for_fields("status", query, start_time, time_slice, user['access_control'])
 
 
 @alert_api.route("/list/", methods=["GET"])
@@ -247,12 +243,12 @@ def list_alerts(**kwargs):
     None
     
     Arguments:
+    fq           => Post filter queries (you can have multiple of those)
+    filter       => Filter to apply to the alert list
+    offset       => Offset at which we start giving alerts
+    rows         => Numbers of alerts to return
     start_time   => Time offset at which to list alerts
     time_slice   => Length after the start time that we query
-    offset       => Offset at which we start giving alerts
-    length       => Numbers of alerts to return
-    filter       => Filter to apply to the alert list
-    fq           => Post filter queries (you can have multiple of those)
     
     Data Block:
     None
@@ -270,22 +266,27 @@ def list_alerts(**kwargs):
     user = kwargs['user']
     
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*")
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('query', "*")
     if not query:
         query = "*"
     start_time = request.args.get('start_time', None)
     time_slice = request.args.get('time_slice', None)
     if time_slice and config.ui.get('read_only', False):
         time_slice += config.ui.get('read_only_offset', "")
-    filter_queries = [x for x in request.args.getlist("fq") if x != ""]
+    timming_filter = get_timming_filter(start_time, time_slice)
+
+    filters = [x for x in request.args.getlist("fq") if x != ""]
+    if timming_filter:
+        filters.append(timming_filter)
 
     try:
-        return make_api_response(STORAGE.list_alerts(query, start=offset, rows=length,
-                                                     access_control=user['access_control'],
-                                                     fq_list=filter_queries,
-                                                     start_time=start_time,
-                                                     time_slice=time_slice))
+        res = STORAGE.alert.search(query, offset=offset, rows=rows, fl="alert_id", sort="reporting_ts desc",
+                                   access_control=user['access_control'], filters=filters, as_obj=False)
+        res['items'] = sorted(STORAGE.alert.multiget([v['alert_id'] for v in res['items']],
+                                                     as_dictionary=False, as_obj=False),
+                              key=lambda k: k['reporting_ts'], reverse=True)
+        return make_api_response(res)
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
     except RiakError as e:
@@ -305,18 +306,19 @@ def list_grouped_alerts(field, **kwargs):
     None
 
     Arguments:
+    fq           => Post filter queries (you can have multiple of those)
+    filter       => Filter to apply to the alert list
+    no_delay     => Do not delay alerts
+    offset       => Offset at which we start giving alerts
+    rows         => Numbers of alerts to return
     start_time   => Time offset at which to list alerts
     time_slice   => Length after the start time that we query
-    offset       => Offset at which we start giving alerts
-    length       => Numbers of alerts to return
-    filter       => Filter to apply to the alert list
-    fq           => Post filter queries (you can have multiple of those)
 
     Data Block:
     None
 
     API call example:
-    /api/v3/alert/grouped/start_time/
+    /api/v3/alert/grouped/md5/
 
     Result example:
     {"total": 201,                # Total alerts found
@@ -326,26 +328,69 @@ def list_grouped_alerts(field, **kwargs):
      "start_time": "2015-05..."   # UTC timestamp for future query (ISO Format)
     }
     """
+    def get_dict_item(parent, cur_item):
+        if "." in cur_item:
+            key, remainder = cur_item.split(".", 1)
+            return get_dict_item(parent.get(key, {}), remainder)
+        else:
+            return parent[cur_item]
+
     user = kwargs['user']
 
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*")
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('query', "*")
     if not query:
         query = "*"
     start_time = request.args.get('start_time', None)
+    if not start_time and "no_delay" not in request.args:
+        start_time = now_as_iso(ALERT_OFFSET)
     time_slice = request.args.get('time_slice', None)
-    if time_slice and config.ui.get('read_only', False):
-        time_slice += config.ui.get('read_only_offset', "")
-    filter_queries = [x for x in request.args.getlist("fq") if x != ""]
+    if time_slice and config.ui.read_only:
+        time_slice += config.ui.read_only_offset
+    timming_filter = get_timming_filter(start_time, time_slice)
+
+    filters = [x for x in request.args.getlist("fq") if x != ""]
+    if timming_filter:
+        filters.append(timming_filter)
+    filters.append(f"{field}:*")
 
     try:
-        return make_api_response(STORAGE.list_grouped_alerts(query, field, start=offset, rows=length,
-                                                             start_time=start_time,
-                                                             time_slice=time_slice,
-                                                             access_control=user['access_control'],
-                                                             fq_list=filter_queries,
-                                                             time_offset=-300.0))
+        res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
+                                           group_sort="reporting_ts desc", access_control=user['access_control'],
+                                           filters=filters, fl=f"alert_id,{field}", as_obj=False)
+        alert_keys = []
+        hash_list = []
+        hint_list = []
+        group_count = {}
+        counted_total = 0
+        for item in res['items']:
+            group_count[item['value']] = item['total']
+            counted_total += item['total']
+            data = item['items'][0]
+            alert_keys.append(data['alert_id'])
+            if field in ['file.md5', 'file.sha1', 'file.sha256']:
+                hash_list.append(get_dict_item(data, field))
+
+        alerts = sorted(STORAGE.alert.multiget(alert_keys, as_dictionary=False, as_obj=False),
+                        key=lambda k: k['reporting_ts'], reverse=True)
+
+        if hash_list:
+            hint_resp = STORAGE.alert.grouped_search(field, query=" OR ".join([f"{field}:{h}" for h in hash_list]),
+                                                     fl=field, rows=rows, filters=["owner:*"],
+                                                     access_control=user['access_control'], as_obj=False)
+            for hint_item in hint_resp['items']:
+                hint_list.append(get_dict_item(hint_item['items'][0], field))
+
+        for a in alerts:
+            a['group_count'] = group_count[get_dict_item(a, field)]
+            if get_dict_item(a, field) in hint_list and not a.get('owner', None):
+                a['hint_owner'] = True
+
+        res['items'] = alerts
+        res['start_time'] = start_time
+        res['counted_total'] = counted_total
+        return make_api_response(res)
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
     except RiakError as e:
@@ -355,9 +400,9 @@ def list_grouped_alerts(field, **kwargs):
             raise
 
 
-@alert_api.route("/label/<alert_id>/<labels>/", methods=["GET"])
+@alert_api.route("/label/<alert_id>/", methods=["POST"])
 @api_login(required_priv=['W'], allow_readonly=False)
-def add_labels(alert_id, labels, **kwargs):
+def add_labels(alert_id, **kwargs):
     """
     Add one or multiple labels to a given alert
 
@@ -379,23 +424,28 @@ def add_labels(alert_id, labels, **kwargs):
      "event_id": 0}
     """
     user = kwargs['user']
-    labels = set(labels.upper().split(","))
+    try:
+        labels = set(request.json)
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    alert = STORAGE.get_alert(alert_id)
+    alert = STORAGE.alert.get(alert_id, as_obj=False)
 
     if not alert:
-        return make_api_response({"success": False, "event_id": None},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
+        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
 
     if not Classification.is_accessible(user['classification'], alert['classification']):
         return make_api_response("", "You are not allowed to see this alert...", 403)
 
     cur_label = set(alert.get('label', []))
-    if labels.difference(labels.intersection(cur_label)):
-        cur_label = cur_label.union(labels)
-        alert['label'] = list(cur_label)
-        STORAGE.save_alert(alert_id, alert)
+    label_diff = labels.difference(labels.intersection(cur_label))
+    if label_diff:
+        if config.datastore.use_datastore_update:
+            STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND, 'label', lbl) for lbl in label_diff])
+        else:
+            cur_label = cur_label.union(labels)
+            alert['label'] = list(cur_label)
+            STORAGE.alert.save(alert_id, alert)
         return make_api_response({"success": True})
     else:
         return make_api_response({"success": False},

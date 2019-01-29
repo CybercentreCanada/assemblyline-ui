@@ -2,6 +2,7 @@ import random
 
 from assemblyline.common.security import get_password_hash
 from assemblyline.common import forge
+from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.emptyresult import EmptyResult
 from assemblyline.odm.models.error import Error
 from assemblyline.odm.models.file import File
@@ -97,6 +98,7 @@ for fh in file_hashes:
         print(f"\t{key}")
 
 print("\nCreating 10 Submissions...")
+submissions = []
 for x in range(10):
     s = random_model_obj(Submission)
     s.results = random.choices(result_keys, k=random.randint(5, 15))
@@ -107,7 +109,16 @@ for x in range(10):
     for f in s.files:
         f.sha256 = random.choice(s_file_hashes)
     ds.submission.save(s.sid, s)
+    submissions.append({"sid": s.sid, "file": file_hashes[0]})
     print(f"\t{s.sid}")
 
+print("\nCreating 50 Alerts...")
+for x in range(50):
+    submission = random.choice(submissions)
+    a = random_model_obj(Alert)
+    a.sha256 = submission['file']
+    a.sid = submission['sid']
+    ds.alert.save(a.alert_id, a)
+    print(f"\t{a.alert_id}")
 
 print("\nDone.")

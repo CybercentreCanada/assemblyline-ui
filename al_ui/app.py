@@ -5,7 +5,7 @@ from flask import Flask
 from al_ui.api.base import api
 from al_ui.api.v3 import apiv3
 from al_ui.api.v4 import apiv4
-# from al_ui.api.v3.alert import alert_api
+from al_ui.api.v4.alert import alert_api
 from al_ui.api.v3.authentication import auth_api as auth_v3_api
 from al_ui.api.v4.authentication import auth_api
 # from al_ui.api.v3.bundle import bundle_api
@@ -57,7 +57,7 @@ app.register_blueprint(apiv3)
 app.register_blueprint(apiv4)
 app.register_blueprint(auth_api)
 app.register_blueprint(auth_v3_api)
-# app.register_blueprint(alert_api)
+app.register_blueprint(alert_api)
 # app.register_blueprint(bundle_api)
 # app.register_blueprint(dashboard_api)
 app.register_blueprint(errors)
