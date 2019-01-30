@@ -363,10 +363,8 @@ def list_grouped_alerts(field, **kwargs):
         hash_list = []
         hint_list = []
         group_count = {}
-        counted_total = 0
         for item in res['items']:
             group_count[item['value']] = item['total']
-            counted_total += item['total']
             data = item['items'][0]
             alert_keys.append(data['alert_id'])
             if field in ['file.md5', 'file.sha1', 'file.sha256']:
@@ -389,7 +387,6 @@ def list_grouped_alerts(field, **kwargs):
 
         res['items'] = alerts
         res['start_time'] = start_time
-        res['counted_total'] = counted_total
         return make_api_response(res)
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
