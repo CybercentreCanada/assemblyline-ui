@@ -118,6 +118,7 @@ for x in range(50):
     a = random_model_obj(Alert)
     a.sha256 = submission['file']
     a.sid = submission['sid']
+    a.owner = random.choice(['admin', 'user', 'other', None])
     ds.alert.save(a.alert_id, a)
     print(f"\t{a.alert_id}")
 
