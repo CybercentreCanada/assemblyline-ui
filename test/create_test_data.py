@@ -1,3 +1,4 @@
+import os
 import random
 
 from assemblyline.common.security import get_password_hash
@@ -14,6 +15,7 @@ from assemblyline.odm.randomizer import random_model_obj, SERVICES
 
 print("Loading datastore...")
 ds = forge.get_datastore()
+fs = forge.get_filestore()
 config = forge.get_config()
 
 print("\nCreating user object...")
@@ -45,6 +47,16 @@ for x in range(20):
     f = random_model_obj(File)
     file_hashes.append(f.sha256)
     ds.file.save(f.sha256, f)
+
+    temp_file = f'/tmp/{f.sha256}'
+    try:
+        os.unlink(temp_file)
+    except Exception:
+        pass
+    with open(temp_file, 'wb') as fh:
+        fh.write(f.sha256.encode("utf-8"))
+    fs.put(temp_file, f.sha256)
+
     print(f"\t{f.sha256}")
 
 print("\nCreating 6 Results per file...")

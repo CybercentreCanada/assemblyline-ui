@@ -80,7 +80,7 @@ def get_alert(alert_key, **kwargs):
     None
 
     API call example:
-    /api/v3/alert/1234567890/
+    /api/v4/alert/1234567890/
 
     Result example:
     {
@@ -241,7 +241,7 @@ def list_alerts(**kwargs):
     None
 
     API call example:
-    /api/v3/alert/list/
+    /api/v4/alert/list/
 
     Result example:
     {"total": 201,                # Total alerts found
@@ -303,7 +303,7 @@ def list_grouped_alerts(field, **kwargs):
     None
 
     API call example:
-    /api/v3/alert/grouped/md5/
+    /api/v4/alert/grouped/md5/
 
     Result example:
     {"total": 201,                # Total alerts found
@@ -396,7 +396,7 @@ def add_labels(alert_id, **kwargs):
     ["LBL1", "LBL2"]   => List of labels to add as comma separated string
 
     API call example:
-    /api/v3/alert/label/12345...67890/
+    /api/v4/alert/label/12345...67890/
 
     Result example:
     {"success": true}
@@ -444,7 +444,7 @@ def add_labels_by_batch(**kwargs):
     ["LBL1", "LBL2"]   => List of labels to add as comma separated string
 
     API call example:
-    /api/v3/alert/label/batch/?q=protocol:SMTP
+    /api/v4/alert/label/batch/?q=protocol:SMTP
 
     Result example:
     { "success": true }
@@ -487,7 +487,7 @@ def change_priority(alert_id, **kwargs):
     None
 
     API call example:
-    /api/v3/alert/priority/12345...67890/
+    /api/v4/alert/priority/12345...67890/
 
     Result example:
     {"success": true}
@@ -537,7 +537,7 @@ def change_priority_by_batch(**kwargs):
     "HIGH"         => New priority for the alert
 
     API call example:
-    /api/v3/alert/priority/batch/?q=al_av:*
+    /api/v4/alert/priority/batch/?q=al_av:*
 
     Result example:
     {"success": true}
@@ -583,7 +583,7 @@ def change_status(alert_id, **kwargs):
     "MALICIOUS"      => New status for the alert
 
     API call example:
-    /api/v3/alert/status/12345...67890/
+    /api/v4/alert/status/12345...67890/
 
     Result example:
     {"success": true}
@@ -633,7 +633,7 @@ def change_status_by_batch(**kwargs):
     "MALICIOUS"      => New status for the alert
 
     API call example:
-    /api/v3/alert/status/batch/MALICIOUS/?q=al_av:*
+    /api/v4/alert/status/batch/MALICIOUS/?q=al_av:*
 
     Result example:
     {"success": true}
@@ -679,7 +679,7 @@ def take_ownership(alert_id, **kwargs):
     None
 
     API call example:
-    /api/v3/alert/ownership/12345...67890/
+    /api/v4/alert/ownership/12345...67890/
 
     Result example:
     {"success": true}
@@ -725,7 +725,7 @@ def take_ownership_by_batch(**kwargs):
     None
 
     API call example:
-    /api/v3/alert/ownership/batch/?q=alert_id:7b*
+    /api/v4/alert/ownership/batch/?q=alert_id:7b*
 
     Result example:
     { "success": true }
@@ -767,7 +767,7 @@ def find_related_alert_ids(**kwargs):
     None
 
     API call example:
-    /api/v3/alert/related/?q=file.sha256:123456...ABCDEF
+    /api/v4/alert/related/?q=file.sha256:123456...ABCDEF
 
     Result example:
     ["1"]

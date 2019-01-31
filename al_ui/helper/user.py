@@ -167,7 +167,7 @@ def load_user_settings(user):
         "classification": Classification.default_user_classification(user)}).as_primitives()
 
     options = STORAGE.user_options.get(user['uname'], as_obj=False)
-    srv_list = [x for x in STORAGE.list_services(as_obj=False) if x['enabled']]
+    srv_list = [x for x in STORAGE.list_all_services(as_obj=False, full=True) if x['enabled']]
     if not options:
         def_srv_list = None
         options = default_settings

@@ -17,67 +17,97 @@ config = forge.get_config()
 context = forge.get_ui_context()
 encode_file = context.encode_file
 
-FILTER_RAW = ''.join([(len(repr(chr(x))) == 3) and chr(x) or chr(x) == '\\' and chr(x) or chr(x) == "\x09" and chr(x)
-                      or chr(x) == "\x0d" and chr(x) or chr(x) == "\x0a" and chr(x) or '.' for x in range(256)])
+FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
 SUB_API = 'file'
-file_api = make_subapi_blueprint(SUB_API)
+file_api = make_subapi_blueprint(SUB_API, api_version=4)
 file_api._doc = "Perform operations on files"
 
 
-@file_api.route("/download/<srl>/", methods=["GET"])
+@file_api.route("/ascii/<sha256>/", methods=["GET"])
+@api_login()
+def get_file_ascii(sha256, **kwargs):
+    """
+    Return the ascii values for a file where ascii chars are replaced by DOTs.
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <THE ASCII FILE>
+    """
+
+    user = kwargs['user']
+    file_obj = STORAGE.file.get(sha256)
+
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    if user and Classification.is_accessible(user['classification'], file_obj.classification):
+        with forge.get_filestore() as f_transport:
+            data = f_transport.get(sha256)
+
+        if not data:
+            return make_api_response({}, "This file was not found in the system.", 404)
+
+        return make_api_response(data.translate(FILTER_ASCII).decode())
+    else:
+        return make_api_response({}, "You are not allowed to view this file.", 403)
+
+
+@file_api.route("/download/<sha256>/", methods=["GET"])
 @api_login(required_priv=['R'], check_xsrf_token=False)
-def download_file(srl, **kwargs):
+def download_file(sha256, **kwargs):
     """
     Download the file using the default encoding method. This api
     will force the browser in download mode.
     
     Variables: 
-    srl       => A resource locator for the file (sha256)
+    sha256       => A resource locator for the file (sha256)
     
     Arguments: 
     name      => Name of the file to download
     format    => Format to encode the file in
-    password  => Password of the password protected zip
     
     Data Block:
     None
 
     API call example:
-    /api/v3/file/download/123456...654321/
+    /api/v4/file/download/123456...654321/
 
     Result example:
     <THE FILE BINARY ENCODED IN SPECIFIED FORMAT>
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.file.get(sha256)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj.classification):
         params = load_user_settings(user)
     
-        name = request.args.get('name', srl)
-        if name == "": 
-            name = srl
-        else:
-            name = os.path.basename(name)
+        name = request.args.get('name', sha256) or sha256
+        name = os.path.basename(name)
         name = safe_str(name)
 
         file_format = request.args.get('format', params['download_encoding'])
         if file_format == "raw" and not ALLOW_RAW_DOWNLOADS:
             return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
 
-        password = request.args.get('password', None)
-        
         with forge.get_filestore() as f_transport:
-            data = f_transport.get(srl)
+            data = f_transport.get(sha256)
 
         if not data:
             return make_api_response({}, "The file was not found in the system.", 404)
 
-        data, error, already_encoded = encode_file(data, file_format, name, password)
+        data, error, already_encoded = encode_file(data, file_format, name)
         if error:
             return make_api_response({}, error['text'], error['code'])
 
@@ -89,14 +119,14 @@ def download_file(srl, **kwargs):
         return make_api_response({}, "You are not allowed to download this file.", 403)
 
 
-@file_api.route("/hex/<srl>/", methods=["GET"])
+@file_api.route("/hex/<sha256>/", methods=["GET"])
 @api_login()
-def get_file_hex(srl, **kwargs):
+def get_file_hex(sha256, **kwargs):
     """
     Returns the file hex representation
     
     Variables: 
-    srl       => A resource locator for the file (sha256)
+    sha256       => A resource locator for the file (sha256)
     
     Arguments: 
     None
@@ -105,20 +135,20 @@ def get_file_hex(srl, **kwargs):
     None
 
     API call example:
-    /api/v3/file/hex/123456...654321/
+    /api/v4/file/hex/123456...654321/
 
     Result example:
     <THE FILE HEX REPRESENTATION>
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.file.get(sha256)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
     
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj.classification):
         with forge.get_filestore() as f_transport:
-            data = f_transport.get(srl)
+            data = f_transport.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -128,14 +158,14 @@ def get_file_hex(srl, **kwargs):
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
 
-@file_api.route("/strings/<srl>/", methods=["GET"])
+@file_api.route("/strings/<sha256>/", methods=["GET"])
 @api_login()
-def get_file_strings(srl, **kwargs):
+def get_file_strings(sha256, **kwargs):
     """
     Return all strings in a given file
 
     Variables:
-    srl       => A resource locator for the file (sha256)
+    sha256       => A resource locator for the file (sha256)
 
     Arguments:
     len       => Minimum length for a string
@@ -148,78 +178,38 @@ def get_file_strings(srl, **kwargs):
     """
     user = kwargs['user']
     hlen = request.args.get('len', "6")
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.file.get(sha256)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj.classification):
         with forge.get_filestore() as f_transport:
-            data = f_transport.get(srl)
+            data = f_transport.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
-        # Ascii strings
+        # Ascii strings (we use decode with replace on to create delimiters)
         pattern = "[\x1f-\x7e]{%s,}" % hlen
-        string_list = re.findall(pattern, data)
+        string_list = re.findall(pattern, data.decode("ascii", errors="replace"))
 
         # UTF-16 strings
-        try:
-            string_list += re.findall(pattern, data.decode("utf-16", errors="ignore"))
-        except UnicodeDecodeError:
-            pass
+        string_list += re.findall(pattern, data.decode("utf-16", errors="replace"))
 
         return make_api_response("\n".join(string_list))
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
 
-@file_api.route("/raw/<srl>/", methods=["GET"])
-@api_login()
-def get_file_raw(srl, **kwargs):
-    """
-    Return the raw values for a file where non-utf8 chars are replaced by DOTs.
-
-    Variables:
-    srl       => A resource locator for the file (sha256)
-
-    Arguments:
-    None
-
-    Data Block:
-    None
-
-    Result example:
-    <THE RAW FILE>
-    """
-
-    user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
-
-    if not file_obj:
-        return make_api_response({}, "The file was not found in the system.", 404)
-
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(srl)
-
-        if not data:
-            return make_api_response({}, "This file was not found in the system.", 404)
-
-        return make_api_response(data.translate(FILTER_RAW))
-    else:
-        return make_api_response({}, "You are not allowed to view this file.", 403)
-
-
-@file_api.route("/children/<srl>/", methods=["GET"])
+@file_api.route("/children/<sha256>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_file_children(srl, **kwargs):
+def get_file_children(sha256, **kwargs):
     """
     Get the list of children files for a given file
 
     Variables:
-    srl       => A resource locator for the file (sha256)
+    sha256       => A resource locator for the file (sha256)
 
     Arguments:
     None
@@ -228,35 +218,35 @@ def get_file_children(srl, **kwargs):
     None
 
     API call example:
-    /api/v3/file/children/123456...654321/
+    /api/v4/file/children/123456...654321/
 
     Result example:
     [                           # List of children
      {"name": "NAME OF FILE",       # Name of the children
-      "srl": "123..DEF"},           # SRL of the children (SHA256)
+      "sha256": "123..DEF"},           # SRL of the children (SHA256)
     ]
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.get_file(sha256)
 
     if file_obj:
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-            return make_api_response(STORAGE.list_file_childrens(srl, access_control=user["access_control"]))
+            return make_api_response(STORAGE.list_file_childrens(sha256, access_control=user["access_control"]))
         else:
             return make_api_response({}, "You are not allowed to view this file.", 403)
     else:
         return make_api_response({}, "This file does not exists.", 404)
 
 
-@file_api.route("/info/<srl>/", methods=["GET"])
+@file_api.route("/info/<sha256>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_file_information(srl, **kwargs):
+def get_file_information(sha256, **kwargs):
     """
     Get information about the file like:
         Hashes, size, frequency count, etc...
 
     Variables:
-    srl       => A resource locator for the file (sha256)
+    sha256       => A resource locator for the file (sha256)
 
     Arguments:
     None
@@ -265,7 +255,7 @@ def get_file_information(srl, **kwargs):
     None
 
     API call example:
-    /api/v3/file/info/123456...654321/
+    /api/v4/file/info/123456...654321/
 
     Result example:
     {                                           # File information block
@@ -287,7 +277,7 @@ def get_file_information(srl, **kwargs):
     }
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if file_obj:
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
@@ -298,14 +288,14 @@ def get_file_information(srl, **kwargs):
         return make_api_response({}, "This file does not exists.", 404)
 
 
-@file_api.route("/result/<srl>/", methods=["GET"])
+@file_api.route("/result/<sha256>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_file_results(srl, **kwargs):
+def get_file_results(sha256, **kwargs):
     """
     Get the all the file results of a specific file.
     
     Variables:
-    srl         => A resource locator for the file (SHA256) 
+    sha256         => A resource locator for the file (SHA256)
     
     Arguments: 
     None
@@ -314,7 +304,7 @@ def get_file_results(srl, **kwargs):
     None
 
     API call example:
-    /api/v3/file/result/123456...654321/
+    /api/v4/file/result/123456...654321/
     
     Result example:
     {"file_info": {},            # File info Block
@@ -327,7 +317,7 @@ def get_file_results(srl, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.get_file(sha256)
 
     if not file_obj:
         return make_api_response({}, "This file does not exists", 404)
@@ -335,10 +325,10 @@ def get_file_results(srl, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         output = {"file_info": {}, "results": [], "tags": []}
         with concurrent.futures.ThreadPoolExecutor(4) as executor:
-            res_ac = executor.submit(STORAGE.list_file_active_keys, srl, user["access_control"])
-            res_parents = executor.submit(STORAGE.list_file_parents, srl, user["access_control"])
-            res_children = executor.submit(STORAGE.list_file_childrens, srl, user["access_control"])
-            res_meta = executor.submit(STORAGE.get_file_submission_meta, srl, user["access_control"])
+            res_ac = executor.submit(STORAGE.list_file_active_keys, sha256, user["access_control"])
+            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"])
+            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"])
+            res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256, user["access_control"])
 
         active_keys, alternates = res_ac.results()
         output['parents'] = res_parents.results()
@@ -377,14 +367,14 @@ def get_file_results(srl, **kwargs):
         return make_api_response({}, "You are not allowed to view this file", 403)
 
 
-@file_api.route("/result/<srl>/<service>/", methods=["GET"])
+@file_api.route("/result/<sha256>/<service>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_file_results_for_service(srl, service, **kwargs):
+def get_file_results_for_service(sha256, service, **kwargs):
     """
     Get the all the file results of a specific file and a specific query.
 
     Variables:
-    srl         => A resource locator for the file (SHA256)
+    sha256         => A resource locator for the file (SHA256)
 
     Arguments:
     all         => if all argument is present, it will return all versions
@@ -394,14 +384,14 @@ def get_file_results_for_service(srl, service, **kwargs):
     None
 
     API call example:
-    /api/v3/file/result/123456...654321/service_name/
+    /api/v4/file/result/123456...654321/service_name/
 
     Result example:
     {"file_info": {},            # File info Block
      "results": {}}              # Full result list for the service
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.get_file(sha256)
 
     args = [("fl", "_yz_rk"),
             ("sort", "created desc")]
@@ -414,7 +404,7 @@ def get_file_results_for_service(srl, service, **kwargs):
         return make_api_response([], "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        res = STORAGE.direct_search("result", "_yz_rk:%s.%s*" % (srl, service), args,
+        res = STORAGE.direct_search("result", "_yz_rk:%s.%s*" % (sha256, service), args,
                                     __access_control__=user["access_control"])['response']['docs']
         keys = [k["_yz_rk"] for k in res]
 
@@ -429,14 +419,14 @@ def get_file_results_for_service(srl, service, **kwargs):
         return make_api_response([], "You are not allowed to view this file", 403)
 
 
-@file_api.route("/score/<srl>/", methods=["GET"])
+@file_api.route("/score/<sha256>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_file_score(srl, **kwargs):
+def get_file_score(sha256, **kwargs):
     """
     Get the score of the latest service run for a given file.
 
     Variables:
-    srl         => A resource locator for the file (SHA256)
+    sha256         => A resource locator for the file (SHA256)
 
     Arguments:
     None
@@ -445,7 +435,7 @@ def get_file_score(srl, **kwargs):
     None
 
     API call example:
-    /api/v3/file/score/123456...654321/
+    /api/v4/file/score/123456...654321/
 
     Result example:
     {"file_info": {},            # File info Block
@@ -453,7 +443,7 @@ def get_file_score(srl, **kwargs):
      "score": 0}                 # Latest score for the file
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(srl)
+    file_obj = STORAGE.get_file(sha256)
 
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)
@@ -470,7 +460,7 @@ def get_file_score(srl, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         score = 0
         keys = []
-        res = STORAGE.direct_search("result", "_yz_rk:%s*" % srl, args,
+        res = STORAGE.direct_search("result", "_yz_rk:%s*" % sha256, args,
                                     __access_control__=user["access_control"])
         docs = res['grouped']['response.service_name']['doclist']['docs']
         for d in docs:
