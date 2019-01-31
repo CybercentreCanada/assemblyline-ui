@@ -11,17 +11,12 @@ from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, config
 
-DATABASE_NUM = 4
-SUB_API = 'alert'
-QUEUE_PRIORITY = -2
-
+ALERT_OFFSET = -300.0
 Classification = forge.get_classification()
+SUB_API = 'alert'
 
 alert_api = make_subapi_blueprint(SUB_API, api_version=4)
 alert_api._doc = "Perform operations on alerts"
-
-ALERT_OFFSET = -300.0
-USE_DS_UPDATE = True
 
 
 def get_timming_filter(tc_start, tc):
