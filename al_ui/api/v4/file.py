@@ -24,6 +24,82 @@ file_api = make_subapi_blueprint(SUB_API, api_version=4)
 file_api._doc = "Perform operations on files"
 
 
+def get_file_submission_meta(sha256, access_control=None):
+    query = f"files.sha256:{sha256} OR results:{sha256}*"
+    fields = config.ui.statistics.submission
+
+    with concurrent.futures.ThreadPoolExecutor(len(fields)) as executor:
+        res = {field: executor.submit(STORAGE.submission.field_analysis,
+                                      field,
+                                      query=query,
+                                      limit=100,
+                                      access_control=access_control)
+               for field in fields}
+
+    return {k: v.result() for k, v in res.items()}
+
+
+def list_file_active_keys(sha256, access_control=None):
+    query = f"{STORAGE.ds.ID}:{sha256}*"
+
+    item_list = [x for x in STORAGE.result.stream_search(query, access_control=access_control, as_obj=False)]
+
+    item_list.sort(key=lambda k: k["created"], reverse=True)
+
+    active_found = []
+    active_keys = []
+    alternates = []
+    for item in item_list:
+        if item['response']['service_name'] not in active_found:
+            active_keys.append(item[STORAGE.ds.ID])
+            active_found.append(item['response']['service_name'])
+        else:
+            alternates.append(item)
+
+    return active_keys, alternates
+
+
+def list_file_childrens(sha256, access_control=None):
+    query = f'{STORAGE.ds.ID}:{sha256}* AND response.extracted.sha256:*'
+    resp = STORAGE.result.grouped_search("response.service_name", query=query, fl=STORAGE.ds.ID,
+                                         sort="created desc", access_control=access_control,
+                                         as_obj=False)
+
+    result_keys = [x['items'][0][STORAGE.ds.ID] for x in resp['items']]
+
+    output = []
+    processed_sha256 = []
+    for r in STORAGE.result.multiget(result_keys, as_dictionary=False, as_obj=False):
+        for extracted in r['response']['extracted']:
+            if extracted['sha256'] not in processed_sha256:
+                processed_sha256.append(extracted['sha256'])
+                output.append({
+                    'name': extracted['name'],
+                    'sha256': extracted['sha256']
+                })
+    return output
+
+
+def list_file_parents(sha256, access_control=None):
+    query = f"response.extracted.sha256:{sha256}"
+    processed_sha256 = []
+    output = []
+
+    response = STORAGE.result.search(query, fl=STORAGE.ds.ID, sort="created desc",
+                                     access_control=access_control, as_obj=False)
+    for p in response['items']:
+        key = p[STORAGE.ds.ID]
+        sha256 = key[:64]
+        if sha256 not in processed_sha256:
+            output.append(key)
+            processed_sha256.append(sha256)
+
+        if len(processed_sha256) >= 10:
+            break
+
+    return output
+
+
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
 @api_login()
 def get_file_ascii(sha256, **kwargs):
@@ -227,11 +303,11 @@ def get_file_children(sha256, **kwargs):
     ]
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(sha256)
+    file_obj = STORAGE.file.get(sha256)
 
     if file_obj:
-        if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-            return make_api_response(STORAGE.list_file_childrens(sha256, access_control=user["access_control"]))
+        if user and Classification.is_accessible(user['classification'], file_obj.classification):
+            return make_api_response(STORAGE.list_file_childrens(sha256, access_control=user['access_control']))
         else:
             return make_api_response({}, "You are not allowed to view this file.", 403)
     else:
@@ -317,7 +393,7 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if not file_obj:
         return make_api_response({}, "This file does not exists", 404)
@@ -325,20 +401,20 @@ def get_file_results(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         output = {"file_info": {}, "results": [], "tags": []}
         with concurrent.futures.ThreadPoolExecutor(4) as executor:
-            res_ac = executor.submit(STORAGE.list_file_active_keys, sha256, user["access_control"])
-            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"])
-            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"])
-            res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256, user["access_control"])
+            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
+            res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
+            res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
+            res_meta = executor.submit(get_file_submission_meta, sha256, user["access_control"])
 
-        active_keys, alternates = res_ac.results()
-        output['parents'] = res_parents.results()
-        output['childrens'] = res_children.results()
-        output['metadata'] = res_meta.results()
+        active_keys, alternates = res_ac.result()
+        output['parents'] = res_parents.result()
+        output['childrens'] = res_children.result()
+        output['metadata'] = res_meta.result()
 
         output['file_info'] = file_obj
         output['results'] = [] 
         output['alternates'] = {}
-        res = STORAGE.get_results(active_keys)
+        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
         for r in res:
             res = format_result(user['classification'], r, file_obj['classification'])
             if res:
@@ -347,7 +423,7 @@ def get_file_results(sha256, **kwargs):
         for i in alternates:
             if i['response']['service_name'] not in output["alternates"]:
                 output["alternates"][i['response']['service_name']] = []
-            i['response']['service_version'] = i['_yz_rk'].split(".", 3)[2].replace("_", ".")
+            i['response']['service_version'] = i[STORAGE.ds.ID].split(".", 3)[2].replace("_", ".")
             output["alternates"][i['response']['service_name']].append(i)
         
         output['errors'] = [] 
