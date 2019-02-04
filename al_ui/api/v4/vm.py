@@ -118,7 +118,7 @@ def list_virtual_machine(**_):
     """
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
+    query = request.args.get('query', "id:*")
 
     try:
         return make_api_response(STORAGE.vm.search(query, offset=offset, rows=rows, as_obj=False))

@@ -236,7 +236,7 @@ def list_workflows(**kwargs):
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', f"{STORAGE.ds.ID}:*")
+    query = request.args.get('query', "id:*")
     
     try:
         return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=rows,

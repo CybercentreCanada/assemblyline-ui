@@ -40,7 +40,7 @@ def get_file_submission_meta(sha256, access_control=None):
 
 
 def list_file_active_keys(sha256, access_control=None):
-    query = f"{STORAGE.ds.ID}:{sha256}*"
+    query = f"id:{sha256}*"
 
     item_list = [x for x in STORAGE.result.stream_search(query, access_control=access_control, as_obj=False)]
 
@@ -51,7 +51,7 @@ def list_file_active_keys(sha256, access_control=None):
     alternates = []
     for item in item_list:
         if item['response']['service_name'] not in active_found:
-            active_keys.append(item[STORAGE.ds.ID])
+            active_keys.append(item['id'])
             active_found.append(item['response']['service_name'])
         else:
             alternates.append(item)
@@ -60,12 +60,12 @@ def list_file_active_keys(sha256, access_control=None):
 
 
 def list_file_childrens(sha256, access_control=None):
-    query = f'{STORAGE.ds.ID}:{sha256}* AND response.extracted.sha256:*'
-    resp = STORAGE.result.grouped_search("response.service_name", query=query, fl=STORAGE.ds.ID,
+    query = 'id:{sha256}* AND response.extracted.sha256:*'
+    resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id',
                                          sort="created desc", access_control=access_control,
                                          as_obj=False)
 
-    result_keys = [x['items'][0][STORAGE.ds.ID] for x in resp['items']]
+    result_keys = [x['items'][0]['id'] for x in resp['items']]
 
     output = []
     processed_sha256 = []
@@ -85,10 +85,10 @@ def list_file_parents(sha256, access_control=None):
     processed_sha256 = []
     output = []
 
-    response = STORAGE.result.search(query, fl=STORAGE.ds.ID, sort="created desc",
+    response = STORAGE.result.search(query, fl='id', sort="created desc",
                                      access_control=access_control, as_obj=False)
     for p in response['items']:
-        key = p[STORAGE.ds.ID]
+        key = p['id']
         sha256 = key[:64]
         if sha256 not in processed_sha256:
             output.append(key)
@@ -423,7 +423,7 @@ def get_file_results(sha256, **kwargs):
         for i in alternates:
             if i['response']['service_name'] not in output["alternates"]:
                 output["alternates"][i['response']['service_name']] = []
-            i['response']['service_version'] = i[STORAGE.ds.ID].split(".", 3)[2].replace("_", ".")
+            i['response']['service_version'] = i['id'].split(".", 3)[2].replace("_", ".")
             output["alternates"][i['response']['service_name']].append(i)
         
         output['errors'] = [] 
