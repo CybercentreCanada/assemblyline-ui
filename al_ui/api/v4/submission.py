@@ -14,7 +14,7 @@ Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'submission'
-submission_api = make_subapi_blueprint(SUB_API)
+submission_api = make_subapi_blueprint(SUB_API, api_version=4)
 submission_api._doc = "Perform operations on system submissions"
 
 
