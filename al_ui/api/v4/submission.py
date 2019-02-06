@@ -1,8 +1,10 @@
 
 import time
 
+import json
+
+from assemblyline.common.classification import InvalidClassification
 from flask import request
-from riak import RiakError
 
 from assemblyline.common import forge
 from assemblyline.datastore import SearchException
@@ -39,30 +41,32 @@ def delete_submission(sid, **kwargs):
     {success: true}
     """
     user = kwargs['user']
-    submission = STORAGE.get_submission(sid)
-    
-    if submission and user \
-            and Classification.is_accessible(user['classification'], submission['classification']) \
-            and (submission['submission']['submitter'] == user['uname'] or user['is_admin']):
+    submission = STORAGE.submission.get(sid, as_obj=False)
+
+    if not submission:
+        return make_api_response("", f"There are not submission with sid: {sid}", 404)
+
+    if Classification.is_accessible(user['classification'], submission['classification']) \
+            and (submission['params']['submitter'] == user['uname'] or user['is_admin']):
         with forge.get_filestore() as f_transport:
-            STORAGE.delete_submission_tree(sid, transport=f_transport)
-        STORAGE.commit_index('submission')
+            STORAGE.delete_submission_tree(sid, Classification, transport=f_transport)
+        STORAGE.submission.commit()
         return make_api_response({"success": True})
     else:
         return make_api_response("", "Your are not allowed to delete this submission.", 403)
 
 
 # noinspection PyBroadException
-@submission_api.route("/<sid>/file/<srl>/", methods=["GET", "POST"])
+@submission_api.route("/<sid>/file/<sha256>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def get_file_submission_results(sid, srl, **kwargs):
+def get_file_submission_results(sid, sha256, **kwargs):
     """
     Get the all the results and errors of a specific file
     for a specific Submission ID
     
     Variables:
     sid         => Submission ID to get the result for
-    srl         => Resource locator to get the result for
+    sha256         => Resource locator to get the result for
     
     Arguments (POST only): 
     extra_result_keys   =>  List of extra result keys to get
@@ -80,7 +84,7 @@ def get_file_submission_results(sid, srl, **kwargs):
     user = kwargs['user']
     
     # Check if submission exist
-    data = STORAGE.get_submission(sid)
+    data = STORAGE.submission.get(sid, as_obj=False)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
@@ -104,12 +108,13 @@ def get_file_submission_results(sid, srl, **kwargs):
         err_keys = list(set(err_keys))
     
         # Get File, results and errors
-        temp_file = STORAGE.get_file(srl)
+        temp_file = STORAGE.file.get(sha256, as_obj=False)
         if not Classification.is_accessible(user['classification'], temp_file['classification']):
             return make_api_response("", "You are not allowed to view the data of this file", 403)
         output['file_info'] = temp_file
         
-        temp_results = STORAGE.get_results(set([x for x in res_keys if x.startswith(srl)]))
+        temp_results = STORAGE.result.multiget([x for x in res_keys if x.startswith(sha256)],
+                                               as_obj=False, as_dictionary=False)
         results = []
         for r in temp_results:
             r = format_result(user['classification'], r, temp_file['classification'])
@@ -117,8 +122,10 @@ def get_file_submission_results(sid, srl, **kwargs):
                 results.append(r)
         output['results'] = results 
 
-        output['errors'] = STORAGE.get_errors(set([x for x in err_keys if x.startswith(srl)]))
-        output['metadata'] = STORAGE.get_file_submission_meta(srl, user["access_control"])
+        output['errors'] = STORAGE.error.multiget([x for x in err_keys if x.startswith(sha256)],
+                                                  as_obj=False, as_dictionary=False)
+        output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
+                                                              user["access_control"])
         
         # Generate tag list
         temp = {}
@@ -130,7 +137,7 @@ def get_file_submission_results(sid, srl, **kwargs):
             except Exception:
                 pass
         
-        output["tags"] = temp.values()
+        output["tags"] = list(temp.values())
         
         return make_api_response(output)
     else:
@@ -159,7 +166,7 @@ def get_file_tree(sid, **kwargs):
     
     Result example:
     {                                # Dictionary of file blocks
-     "1f...11": {                    # File SRL (sha256)
+     "1f...11": {                    # File sha256 (sha256)
        "score": 923,                 # Score for the file
        "name": ["file.exe",...]      # List of possible names for the file
        "children": {...}             # Dictionary of children file blocks
@@ -168,13 +175,12 @@ def get_file_tree(sid, **kwargs):
     """
     user = kwargs['user']
     
-    data = STORAGE.get_submission(sid)
+    data = STORAGE.submission.get(sid, as_obj=False)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        output = STORAGE.create_file_tree(data)
-        return make_api_response(output)
+        return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth))
     else: 
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
@@ -203,16 +209,16 @@ def get_full_results(sid, **kwargs):
      "errors": [],                      # List of error blocks (see Get Service Error)
      "file_count": 4,                   # Number of files in this submission
      "files": [                         # List of submitted files
-       ["FNAME", "SRL"], ...],              # Each file = List of name/srl
+       ["FNAME", "sha256"], ...],              # Each file = List of name/sha256
      "file_infos": {                    # Dictionary of fil info blocks
        "234...235": <<FILE_INFO>>,          # File in block
-       ...},                                # Keyed by file's SRL
+       ...},                                # Keyed by file's sha256
      "file_tree": {                     # File tree of the submission
        "333...7a3": {                       # File tree item
         "children": {},                         # Recursive children of file tree item
         "name": ["file.exe",...]                # List of possible names for the file
         "score": 0                              # Score of the file
-       },, ...},                            # Keyed by file's SRL
+       },, ...},                            # Keyed by file's sha256
      "missing_error_keys": [],          # Errors that could not be fetched from the datastore
      "missing_result_keys": [],         # Results that could not be fetched from the datastore
      "results": [],                     # List of Results Blocks (see Get Service Result)
@@ -248,7 +254,7 @@ def get_full_results(sid, **kwargs):
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            res.update(STORAGE.get_results_dict(keys))
+            res.update(STORAGE.get_multiple_results(keys, Classification, as_obj=False))
             keys = [x for x in keys if x not in res]
             retry += 1
 
@@ -272,7 +278,7 @@ def get_full_results(sid, **kwargs):
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            err.update(STORAGE.get_errors_dict(keys))
+            err.update(STORAGE.error.multiget(keys, as_obj=False))
             keys = [x for x in err_keys if x not in err]
             retry += 1
 
@@ -287,24 +293,24 @@ def get_full_results(sid, **kwargs):
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            infos.update(STORAGE.get_files_dict(keys))
+            infos.update(STORAGE.file.multiget(keys, as_obj=False))
             keys = [x for x in keys if x not in infos]
             retry += 1
 
         return infos
 
     def recursive_flatten_tree(tree):
-        srls = []
+        sha256s = []
 
-        for key, val in tree.iteritems():
-            srls.extend(recursive_flatten_tree(val.get('children', {})))
-            if key not in srls:
-                srls.append(key)
+        for key, val in tree.items():
+            sha256s.extend(recursive_flatten_tree(val.get('children', {})))
+            if key not in sha256s:
+                sha256s.append(key)
 
-        return list(set(srls))
+        return list(set(sha256s))
 
     user = kwargs['user']
-    data = STORAGE.get_submission(sid)
+    data = STORAGE.submission.get(sid, as_obj=False)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
@@ -312,7 +318,7 @@ def get_full_results(sid, **kwargs):
         res_keys = data.get("results", [])
         err_keys = data.get("errors", [])
 
-        data['file_tree'] = STORAGE.create_file_tree(data)
+        data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth)
         data['file_infos'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
@@ -339,8 +345,8 @@ def get_submission(sid, **kwargs):
     
     Result example:
     {"files": [                 # List of source files
-       ["FNAME", "SRL"], ...],    # Each file = List of name/srl
-     "errors": [],              # List of error keys (SRL.ServiceName)
+       ["FNAME", "sha256"], ...],    # Each file = List of name/sha256
+     "errors": [],              # List of error keys (sha256.ServiceName)
      "submission": {            # Submission Block
        "profile": true,           # Should keep stats about execution?
        "description": "",         # Submission description
@@ -352,7 +358,7 @@ def get_submission(sid, **kwargs):
        "sid": "ab9...956",        # Submission ID
        "submitter": "user",       # Uname of the submitter
        "max_score": 1422, },      # Score of highest scoring file
-     "results": [],             # List of Results keys (SRL.ServiceName.Version.Config)
+     "results": [],             # List of Results keys (sha256.ServiceName.Version.Config)
      "times": {                 # Timing block
        "completed": "2014-...",   # Completed time
        "submitted": "2014-..."    # Submitted time
@@ -366,7 +372,7 @@ def get_submission(sid, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.get_submission(sid)
+    data = STORAGE.submission.get(sid, as_obj=False)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
@@ -381,7 +387,7 @@ def get_submission(sid, **kwargs):
 def get_summary(sid, **kwargs):
     """
     Retrieve the executive summary of a given submission ID. This
-    is a MAP of tags to SRL combined with a list of generated Tags.
+    is a MAP of tags to sha256 combined with a list of generated Tags.
     
     Variables:
     sid         => Submission ID to get the summary for
@@ -393,11 +399,11 @@ def get_summary(sid, **kwargs):
     None
     
     Result example:
-    {"map": {                # Map of TAGS to SRL
+    {"map": {                # Map of TAGS to sha256
        "TYPE__VAL": [          # Type and value of the tags
-         "SRL"                   # List of related SRLs
+         "sha256"                   # List of related sha256s
          ...],
-       "SRL": [                # SRL
+       "sha256": [                # sha256
          "TYPE__VAL"             # List of related type/value
          ...], ... } 
      "tags": {               # Dictionary of tags        
@@ -410,12 +416,69 @@ def get_summary(sid, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.get_submission(sid)
-    if data is None:
+    submission = STORAGE.submission.get(sid, as_obj=False)
+    if submission is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
-    if user and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(STORAGE.create_summary(data, user))
+    if user and Classification.is_accessible(user['classification'], submission['classification']):
+        output = {"map": {}, "tags": {}}
+        tags_cache = STORAGE.submission_tags.get(sid, as_obj=False)
+
+        if not tags_cache:
+            tags = STORAGE.get_tag_list_from_keys(submission["results"])
+            tags_cache = {"tags": json.dumps(tags),
+                          "expiry_ts": submission['expiry_ts']}
+            STORAGE.submission_tags.save(sid, tags_cache)
+        else:
+            tags = json.loads(tags_cache['tags'])
+
+        for t in tags:
+            if t["type"] not in config.submission.summary_tag_types or t['value'] == "" \
+                    or not Classification.is_accessible(user['classification'], t['classification']):
+                continue
+
+            srl = t["key"][:64]
+            tag_key = t['type'] + "__" + t['value']
+
+            # File map
+            if tag_key not in output['map']:
+                output['map'][tag_key] = []
+
+            if srl not in output['map'][tag_key]:
+                output['map'][tag_key].append(srl)
+
+            # Tag map
+            if srl not in output['map']:
+                output['map'][srl] = []
+
+            if srl not in output['map'][srl]:
+                output['map'][srl].append(tag_key)
+
+            # Tags
+            if t['type'] not in output['tags']:
+                output['tags'][t['type']] = {t['value']: {'classification': t['classification'],
+                                                          'context': t['context']}}
+            else:
+                if t['value'] not in output['tags'][t['type']]:
+                    output['tags'][t['type']][t['value']] = {'classification': t['classification'],
+                                                             'context': t['context']}
+
+        for t_type in output['tags']:
+            new_tag_list = []
+            for k, v in output['tags'][t_type].items():
+                try:
+                    new_tag_list.append(
+                        {'value': k, 'classification': Classification.max_classification(v['classification'],
+                                                                                         submission[
+                                                                                             'classification']),
+                         'context': v['context']}
+                    )
+                except InvalidClassification:
+                    continue
+
+            output['tags'][t_type] = new_tag_list
+
+        return make_api_response(output)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
@@ -439,11 +502,11 @@ def is_submission_completed(sid, **kwargs):
     Result example:
     True/False
     """
-    data = STORAGE.get_submission(sid)
+    data = STORAGE.submission.get(sid, as_obj=False)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
-    return make_api_response(data.get("state", "submitted") == "completed")
+    return make_api_response(data["state"] == "completed")
 
 
 @submission_api.route("/list/group/<group>/", methods=["GET"])
@@ -457,8 +520,8 @@ def list_submissions_for_group(group, **kwargs):
     
     Arguments: 
     offset       => Offset at which we start giving submissions
-    length       => Numbers of submissions to return
-    filter       => Filter to apply to the submission list
+    rows         => Numbers of submissions to return
+    query        => Query to filter to the submission list
     
     Data Block:
     None
@@ -483,20 +546,16 @@ def list_submissions_for_group(group, **kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*")
+    rows = int(request.args.get('rows', 100))
+    filters = request.args.get('query', None)
     
     if group == "ALL":
-        group = "*"
-    
+        group_query = "id:*"
+    else:
+        group_query = f"params.groups:{group}"
     try:
-        return make_api_response(STORAGE.list_submissions_group(group, start=offset, rows=length, qfilter=query,
-                                                                access_control=user['access_control']))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
+        return make_api_response(STORAGE.submission.search(group_query, offset=offset, rows=rows, filters=filters,
+                                                           access_control=user['access_control'], as_obj=False))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
 
@@ -512,8 +571,8 @@ def list_submissions_for_user(username, **kwargs):
     
     Arguments: 
     offset       => Offset at which we start giving submissions
-    length       => Numbers of submissions to return
-    filter       => Filter to apply to the submission list
+    rows         => Numbers of submissions to return
+    query        => Query to filter the submission list
     
     Data Block:
     None
@@ -538,20 +597,16 @@ def list_submissions_for_user(username, **kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*")
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('query', None)
     
-    account = STORAGE.get_user_account(username)
+    account = STORAGE.user.get(username)
     if not account: 
         return make_api_response("", "User %s does not exists." % username, 404)
         
     try:
-        return make_api_response(STORAGE.list_submissions(username, start=offset, rows=length, qfilter=query,
-                                                          access_control=user['access_control']))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
+        return make_api_response(STORAGE.submission.search(f"params.submitter:{username}", offset=offset, rows=rows,
+                                                           filters=query, access_control=user['access_control'],
+                                                           as_obj=False))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)

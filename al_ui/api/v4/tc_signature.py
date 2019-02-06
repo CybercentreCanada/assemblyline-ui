@@ -1,5 +1,4 @@
 from flask import request
-from riak import RiakError
 
 from assemblyline.common import forge
 from assemblyline.datastore import SearchException
@@ -196,11 +195,6 @@ def list_signatures(**kwargs):
     try:
         return make_api_response(STORAGE.tc_signature.search(query, offset=offset, rows=length,
                                                              access_control=user['access_control'], as_obj=False))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
 

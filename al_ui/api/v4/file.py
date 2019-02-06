@@ -24,21 +24,6 @@ file_api = make_subapi_blueprint(SUB_API, api_version=4)
 file_api._doc = "Perform operations on files"
 
 
-def get_file_submission_meta(sha256, access_control=None):
-    query = f"files.sha256:{sha256} OR results:{sha256}*"
-    fields = config.ui.statistics.submission
-
-    with concurrent.futures.ThreadPoolExecutor(len(fields)) as executor:
-        res = {field: executor.submit(STORAGE.submission.field_analysis,
-                                      field,
-                                      query=query,
-                                      limit=100,
-                                      access_control=access_control)
-               for field in fields}
-
-    return {k: v.result() for k, v in res.items()}
-
-
 def list_file_active_keys(sha256, access_control=None):
     query = f"id:{sha256}*"
 
@@ -404,7 +389,8 @@ def get_file_results(sha256, **kwargs):
             res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
             res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
             res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
-            res_meta = executor.submit(get_file_submission_meta, sha256, user["access_control"])
+            res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,
+                                       config.ui.statistics.submission, user["access_control"])
 
         active_keys, alternates = res_ac.result()
         output['parents'] = res_parents.result()

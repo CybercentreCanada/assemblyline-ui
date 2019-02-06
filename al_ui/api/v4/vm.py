@@ -1,6 +1,5 @@
 
 from flask import request
-from riak import RiakError
 
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
@@ -122,11 +121,6 @@ def list_virtual_machine(**_):
 
     try:
         return make_api_response(STORAGE.vm.search(query, offset=offset, rows=rows, as_obj=False))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
 

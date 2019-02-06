@@ -10,7 +10,6 @@ from al_ui.config import STORAGE, CLASSIFICATION, config
 from al_ui.helper.service import ui_to_dispatch_task
 from al_ui.helper.user import load_user_settings, save_user_settings, save_user_account
 from al_ui.http_exceptions import AccessDeniedException, InvalidDataException
-from riak import RiakError
 
 from assemblyline.odm.models.user import User
 
@@ -507,11 +506,6 @@ def list_users(**_):
 
     try:
         return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, as_obj=False))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
 

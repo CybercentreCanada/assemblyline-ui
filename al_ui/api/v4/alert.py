@@ -2,7 +2,6 @@
 import concurrent.futures
 
 from flask import request
-from riak import RiakError
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
@@ -57,11 +56,6 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
                                                                   limit=100, access_control=access_control))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
 
 
 @alert_api.route("/<alert_key>/", methods=["GET"])
@@ -274,11 +268,6 @@ def list_alerts(**kwargs):
         return make_api_response(res)
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
 
 
 @alert_api.route("/grouped/<field>/", methods=["GET"])
@@ -373,11 +362,6 @@ def list_grouped_alerts(field, **kwargs):
         return make_api_response(res)
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
 
 
 @alert_api.route("/label/<alert_id>/", methods=["POST"])
@@ -794,10 +778,5 @@ def find_related_alert_ids(**kwargs):
         return make_api_response([x['alert_id'] for x in
                                   STORAGE.alert.stream_search(query, filters=filters, fl="alert_id",
                                                               access_control=user['access_control'], as_obj=False)])
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)

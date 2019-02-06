@@ -4,7 +4,6 @@ import os
 
 from flask import request
 from hashlib import md5
-from riak import RiakError
 from textwrap import dedent
 
 from assemblyline.common import forge
@@ -515,11 +514,6 @@ def list_signatures(**kwargs):
     try:
         return make_api_response(STORAGE.list_signatures(start=offset, rows=length, query=query,
                                                          access_control=user['access_control']))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
 

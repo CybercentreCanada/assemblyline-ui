@@ -1,6 +1,5 @@
 
 from flask import request
-from riak import RiakError
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore import SearchException
@@ -241,11 +240,6 @@ def list_workflows(**kwargs):
     try:
         return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=rows,
                                                          access_control=user['access_control'], as_obj=False))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
 

@@ -1,6 +1,5 @@
 
 from flask import request
-from riak import RiakError
 
 from assemblyline.common import forge
 from assemblyline.datastore import SearchException
@@ -76,10 +75,5 @@ def list_errors(**kwargs):
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
                                                       sort="created desc"))
-    except RiakError as e:
-        if e.value == "Query unsuccessful check the logs.":
-            return make_api_response("", "The specified search query is not valid.", 400)
-        else:
-            raise
     except SearchException as e:
         return make_api_response("", f"The specified search query is not valid. ({str(e)})", 400)
