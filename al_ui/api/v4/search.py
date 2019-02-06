@@ -9,7 +9,7 @@ ACCEPTABLE_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'signatu
 ACCESS_CONTROL_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'emptyresult', 'signature']
 
 SUB_API = 'search'
-search_api = make_subapi_blueprint(SUB_API)
+search_api = make_subapi_blueprint(SUB_API, api_version=4)
 search_api._doc = "Perform search queries"
 
 

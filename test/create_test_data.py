@@ -128,7 +128,7 @@ print("\nCreating 50 Alerts...")
 for x in range(50):
     submission = random.choice(submissions)
     a = random_model_obj(Alert)
-    a.sha256 = submission['file']
+    a.file.sha256 = submission['file']
     a.sid = submission['sid']
     a.owner = random.choice(['admin', 'user', 'other', None])
     ds.alert.save(a.alert_id, a)
