@@ -334,6 +334,11 @@ def facet(bucket, field, **kwargs):
     """
     if bucket not in BUCKET_MAP:
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+    collection = BUCKET_MAP[bucket]
+
+    field_info = collection.fields().get(field, None)
+    if field_info is None:
+        return make_api_response("", f"Field '{field}' is not a valid field in bucket: {bucket}", 400)
 
     user = kwargs['user']
     fields = ["query", "mincount"]
@@ -352,7 +357,7 @@ def facet(bucket, field, **kwargs):
     params.update({'access_control': user['access_control']})
     
     try:
-        return make_api_response(BUCKET_MAP[bucket].facet(field, **params))
+        return make_api_response(collection.facet(field, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -372,8 +377,11 @@ def histogram(bucket, field, **kwargs):
     mincount     =>   Minimum item count for the fieldvalue to be returned
     filters      =>   Additional query to limit to output
     start        =>   Value at which to start creating the histogram
+                       * Defaults: 0 or now-1d
     end          =>   Value at which to end the histogram
+                       * Defaults: 2000 or now
     gap          =>   Size of each step in the histogram
+                       * Defaults: 100 or +1h
 
     Data Block (POST ONLY):
     {"query": "id:*",
@@ -390,29 +398,49 @@ def histogram(bucket, field, **kwargs):
      "step_N": 19,
     }
     """
-    # TODO: Detect field type and set default histogram start, end, gap values or create another api
-    #       for integer histogram
+    fields = ["query", "mincount", "start", "end", "gap"]
+    multi_fields = ['filters']
+    user = kwargs['user']
 
     if bucket not in BUCKET_MAP:
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+    collection = BUCKET_MAP[bucket]
 
-    user = kwargs['user']
-    fields = ["query", "mincount", "start", "end", "gap"]
-    multi_fields = ['filters']
+    # Get fields default values
+    field_info = collection.fields().get(field, None)
+    if field_info is None:
+        return make_api_response("", f"Field '{field}' is not a valid field in bucket: {bucket}", 400)
+    elif field_info['type'] == "integer":
+        params = {
+            'start': 0,
+            'end': 2000,
+            'gap': 100
+        }
+    elif field_info['type'] == "date":
+        params = {
+            'start': f"{STORAGE.ds.now}-1{STORAGE.ds.day}",
+            'end': f"{STORAGE.ds.now}",
+            'gap': f"+1{STORAGE.ds.hour}"
+        }
+    else:
+        err_msg = f"Field '{field}' is of type '{field_info['type']}'. Only 'integer' or 'date' are acceptable."
+        return make_api_response("", err_msg, 400)
 
+    # Load API variables
     if request.method == "POST":
         req_data = request.json
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
         params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     else:
         req_data = request.args
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
+    # Make sure access control is enforced
     params.update({'access_control': user['access_control']})
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].histogram(field, **params))
+        return make_api_response(collection.histogram(field, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
