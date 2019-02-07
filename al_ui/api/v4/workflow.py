@@ -240,8 +240,8 @@ def list_workflows(**kwargs):
     try:
         return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=rows,
                                                          access_control=user['access_control'], as_obj=False))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @workflow_api.route("/<workflow_id>/", methods=["DELETE"])

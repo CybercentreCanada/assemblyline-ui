@@ -556,8 +556,8 @@ def list_submissions_for_group(group, **kwargs):
     try:
         return make_api_response(STORAGE.submission.search(group_query, offset=offset, rows=rows, filters=filters,
                                                            access_control=user['access_control'], as_obj=False))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @submission_api.route("/list/user/<username>/", methods=["GET"])
@@ -608,5 +608,5 @@ def list_submissions_for_user(username, **kwargs):
         return make_api_response(STORAGE.submission.search(f"params.submitter:{username}", offset=offset, rows=rows,
                                                            filters=query, access_control=user['access_control'],
                                                            as_obj=False))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)

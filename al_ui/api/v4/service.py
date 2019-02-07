@@ -188,8 +188,8 @@ def list_services(**_):
 
     try:
         return make_api_response(STORAGE.service.search(query, offset=offset, rows=rows, as_obj=False))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @service_api.route("/all/", methods=["GET"])

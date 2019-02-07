@@ -506,8 +506,8 @@ def list_users(**_):
 
     try:
         return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, as_obj=False))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 ######################################################

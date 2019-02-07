@@ -54,8 +54,8 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
         else:
             return make_api_response(STORAGE.alert.facet(fields, query=query, filters=filters,
                                                                   limit=100, access_control=access_control))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @alert_api.route("/<alert_key>/", methods=["GET"])
@@ -266,8 +266,8 @@ def list_alerts(**kwargs):
                                                      as_dictionary=False, as_obj=False),
                               key=lambda k: k['reporting_ts'], reverse=True)
         return make_api_response(res)
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @alert_api.route("/grouped/<field>/", methods=["GET"])
@@ -360,8 +360,8 @@ def list_grouped_alerts(field, **kwargs):
         res['items'] = alerts
         res['tc_start'] = tc_start
         return make_api_response(res)
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @alert_api.route("/label/<alert_id>/", methods=["POST"])
@@ -778,5 +778,5 @@ def find_related_alert_ids(**kwargs):
         return make_api_response([x['alert_id'] for x in
                                   STORAGE.alert.stream_search(query, filters=filters, fl="alert_id",
                                                               access_control=user['access_control'], as_obj=False)])
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)

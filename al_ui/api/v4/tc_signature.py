@@ -195,8 +195,8 @@ def list_signatures(**kwargs):
     try:
         return make_api_response(STORAGE.tc_signature.search(query, offset=offset, rows=length,
                                                              access_control=user['access_control'], as_obj=False))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 # noinspection PyPep8Naming

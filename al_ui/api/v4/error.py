@@ -76,4 +76,4 @@ def list_errors(**kwargs):
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
                                                       sort="created desc"))
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. ({str(e)})", 400)
+        return make_api_response("", f"The specified search query is not valid. ({e})", 400)

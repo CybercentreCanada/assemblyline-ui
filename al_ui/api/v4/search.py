@@ -83,7 +83,7 @@ def search(bucket, **kwargs):
     try:
         return make_api_response(BUCKET_MAP[bucket].search(query, **params))
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @search_api.route("/grouped/<bucket>/<group_field>/", methods=["GET", "POST"])
@@ -150,7 +150,7 @@ def group_search(bucket, group_field, **kwargs):
     try:
         return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params))
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @search_api.route("/deep/<bucket>/", methods=["GET", "POST"])
@@ -217,7 +217,7 @@ def deep_search(bucket, **kwargs):
 
         return make_api_response({"length": len(out), "items": out})
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @search_api.route("/inspect/<bucket>/", methods=["GET", "POST"])
@@ -266,7 +266,7 @@ def inspect_search(bucket, **kwargs):
     try:
         return make_api_response(BUCKET_MAP[bucket].search(query, **params)['total'])
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 # noinspection PyUnusedLocal
@@ -354,7 +354,7 @@ def facet(bucket, field, **kwargs):
     try:
         return make_api_response(BUCKET_MAP[bucket].facet(field, **params))
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @search_api.route("/histogram/<bucket>/<field>/", methods=["GET", "POST"])
@@ -415,4 +415,4 @@ def histogram(bucket, field, **kwargs):
     try:
         return make_api_response(BUCKET_MAP[bucket].histogram(field, **params))
     except SearchException as e:
-        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
+        return make_api_response("", f"SearchException: {e}", 400)
