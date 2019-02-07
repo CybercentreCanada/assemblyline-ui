@@ -23,7 +23,7 @@ from al_ui.api.v4.result import result_api
 from al_ui.api.v4.search import search_api
 # from al_ui.api.v3.seed import seed_api
 from al_ui.api.v4.service import service_api
-# from al_ui.api.v3.signature import signature_api
+from al_ui.api.v4.signature import signature_api
 from al_ui.api.v4.submission import submission_api
 # from al_ui.api.v3.submit import submit_api
 from al_ui.api.v4.tc_signature import tc_sigs_api
@@ -74,7 +74,7 @@ app.register_blueprint(result_api)
 app.register_blueprint(search_api)
 # app.register_blueprint(seed_api)
 app.register_blueprint(service_api)
-# app.register_blueprint(signature_api)
+app.register_blueprint(signature_api)
 app.register_blueprint(submission_api)
 # app.register_blueprint(submit_api)
 app.register_blueprint(tc_sigs_api)

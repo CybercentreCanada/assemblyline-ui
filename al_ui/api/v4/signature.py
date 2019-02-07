@@ -1,5 +1,4 @@
 
-import datetime
 import os
 
 from flask import request
@@ -7,7 +6,7 @@ from hashlib import md5
 from textwrap import dedent
 
 from assemblyline.common import forge
-from assemblyline.common.isotime import iso_to_epoch
+from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.yara import YaraParser
 from assemblyline.datastore import SearchException
 from assemblyline.filestore.transport.local import TransportLocal
@@ -20,7 +19,7 @@ Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'signature'
-signature_api = make_subapi_blueprint(SUB_API)
+signature_api = make_subapi_blueprint(SUB_API, api_version=4)
 signature_api._doc = "Perform operations on signatures"
 
 
@@ -55,7 +54,7 @@ def add_signature(**kwargs):
      "rev": 2 }            #Revision number at which the rule was saved.
     """
     user = kwargs['user']
-    new_id = STORAGE.get_last_signature_id(ORGANISATION) + 1
+    new_id = STORAGE.get_signature_last_id(ORGANISATION) + 1
     new_rev = 1
     data = request.json
     
@@ -70,7 +69,6 @@ def add_signature(**kwargs):
     sid = "%s_%06d" % (data['meta']['organisation'], new_id)
     data['meta']['id'] = sid
     data['meta']['rule_version'] = new_rev
-    data['meta']['creation_date'] = datetime.date.today().isoformat()
     data['meta']['last_saved_by'] = user['uname']
     key = "%sr.%s" % (data['meta']['id'], data['meta']['rule_version'])
     yara_version = data['meta'].get('yara_version', None)
@@ -152,7 +150,7 @@ def change_status(sid, rev, status, **kwargs):
                                      (sid, rev, data['meta']['al_status'], status), 403)
 
         query = "meta.al_status:{status} AND _yz_rk:{sid}* AND NOT _yz_rk:{key}"
-        today = datetime.date.today().isoformat()
+        today = now_as_iso()
         uname = user['uname']
 
         if status not in ['DISABLED', 'INVALID', 'TESTING']:
@@ -256,7 +254,7 @@ def download_signatures(**kwargs):
         safe = False
 
     access = user['access_control']
-    last_modified = STORAGE.get_signatures_last_modified()
+    last_modified = STORAGE.get_signature_last_modified()
 
     query_hash = md5(query + access + last_modified).hexdigest() + ".yar"
 
@@ -484,8 +482,8 @@ def list_signatures(**kwargs):
     
     Arguments: 
     offset       => Offset at which we start giving signatures
-    length       => Numbers of signatures to return
-    filter       => Filter to apply on the signature list
+    rows         => Numbers of signatures to return
+    query        => Filter to apply on the signature list
     
     Data Block:
     None
@@ -508,12 +506,12 @@ def list_signatures(**kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "meta.id:*")
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('filter', "id:*")
     
     try:
-        return make_api_response(STORAGE.list_signatures(start=offset, rows=length, query=query,
-                                                         access_control=user['access_control']))
+        return make_api_response(STORAGE.signature.search(query, offset=offset, rows=rows,
+                                                          access_control=user['access_control']))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -578,10 +576,9 @@ def set_signature(sid, rev, **kwargs):
             return make_api_response("", "Only admins are allowed to add global signatures.", 403)
 
         if YaraParser.require_bump(data, old_data):
-            data['meta']['rule_version'] = STORAGE.get_last_rev_for_id(sid) + 1 
-            data['meta']['creation_date'] = datetime.date.today().isoformat()
-            if 'modification_date' in data['meta']:
-                del(data['meta']['modification_date'])
+            data['meta']['rule_version'] = STORAGE.get_last_rev_for_id(sid) + 1
+            if 'creation_date' in data['meta']:
+                del(data['meta']['creation_date'])
             if 'al_state_change_date' in data['meta']:
                 del(data['meta']['al_state_change_date'])
             if 'al_state_change_user' in data['meta']:
@@ -589,10 +586,8 @@ def set_signature(sid, rev, **kwargs):
             data['meta']['al_status'] = "TESTING"
             key = "%sr.%s" % (sid, data['meta']['rule_version'])
                 
-        else:
-            data['meta']['modification_date'] = datetime.date.today().isoformat()
-            if data['meta']['modification_date'] == data['meta'].get('creation_date', None):
-                del(data['meta']['modification_date']) 
+        if 'last_modified' in data['meta']:
+            del (data['meta']['last_modified'])
         
         data['meta']['last_saved_by'] = user['uname']
         yara_version = data['meta'].get('yara_version', None)
@@ -686,7 +681,7 @@ def update_available(**_):  # pylint: disable=W0613
     Result example:
     { "update_available" : true }      # If updated rules are available.
     """
-    last_update = iso_to_epoch(request.args.get('last_update'))
-    last_modified = iso_to_epoch(STORAGE.get_signatures_last_modified())
+    last_update = iso_to_epoch(request.args.get('last_update', '1970-01-01T00:00:00.000000Z'))
+    last_modified = iso_to_epoch(STORAGE.get_signature_last_modified())
 
     return make_api_response({"update_available": last_modified > last_update})
