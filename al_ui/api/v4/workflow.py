@@ -197,7 +197,7 @@ def list_workflow_labels(**kwargs):
     ]
     """
     access_control = kwargs['user']['access_control']
-    return make_api_response(list(STORAGE.workflow.field_analysis("labels", access_control=access_control).keys()))
+    return make_api_response(list(STORAGE.workflow.facet("labels", access_control=access_control).keys()))
 
 
 @workflow_api.route("/list/", methods=["GET"])

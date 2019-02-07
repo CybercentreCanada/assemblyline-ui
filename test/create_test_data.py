@@ -121,7 +121,7 @@ for x in range(10):
     for f in s.files:
         f.sha256 = random.choice(s_file_hashes)
     ds.submission.save(s.sid, s)
-    submissions.append({"sid": s.sid, "file": file_hashes[0]})
+    submissions.append({"sid": s.sid, "file": s.files[0].sha256})
     print(f"\t{s.sid}")
 
 print("\nCreating 50 Alerts...")

@@ -5,480 +5,414 @@ from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 
-ACCEPTABLE_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'signature']
-ACCESS_CONTROL_BUCKETS = ['submission', 'file', 'result', 'error', 'alert', 'emptyresult', 'signature']
+BUCKET_MAP = {
+    'alert': STORAGE.alert,
+    'file': STORAGE.file,
+    'result': STORAGE.result,
+    'signature': STORAGE.signature,
+    'submission': STORAGE.submission
+}
+
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
 search_api._doc = "Perform search queries"
 
 
-@search_api.route("/all/", methods=["GET", "POST"])
+@search_api.route("/<bucket>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def search_all(*_, **kwargs):
+def search(bucket, **kwargs):
     """
-    Search through all relevant buckets for a given query. Uses
-    Apache Solr Search language for query.
+    Search through specified buckets for a given query.
+    Uses lucene search syntax for query.
 
     Variables:
-    None
+    bucket  =>   Bucket to search in (alert, submission,...)
 
     Arguments:
-    None
+    query   =>   Query to search for
 
-    Data Block:
+    Optional Arguments:
+    filters =>   List of additional filter queries limit the data
+    offset  =>   Offset in the results
+    rows    =>   Max number of results
+    sort    =>   How to sort the results
+    fl      =>   List of fields to return
+    timeout =>   Maximum execution time (ms)
+
+    Data Block (POST ONLY):
     {"query": "query",     # Query to search for
      "offset": 0,          # Offset in the results
-     "length": 100}        # Max number of results
+     "rows": 100,          # Max number of results
+     "sort": "field asc",  # How to sort the results
+     "fl": "id,score",     # List of fields to return
+     "timeout": 1000,      # Maximum execution time (ms)
+     "filters": ['fq']}    # List of additional filter queries limit the data
 
-    Result example:
-    {"files":              # File results
-        {"total": 201,       # Total results found
-         "offset": 0,        # Offset in the result list
-         "count": 100,       # Number of results returned
-         "bucket": file,     # Name of the bucket queried
-         "items": []},       # List of file results
-     "results":            # Result results
-         {...},              # Same layout as file results
-     "submission":         # Submission results
-         {...},              # Same layout as file results
-     }
-    """
-    user = kwargs['user']
-
-    if request.method == "POST":
-        offset = request.json.get('offset', 0)
-        length = request.json.get('length', 100)
-        query = request.json.get('query', "")
-    else:
-        offset = int(request.args.get('offset', 0))
-        length = int(request.args.get('length', 100))
-        query = request.args.get('query', "")
-
-    if not query:
-        return make_api_response("", "The specified search query is not valid.", 400)
-
-    try:
-        return make_api_response(STORAGE.search_all(query, start=offset, rows=length,
-                                                    access_control=user['access_control']))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-
-
-@search_api.route("/alert/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
-def search_alerts(*_, **kwargs):
-    """
-    Search through alert bucket. Uses Apache Solr search
-    language.
-
-    Variables:
-    None
-
-    Arguments:
-    None
-
-    Data Block:
-    {"query": "query",     # Query to search for
-     "offset": 0,          # Offset in the results
-     "length": 100}        # Max number of results
 
     Result example:
     {"total": 201,       # Total results found
      "offset": 0,        # Offset in the result list
-     "count": 100,       # Number of results returned
-     "bucket": file,     # Name of the bucket queried
+     "rows": 100,        # Number of results returned
      "items": []}        # List of results
     """
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+
     user = kwargs['user']
+    fields = ["offset", "rows", "sort", "fl", "timeout"]
+    multi_fields = ['filters']
 
     if request.method == "POST":
-        offset = request.json.get('offset', 0)
-        length = request.json.get('length', 100)
-        query = request.json.get('query', "")
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        query = req_data.get('query', None)
+
     else:
-        offset = int(request.args.get('offset', 0))
-        length = int(request.args.get('length', 100))
-        query = request.args.get('query', "")
+        req_data = request.args
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        query = request.args.get('query', None)
+
+    params.update({'access_control': user['access_control'], 'as_obj': False})
 
     if not query:
-        return make_api_response("", "The specified search query is not valid.", 400)
+        return make_api_response("", "There was no search query.", 400)
 
     try:
-        return make_api_response(STORAGE.search_alert(query, start=offset, rows=length,
-                                                      access_control=user['access_control']))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+        return make_api_response(BUCKET_MAP[bucket].search(query, **params))
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
 
 
-@search_api.route("/advanced/<bucket>/", methods=["GET"])
+@search_api.route("/grouped/<bucket>/<group_field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def advanced_search(bucket, **kwargs):
+def group_search(bucket, group_field, **kwargs):
     """
-    This is a search API that has not been simplified and can leverage the full
-    power of SOLR searches.
-
-    You should only use this API if you know what you are doing
+    Search through all relevant buckets for a given query and
+    groups the data based on a specific field.
+    Uses lucene search syntax for query.
 
     Variables:
-    None
-
-    Arguments:
-    q   =>  The query you are trying to make
+    bucket       =>   Bucket to search in (alert, submission,...)
+    group_field  =>   Field to group on
 
     Optional Arguments:
-    *Any arguments the SORL can take in*
+    group_sort   =>   How to sort the results inside the group
+    limit        =>   Maximum number of results return for each groups
+    query        =>   Query to search for
+    filters      =>   List of additional filter queries limit the data
+    offset       =>   Offset in the results
+    rows         =>   Max number of results
+    sort         =>   How to sort the results
+    fl           =>   List of fields to return
 
-    Data Block:
-    None
+    Data Block (POST ONLY):
+    {"group_sort": "score desc",
+     "limit": "10",
+     "query": "query",
+     "offset": 0,
+     "rows": 100,
+     "sort": "field asc",
+     "fl": "id,score",
+     "filters": ['fq']}
+
 
     Result example:
-    <<RAW SOLR API OUTPUT>>
+    {"total": 201,       # Total results found
+     "offset": 0,        # Offset in the result list
+     "rows": 100,        # Number of results returned
+     "items": []}        # List of results
     """
-    if bucket not in STORAGE.INDEXED_BUCKET_LIST and bucket not in STORAGE.ADMIN_INDEXED_BUCKET_LIST:
-        return make_api_response({}, "Bucket '%s' does not exists." % bucket, 404)
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
     user = kwargs['user']
-    query = request.args.get('q', "*")
-    df = request.args.get('df', "text")
+    fields = ["group_sort", "limit", "query", "offset", "rows", "sort", "fl", "timeout"]
+    multi_fields = ['filters']
 
-    if bucket in ACCESS_CONTROL_BUCKETS:
-        fq = user['access_control']
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
     else:
-        fq = None
+        req_data = request.args
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
-    args = []
-    for k in request.args:
-        args.extend([(k, v) for v in request.args.getlist(k)])
+    params.update({'access_control': user['access_control'], 'as_obj': False})
+
+    if not group_field:
+        return make_api_response("", "The field to group on was not specified.", 400)
 
     try:
-        return make_api_response(STORAGE.direct_search(bucket, query, args, df=df, __access_control__=fq))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+        return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params))
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
 
 
-@search_api.route("/deep/<bucket>/", methods=["GET"])
+@search_api.route("/deep/<bucket>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
 def deep_search(bucket, **kwargs):
     """
     Deep Search through given bucket. This will return all items matching
     the query.
-        * Uses Apache Solr search language.
+    Uses lucene search syntax.
     
     Variables:
     bucket     =>  Buckets to be used to stream the search query from
     
     Arguments: 
-    q          => query to search for
+    query      => query to search for
 
     Optional Arguments:
-    rows       => maximum result length to return
-    fl         => field list to return
-    fq         => Filter queries to be applied after the query
+    limit      => Stop gathering result after this many items returned
+    fl         => Field list to return
+    filters    => Filter queries to be applied after the query
     
-    Data Block:
-    None
+    Data Block (POST ONLY):
+    {"query": "id:*",
+     "limit": "10",
+     "fl": "id,score",
+     "filters": ['fq']}
      
     Result example:
     { "items": [],      # List of results
       "length": 0 }     # Number of items returned       
     """
-    user = kwargs['user']
-    
-    if bucket not in STORAGE.INDEXED_BUCKET_LIST and bucket not in STORAGE.ADMIN_INDEXED_BUCKET_LIST:
-        return make_api_response({}, "Bucket '%s' does not exists." % bucket, 404)
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
-    if bucket not in ACCEPTABLE_BUCKETS:
-        return make_api_response("", "You're not allowed to query bucket %s." % bucket, 403)
-        
-    query = request.args.get('query', None) or request.args.get('q', None)
-    if not query:
-        return make_api_response({"success": False}, "Please specify a query...", 406) 
-    fl = request.args.get('fl', None)
-    limit = request.args.get('limit', None) or request.args.get('rows', None)
-    fq_list = request.args.getlist('fq')
+    user = kwargs['user']
+    fields = ["fl"]
+    multi_fields = ['filters']
+
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+    else:
+        req_data = request.args
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    query = req_data.get('query', None) or req_data.get('q', None)
+    limit = req_data.get('limit', None)
     if limit:
         limit = int(limit)
-    
+
+    params.update({'access_control': user['access_control'], 'as_obj': False})
+
+    if not query:
+        return make_api_response("", "No query was specified.", 400)
+
     out = []
     try:
-        for item in STORAGE.stream_search(bucket, query, fl=fl, access_control=user['access_control'], fq=fq_list):
-            out.append(STORAGE.result_keys_to_dict(item))
+        for item in BUCKET_MAP[bucket].stream_search(query, **params):
+            out.append(item)
             if limit and len(out) == limit:
                 break
-        
+
         return make_api_response({"length": len(out), "items": out})
-    except SearchException as ex:
-        if "org.apache.solr.search.SyntaxError" in str(ex):
-            return make_api_response("", str(ex), 400)
-        else:
-            return make_api_response("", "You can't just ask for everything. Make your query more precise.", 406)
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
 
 
-@search_api.route("/inspect/<bucket>/", methods=["GET"])
+@search_api.route("/inspect/<bucket>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
 def inspect_search(bucket, **kwargs):
     """
     Inspect a search query to find out how much result items are
     going to be returned.
-        * Uses Apache Solr search language.
+    Uses lucene search syntax.
     
     Variables:
     bucket    =>  Buckets to be used to stream the search query from
     
     Arguments: 
-    q         => Query to search for
+    query     => Query to search for
 
     Optional Arguments:
-    fq        => Filter queries to be applied after the query
+    filters   => Filter queries to be applied after the query
     
-    Data Block:
-    None
+    Data Block (POST ONLY):
+    {"query": "id:*",
+     "filters": ['fq']}
      
     Result example:
-    { count: 0 }     # number of items return by the query
+    0         # number of items return by the query
     """
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+
     user = kwargs['user']
-    
-    if bucket not in STORAGE.INDEXED_BUCKET_LIST and bucket not in STORAGE.ADMIN_INDEXED_BUCKET_LIST:
-        return make_api_response({}, "Bucket '%s' does not exists." % bucket, 404)
+    multi_fields = ['filters']
 
-    if bucket not in ACCEPTABLE_BUCKETS:
-        return make_api_response("", "You're not allowed to query bucket %s." % bucket, 403)
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+    else:
+        req_data = request.args
+        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
-    query = request.args.get('query', None) or request.args.get('q', None)
+    query = req_data.get('query', None) or req_data.get('q', None)
+    params.update({'access_control': user['access_control'], 'as_obj': False, 'rows': 0, "fl": "id"})
+
     if not query:
-        return make_api_response({"success": False}, "Please specify a query...", 406) 
+        return make_api_response("", "No query was specified.", 400)
 
-    args = [('fq', x) for x in request.args.getlist('fq')]
-    args.append(('rows', "0"))
-
-    # noinspection PyProtectedMember
     try:
-        result = STORAGE.direct_search(bucket, query, args, __access_control__=user['access_control'])
-        return make_api_response({"count": result.get('response', {}).get("numFound", 0)})
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+        return make_api_response(BUCKET_MAP[bucket].search(query, **params)['total'])
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
 
 
 # noinspection PyUnusedLocal
-@search_api.route("/fields/", methods=["GET"])
+@search_api.route("/fields/<bucket>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def list_all_available_fields(**kwargs):
+def list_bucket_fields(bucket, **_):
     """
-    List all available fields for all available buckets
+    List all available fields for a given bucket
 
     Variables:
-    None
+    bucket  =>     Which specific bucket you want to know the fields for
+
 
     Arguments:
-    bucket  =>     Which specific bucket you want to know the fields for
-    full    =>     True/False if you want system buckets to be included
-                   Default: False
+    None
 
     Data Block:
     None
 
     Result example:
     {
-        "<<BUCKET_NAME>>": {        # For a given bucket
-            "<<FIELD_NAME>>": {      # For a given field
-                indexed: True,        # Is the field indexed
-                stored: False,        # Is the field stored
-                type: string          # What type of data in the field
-                },
-            ...
+        "<<FIELD_NAME>>": {      # For a given field
+            indexed: True,        # Is the field indexed
+            stored: False,        # Is the field stored
+            type: string          # What type of data in the field
             },
         ...
+
     }
     """
-    full = request.args.get('full', "False")
-    full = (full.lower() == "true")
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
-    bucket = request.args.get('bucket', None)
-
-    return make_api_response(STORAGE.generate_field_list(full, specific_bucket=bucket))
+    return make_api_response(BUCKET_MAP[bucket].fields())
 
 
-@search_api.route("/file/", methods=["GET", "POST"])
+@search_api.route("/facet/<bucket>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def search_files(**kwargs):
+def facet(bucket, field, **kwargs):
     """
-    Search through file bucket. Uses Apache Solr search 
-    language.
+    Perform field analysis on the selected field. (Also known as facetting in lucene)
+    This essentially counts the number of instances a field is seen with each specific values
+    where the documents matches the specified queries.
     
     Variables:
-    None
+    bucket       =>   Bucket to search in (alert, submission,...)
+    field        =>   Field to analyse
     
-    Arguments: 
-    None 
-    
-    Data Block:
-    {"query": "query",     # Query to search for 
-     "offset": 0,          # Offset in the results
-     "length": 100}        # Max number of results
+    Optional Arguments:
+    query        =>   Query to search for
+    mincount    =>   Minimum item count for the fieldvalue to be returned
+    filters      =>   Additional query to limit to output
+
+    Data Block (POST ONLY):
+    {"query": "id:*",
+     "mincount": "10",
+     "filters": ['fq']}
     
     Result example:
-    {"total": 201,       # Total results found
-     "offset": 0,        # Offset in the result list
-     "count": 100,       # Number of results returned
-     "bucket": file,     # Name of the bucket queried
-     "items": []}        # List of results
+    {                 # Facetting results
+     "value_0": 2,
+     ...
+     "value_N": 19,
+    }
     """
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+
     user = kwargs['user']
-    
+    fields = ["query", "mincount"]
+    multi_fields = ['filters']
+
     if request.method == "POST":
-        offset = request.json.get('offset', 0)
-        length = request.json.get('length', 100)
-        query = request.json.get('query', "")
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
     else:
-        offset = int(request.args.get('offset', 0))
-        length = int(request.args.get('length', 100))
-        query = request.args.get('query', "")
+        req_data = request.args
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
-    if not query:
-        return make_api_response("", "The specified search query is not valid.", 400)
-
+    params.update({'access_control': user['access_control']})
+    
     try:
-        return make_api_response(STORAGE.search_file(query, start=offset, rows=length,
-                                                     access_control=user['access_control']))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+        return make_api_response(BUCKET_MAP[bucket].facet(field, **params))
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)
 
 
-@search_api.route("/result/", methods=["GET", "POST"])
+@search_api.route("/histogram/<bucket>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def search_results(**kwargs):
+def histogram(bucket, field, **kwargs):
     """
-    Search through result bucket. Uses Apache Solr search 
-    language.
+    Generate an histogram based on a time or and int field using a specific gap size
     
     Variables:
-    None
-    
-    Arguments: 
-    None 
-    
-    Data Block:
-    {"query": "query",     # Query to search for 
-     "offset": 0,          # Offset in the results
-     "length": 100}        # Max number of results
-    
-    Result example:
-    {"total": 201,       # Total results found
-     "offset": 0,        # Offset in the result list
-     "count": 100,       # Number of results returned
-     "bucket": file,     # Name of the bucket queried
-     "items": []}        # List of results
-    """
-    user = kwargs['user']
-    
-    if request.method == "POST":
-        offset = request.json.get('offset', 0)
-        length = request.json.get('length', 100)
-        query = request.json.get('query', "")
-    else:
-        offset = int(request.args.get('offset', 0))
-        length = int(request.args.get('length', 100))
-        query = request.args.get('query', "")
+    bucket       =>   Bucket to search in (alert, submission,...)
+    field        =>   Field to generate the histogram from
 
-    if not query:
-        return make_api_response("", "The specified search query is not valid.", 400)
+    Optional Arguments:
+    query        =>   Query to search for
+    mincount     =>   Minimum item count for the fieldvalue to be returned
+    filters      =>   Additional query to limit to output
+    start        =>   Value at which to start creating the histogram
+    end          =>   Value at which to end the histogram
+    gap          =>   Size of each step in the histogram
+
+    Data Block (POST ONLY):
+    {"query": "id:*",
+     "mincount": "10",
+     "filters": ['fq'],
+     "start": 0,
+     "end": 100,
+     "gap": 10}
+
+    Result example:
+    {                 # Histogram results
+     "step_0": 2,
+     ...
+     "step_N": 19,
+    }
+    """
+    # TODO: Detect field type and set default histogram start, end, gap values or create another api
+    #       for integer histogram
+
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+
+    user = kwargs['user']
+    fields = ["query", "mincount", "start", "end", "gap"]
+    multi_fields = ['filters']
+
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    else:
+        req_data = request.args
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    params.update({'access_control': user['access_control']})
 
     try:
-        return make_api_response(STORAGE.search_result(query, start=offset, rows=length,
-                                                       access_control=user['access_control']))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-
-
-@search_api.route("/signature/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
-def search_signatures(**kwargs):
-    """
-    Search through signature bucket. Uses Apache Solr search 
-    language.
-    
-    Variables:
-    None
-    
-    Arguments: 
-    None 
-    
-    Data Block:
-    {"query": "query",     # Query to search for 
-     "offset": 0,          # Offset in the results
-     "length": 100}        # Max number of results
-    
-    Result example:
-    {"total": 201,       # Total results found
-     "offset": 0,        # Offset in the signature list
-     "count": 100,       # Number of results returned
-     "bucket": file,     # Name of the bucket queried
-     "items": []}        # List of signatures
-    """
-    user = kwargs['user']
-    
-    if request.method == "POST":
-        offset = request.json.get('offset', 0)
-        length = request.json.get('length', 100)
-        query = request.json.get('query', "")
-    else:
-        offset = int(request.args.get('offset', 0))
-        length = int(request.args.get('length', 100))
-        query = request.args.get('query', "")
-
-    if not query:
-        return make_api_response("", "The specified search query is not valid.", 400)
-    
-    try:
-        return make_api_response(STORAGE.search_signature(query, start=offset, rows=length,
-                                                          access_control=user['access_control']))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
-
-
-@search_api.route("/submission/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
-def search_submissions(**kwargs):
-    """
-    Search through submission bucket. Uses Apache Solr search 
-    language.
-    
-    Variables:
-    None
-    
-    Arguments: 
-    None 
-    
-    Data Block:
-    {"query": "query",     # Query to search for 
-     "offset": 0,          # Offset in the results
-     "length": 100}        # Max number of results
-    
-    Result example:
-    {"total": 201,       # Total results found
-     "offset": 0,        # Offset in the result list
-     "count": 100,       # Number of results returned
-     "bucket": file,     # Name of the bucket queried
-     "items": []}        # List of results
-    """
-    user = kwargs['user']
-    
-    if request.method == "POST":
-        offset = request.json.get('offset', 0)
-        length = request.json.get('length', 100)
-        query = request.json.get('query', "")
-    else:
-        offset = int(request.args.get('offset', 0))
-        length = int(request.args.get('length', 100))
-        query = request.args.get('query', "")
-
-    if not query:
-        return make_api_response("", "The specified search query is not valid.", 400)
-    
-    try:
-        return make_api_response(STORAGE.search_submission(query, start=offset, rows=length,
-                                                           access_control=user['access_control']))
-    except SearchException:
-        return make_api_response("", "The specified search query is not valid.", 400)
+        return make_api_response(BUCKET_MAP[bucket].histogram(field, **params))
+    except SearchException as e:
+        return make_api_response("", f"The specified search query is not valid. [{e}]", 400)

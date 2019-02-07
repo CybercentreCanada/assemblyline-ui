@@ -42,7 +42,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
     try:
         if isinstance(fields, list):
             with concurrent.futures.ThreadPoolExecutor(len(fields)) as executor:
-                res = {field: executor.submit(STORAGE.alert.field_analysis,
+                res = {field: executor.submit(STORAGE.alert.facet,
                                               field,
                                               query=query,
                                               filters=filters,
@@ -52,7 +52,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
 
             return make_api_response({k: v.result() for k, v in res.items()})
         else:
-            return make_api_response(STORAGE.alert.field_analysis(fields, query=query, filters=filters,
+            return make_api_response(STORAGE.alert.facet(fields, query=query, filters=filters,
                                                                   limit=100, access_control=access_control))
     except SearchException:
         return make_api_response("", "The specified search query is not valid.", 400)
