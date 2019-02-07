@@ -1,8 +1,9 @@
 import os
 import random
 
-from assemblyline.common.security import get_password_hash
 from assemblyline.common import forge
+from assemblyline.common.security import get_password_hash
+from assemblyline.common.yara import YaraImporter
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.emptyresult import EmptyResult
 from assemblyline.odm.models.error import Error
@@ -12,6 +13,21 @@ from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import User
 from assemblyline.odm.randomizer import random_model_obj, SERVICES
+
+
+class PrintLogger(object):
+    def __init__(self, indent=""):
+        self.indent = indent
+
+    def info(self, msg):
+        print(f"{self.indent}{msg}")
+
+    def warn(self, msg):
+        print(f"{self.indent}[W] {msg}")
+
+    def error(self, msg):
+        print(f"{self.indent}[E] {msg}")
+
 
 print("Loading datastore...")
 ds = forge.get_datastore()
@@ -49,6 +65,7 @@ for x in range(20):
     ds.file.save(f.sha256, f)
 
     temp_file = f'/tmp/{f.sha256}'
+    # noinspection PyBroadException
     try:
         os.unlink(temp_file)
     except Exception:
@@ -133,5 +150,10 @@ for x in range(50):
     a.owner = random.choice(['admin', 'user', 'other', None])
     ds.alert.save(a.alert_id, a)
     print(f"\t{a.alert_id}")
+
+print("\nImporting test signatures...")
+yp = YaraImporter(logger=PrintLogger(indent="\t"))
+parsed = yp.parse_file('al_yara_signatures.yar')
+yp.import_now([p['rule'] for p in parsed])
 
 print("\nDone.")
