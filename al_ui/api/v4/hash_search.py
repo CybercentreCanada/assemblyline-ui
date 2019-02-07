@@ -8,7 +8,7 @@ from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import LOGGER, config
 
 SUB_API = 'hash_search'
-hash_search_api = make_subapi_blueprint(SUB_API)
+hash_search_api = make_subapi_blueprint(SUB_API, api_version=4)
 hash_search_api._doc = "Search hashes through multiple data sources"
 
 
@@ -65,7 +65,7 @@ def search_hash(file_hash, *args, **kwargs):
     Search for a hash in multiple data sources as configured in the seed.
 
     Variables:
-    value       => Hash to search in the multiple data sources
+    file_hash   => Hash to search in the multiple data sources
                    [MD5, SHA1 or SHA256]
 
     Arguments:(optional)
@@ -77,7 +77,7 @@ def search_hash(file_hash, *args, **kwargs):
 
     API call examples:
     /api/v3/hash_search/
-    /api/v3/hash_search/123456...654321/?db=nsrl|al&show_timers=true
+    /api/v3/hash_search/123456...654321/?db=nsrl|al
 
     Result example:
     {                           # Dictionary of:
@@ -85,7 +85,7 @@ def search_hash(file_hash, *args, **kwargs):
           "error": null,            # Error message returned by data source
           "items": [                # List of items found in the data source
            {"confirmed": true,        # Is the maliciousness attribution confirmed or not
-            "data":                   # Raw data from the data source
+            "data": {...}             # Raw data from the data source
             "description": "",        # Description of the findings
             "malicious": false},      # Is the file found malicious or not
           ...
@@ -126,7 +126,7 @@ def search_hash(file_hash, *args, **kwargs):
         res = {db: executor.submit(sources[db], file_hash.lower(), user) for db in db_list}
 
     # TODO: Timeout part needs some love. Can't be done through dictionary comprehension.
-    return make_api_response({k: v.result(timeout=max_timeout) for k, v in res})
+    return make_api_response({k: v.result(timeout=max_timeout) for k, v in res.items()})
 
 
 # noinspection PyUnusedLocal
