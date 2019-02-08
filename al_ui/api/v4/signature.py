@@ -1,15 +1,12 @@
 
-import os
-
 from flask import request
-from hashlib import md5
+from hashlib import sha256
 from textwrap import dedent
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.yara import YaraParser
 from assemblyline.datastore import SearchException
-from assemblyline.filestore.transport.local import TransportLocal
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import LOGGER, STORAGE, ORGANISATION
@@ -210,13 +207,14 @@ def delete_signature(sid, rev, **kwargs):
 
 
 # noinspection PyBroadException
-def _get_cached_signatures(signature_cache, last_modified, query_hash):
+def _get_cached_signatures(signature_cache, query_hash):
     try:
-        if signature_cache.getmtime(query_hash) > iso_to_epoch(last_modified):
-            s = signature_cache.get(query_hash)
-            return make_file_response(
-                s, "al_yara_signatures.yar", len(s), content_type="text/yara"
-            )
+        s = signature_cache.get(query_hash)
+        if s is None:
+            return s
+        return make_file_response(
+            s, f"al_yara_signatures_{query_hash[:7]}.yar", len(s), content_type="text/yara"
+        )
     except Exception:  # pylint: disable=W0702
         LOGGER.exception('Failed to read cached signatures:')
 
@@ -246,190 +244,179 @@ def download_signatures(**kwargs):
     """
     user = kwargs['user']
     query = request.args.get('query', 'meta.al_status:DEPLOYED')
-
-    safe = request.args.get('safe', "false")
-    if safe.lower() == 'true':
-        safe = True
-    else:
-        safe = False
+    safe = request.args.get('safe', "false") == 'true'
 
     access = user['access_control']
     last_modified = STORAGE.get_signature_last_modified()
 
-    query_hash = md5(query + access + last_modified).hexdigest() + ".yar"
+    query_hash = sha256(f'{query}.{access}.{last_modified}'.encode('utf-8')).hexdigest()
 
-    signature_cache = TransportLocal(
-        base=os.path.join(config.system.root, 'var', 'cache', 'signatures')
-    )
-
-    response = _get_cached_signatures(
-        signature_cache, last_modified, query_hash
-    )
-
-    if response:
-        return response
-
-    with Lock(query_hash, 30):
-        response = _get_cached_signatures(
-            signature_cache, last_modified, query_hash
-        )
+    with forge.get_cachestore() as signature_cache:
+        response = _get_cached_signatures(signature_cache, query_hash)
         if response:
             return response
 
-        keys = STORAGE.list_filtered_signature_keys(query, access_control=access)
-        signature_list = STORAGE.get_signatures(keys)
-    
-        # Sort rules to satisfy dependencies
-        duplicate_rules = []
-        error_rules = []
-        global_rules = []
-        private_rules_no_dep = []
-        private_rules_dep = []
-        rules_no_dep = []
-        rules_dep = []
+        with Lock(f"{query_hash}.yar", 30):
+            response = _get_cached_signatures(signature_cache, query_hash)
+            if response:
+                return response
 
-        if safe:
-            rules_map = {}
+            keys = [k['id']
+                    for k in STORAGE.signature.search(query, fl="id", access_control=access, as_obj=False)['items']]
+            signature_list = STORAGE.signature.multiget(keys, as_dictionary=False, as_obj=False)
+
+            # Sort rules to satisfy dependencies
+            duplicate_rules = []
+            error_rules = []
+            global_rules = []
+            private_rules_no_dep = []
+            private_rules_dep = []
+            rules_no_dep = []
+            rules_dep = []
+
+            if safe:
+                rules_map = {}
+                for s in signature_list:
+                    name = s.get('name', None)
+                    if not name:
+                        continue
+
+                    version = int(s.get('meta', {}).get('rule_version', '1'))
+
+                    p = rules_map.get(name, {})
+                    pversion = int(p.get('meta', {}).get('rule_version', '0'))
+
+                    if version < pversion:
+                        duplicate_rules.append(name)
+                        continue
+
+                    rules_map[name] = s
+                signature_list = rules_map.values()
+
+            name_map = {}
             for s in signature_list:
-                name = s.get('name', None)
-                if not name:
-                    continue
-
-                version = int(s.get('meta', {}).get('rule_version', '1'))
-
-                p = rules_map.get(name, {})
-                pversion = int(p.get('meta', {}).get('rule_version', '0'))
-
-                if version < pversion:
-                    duplicate_rules.append(name)
-                    continue
- 
-                rules_map[name] = s
-            signature_list = rules_map.values()
-
-        name_map = {}
-        for s in signature_list:
-            if s['type'].startswith("global"):
-                global_rules.append(s)
-                name_map[s['name']] = True
-            elif s['type'].startswith("private"):
-                if s['depends'] is None or len(s['depends']) == 0:
-                    private_rules_no_dep.append(s)
+                if s['type'].startswith("global"):
+                    global_rules.append(s)
                     name_map[s['name']] = True
-                else:
-                    private_rules_dep.append(s)
-            else:
-                if s['depends'] is None or len(s['depends']) == 0:
-                    rules_no_dep.append(s)
-                    name_map[s['name']] = True
-                else:
-                    rules_dep.append(s)
-
-        global_rules = sorted(global_rules, key=lambda k: k['meta']['id'])
-        private_rules_no_dep = sorted(private_rules_no_dep, key=lambda k: k['meta']['id'])
-        rules_no_dep = sorted(rules_no_dep, key=lambda k: k['meta']['id'])
-        private_rules_dep = sorted(private_rules_dep, key=lambda k: k['meta']['id'])
-        rules_dep = sorted(rules_dep, key=lambda k: k['meta']['id'])
-    
-        signature_list = global_rules + private_rules_no_dep
-        while private_rules_dep:
-            new_private_rules_dep = []
-            for r in private_rules_dep:
-                found = False
-                for d in r['depends']:
-                    if not name_map.get(d, False):
-                        new_private_rules_dep.append(r)
-                        found = True
-                        break
-                if not found:
-                    name_map[r['name']] = True
-                    signature_list.append(r)
-            
-            if private_rules_dep == new_private_rules_dep:
-                for x in private_rules_dep:
-                    error_rules += [d for d in x["depends"]]
-
-                if not safe:
-                    for s in private_rules_dep:
+                elif s['type'].startswith("private"):
+                    if s['depends'] is None or len(s['depends']) == 0:
+                        private_rules_no_dep.append(s)
                         name_map[s['name']] = True
-                    signature_list += private_rules_dep
+                    else:
+                        private_rules_dep.append(s)
+                else:
+                    if s['depends'] is None or len(s['depends']) == 0:
+                        rules_no_dep.append(s)
+                        name_map[s['name']] = True
+                    else:
+                        rules_dep.append(s)
 
+            global_rules = sorted(global_rules, key=lambda k: k['meta']['rule_id'])
+            private_rules_no_dep = sorted(private_rules_no_dep, key=lambda k: k['meta']['rule_id'])
+            rules_no_dep = sorted(rules_no_dep, key=lambda k: k['meta']['rule_id'])
+            private_rules_dep = sorted(private_rules_dep, key=lambda k: k['meta']['rule_id'])
+            rules_dep = sorted(rules_dep, key=lambda k: k['meta']['rule_id'])
+
+            signature_list = global_rules + private_rules_no_dep
+            while private_rules_dep:
                 new_private_rules_dep = []
-            
-            private_rules_dep = new_private_rules_dep
+                for r in private_rules_dep:
+                    found = False
+                    for d in r['depends']:
+                        if not name_map.get(d, False):
+                            new_private_rules_dep.append(r)
+                            found = True
+                            break
+                    if not found:
+                        name_map[r['name']] = True
+                        signature_list.append(r)
 
-        signature_list += rules_no_dep
-        while rules_dep:
-            new_rules_dep = []
-            for r in rules_dep:
-                found = False
-                for d in r['depends']:
-                    if not name_map.get(d, False):
-                        new_rules_dep.append(r)
-                        found = True
-                        break
-                if not found:
-                    name_map[r['name']] = True
-                    signature_list.append(r)
-        
-            if rules_dep == new_rules_dep:
-                error_rules += [x["name"] for x in rules_dep]
-                if not safe:
-                    for s in rules_dep:
-                        name_map[s['name']] = True
-                    signature_list += rules_dep
+                if private_rules_dep == new_private_rules_dep:
+                    for x in private_rules_dep:
+                        error_rules += [d for d in x["depends"]]
 
+                    if not safe:
+                        for s in private_rules_dep:
+                            name_map[s['name']] = True
+                        signature_list += private_rules_dep
+
+                    new_private_rules_dep = []
+
+                private_rules_dep = new_private_rules_dep
+
+            signature_list += rules_no_dep
+            while rules_dep:
                 new_rules_dep = []
+                for r in rules_dep:
+                    found = False
+                    for d in r['depends']:
+                        if not name_map.get(d, False):
+                            new_rules_dep.append(r)
+                            found = True
+                            break
+                    if not found:
+                        name_map[r['name']] = True
+                        signature_list.append(r)
 
-            rules_dep = new_rules_dep    
-        # End of sort
-    
-        error = ""
-        if duplicate_rules:
-            if safe:
-                err_txt = "were skipped"
-            else:
-                err_txt = "exist"
-            error += dedent("""\
-            
-                // [ERROR] Duplicates rules {msg}:
+                if rules_dep == new_rules_dep:
+                    error_rules += [x["name"] for x in rules_dep]
+                    if not safe:
+                        for s in rules_dep:
+                            name_map[s['name']] = True
+                        signature_list += rules_dep
+
+                    new_rules_dep = []
+
+                rules_dep = new_rules_dep
+            # End of sort
+
+            error = ""
+            if duplicate_rules:
+                if safe:
+                    err_txt = "were skipped"
+                else:
+                    err_txt = "exist"
+                error += dedent("""\
+                
+                    // [ERROR] Duplicates rules {msg}:
+                    //
+                    //	{rules}
+                    //
+                    """).format(msg=err_txt, rules="\n//\t".join(duplicate_rules))
+            if error_rules:
+                if safe:
+                    err_txt = "were skipped due to"
+                else:
+                    err_txt = "are"
+                error += dedent("""\
+                
+                    // [ERROR] Some rules {msg} missing dependencies:
+                    //
+                    //	{rules}
+                    //
+                    """).format(msg=err_txt, rules="\n//\t".join(error_rules))
+            # noinspection PyAugmentAssignment
+
+            header = dedent("""\
+                // Signatures last updated: {last_modified}
+                // Yara file unique identifier: {query_hash}
+                // Query executed to find signatures:
                 //
-                //	{rules}
+                //	{query}
+                // {error}
+                // Number of rules in file:
                 //
-                """).format(msg=err_txt, rules="\n//\t".join(duplicate_rules))
-        if error_rules:
-            if safe:
-                err_txt = "were skipped due to"
-            else:
-                err_txt = "are"
-            error += dedent("""\
-            
-                // [ERROR] Some rules {msg} missing dependencies:
-                //
-                //	{rules}
-                //
-                """).format(msg=err_txt, rules="\n//\t".join(error_rules))
-        # noinspection PyAugmentAssignment
+                """).format(query=query, error=error, last_modified=last_modified, query_hash=query_hash)
 
-        header = dedent("""\
-            // Signatures last updated: {last_modified}
-            // Signatures matching filter:
-            //
-            //	{query}
-            // {error}
-            // Number of rules in file:
-            //
-            """).format(query=query, error=error, last_modified=last_modified)
+            rule_file_bin = header + YaraParser().dump_rule_file(signature_list)
+            rule_file_bin = rule_file_bin
 
-        rule_file_bin = header + YaraParser().dump_rule_file(signature_list)
-        rule_file_bin = rule_file_bin
+            signature_cache.save(query_hash, rule_file_bin)
 
-        signature_cache.save(query_hash, rule_file_bin)
-
-        return make_file_response(
-            rule_file_bin, "al_yara_signatures.yar",
-            len(rule_file_bin), content_type="text/yara"
-        )
+            return make_file_response(
+                rule_file_bin, f"al_yara_signatures_{query_hash[:7]}.yar",
+                len(rule_file_bin), content_type="text/yara"
+            )
 
 
 @signature_api.route("/<sid>/<rev>/", methods=["GET"])
@@ -460,7 +447,7 @@ def get_signature(sid, rev, **kwargs):
      "condition": ["1 of them"]}  # Rule condition section (LIST)    
     """
     user = kwargs['user']
-    data = STORAGE.get_signature("%sr.%s" % (sid, rev))
+    data = STORAGE.signature.get(f"{sid}r.{rev}", as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'],
                                             data['meta'].get('classification',
@@ -507,11 +494,11 @@ def list_signatures(**kwargs):
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('filter', "id:*")
-    
+    query = request.args.get('query', "id:*")
+
     try:
         return make_api_response(STORAGE.signature.search(query, offset=offset, rows=rows,
-                                                          access_control=user['access_control']))
+                                                          access_control=user['access_control'], as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -597,7 +584,9 @@ def set_signature(sid, rev, **kwargs):
         if res['valid']:
             data['warning'] = res.get('warning', None)
             STORAGE.save_signature(key, data)
-            return make_api_response({"success": True, "sid": data['meta']['id'], "rev": data['meta']['rule_version']})
+            return make_api_response({"success": True,
+                                      "sid": data['meta']['rule_id'],
+                                      "rev": data['meta']['rule_version']})
         else:
             return make_api_response({"success": False}, res, 403)
     else:
@@ -665,7 +654,7 @@ def signature_statistics(**kwargs):
 
 @signature_api.route("/update_available/", methods=["GET"])
 @api_login(required_priv=['R'], allow_readonly=False)
-def update_available(**_):  # pylint: disable=W0613
+def update_available(**_):
     """
     Check if updated signatures are.
 
