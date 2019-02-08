@@ -1,7 +1,7 @@
 rule BlackShades {
     meta:
         rule_group = "implant"
-        rule_group_value = "BlackShades"
+        implant = "BlackShades"
         
         description = "BlackShades implant"
         organisation = "CSE"
@@ -36,7 +36,7 @@ rule BlackShades {
 rule Punisher {
     meta:
         rule_group = "implant"
-        rule_group_value = "Punisher"
+        implant = "Punisher"
         
         description = "Punisher implant"
         organisation = "CSE"
@@ -76,7 +76,7 @@ rule Punisher {
 rule gh0st {
     meta:
         rule_group = "implant"
-        rule_group_value = "gh0st"
+        implant = "gh0st"
         
         description = "gh0st implant"
         organisation = "CSE"
@@ -106,7 +106,7 @@ rule gh0st {
 rule Xtreme {
     meta:
         rule_group = "implant"
-        rule_group_value = "Xtreme"
+        implant = "Xtreme"
         
         description = "Xtreme implant"
         organisation = "CSE"
@@ -145,7 +145,7 @@ rule Xtreme {
 rule Bozok {
     meta:
         rule_group = "implant"
-        rule_group_value = "Bozok"
+        implant = "Bozok"
         
         description = "Bozok implant"
         rganisation = "CSE"
@@ -183,7 +183,7 @@ rule Bozok {
 rule CyberGate {
     meta:
         rule_group = "implant"
-        rule_group_value = "CyberGate"
+        implant = "CyberGate"
         
         description = "CyberGate implant"
         organisation = "CSE"
@@ -224,7 +224,7 @@ rule CyberGate {
 rule NanoCore {
     meta:
         rule_group = "implant"
-        rule_group_value = "NanoCore"
+        implant = "NanoCore"
         
         description = "NanoCore implant"
         organisation = "CSE"
@@ -268,7 +268,7 @@ rule NanoCore {
 rule xRAT {
     meta:
         rule_group = "implant"
-        rule_group_value = "xRAT"
+        implant = "xRAT"
         
         description = "xRAT implant"
         organisation = "CSE"
@@ -315,7 +315,7 @@ rule xRAT {
 rule VirusRat {
     meta:
         rule_group = "implant"
-        rule_group_value = "VirusRat"
+        implant = "VirusRat"
         
         description = "VirusRat implant"
         organisation = "CSE"
@@ -360,7 +360,7 @@ rule VirusRat {
 rule LuxNet {
     meta:
         rule_group = "implant"
-        rule_group_value = "LuxNet"
+        implant = "LuxNet"
         
         description = "LuxNet implant"
         organisation = "CSE"
@@ -399,7 +399,7 @@ rule LuxNet {
 rule njRat {
     meta:
         rule_group = "implant"
-        rule_group_value = "njRat"
+        implant = "njRat"
         
         description = "njRat implant"
         organisation = "CSE"
@@ -439,7 +439,7 @@ rule njRat {
 rule Pandora {
     meta:
         rule_group = "implant"
-        rule_group_value = "Pandora"
+        implant = "Pandora"
         
         description = "Pandora implant"
         organisation = "CSE"
@@ -485,7 +485,7 @@ rule Pandora {
 rule njrat: rat {
     meta:
         rule_group = "implant"
-        rule_group_value = "njrat"
+        implant = "njrat"
         
         description = "tested against NjRat versions 0.3.6 - 0.7d"
         organisation = "CSE"
@@ -524,7 +524,7 @@ rule njrat: rat {
 rule darkcomet51: rat {
     meta:
         rule_group = "implant"
-        rule_group_value = "darkcomet51"
+        implant = "darkcomet51"
         
         description = "DarkComet RAT version 5.1"
         organisation = "CSE"
@@ -554,7 +554,7 @@ rule darkcomet51: rat {
 rule PoisonIvy {
     meta:
         rule_group = "implant"
-        rule_group_value = "PoisonIvy"
+        implant = "PoisonIvy"
         
         description = "PoisonIvy implant"
         organisation = "CSE"
@@ -593,7 +593,7 @@ rule PoisonIvy {
 rule mraptor_oletools {
     meta:
         rule_group = "technique"
-        rule_group_value = "Macros suspicious properties"
+        technique = "Macros suspicious properties"
         
         description = "Macros with AutoExec and (Write or Execute) properties"
         organisation = "CSE"
@@ -637,7 +637,7 @@ rule mraptor_oletools {
 rule VBA_external_connections {
     meta:
         rule_group = "technique"
-        rule_group_value = "External connections via VB script"
+        technique = "External connections via VB script"
         
         description = "Strings in VB script that suggest external connections"
         organisation = "CSE"
@@ -680,7 +680,7 @@ rule VBA_external_connections {
 rule DarkComet {
     meta:
         rule_group = "implant"
-        rule_group_value = "DarkComet"
+        implant = "DarkComet"
         
         description = "DarkComet implant"
         organisation = "CSE"
@@ -724,7 +724,7 @@ rule DarkComet {
 rule darkcomet_rc4 {
     meta:
         rule_group = "implant"
-        rule_group_value = "darkcomet_rc4"
+        implant = "darkcomet_rc4"
         
         description = "darkcomet_rc4 implant"
         organisation = "CSE"
