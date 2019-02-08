@@ -7,6 +7,7 @@ from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.yara import YaraParser
 from assemblyline.datastore import SearchException
+from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import LOGGER, STORAGE, ORGANISATION
@@ -64,10 +65,10 @@ def add_signature(**kwargs):
         return make_api_response("", "Only admins are allowed to add global signatures.", 403)
 
     sid = "%s_%06d" % (data['meta']['organisation'], new_id)
-    data['meta']['id'] = sid
+    data['meta']['rule_id'] = sid
     data['meta']['rule_version'] = new_rev
     data['meta']['last_saved_by'] = user['uname']
-    key = "%sr.%s" % (data['meta']['id'], data['meta']['rule_version'])
+    key = "%sr.%s" % (data['meta']['rule_id'], data['meta']['rule_version'])
     yara_version = data['meta'].get('yara_version', None)
     data['depends'], data['modules'] = \
         YaraParser.parse_dependencies(data['condition'], YaraParser.YARA_MODULES.get(yara_version, None))
@@ -87,7 +88,7 @@ def add_signature(**kwargs):
             
         data['warning'] = res.get('warning', None)
         STORAGE.save_signature(key, data)
-        return make_api_response({"success": True, "sid": data['meta']['id'], "rev": data['meta']['rule_version']})
+        return make_api_response({"success": True, "sid": data['meta']['rule_id'], "rev": data['meta']['rule_version']})
     else:
         return make_api_response({"success": False}, res, 403)
 
@@ -115,21 +116,19 @@ def change_status(sid, rev, status, **kwargs):
     Result example:
     { "success" : true }      #If saving the rule was a success or not
     """
-    DEPLOYED_STATUSES = ['DEPLOYED', 'NOISY', 'DISABLED']
-    DRAFT_STATUSES = ['STAGING', 'TESTING']
-    STALE_STATUSES = ['INVALID']
     user = kwargs['user']
-    if status == 'INVALID':
+    possible_statuses = DEPLOYED_STATUSES + DRAFT_STATUSES
+    if status not in possible_statuses:
         return make_api_response("",
-                                 "INVALID signature status is reserved for service use only.",
+                                 f"You cannot apply the status {status} on yara rules.",
                                  403)
     if not user['is_admin'] and status in DEPLOYED_STATUSES:
         return make_api_response("",
                                  "Only admins are allowed to change the signature status to a deployed status.",
                                  403)
     
-    key = "%sr.%s" % (sid, rev)
-    data = STORAGE.get_signature(key)
+    key = f"{sid}r.{rev}"
+    data = STORAGE.signature.get(key, as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'], data['meta'].get('classification',
                                                                                      Classification.UNRESTRICTED)):
@@ -137,40 +136,38 @@ def change_status(sid, rev, status, **kwargs):
     
         if data['meta']['al_status'] in STALE_STATUSES and status not in DRAFT_STATUSES:
             return make_api_response("",
-                                     "Only action available while signature in {} status is to change "
-                                     "signature to a DRAFT status"
-                                     .format(data['meta']['al_status']),
+                                     f"Only action available while signature in {data['meta']['al_status']} "
+                                     f"status is to change signature to a DRAFT status. ({', '.join(DRAFT_STATUSES)})",
                                      403)
 
         if data['meta']['al_status'] in DEPLOYED_STATUSES and status in DRAFT_STATUSES:
-            return make_api_response("", "You cannot change the status of signature %s r.%s from %s to %s." %
-                                     (sid, rev, data['meta']['al_status'], status), 403)
+            return make_api_response("",
+                                     f"You cannot change the status of signature {sid} r.{rev} from "
+                                     f"{data['meta']['al_status']} to {status}.", 403)
 
-        query = "meta.al_status:{status} AND _yz_rk:{sid}* AND NOT _yz_rk:{key}"
+        query = "meta.al_status:{status} AND id:{sid}* AND NOT id:{key}"
         today = now_as_iso()
         uname = user['uname']
 
         if status not in ['DISABLED', 'INVALID', 'TESTING']:
-            for other in STORAGE.get_signatures(
-                STORAGE.list_filtered_signature_keys(
-                    query.format(key=key, sid=sid, status=status)
-                )
-            ):
-                other['meta']['al_state_change_date'] = today
-                other['meta']['al_state_change_user'] = uname
+            keys = [k['id']
+                    for k in STORAGE.signature.search(query.format(key=key, sid=sid, status=status),
+                                                      fl="id", as_obj=False)['items']]
+            for other in STORAGE.signature.multiget(keys, as_obj=False):
+                other['meta_extra']['al_state_change_date'] = today
+                other['meta_extra']['al_state_change_user'] = uname
                 other['meta']['al_status'] = 'DISABLED'
 
-                other_sid = other['meta']['id']
+                other_sid = other['meta']['rule_id']
                 other_rev = other['meta']['rule_version']
                 other_key = "%sr.%s" % (other_sid, other_rev)
                 STORAGE.save_signature(other_key, other)
 
-        data['meta']['al_state_change_date'] = today
-        data['meta']['al_state_change_user'] = uname
+        data['meta_extra']['al_state_change_date'] = today
+        data['meta_extra']['al_state_change_user'] = uname
         data['meta']['al_status'] = status
 
-        STORAGE.save_signature(key, data)
-        return make_api_response({"success": True})
+        return make_api_response({"success": STORAGE.signature.save(key, data)})
     else:
         return make_api_response("", "Signature not found. (%s r.%s)" % (sid, rev), 404)
 
@@ -195,15 +192,14 @@ def delete_signature(sid, rev, **kwargs):
     {"success": True}  # Signature delete successful
     """
     user = kwargs['user']
-    data = STORAGE.get_signature("%sr.%s" % (sid, rev))
+    data = STORAGE.signature.get(f"{sid}r.{rev}", as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'],
                                             data['meta'].get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to delete this signature.", 403)
-        STORAGE.delete_signature("%sr.%s" % (sid, rev))
-        return make_api_response({"success": True})
+        return make_api_response({"success": STORAGE.signature.delete(f"{sid}r.{rev}")})
     else:
-        return make_api_response("", "Signature not found. (%s r.%s)" % (sid, rev), 404)
+        return make_api_response("", f"Signature not found. ({sid} r.{rev})", 404)
 
 
 # noinspection PyBroadException
