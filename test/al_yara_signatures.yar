@@ -148,10 +148,10 @@ rule Bozok {
         implant = "Bozok"
         
         description = "Bozok implant"
-        rganisation = "CSE"
+        organisation = "CSE"
         poc = "malware_dev@cse"
         rule_id = "CSE_900005"
-        orule_version = "1"
+        rule_version = "1"
         yara_version = "3.4"
         
         al_configdumper = "al_services.alsvc_configdecoder.ext.RATDecoders.Bozok.run"

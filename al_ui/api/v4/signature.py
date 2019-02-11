@@ -1,3 +1,4 @@
+import concurrent.futures
 
 from flask import request
 from hashlib import sha256
@@ -486,7 +487,7 @@ def list_signatures(**kwargs):
     Result example:
     {"total": 201,                # Total signatures found
      "offset": 0,                 # Offset in the signature list
-     "count": 100,                # Number of signatures returned
+     "rows": 100,                # Number of signatures returned
      "items": [{                  # List of Signatures:
        "name": "sig_name",          # Signature name    
        "tags": ["PECheck"],         # Signature tags
@@ -575,6 +576,7 @@ def set_signature(sid, rev, **kwargs):
         # Check if rule requires a revision bump
         if YaraParser.require_bump(data, old_data):
             # Get new ID
+            data['meta']['rule_id'] = sid
             data['meta']['rule_version'] = STORAGE.get_signature_last_revision_for_id(sid) + 1
 
             # Cleanup fields
@@ -588,6 +590,11 @@ def set_signature(sid, rev, **kwargs):
 
             data['meta']['al_status'] = "TESTING"
             key = f"{sid}r.{data['meta']['rule_version']}"
+        else:
+
+            # Make sure rule id and revision match
+            data['meta']['rule_id'] = sid
+            data['meta']['rule_version'] = rev
 
         # Reset signature last modified
         if 'last_modified' in data['meta']:
@@ -598,10 +605,6 @@ def set_signature(sid, rev, **kwargs):
             data['meta_extra'] = {'last_saved_by': user['uname']}
         else:
             data['meta_extra']['last_saved_by'] = user['uname']
-
-        # Make sure rule id and revision match
-        data['meta']['rule_id'] = sid
-        data['meta']['rule_version'] = rev
 
         # check rule dependencies
         yara_modules = YaraParser.YARA_MODULES.get(data['meta'].get('yara_version', None), None)
@@ -637,47 +640,57 @@ def signature_statistics(**kwargs):
     None
 
     Result example:
-    {"total": 201,                # Total heuristics found
-     "timestamp":                 # Timestamp of last signatures stats
-     "items":                     # List of Signatures
-     [{"id": "ORG_000000",           # Signature ID
+    [                             # List of signature stats
+      {"sid": "ORG_000000",          # Signature ID
+       "rev": "1",                   # Signature version
+       "classification": "U",        # Classification of the signature
        "name": "Signature Name"      # Signature name
        "count": "100",               # Count of times signatures seen
        "min": 0,                     # Lowest score found
        "avg": 172,                   # Average of all scores
        "max": 780,                   # Highest score found
-     },
+      },
      ...
-    """
+    ]"""
+
     user = kwargs['user']
-    output = {"total": 0, "items": [], "timestamp": None}
 
-    sig_blob = STORAGE.get_blob("signature_stats")
+    def get_stat_for_signature(p_sid, p_rev, p_name, p_classification):
+        stats = STORAGE.result.stats("result.score",
+                                     query=f"result.tags.value:{p_name} AND result.tags.type:FILE_YARA_RULE")
+        if stats['count'] == 0:
+            return {
+                'sid': p_sid,
+                'rev': p_rev,
+                'name': p_name,
+                'classification': p_classification,
+                'count': stats['count'],
+                'min': 0,
+                'max': 0,
+                'avg': 0,
+            }
+        else:
+            return {
+                'sid': p_sid,
+                'rev': p_rev,
+                'name': p_name,
+                'classification': p_classification,
+                'count': stats['count'],
+                'min': int(stats['min']),
+                'max': int(stats['max']),
+                'avg': int(stats['avg']),
+            }
 
-    if sig_blob:
-        cleared = []
-        try:
-            for k, v in sig_blob["stats"].iteritems():
-                sig_id, rev = k.rsplit("r.", 1)
-                if user and Classification.is_accessible(user['classification'], v[1]):
-                    cleared.append({
-                        "id": sig_id,
-                        "rev": rev,
-                        "name": v[0],
-                        "count": v[2],
-                        "min": v[3],
-                        "avg": int(v[4]),
-                        "max": v[5],
-                        "classification": v[1]
-                    })
-        except AttributeError:
-            pass
+    sig_list = sorted([(x['meta']['rule_id'], x['meta']['rule_version'], x['name'], x['classification'])
+                       for x in STORAGE.signature.stream_search("name:*",
+                                                                fl="name,meta.rule_id,meta.rule_version,classification",
+                                                                access_control=user['access_control'], as_obj=False)])
 
-        output["items"] = cleared
-        output["total"] = len(cleared)
-        output["timestamp"] = sig_blob["timestamp"]
+    with concurrent.futures.ThreadPoolExecutor(min(len(sig_list), 20)) as executor:
+        res = [executor.submit(get_stat_for_signature, sid, rev, name, classification)
+               for sid, rev, name, classification in sig_list]
 
-    return make_api_response(output)
+    return make_api_response(sorted([r.result() for r in res], key=lambda i: (i['sid'], i['rev'])))
 
 
 @signature_api.route("/update_available/", methods=["GET"])

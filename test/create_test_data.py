@@ -57,6 +57,12 @@ for svc in SERVICES:
     ds.service.save(service_data.name, service_data)
     print(f'\t{svc}')
 
+print("\nImporting test signatures...")
+yp = YaraImporter(logger=PrintLogger(indent="\t"))
+parsed = yp.parse_file('al_yara_signatures.yar')
+yp.import_now([p['rule'] for p in parsed])
+signatures = [p['rule']['name'] for p in parsed]
+
 print("\nCreating 20 Files...")
 file_hashes = []
 for x in range(20):
@@ -94,6 +100,11 @@ for fh in file_hashes:
             supp.sha256 = random.choice(other_files)
             if fh == supp.sha256:
                 raise Exception("Invalid supplementary file")
+
+        for tag in r.result.tags:
+            if random.randint(0,3) == 1:
+                tag.value = random.choice(signatures)
+                tag.type = "FILE_YARA_RULE"
 
         key = r.build_key()
         result_keys.append(key)
@@ -150,10 +161,5 @@ for x in range(50):
     a.owner = random.choice(['admin', 'user', 'other', None])
     ds.alert.save(a.alert_id, a)
     print(f"\t{a.alert_id}")
-
-print("\nImporting test signatures...")
-yp = YaraImporter(logger=PrintLogger(indent="\t"))
-parsed = yp.parse_file('al_yara_signatures.yar')
-yp.import_now([p['rule'] for p in parsed])
 
 print("\nDone.")
