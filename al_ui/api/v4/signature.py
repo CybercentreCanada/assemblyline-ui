@@ -52,45 +52,62 @@ def add_signature(**kwargs):
      "rev": 2 }            #Revision number at which the rule was saved.
     """
     user = kwargs['user']
-    new_id = STORAGE.get_signature_last_id(ORGANISATION) + 1
-    new_rev = 1
     data = request.json
-    
+
+    # Check if organisation matches
+    data_org = data.get("meta", {}).get("organisation", None)
+    if data_org != ORGANISATION:
+        return make_api_response("", f"The organisation provided does not match your organisation. "
+                                     f"({data_org} != {ORGANISATION})", 400)
+
     if not Classification.is_accessible(user['classification'], data['meta'].get('classification',
                                                                                  Classification.UNRESTRICTED)):
         return make_api_response("", "You are not allowed to add a signature with "
                                      "higher classification than yours", 403)
 
+    # Check signature type
     if not user['is_admin'] and "global" in data['type']:
         return make_api_response("", "Only admins are allowed to add global signatures.", 403)
 
-    sid = "%s_%06d" % (data['meta']['organisation'], new_id)
+    # Compute signature ID and Revision
+    new_id = STORAGE.get_signature_last_id(ORGANISATION) + 1
+    sid = "%s_%06d" % (ORGANISATION, new_id)
     data['meta']['rule_id'] = sid
-    data['meta']['rule_version'] = new_rev
-    data['meta']['last_saved_by'] = user['uname']
-    key = "%sr.%s" % (data['meta']['rule_id'], data['meta']['rule_version'])
+    data['meta']['rule_version'] = 1
+    key = f"{sid}r.{data['meta']['rule_version']}"
+
+    # Set last saved by
+    if "meta_extra" not in data:
+        data['meta_extra'] = {'last_saved_by': user['uname']}
+    else:
+        data['meta_extra']['last_saved_by'] = user['uname']
+
+    # Get rule dependancies
     yara_version = data['meta'].get('yara_version', None)
-    data['depends'], data['modules'] = \
-        YaraParser.parse_dependencies(data['condition'], YaraParser.YARA_MODULES.get(yara_version, None))
+    data['depends'], data['modules'] = YaraParser.parse_dependencies(data['condition'],
+                                                                     YaraParser.YARA_MODULES.get(yara_version, None))
+
+    # Validate rule
     res = YaraParser.validate_rule(data)
     if res['valid']:
-        query = "name:{name} AND NOT _yz_rk:{sid}*"
-        other = STORAGE.direct_search(
-            'signature', query.format(name=data['name'], sid=sid),
-            args=[('fl', '_yz_rk'), ('rows', '0')],
-        )
-        if other.get('response', {}).get('numFound', 0) > 0:
+        # Test signature name
+        other = STORAGE.signature.search(f"name:{data['name']} AND NOT id:{sid}*", fl='id', rows='0')
+        if other['total'] > 0:
             return make_api_response(
                 {"success": False},
                 "A signature with that name already exists",
-                403
+                400
             )
-            
+
+        # Add signature test warnings
         data['warning'] = res.get('warning', None)
-        STORAGE.save_signature(key, data)
-        return make_api_response({"success": True, "sid": data['meta']['rule_id'], "rev": data['meta']['rule_version']})
+
+        # Save the signature
+        return make_api_response({"success": STORAGE.signature.save(key, data),
+                                  "sid": data['meta']['rule_id'],
+                                  "rev": data['meta']['rule_version']})
     else:
-        return make_api_response({"success": False}, res, 403)
+        return make_api_response({"success": False}, res, 400)
 
 
 # noinspection PyPep8Naming
@@ -98,8 +115,6 @@ def add_signature(**kwargs):
 @api_login(required_priv=['W'], allow_readonly=False)
 def change_status(sid, rev, status, **kwargs):
     """
-    [INCOMPLETE]
-       - DISABLE OTHER REVISION OF THE SAME SIGNTURE WHEN DEPLOYING ONE
     Change the status of a signature
        
     Variables:
@@ -153,15 +168,12 @@ def change_status(sid, rev, status, **kwargs):
             keys = [k['id']
                     for k in STORAGE.signature.search(query.format(key=key, sid=sid, status=status),
                                                       fl="id", as_obj=False)['items']]
-            for other in STORAGE.signature.multiget(keys, as_obj=False):
+            for other in STORAGE.signature.multiget(keys, as_obj=False, as_dictionary=False):
                 other['meta_extra']['al_state_change_date'] = today
                 other['meta_extra']['al_state_change_user'] = uname
                 other['meta']['al_status'] = 'DISABLED'
 
-                other_sid = other['meta']['rule_id']
-                other_rev = other['meta']['rule_version']
-                other_key = "%sr.%s" % (other_sid, other_rev)
-                STORAGE.save_signature(other_key, other)
+                STORAGE.signature.save(f"{other['meta']['rule_id']}r.{other['meta']['rule_version']}", other)
 
         data['meta_extra']['al_state_change_date'] = today
         data['meta_extra']['al_state_change_user'] = uname
@@ -169,7 +181,7 @@ def change_status(sid, rev, status, **kwargs):
 
         return make_api_response({"success": STORAGE.signature.save(key, data)})
     else:
-        return make_api_response("", "Signature not found. (%s r.%s)" % (sid, rev), 404)
+        return make_api_response("", f"Signature not found. ({sid} r.{rev})", 404)
 
 
 @signature_api.route("/<sid>/<rev>/", methods=["DELETE"])
@@ -506,7 +518,7 @@ def set_signature(sid, rev, **kwargs):
     [INCOMPLETE]
        - CHECK IF SIGNATURE NAME ALREADY EXISTS
     Update a signature defined by a sid and a rev.
-       NOTE: The API will compare they old signature
+       NOTE: The API will compare the old signature
              with the new one and will make the decision
              to increment the revision number or not. 
     
@@ -534,53 +546,73 @@ def set_signature(sid, rev, **kwargs):
      "rev": 2 }            #Revision number at which the rule was saved.
     """
     user = kwargs['user']
-    key = "%sr.%s" % (sid, rev)
-    
-    old_data = STORAGE.get_signature(key)
+    key = f"{sid}r.{rev}"
+
+    # Get old signature
+    old_data = STORAGE.signature.get(key, as_obj=False)
     if old_data:
         data = request.json
+        # Test classification access
         if not Classification.is_accessible(user['classification'],
-                                            data['meta'].get('classification',
-                                                             Classification.UNRESTRICTED)):
+                                            data['meta'].get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "You are not allowed to change a signature to an "
                                          "higher classification than yours", 403)
     
-        if old_data['meta']['al_status'] != data['meta']['al_status']:
-            return make_api_response({"success": False}, "You cannot change the signature "
-                                                         "status through this API.", 403)
-        
         if not Classification.is_accessible(user['classification'],
-                                            old_data['meta'].get('classification',
-                                                                 Classification.UNRESTRICTED)):
+                                            old_data['meta'].get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "You are not allowed to change a signature with "
                                          "higher classification than yours", 403)
 
+        # Test signature type access
         if not user['is_admin'] and "global" in data['type']:
             return make_api_response("", "Only admins are allowed to add global signatures.", 403)
 
+        # Check signature statuses
+        if old_data['meta']['al_status'] != data['meta']['al_status']:
+            return make_api_response({"success": False}, "You cannot change the signature "
+                                                         "status through this API.", 400)
+
+        # Check if rule requires a revision bump
         if YaraParser.require_bump(data, old_data):
-            data['meta']['rule_version'] = STORAGE.get_last_rev_for_id(sid) + 1
+            # Get new ID
+            data['meta']['rule_version'] = STORAGE.get_signature_last_revision_for_id(sid) + 1
+
+            # Cleanup fields
             if 'creation_date' in data['meta']:
                 del(data['meta']['creation_date'])
-            if 'al_state_change_date' in data['meta']:
-                del(data['meta']['al_state_change_date'])
-            if 'al_state_change_user' in data['meta']:
-                del(data['meta']['al_state_change_user'])
+            if "meta_extra" in data:
+                if 'al_state_change_date' in data['meta_extra']:
+                    del(data['meta_extra']['al_state_change_date'])
+                if 'al_state_change_user' in data['meta_extra']:
+                    del(data['meta_extra']['al_state_change_user'])
+
             data['meta']['al_status'] = "TESTING"
-            key = "%sr.%s" % (sid, data['meta']['rule_version'])
-                
+            key = f"{sid}r.{data['meta']['rule_version']}"
+
+        # Reset signature last modified
         if 'last_modified' in data['meta']:
             del (data['meta']['last_modified'])
-        
-        data['meta']['last_saved_by'] = user['uname']
-        yara_version = data['meta'].get('yara_version', None)
-        data['depends'], data['modules'] = \
-            YaraParser.parse_dependencies(data['condition'], YaraParser.YARA_MODULES.get(yara_version, None))
+
+        # Set last saved by
+        if "meta_extra" not in data:
+            data['meta_extra'] = {'last_saved_by': user['uname']}
+        else:
+            data['meta_extra']['last_saved_by'] = user['uname']
+
+        # Make sure rule id and revision match
+        data['meta']['rule_id'] = sid
+        data['meta']['rule_version'] = rev
+
+        # check rule dependencies
+        yara_modules = YaraParser.YARA_MODULES.get(data['meta'].get('yara_version', None), None)
+        data['depends'], data['modules'] = YaraParser.parse_dependencies(data['condition'], yara_modules)
+
+        # Validate rule
         res = YaraParser.validate_rule(data)
         if res['valid']:
+            # Save signature
             data['warning'] = res.get('warning', None)
-            STORAGE.save_signature(key, data)
-            return make_api_response({"success": True,
+            return make_api_response({"success": STORAGE.signature.save(key, data),
                                       "sid": data['meta']['rule_id'],
                                       "rev": data['meta']['rule_version']})
         else:
