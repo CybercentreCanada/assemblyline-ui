@@ -1,4 +1,5 @@
-
+import base64
+import binascii
 import os
 import uuid
 
@@ -16,7 +17,7 @@ SUB_API = 'bundle'
 
 Classification = forge.get_classification()
 
-bundle_api = make_subapi_blueprint(SUB_API)
+bundle_api = make_subapi_blueprint(SUB_API, api_version=4)
 bundle_api._doc = "Create and restore submission bundles"
 
 WORKING_DIR = "/tmp/al_ui"
@@ -45,7 +46,7 @@ def create_bundle(sid, **kwargs):
     -- THE BUNDLE FILE BINARY --
     """
     user = kwargs['user']
-    submission = STORAGE.get_submission(sid)
+    submission = STORAGE.submission.get(sid, as_obj=False)
     
     if user and submission and Classification.is_accessible(user['classification'], submission['classification']):
         temp_target_file = None
@@ -92,7 +93,10 @@ def import_bundle(**_):
     current_bundle = os.path.join(WORKING_DIR, "%s.bundle" % str(uuid.uuid4()))
 
     with open(current_bundle, 'wb') as fh:
-        fh.write(request.data)
+        try:
+            fh.write(base64.b64decode(request.data))
+        except binascii.Error:
+            fh.write(request.data)
 
     try:
         bundle_import(current_bundle, working_dir=WORKING_DIR, min_classification=min_classification)
@@ -101,5 +105,5 @@ def import_bundle(**_):
         return make_api_response({'success': False}, err=str(ice), status_code=400)
     except SubmissionAlreadyExist as sae:
         return make_api_response({'success': False}, err=str(sae), status_code=409)
-    except IncompleteBundle as ib:
-        return make_api_response({'success': False}, err=str(ib), status_code=400)
+    except (IncompleteBundle, BundlingException) as b:
+        return make_api_response({'success': False}, err=str(b), status_code=400)
