@@ -1,0 +1,92 @@
+{% extends base_template %}
+{% block html_param %}ng-app="app"{% endblock %}
+{% block title_page %}AL - TagCheck signature management{% endblock %}
+{% block js_import %}
+	<script src="/static/js/tc_signatures.js"></script>
+{% endblock %}
+{% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};start();"{% endblock %}
+{% block content %}
+	{%raw%}
+	<section id="appContent" class="container">
+		<div class="header_title text-right">
+			<h1>Tagcheck Signature Management</h1>
+			<div><h4 ng-hide="signature_list == null || (total == 0 && !filtered)" class="text-muted">:: {{total}} Tagcheck signature<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4></div>
+			<div ng-hide="signature_list == null || (total == 0 && !filtered)">
+				<a class="btn btn-success btn-sm" ng-click="add_signature();"><span class="glyphicon glyphicon-plus">&nbsp;</span>Add Signature</a>
+			</div>
+		</div>
+		<div ng-hide="signature_list == null || (!filtered && signature_list.length == 0)">
+			<div ng-controller="pagerCtrl" ng-init="pager_page='tc_signature'" pager></div>
+		</div>
+		<section class="table-responsive" ng-hide="signature_list == null || (!filtered && signature_list.length == 0)">
+			<table class="table table-hover">
+				<thead>
+					<tr class="active">
+						<th>Name</th><th>Score</th><th>Status</th><th ng-if="user.c12n_enforcing">Classification</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-click="editSignature(s.name)" ng-repeat="s in signature_list" style="cursor: pointer;">
+						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
+						<td>{{s.score}}</td>
+						<td>
+							<span ng-show="s.status=='DEPLOYED'" class="label classification label-success">{{s.status}}</span>
+							<span ng-show="s.status=='NOISY'" class="label classification label-info">{{s.status}}</span>
+							<span ng-show="s.status=='DISABLED'" class="label classification label-danger">{{s.status}}</span>
+							<span ng-show="s.status=='TESTING'" class="label classification label-warning">{{s.status}}</span>
+							<span ng-show="s.status=='STAGING'" class="label classification label-primary">{{s.status}}</span>
+                            <span ng-show="s.status=='INVALID'" class="label classification label-default">{{s.status}}</span>
+						</td>
+                        <td ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_long}}</label></td>
+
+					</tr>
+				</tbody>
+			</table>
+		</section>
+		
+		<div ng-show="signature_list != null && signature_list.length == 0 && searchText == '' && !loading_extra">
+			<div class="jumbotron text-center">
+				<h2 class="text-muted">
+					There are currently no tagcheck signatures in the system.
+				</h2>
+				<div style="margin-top: 20px">
+					<button class="btn btn-success" ng-click="add_signature();">Add Signature</button>
+				</div>
+			</div>
+		</div>
+		
+		<div ng-controller="classificationCtrl" classification-picker></div>
+				
+		<!-- HIDE FOLLOWING: Should go inside a modal form -->
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-resize">
+				<div class="modal-content">
+					<div class="modal-header">
+                        <div class="pull-right text-large">
+                            <span ng-show="current_signature.status=='DEPLOYED'" class="label label-success">{{current_signature.status}}</span>
+                            <span ng-show="current_signature.status=='NOISY'" class="label label-info">{{current_signature.status}}</span>
+                            <span ng-show="current_signature.status=='DISABLED'" class="label label-danger">{{current_signature.status}}</span>
+                            <span ng-show="current_signature.status=='TESTING'" class="label label-warning">{{current_signature.status}}</span>
+                            <span ng-show="current_signature.status=='STAGING'" class="label label-primary">{{current_signature.status}}</span>
+                            <span ng-show="current_signature.status=='INVALID'" class="label label-default">{{current_signature.status}}</span>
+
+                            <button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
+                        </div>
+
+                        <h4 class="modal_title" id="myModalLabel">Signature detail <span ng-show="editmode">:: {{current_signature_name}}</span></h4>
+					</div>
+					<div class="modal-body">
+						<div tc-signature-detail></div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- END HIDE -->
+	</section>
+	{%endraw%}
+{% endblock %}				
+{% block loading_jumbo %}ng-hide="signature_list != null"{% endblock %}
