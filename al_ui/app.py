@@ -34,7 +34,7 @@ from al_ui.api.v4.user import user_api
 from al_ui.api.v4.vm import vm_api
 from al_ui.api.v4.workflow import workflow_api
 from al_ui.error import errors
-# from al_ui.views import views
+from al_ui.views import views
 
 from al_ui import config
 from assemblyline.common import forge
@@ -82,7 +82,7 @@ app.register_blueprint(tc_sigs_api)
 # app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
 app.register_blueprint(user_v3_api)
-# app.register_blueprint(views)
+app.register_blueprint(views)
 app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
 

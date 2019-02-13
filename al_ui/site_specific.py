@@ -57,13 +57,13 @@ def create_menu(user, path):
                      "link": "/api_doc.html",
                      "title": "API Documentation"}]
 
-    if config.system.classification.definition.enforce:
+    if forge.get_classification().enforce:
         help_submenu.extend([{"class": "",
                               "active": path.startswith("/classification_help.html"),
                               "link": "/classification_help.html",
                               "title": "Classification Help"}])
 
-    if not config.ui.get('read_only'):
+    if not config.ui.read_only:
         help_submenu.extend([{"class": "",
                               "active": path.startswith("/configuration.html"),
                               "link": "/configuration.html",
@@ -75,7 +75,7 @@ def create_menu(user, path):
          "link": "/search_help.html",
          "title": "Search Query Syntax"}])
 
-    if not config.ui.get('read_only'):
+    if not config.ui.read_only:
         help_submenu.extend([
             {"class": "",
              "active": path.startswith("/services.html"),
@@ -132,7 +132,7 @@ def create_menu(user, path):
              "title": "Alerts",
              "has_submenu": False}]
 
-    if not config.ui.get('read_only'):
+    if not config.ui.read_only:
         signature_submenu = [
             {"class": "dropdown-header",
              "active": False,

@@ -70,7 +70,7 @@ def login(uname, path=None):
         user["submenu"] = [{"icon": "glyphicon-user", "active": path.startswith("/account.html"),
                             "link": "/account.html", "title": "Account"}]
 
-        if not config.ui.get('read_only'):
+        if not config.ui.read_only:
             user["submenu"].extend(
                 [{"icon": "glyphicon-tasks", "active": path.startswith("/dashboard.html"),
                   "link": "/dashboard.html", "title": "Dashboard"}])
@@ -84,19 +84,20 @@ def login(uname, path=None):
             user['menu_active'] = (path.startswith("/settings.html") or path.startswith("/account.html") or
                                    path.startswith("/admin/") or path.startswith("/dashboard.html") or
                                    path.startswith("/kibana-dash.html"))
-            if config.logging.logserver.kibana.host:
-                user["kibana_dashboards"] = [{"icon": None,
-                                              "active": path.startswith("/kibana-dash.html?dash=%s" % x),
-                                              "link": "/kibana-dash.html?dash=%s" % x,
-                                              "title": "%s" % x.replace("-", " ")}
-                                             for x in config.logging.logserver.kibana.dashboards if x != ""]
+            # TODO: Maybe we should remove this from our interface. I'm excluding it for now
+            # if config.logging.logserver.kibana.host:
+            #     user["kibana_dashboards"] = [{"icon": None,
+            #                                   "active": path.startswith("/kibana-dash.html?dash=%s" % x),
+            #                                   "link": "/kibana-dash.html?dash=%s" % x,
+            #                                   "title": "%s" % x.replace("-", " ")}
+            #                                  for x in config.logging.logserver.kibana.dashboards if x != ""]
             user["admin_menu"] = [{"icon": None, "active": path.startswith("/admin/seed.html"),
                                    "link": "/admin/seed.html", "title": "Configuration"},
                                   {"icon": None, "active": path.startswith("/admin/documentation.html"),
                                    "link": "/admin/documentation.html", "title": "Documentation"},
                                   {"icon": None, "active": path.startswith("/admin/errors.html"),
                                    "link": "/admin/errors.html", "title": "Errors viewer"}]
-            if not config.ui.get('read_only'):
+            if not config.ui.read_only:
                 user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/hosts.html"),
                                             "link": "/admin/hosts.html", "title": "Hosts"},
                                            {"icon": None, "active": path.startswith("/admin/services.html"),
@@ -105,7 +106,7 @@ def login(uname, path=None):
                                         "link": "/admin/site_map.html", "title": "Site Map"},
                                        {"icon": None, "active": path.startswith("/admin/users.html"),
                                         "link": "/admin/users.html", "title": "Users"}])
-            if not config.ui.get('read_only'):
+            if not config.ui.read_only:
                 user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/virtual_machines.html"),
                                             "link": "/admin/virtual_machines.html", "title": "Virtual Machines"}])
         else:
@@ -123,7 +124,7 @@ def login(uname, path=None):
     user['has_password'] = user.pop('password', "") != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled
     u2f_devices = user.get('u2f_devices', {})
-    user['u2f_devices'] = u2f_devices.keys()
+    user['u2f_devices'] = list(u2f_devices.keys())
     user['u2f_enabled'] = len(u2f_devices) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True

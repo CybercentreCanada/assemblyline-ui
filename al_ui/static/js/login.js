@@ -44,7 +44,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'POST',
-            url: "/api/v3/auth/signup/",
+            url: "/api/v4/auth/signup/",
             data: {
                 user: $scope.username_signup,
                 password: $scope.password_signup,
@@ -65,15 +65,10 @@ function LoginBaseCtrl($scope, $http, $timeout) {
         $scope.error = '';
         $scope.loading = true;
         var password = $scope.password;
-        if ($scope.public_key !== "None"){
-            var rsa = new JSEncrypt();
-            rsa.setPublicKey($scope.public_key);
-            password = rsa.encrypt($scope.password)
-        }
 
         $http({
             method: 'POST',
-            url: "/api/v3/auth/login/",
+            url: "/api/v4/auth/login/",
             data: {user: $scope.username, password: password, otp: $scope.otp, u2f_response: $scope.u2f_response}
         })
         .success(function () {
@@ -91,7 +86,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
 
                 $http({
                     method: 'GET',
-                    url: "/api/v3/u2f/sign/" + $scope.username + "/"
+                    url: "/api/v4/u2f/sign/" + $scope.username + "/"
                 })
                 .success(function (data) {
                     $scope.loading = false;

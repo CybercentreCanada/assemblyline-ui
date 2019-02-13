@@ -3,16 +3,13 @@ import functools
 import json
 
 from datetime import timedelta
-from flask import redirect, render_template, request, abort, current_app, make_response, session as flsk_session
+from flask import redirect, render_template, request, abort, current_app, make_response
 from functools import update_wrapper
 
-
+from al_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline.common.forge import get_ui_context, get_config
-from assemblyline.common.isotime import now
-from al_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, \
-    BUILD_NO, AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, SYSTEM_NAME, get_template_prefix, KV_SESSION
+from al_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, BUILD_NO, SYSTEM_NAME, get_template_prefix
 from al_ui.helper.user import login
-from al_ui.http_exceptions import AccessDeniedException
 
 config = get_config()
 context = get_ui_context()
@@ -41,22 +38,20 @@ def angular_safe(value):
 
 
 # noinspection PyPep8Naming
-class protected_renderer(object):
+class protected_renderer(BaseSecurityRenderer):
     def __init__(self, require_admin=False, load_options=False, audit=True, required_priv=None, allow_readonly=True):
-        if required_priv is None:
-            required_priv = ["E"]
+        super().__init__(require_admin, audit, required_priv, allow_readonly)
 
-        self.require_admin = require_admin
         self.load_options = load_options
-        self.audit = audit and AUDIT
-        self.required_priv = required_priv
-        self.allow_readonly = allow_readonly
+
+    def extra_session_checks(self, session):
+        if not set(self.required_priv).intersection(set(session.get("privileges", []))):
+            abort(401)
 
     def __call__(self, func):
         @functools.wraps(func)
         def base(*args, **kwargs):
-            if not self.allow_readonly and config.ui.get('read_only', False):
-                return redirect(redirect_helper("/"))
+            self.test_readonly("Page")
 
             # Validate User-Agent
             user_agent = request.environ.get("HTTP_USER_AGENT", "Unknown browser")
@@ -64,56 +59,15 @@ class protected_renderer(object):
                 return redirect(redirect_helper("/unsupported.html"))
 
             # Create Path
-            path = request.path + "?" + request.query_string
+            path = f"{request.path}?{request.query_string.decode('UTF-8')}"
 
             # Login
-            try:
-                session_id = flsk_session.get("session_id", None)
+            logged_in_uname = self.get_logged_in_user()
 
-                if not session_id:
-                    abort(401)
+            user = login(logged_in_uname, path)
+            self.test_require_admin(user, "Url")
 
-                session = KV_SESSION.get(session_id)
-
-                if not session:
-                    abort(401)
-                else:
-                    session = json.loads(session)
-                    cur_time = now()
-                    if session.get('expire_at', 0) < cur_time:
-                        KV_SESSION.pop(session_id)
-                        abort(401)
-                    else:
-                        session['expire_at'] = cur_time + session.get('duration', 3600)
-
-                if request.headers.get("X-Forward-For", None) != session.get('ip', None) or \
-                        request.headers.get("User-Agent", None) != session.get('user_agent', None):
-                    abort(401)
-
-                KV_SESSION.set(session_id, session)
-
-                logged_in_uname = session.get("username", None)
-
-                if not set(self.required_priv).intersection(set(session.get("privileges", []))):
-                    abort(401)
-
-                user = login(logged_in_uname, path)
-                if self.require_admin and not user['is_admin']:
-                    raise AccessDeniedException("Url '%s' requires ADMIN privileges" % request.path)
-            except AccessDeniedException:
-                raise
-
-            if self.audit:
-                json_blob = request.json
-                if not isinstance(json_blob, dict):
-                    json_blob = {}
-                params_list = list(args) + \
-                    ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in request.args.iteritems() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
-                AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname, user['classification'],
-                                                      func.func_name,
-                                                      ", ".join(params_list)))
+            self.audit_if_required(args, kwargs, logged_in_uname, user, func)
 
             # Dump Generic KWARGS
             kwargs['build_master'] = "%s.%s" % (BUILD_MASTER, BUILD_LOWER)
@@ -121,12 +75,12 @@ class protected_renderer(object):
             kwargs['user_js'] = json.dumps(user)
             kwargs['debug'] = str(DEBUG).lower()
             kwargs['menu'] = create_menu(user, path)
-            kwargs['avatar'] = STORAGE.get_user_avatar(user['uname'])
+            kwargs['avatar'] = STORAGE.user_avatar.get(user['uname'])
             kwargs['is_prod'] = SYSTEM_NAME == "production"
-            kwargs['is_readonly'] = config.ui.get('read_only', False)
-            options = STORAGE.get_user_options(user['uname'])
+            kwargs['is_readonly'] = config.ui.read_only
+            options = STORAGE.user_options.get(user['uname'])
             if not request.path == "/terms.html":
-                if not user.get('agrees_with_tos', False) and config.ui.get("tos", None) is not None:
+                if not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                     return redirect(redirect_helper("/terms.html"))
                 if not options and not request.path == "/settings.html":
                     return redirect(redirect_helper("/settings.html?forced"))

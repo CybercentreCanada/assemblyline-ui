@@ -5,3 +5,4 @@ flask-socketio
 eventlet
 python_u2flib_server
 pyqrcode
+markdown

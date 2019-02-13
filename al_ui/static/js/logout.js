@@ -15,7 +15,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
         $timeout(function (){
             $http({
                 method: 'GET',
-                url: "/api/v3/auth/logout/"
+                url: "/api/v4/auth/logout/"
             })
                 .success(function () {
                     window.location = "/";

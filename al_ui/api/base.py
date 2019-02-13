@@ -2,19 +2,18 @@
 import functools
 import uuid
 
-from flask import abort, current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response
+from flask import current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response
 from sys import exc_info
 from traceback import format_tb
 
+from al_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline.common.str_utils import safe_str
 
-from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, LOGGER, \
-    RATE_LIMITER, CLASSIFICATION, KV_SESSION
+from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, LOGGER, RATE_LIMITER, CLASSIFICATION
 from al_ui.helper.user import login, add_access_control
 from al_ui.http_exceptions import AccessDeniedException, QuotaExceededException
 from al_ui.config import config, DN_PARSER
 from al_ui.logger import log_with_traceback
-from assemblyline.common.isotime import now
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -31,18 +30,21 @@ def make_subapi_blueprint(name, api_version=3):
 ####################################
 # API Helper func and decorators
 # noinspection PyPep8Naming
-class api_login(object):
-    def __init__(self, require_admin=False, username_key='username',
-                 audit=True, required_priv=None, check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
-        if required_priv is None:
-            required_priv = ["E"]
+class api_login(BaseSecurityRenderer):
+    def __init__(self, require_admin=False, username_key='username', audit=True, required_priv=None,
+                 check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
+        super().__init__(require_admin, audit, required_priv, allow_readonly)
 
-        self.require_admin = require_admin
         self.username_key = username_key
-        self.audit = audit and AUDIT
-        self.required_priv = required_priv
         self.check_xsrf_token = check_xsrf_token
-        self.allow_readonly = allow_readonly
+
+    def extra_session_checks(self, session):
+        if not set(self.required_priv).intersection(set(session.get("privileges", []))):
+            raise AccessDeniedException("The method you've used to login does not give you access to this API.")
+
+        if "E" in session.get("privileges", []) and self.check_xsrf_token and \
+                session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN', ""):
+            raise AccessDeniedException("Invalid XSRF token.")
 
     def __call__(self, func):
         @functools.wraps(func)
@@ -53,41 +55,8 @@ class api_login(object):
                 else:
                     raise AccessDeniedException("Invalid pre-authenticated user")
 
-            if not self.allow_readonly and config.ui.read_only:
-                return make_api_response({}, "Method not allowed in read-only mode", 403)
-
-            # Login
-            session_id = flsk_session.get("session_id", None)
-
-            if not session_id:
-                abort(401)
-
-            session = KV_SESSION.get(session_id)
-
-            if not session:
-                abort(401)
-            else:
-                cur_time = now()
-                if session.get('expire_at', 0) < cur_time:
-                    KV_SESSION.pop(session_id)
-                    abort(401)
-                else:
-                    session['expire_at'] = cur_time + session.get('duration', 3600)
-
-            if request.headers.get("X-Forward-For", None) != session.get('ip', None) or \
-                    request.headers.get("User-Agent", None) != session.get('user_agent', None):
-                abort(401)
-
-            KV_SESSION.set(session_id, session)
-
-            logged_in_uname = session.get("username", None)
-
-            if not set(self.required_priv).intersection(set(session.get("privileges", []))):
-                raise AccessDeniedException("The method you've used to login does not give you access to this API.")
-
-            if "E" in session.get("privileges", []) and self.check_xsrf_token and \
-                    session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN', ""):
-                raise AccessDeniedException("Invalid XSRF token.")
+            self.test_readonly("API")
+            logged_in_uname = self.get_logged_in_user()
 
             # Impersonation
             requestor = request.environ.get("HTTP_X_PROXIEDENTITIESCHAIN", None)
@@ -95,7 +64,7 @@ class api_login(object):
 
             # Terms of Service
             if not request.path == "/api/v3/user/tos/%s/" % logged_in_uname \
-                    and not temp_user.get('agrees_with_tos', False) and config.ui.tos != "":
+                    and not temp_user.get('agrees_with_tos', False) and config.ui.tos is not None:
                 raise AccessDeniedException("Agree to Terms of Service before you can make any API calls.")
 
             if requestor:
@@ -126,8 +95,7 @@ class api_login(object):
             else:
                 impersonator = {}
                 user = temp_user
-            if self.require_admin and not user['is_admin']:
-                raise AccessDeniedException("API %s requires ADMIN privileges" % request.path)
+            self.test_require_admin(user, "API")
 
             #############################################
             # Special username api query validation
@@ -146,25 +114,7 @@ class api_login(object):
                         and not user['is_admin']:
                     return make_api_response({}, "Your username does not match requested username", 403)
 
-            if self.audit:
-                # noinspection PyBroadException
-                try:
-                    json_blob = request.json
-                    if not isinstance(json_blob, dict):
-                        json_blob = {}
-                except Exception:
-                    json_blob = {}
-
-                params_list = list(args) + \
-                    ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET] + \
-                    ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
-
-                if len(params_list) != 0:
-                    AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname,
-                                                          user['classification'],
-                                                          func.__name__,
-                                                          ", ".join(params_list)))
+            self.audit_if_required(args, kwargs, logged_in_uname, user, func)
 
             # Save user credential in user kwarg for future reference
             kwargs['user'] = user
