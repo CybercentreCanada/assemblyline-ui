@@ -196,7 +196,7 @@ def login():
     if request.environ.get("HTTP_X_REMOTE_CERT_VERIFIED", "FAILURE") == "SUCCESS":
         dn = ",".join(request.environ.get("HTTP_X_REMOTE_DN").split("/")[::-1][:-1])
     else:
-        dn = ""
+        dn = None
 
     avatar = None
     username = ''

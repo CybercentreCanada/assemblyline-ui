@@ -202,7 +202,7 @@ def login(**_):
     if request.environ.get("HTTP_X_REMOTE_CERT_VERIFIED", "FAILURE") == "SUCCESS":
         dn = request.environ.get("HTTP_X_REMOTE_DN")
     else:
-        dn = False
+        dn = None
 
     if (user and password) or dn or (user and apikey):
         auth = {
