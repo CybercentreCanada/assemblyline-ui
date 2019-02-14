@@ -221,11 +221,13 @@ def login():
             members = signup_queue.members()
             signup_queue.delete()
             if members:
+                alternate_login = 'true'
+
                 user_info = members[0]
                 user = User(user_info)
-                STORAGE.user.save(user['uname'], user)
-                username = user['uname']
-                alternate_login = 'true'
+                username = user.uname
+
+                STORAGE.user.save(username, user)
         except (KeyError, ValueError):
             pass
 
@@ -241,18 +243,18 @@ def logout(**_):
     return custom_render("logout.html",)
 
 
-# # noinspection PyBroadException
-# @views.route("/reset.html")
-# def reset():
-#     if not config.auth.internal.get('signup', {}).get('enabled', False):
-#         return redirect(redirect_helper("/"))
-#
-#     reset_id = request.args.get('reset_id', "")
-#     if reset_id and get_reset_queue(reset_id).length() == 0:
-#         reset_id = ""
-#     return custom_render("reset.html", reset_id=reset_id)
-#
-#
+# noinspection PyBroadException
+@views.route("/reset.html")
+def reset():
+    if not config.auth.internal.signup.enabled:
+        return redirect(redirect_helper("/"))
+
+    reset_id = request.args.get('reset_id', "")
+    if reset_id and get_reset_queue(reset_id).length() == 0:
+        reset_id = ""
+    return custom_render("reset.html", reset_id=reset_id)
+
+
 # @views.route("/search.html")
 # @protected_renderer(load_settings=True, audit=False)
 # def search(**kwargs):

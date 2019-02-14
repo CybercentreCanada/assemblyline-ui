@@ -21,7 +21,7 @@ function ResetBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'POST',
-            url: "/api/v3/auth/reset_pwd/",
+            url: "/api/v4/auth/reset_pwd/",
             data: {
                 reset_id: $scope.reset_id,
                 password: $scope.password,
@@ -46,7 +46,7 @@ function ResetBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'POST',
-            url: "/api/v3/auth/get_reset_link/",
+            url: "/api/v4/auth/get_reset_link/",
             data: {email: $scope.email}
         })
         .success(function () {
