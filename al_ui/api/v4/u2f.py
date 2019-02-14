@@ -6,7 +6,7 @@ from al_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from al_ui.config import STORAGE, APP_ID
 
 SUB_API = 'u2f'
-u2f_api = make_subapi_blueprint(SUB_API)
+u2f_api = make_subapi_blueprint(SUB_API, api_version=4)
 u2f_api._doc = "Perfom 2-Factor authentication with a FIDO U2F USB Key"
 
 U2F_CLIENT_ERROR_MAP = {
@@ -39,14 +39,14 @@ def remove(name, **kwargs):
     }
     """
     uname = kwargs['user']['uname']
-    user = STORAGE.get_user(uname)
+    user = STORAGE.user.get(uname, as_obj=False)
     u2f_devices = user.get('u2f_devices', {})
     if isinstance(u2f_devices, list):
         u2f_devices = {"default": d for d in u2f_devices}
     u2f_devices.pop(name, None)
     user['u2f_devices'] = u2f_devices
-    STORAGE.save_user(uname, user)
-    return make_api_response({'success': True})
+
+    return make_api_response({'success': STORAGE.user.save(uname, user)})
 
 
 @u2f_api.route("/enroll/", methods=["GET"])
@@ -68,13 +68,13 @@ def enroll(**kwargs):
     <U2F_ENROLL_CHALLENGE_BLOCK>
     """
     uname = kwargs['user']['uname']
-    user = STORAGE.get_user(uname)
+    user = STORAGE.user.get(uname, as_obj=False)
 
     u2f_devices = user.get('u2f_devices', {})
     if isinstance(u2f_devices, list):
         u2f_devices = {"default": d for d in u2f_devices}
 
-    u2f_devices = u2f_devices.values()
+    u2f_devices = list(u2f_devices.values())
     current_enroll = begin_registration(APP_ID, u2f_devices)
     session['_u2f_enroll_'] = current_enroll.json
 
@@ -106,7 +106,7 @@ def bind(name, **kwargs):
     if "errorCode" in data:
         return make_api_response({'success': False}, err=U2F_CLIENT_ERROR_MAP[data['errorCode']], status_code=400)
 
-    user = STORAGE.get_user(uname)
+    user = STORAGE.user.get(uname, as_obj=False)
     current_enroll = session.pop('_u2f_enroll_')
 
     try:
@@ -124,8 +124,8 @@ def bind(name, **kwargs):
     u2f_devices[name] = device.json
 
     user['u2f_devices'] = u2f_devices
-    STORAGE.save_user(uname, user)
-    return make_api_response({"success": True})
+
+    return make_api_response({"success": STORAGE.user.save(uname, user)})
 
 
 @u2f_api.route("/sign/<username>/", methods=["GET"])
@@ -145,7 +145,7 @@ def sign(username, **_):
     Result example:
     <U2F_SIGN_IN_CHALLENGE_BLOCK>
     """
-    user = STORAGE.get_user(username)
+    user = STORAGE.user.get(username, as_obj=False)
     if not user:
         return make_api_response({'success': False}, err="Bad Request", status_code=400)
 
@@ -153,7 +153,7 @@ def sign(username, **_):
     if isinstance(u2f_devices, list):
         u2f_devices = {"default": d for d in u2f_devices}
 
-    challenge = begin_authentication(APP_ID, u2f_devices.values())
+    challenge = begin_authentication(APP_ID, list(u2f_devices.values()))
     session['_u2f_challenge_'] = challenge.json
 
     return make_api_response(challenge.data_for_client)

@@ -27,7 +27,7 @@ from al_ui.api.v4.signature import signature_api
 from al_ui.api.v4.submission import submission_api
 # from al_ui.api.v3.submit import submit_api
 from al_ui.api.v4.tc_signature import tc_sigs_api
-# from al_ui.api.v3.u2f import u2f_api
+from al_ui.api.v4.u2f import u2f_api
 # from al_ui.api.v3.ui import ui_api
 from al_ui.api.v3.user import user_api as user_v3_api
 from al_ui.api.v4.user import user_api
@@ -78,7 +78,7 @@ app.register_blueprint(signature_api)
 app.register_blueprint(submission_api)
 # app.register_blueprint(submit_api)
 app.register_blueprint(tc_sigs_api)
-# app.register_blueprint(u2f_api)
+app.register_blueprint(u2f_api)
 # app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
 app.register_blueprint(user_v3_api)
