@@ -162,7 +162,7 @@ def get_file_tree(sid, **kwargs):
     None
 
     API call example:
-    /api/v3/submission/tree/12345678-1234-1234-1234-1234567890AB/
+    /api/v4/submission/tree/12345678-1234-1234-1234-1234567890AB/
     
     Result example:
     {                                # Dictionary of file blocks

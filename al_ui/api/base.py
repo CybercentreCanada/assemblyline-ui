@@ -63,7 +63,7 @@ class api_login(BaseSecurityRenderer):
             temp_user = login(logged_in_uname)
 
             # Terms of Service
-            if not request.path == "/api/v3/user/tos/%s/" % logged_in_uname \
+            if not request.path == "/api/v4/user/tos/%s/" % logged_in_uname \
                     and not temp_user.get('agrees_with_tos', False) and config.ui.tos is not None:
                 raise AccessDeniedException("Agree to Terms of Service before you can make any API calls.")
 

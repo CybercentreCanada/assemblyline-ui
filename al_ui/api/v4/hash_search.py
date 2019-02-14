@@ -76,8 +76,8 @@ def search_hash(file_hash, *args, **kwargs):
     None
 
     API call examples:
-    /api/v3/hash_search/
-    /api/v3/hash_search/123456...654321/?db=nsrl|al
+    /api/v4/hash_search/
+    /api/v4/hash_search/123456...654321/?db=nsrl|al
 
     Result example:
     {                           # Dictionary of:

@@ -369,20 +369,20 @@ def logout(**_):
 #     return custom_render("tc_signatures.html", org=ORGANISATION, **kwargs)
 #
 #
-# @views.route("/terms.html")
-# @protected_renderer(audit=False)
-# def tos(**kwargs):
-#     if config.ui.get("tos", None) is not None:
-#         kwargs['menu'] = None
-#         agreed_date = kwargs['user'].get('agrees_with_tos', None)
-#         if agreed_date:
-#             agreed_date = iso_to_local(agreed_date)[:19]
-#         tos_raw = Markup(markdown.markdown(config.ui.tos))
-#         return custom_render("terms.html", tos=tos_raw, agreed_date=agreed_date, **kwargs)
-#     else:
-#         return redirect(redirect_helper("/"))
-#
-#
+@views.route("/terms.html")
+@protected_renderer(audit=False)
+def tos(**kwargs):
+    if config.ui.tos is not None:
+        kwargs['menu'] = None
+        agreed_date = kwargs['user'].get('agrees_with_tos', None)
+        if agreed_date:
+            agreed_date = iso_to_local(agreed_date)[:19]
+        tos_raw = Markup(markdown.markdown(config.ui.tos))
+        return custom_render("terms.html", tos=tos_raw, agreed_date=agreed_date, **kwargs)
+    else:
+        return redirect(redirect_helper("/"))
+
+
 @views.route("/unsupported.html")
 def unsupported():
     return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"],

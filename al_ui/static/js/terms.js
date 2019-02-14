@@ -27,7 +27,7 @@ function SettingsBaseCtrl($scope, $http, $timeout, $window) {
         $scope.success = '';
         $http({
             method: 'GET',
-            url: "/api/v3/user/tos/" + $scope.user.uname + "/"
+            url: "/api/v4/user/tos/" + $scope.user.uname + "/"
         })
             .success(function () {
                 $scope.success = "The date and time at which you've agreed to the current Terms of Service was save in your user settings.";

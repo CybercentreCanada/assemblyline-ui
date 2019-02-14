@@ -5,7 +5,7 @@
  * Load classification definition from API into a global variable.
  */
 var classification_definition = null;
-$.getJSON("/api/v3/help/classification_definition/", function (data) {
+$.getJSON("/api/v4/help/classification_definition/", function (data) {
     classification_definition = data.api_response;
 });
 

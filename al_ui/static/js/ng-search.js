@@ -183,7 +183,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
 
         $http({
             method: 'PUT',
-            url: "/api/v3/user/favorites/" + user + "/" + $scope.page + "/",
+            url: "/api/v4/user/favorites/" + user + "/" + $scope.page + "/",
             data: data
         })
             .error(function (data, status, headers, config) {
@@ -214,7 +214,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         }
         $http({
             method: 'DELETE',
-            url: "/api/v3/user/favorites/" + user + "/" + $scope.page + "/",
+            url: "/api/v4/user/favorites/" + user + "/" + $scope.page + "/",
             data: name
         })
             .error(function (data, status, headers, config) {
@@ -265,7 +265,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         }
         $http({
             method: 'GET',
-            url: "/api/v3/search/fields/",
+            url: "/api/v4/search/fields/",
             params: params
         })
             .success(function (data) {
@@ -300,7 +300,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         if ($scope.load_favorites) {
             $http({
                 method: 'GET',
-                url: "/api/v3/user/favorites/" + $scope.user.uname + "/"
+                url: "/api/v4/user/favorites/" + $scope.user.uname + "/"
             })
                 .success(function (data) {
                     if (data.api_response == null) {
@@ -334,7 +334,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         if ($scope.load_global_favorites) {
             $http({
                 method: 'GET',
-                url: "/api/v3/user/favorites/__global__/"
+                url: "/api/v4/user/favorites/__global__/"
             })
                 .success(function (data) {
                     if (data.api_response == null) {
@@ -378,7 +378,7 @@ ngSearch.controller('SearchControllerQuick', function ($scope, $http) {
 
     $http({
         method: 'GET',
-        url: "/api/v3/search/fields/"
+        url: "/api/v4/search/fields/"
     })
         .success(function (data) {
             for (var bucket_name in data.api_response) {

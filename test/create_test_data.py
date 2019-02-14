@@ -45,8 +45,6 @@ print(f"\tU:{user_data.uname}    P:{user_data.uname}")
 print("\nCreating services...")
 for svc in SERVICES:
     service_data = Service({
-        "class_name": svc,
-        "classpath": f"assemblyline_services.{svc.lower()}.{svc}",
         "name": svc,
         "realm": "bitbucket",
         "repo": f"alsvc_{svc.lower()}",

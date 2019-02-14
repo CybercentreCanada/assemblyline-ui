@@ -40,7 +40,7 @@ def create_bundle(sid, **kwargs):
     None
 
     API call example:
-    /api/v3/bundle/create/234f334-...-31232/
+    /api/v4/bundle/create/234f334-...-31232/
 
     Result example:
     -- THE BUNDLE FILE BINARY --
