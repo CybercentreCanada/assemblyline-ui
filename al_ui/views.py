@@ -126,7 +126,7 @@ def default(**kwargs):
 
 
 # @views.route("/file_detail.html", methods=["GET"])
-# @protected_renderer(load_options=True, audit=False)
+# @protected_renderer(load_settings=True, audit=False)
 # def file_detail(**kwargs):
 #     user = kwargs['user']
 #     srl = angular_safe(request.args.get("srl", None))
@@ -236,7 +236,7 @@ def login():
 
 
 @views.route("/logout.html")
-@protected_renderer(load_options=False, audit=False)
+@protected_renderer(load_settings=False, audit=False)
 def logout(**_):
     return custom_render("logout.html",)
 
@@ -254,7 +254,7 @@ def logout(**_):
 #
 #
 # @views.route("/search.html")
-# @protected_renderer(load_options=True, audit=False)
+# @protected_renderer(load_settings=True, audit=False)
 # def search(**kwargs):
 #     query = angular_safe(request.args.get('query', None))
 #     return custom_render("search.html", query=query, id=STORAGE.ID, **kwargs)
@@ -280,19 +280,19 @@ def logout(**_):
 #     return custom_render("services.html", **kwargs)
 #
 #
-# @views.route("/settings.html")
-# @protected_renderer(audit=False)
-# def settings(**kwargs):
-#     forced = 'forced' in request.args
-#     if forced:
-#         forced = 'true'
-#     else:
-#         forced = 'false'
-#     return custom_render("settings.html", forced=forced, **kwargs)
-#
-#
+@views.route("/settings.html")
+@protected_renderer(audit=False)
+def settings(**kwargs):
+    forced = 'forced' in request.args
+    if forced:
+        forced = 'true'
+    else:
+        forced = 'false'
+    return custom_render("settings.html", forced=forced, **kwargs)
+
+
 # @views.route("/signature_detail.html", methods=["GET"])
-# @protected_renderer(load_options=True, audit=False, allow_readonly=False)
+# @protected_renderer(load_settings=True, audit=False, allow_readonly=False)
 # def signature_detail(**kwargs):
 #     user = kwargs['user']
 #     sid = angular_safe(request.args.get("sid", None))
@@ -330,7 +330,7 @@ def logout(**_):
 #
 #
 # @views.route("/submission_detail.html", methods=["GET"])
-# @protected_renderer(load_options=True)
+# @protected_renderer(load_settings=True)
 # def submission_detail(**kwargs):
 #     sid = angular_safe(request.args.get("sid", None))
 #     new = "new" in request.args

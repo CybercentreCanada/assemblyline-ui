@@ -221,7 +221,7 @@ def start_ui_submission(ui_sid, **kwargs):
     None
     
     Data Block (REQUIRED):
-    Dictionary of user options obtained by calling 'GET /api/v3/user/settings/<username>/'
+    Dictionary of user settings obtained by calling 'GET /api/v4/user/settings/<username>/'
     
     Result example:
     {

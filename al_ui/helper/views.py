@@ -39,10 +39,10 @@ def angular_safe(value):
 
 # noinspection PyPep8Naming
 class protected_renderer(BaseSecurityRenderer):
-    def __init__(self, require_admin=False, load_options=False, audit=True, required_priv=None, allow_readonly=True):
+    def __init__(self, require_admin=False, load_settings=False, audit=True, required_priv=None, allow_readonly=True):
         super().__init__(require_admin, audit, required_priv, allow_readonly)
 
-        self.load_options = load_options
+        self.load_settings = load_settings
 
     def extra_session_checks(self, session):
         if not set(self.required_priv).intersection(set(session.get("privileges", []))):
@@ -78,15 +78,15 @@ class protected_renderer(BaseSecurityRenderer):
             kwargs['avatar'] = STORAGE.user_avatar.get(user['uname'])
             kwargs['is_prod'] = SYSTEM_NAME == "production"
             kwargs['is_readonly'] = config.ui.read_only
-            options = STORAGE.user_options.get(user['uname'])
+            settings = STORAGE.user_settings.get(user['uname'])
             if not request.path == "/terms.html":
                 if not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                     return redirect(redirect_helper("/terms.html"))
-                if not options and not request.path == "/settings.html":
+                if not settings and not request.path == "/settings.html":
                     return redirect(redirect_helper("/settings.html?forced"))
 
-            if self.load_options:
-                kwargs['options'] = json.dumps(options)
+            if self.load_settings:
+                kwargs['settings'] = json.dumps(settings)
 
             kwargs["build_no"] = BUILD_NO
 

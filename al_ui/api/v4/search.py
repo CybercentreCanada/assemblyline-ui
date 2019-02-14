@@ -297,10 +297,13 @@ def list_bucket_fields(bucket, **_):
 
     }
     """
-    if bucket not in BUCKET_MAP:
+    if bucket in BUCKET_MAP:
+        return make_api_response(BUCKET_MAP[bucket].fields())
+    elif bucket == "ALL":
+        return make_api_response({k: BUCKET_MAP[k].fields() for k in BUCKET_MAP.keys()})
+    else:
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
-    return make_api_response(BUCKET_MAP[bucket].fields())
 
 
 @search_api.route("/facet/<bucket>/<field>/", methods=["GET", "POST"])

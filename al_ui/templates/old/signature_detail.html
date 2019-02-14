@@ -4,7 +4,7 @@
 {% block js_import %}
 	<script src="/static/js/signature_detail.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';rev='{{rev}}';organisation='{{organisation}}';options={{options}};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';rev='{{rev}}';organisation='{{organisation}}';settings={{settings}};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}

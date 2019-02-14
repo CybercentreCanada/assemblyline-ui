@@ -4,7 +4,7 @@
 {% block js_import %}
 	<script src="/static/js/search.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};id='{{id}}';options={{options}};debug={{debug}};{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};id='{{id}}';settings={{settings}};debug={{debug}};{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
@@ -106,7 +106,7 @@
 									</td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!options.hide_raw_results">
+							<tfoot ng-if="!settings.hide_raw_results">
 								<tr>
 									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#submission_raw">
 										<div id="submission_raw" class="collapse">
@@ -148,7 +148,7 @@
 									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?srl={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!options.hide_raw_results">
+							<tfoot ng-if="!settings.hide_raw_results">
 								<tr>
 									<td colspan=6 class="raw_footer" data-toggle="collapse" data-target="#file_raw">
 										<div id="file_raw" class="collapse">
@@ -188,7 +188,7 @@
 									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?srl={{result.file_info.sha256}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!options.hide_raw_results">
+							<tfoot ng-if="!settings.hide_raw_results">
 								<tr>
 									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#result_raw">
 										<div id="result_raw" class="collapse">
@@ -243,7 +243,7 @@
 									</td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!options.hide_raw_results">
+							<tfoot ng-if="!settings.hide_raw_results">
 								<tr>
 									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#signature_raw">
 										<div id="signature_raw" class="collapse">
@@ -287,7 +287,7 @@
 									<td><a href="/alert_detail.html?alert_key={{alert.event_id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!options.hide_raw_results">
+							<tfoot ng-if="!settings.hide_raw_results">
 								<tr>
 									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#alert_raw">
 										<div id="alert_raw" class="collapse">

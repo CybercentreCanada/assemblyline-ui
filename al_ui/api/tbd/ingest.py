@@ -11,7 +11,7 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
-from al_ui.helper.user import remove_ui_specific_options
+from al_ui.helper.user import remove_ui_specific_settings
 
 SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API)
@@ -200,7 +200,7 @@ def ingest_single_file(**kwargs):
                 with open(out_file, "wb") as my_file:
                     my_file.write(base64.b64decode(binary))
 
-            overrides = STORAGE.get_user_options(user['uname'])
+            overrides = STORAGE.get_user_settings(user['uname'])
             overrides['selected'] = overrides['services']
             overrides.update({
                 'deep_scan': False,
@@ -239,7 +239,7 @@ def ingest_single_file(**kwargs):
             msg = {
                 "priority": overrides['priority'],
                 "type": ingest_msg_type,
-                "overrides": remove_ui_specific_options(overrides),
+                "overrides": remove_ui_specific_settings(overrides),
                 "metadata": metadata
             }
             msg.update(digests)

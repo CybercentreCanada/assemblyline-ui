@@ -265,7 +265,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         }
         $http({
             method: 'GET',
-            url: "/api/v4/search/fields/",
+            url: "/api/v4/search/fields/ALL/",
             params: params
         })
             .success(function (data) {
@@ -378,7 +378,7 @@ ngSearch.controller('SearchControllerQuick', function ($scope, $http) {
 
     $http({
         method: 'GET',
-        url: "/api/v4/search/fields/"
+        url: "/api/v4/search/fields/ALL/"
     })
         .success(function (data) {
             for (var bucket_name in data.api_response) {

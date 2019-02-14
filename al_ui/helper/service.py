@@ -1,6 +1,6 @@
 
 from al_ui.config import STORAGE, SYSTEM_SERVICE_CATEGORY_NAME
-from assemblyline.odm.models.user_options import DEFAULT_SRV_SEL
+from assemblyline.odm.models.user_settings import DEFAULT_SRV_SEL
 
 
 def get_default_service_spec(srv_list=None):

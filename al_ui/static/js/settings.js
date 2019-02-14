@@ -86,7 +86,7 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
         $scope.success = '';
         $http({
             method: 'POST',
-            url: "/api/v3/user/settings/" + $scope.user.uname + "/",
+            url: "/api/v4/user/settings/" + $scope.user.uname + "/",
             data: $scope.params
         })
             .success(function () {
@@ -118,7 +118,7 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
         $scope.loading = true;
         $http({
             method: 'GET',
-            url: "/api/v3/user/settings/" + $scope.user.uname + "/"
+            url: "/api/v4/user/settings/" + $scope.user.uname + "/"
         })
             .success(function (data) {
                 $scope.loading = false;

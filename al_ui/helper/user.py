@@ -2,7 +2,7 @@
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
-from assemblyline.odm.models.user_options import UserOptions
+from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline.remote.datatypes.hash import Hash
 from al_ui.config import LOGGER, STORAGE, CLASSIFICATION
 from al_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
@@ -160,42 +160,42 @@ def save_user_account(username, data, user):
 
 
 def get_default_user_settings(user):
-    return UserOptions({"classification": Classification.default_user_classification(user)}).as_primitives()
+    return UserSettings({"classification": Classification.default_user_classification(user)}).as_primitives()
 
 
 def load_user_settings(user):
-    default_settings = UserOptions({
+    default_settings = UserSettings({
         "classification": Classification.default_user_classification(user)}).as_primitives()
 
-    options = STORAGE.user_options.get(user['uname'], as_obj=False)
+    settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
     srv_list = [x for x in STORAGE.list_all_services(as_obj=False, full=True) if x['enabled']]
-    if not options:
+    if not settings:
         def_srv_list = None
-        options = default_settings
+        settings = default_settings
     else:
         # Make sure all defaults are there
         for key, item in default_settings.items():
-            if key not in options:
-                options[key] = item
+            if key not in settings:
+                settings[key] = item
         
         # Remove all obsolete keys
-        for key in options.keys():
+        for key in settings.keys():
             if key not in default_settings:
-                del options[key]
+                del settings[key]
                 
-        def_srv_list = options.get('services', None)
+        def_srv_list = settings.get('services', None)
     
-    options['service_spec'] = get_default_service_spec(srv_list)
-    options['services'] = get_default_service_list(srv_list, def_srv_list)
+    settings['service_spec'] = get_default_service_spec(srv_list)
+    settings['services'] = get_default_service_list(srv_list, def_srv_list)
 
     # Normalize the user's classification
-    options['classification'] = Classification.normalize_classification(options['classification'])
+    settings['classification'] = Classification.normalize_classification(settings['classification'])
 
-    return options
+    return settings
 
 
 # noinspection PyBroadException
-def remove_ui_specific_options(task):
+def remove_ui_specific_settings(task):
     # Cleanup task object
     task.pop('download_encoding', None)
     task.pop('expand_min_score', None)
@@ -210,4 +210,4 @@ def save_user_settings(username, data):
     data["service_spec"] = {}
     data["services"] = simplify_services(data["services"])
     
-    return STORAGE.user_options.save(username, data)
+    return STORAGE.user_settings.save(username, data)

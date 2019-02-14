@@ -11,7 +11,7 @@ from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import check_submission_quota, get_default_user_settings, load_user_settings, \
-    remove_ui_specific_options
+    remove_ui_specific_settings
 from al_ui.helper.service import simplify_services, ui_to_dispatch_task
 
 Classification = forge.get_classification()
@@ -202,7 +202,7 @@ def resubmit_for_dynamic(srl, *args, **kwargs):
         task['classification'] = submission['classification']
         
     else:
-        params = STORAGE.get_user_options(user['uname'])
+        params = STORAGE.get_user_settings(user['uname'])
         task = {k: v for k, v in params.iteritems() if k not in STRIP_KW}
         task['selected'] = params["services"]
         task['classification'] = params['classification']
@@ -453,7 +453,7 @@ def submit_file(*args, **kwargs):
                     task['description'] = "Inspection of file: %s" % name
                 task = ui_to_dispatch_task(task, kwargs['user']['uname'], str(uuid4()))
             else:
-                task = STORAGE.get_user_options(user['uname'])
+                task = STORAGE.get_user_settings(user['uname'])
                 if not task:
                     task = get_default_user_settings(user)
 
@@ -472,7 +472,7 @@ def submit_file(*args, **kwargs):
                     task['description'] = "Inspection of file: %s" % name
 
             result = SubmissionWrapper.submit_inline(STORAGE, f_transport, [out_file],
-                                                     **remove_ui_specific_options(task))
+                                                     **remove_ui_specific_settings(task))
 
             if result['submission']['sid'] != task['sid']:
                 raise Exception('ID does not match what was returned by the dispatcher. Cancelling request...')

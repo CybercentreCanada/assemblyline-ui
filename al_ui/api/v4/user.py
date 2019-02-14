@@ -147,9 +147,9 @@ def remove_user_account(username, **_):
         user_deleted = STORAGE.user.delete(username)
         avatar_deleted = STORAGE.user_avatar.delete(username)
         favorites_deleted = STORAGE.user_favorites.delete(username)
-        options_deleted = STORAGE.user_options.delete(username)
+        settings_deleted = STORAGE.user_settings.delete(username)
 
-        if not user_deleted or not avatar_deleted or not favorites_deleted or not options_deleted:
+        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted:
             return make_api_response({"success": False})
 
         return make_api_response({"success": True})
@@ -511,18 +511,18 @@ def list_users(**_):
 
 
 ######################################################
-# User's options
+# User's settings
 ######################################################
 
 
-@user_api.route("/options/<username>/", methods=["GET"])
+@user_api.route("/settings/<username>/", methods=["GET"])
 @api_login(audit=False, required_priv=['R', 'W'])
-def get_user_options(username, **kwargs):
+def get_user_settings(username, **kwargs):
     """
-    Load the user's options.
+    Load the user's settings.
 
     Variables:
-    username    => Name of the user you want to get the options for
+    username    => Name of the user you want to get the settings for
 
     Arguments:
     None
@@ -554,14 +554,14 @@ def get_user_options(username, **kwargs):
     return make_api_response(load_user_settings(user))
 
 
-@user_api.route("/options/<username>/", methods=["POST"])
+@user_api.route("/settings/<username>/", methods=["POST"])
 @api_login()
-def set_user_options(username, **_):
+def set_user_settings(username, **_):
     """
-    Save the user's options.
+    Save the user's settings.
     
     Variables: 
-    username    => Name of the user you want to set the options for
+    username    => Name of the user you want to set the settings for
     
     Arguments: 
     None
@@ -592,7 +592,7 @@ def set_user_options(username, **_):
         if save_user_settings(username, request.json):
             return make_api_response({"success": True})
         else:
-            return make_api_response({"success": False}, "Failed to save user's options", 500)
+            return make_api_response({"success": False}, "Failed to save user's settings", 500)
     except ValueError as e:
         return make_api_response({"success": False}, str(e), 400)
 

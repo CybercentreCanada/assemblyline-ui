@@ -12,7 +12,7 @@
     <script src="/static/js/jsoneditor/jsoneditor.js"></script>
     <script src="/static/js/ng-jsoneditor.min.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';new={{new}};options={{options}};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';new={{new}};settings={{settings}};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
@@ -175,7 +175,7 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!options.hide_raw_results">
+                    <div ng-if="!settings.hide_raw_results">
                         <div class="raw_footer" data-toggle="collapse" data-target="#submission_raw">
                             <div id="submission_raw" class="collapse">
                                 <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
@@ -198,7 +198,7 @@
 							<div class="col-xs-7 col-sm-9 col-md-10" style="white-space: pre-wrap">{{val | stripNull | joinBy:' | ' | objectViewer | iso_to_utc:true}}</div>
 						</div>
 					</div>
-                    <div ng-if="!options.hide_raw_results">
+                    <div ng-if="!settings.hide_raw_results">
                         <div class="raw_footer" data-toggle="collapse" data-target="#meta_raw">
                             <div id="meta_raw" class="collapse">
                                 <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
@@ -238,7 +238,7 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!options.hide_raw_results">
+                    <div ng-if="!settings.hide_raw_results">
                         <div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
                             <div id="summary_raw" class="collapse">
                                 <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
@@ -260,7 +260,7 @@
 							<strong>{{err | getServiceFromKey }}</strong> generated an error for file hash: <strong><a class="text-danger" href="submission_detail.html?sid={{sid}}#/{{err | getHashFromKey }}/">{{err | getHashFromKey }}</a></strong><span class="small">&nbsp;::&nbsp;{{err | getErrorTypeFromKey}}</span>
 						</div>
 					</div>
-                    <div ng-if="!options.hide_raw_results">
+                    <div ng-if="!settings.hide_raw_results">
                         <div class="raw_footer" data-toggle="collapse" data-target="#error_raw">
                             <div id="error_raw" class="collapse">
                                 <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
@@ -291,7 +291,7 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!options.hide_raw_results">
+                    <div ng-if="!settings.hide_raw_results">
                         <div class="raw_footer" data-toggle="collapse" data-target="#ftree_raw">
                             <div id="ftree_raw" class="collapse">
                                 <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>

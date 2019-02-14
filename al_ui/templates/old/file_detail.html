@@ -10,7 +10,7 @@
 	<script src="/static/js/jsoneditor/jsoneditor.js"></script>
     <script src="/static/js/ng-jsoneditor.min.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};id='{{id}}';srl='{{srl}}';options={{options}};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};id='{{id}}';srl='{{srl}}';settings={{settings}};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
