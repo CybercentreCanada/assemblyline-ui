@@ -248,15 +248,14 @@ def default_authenticator(auth, req, ses, storage):
 def validate_apikey(username, apikey, storage):
     # This function identifies the user via the internal API key functionality
     #   NOTE: It is not recommended to overload this function but you can still do it
-    if config.auth.allow_apikeys:
-        if apikey:
-            user_data = storage.user.get(username)
-            if user_data:
-                for key in user_data.apikeys:
-                    if verify_password(apikey, key.password):
-                        return username, key.acl
+    if config.auth.allow_apikeys and apikey:
+        user_data = storage.user.get(username)
+        if user_data:
+            for key in user_data.apikeys:
+                if verify_password(apikey, key.password):
+                    return username, key.acl
 
-            raise AuthenticationException("Invalid apikey")
+        raise AuthenticationException("Invalid apikey")
 
     return None, None
 
@@ -271,14 +270,13 @@ def validate_dn(dn, storage):
 def validate_userpass(username, password, storage):
     # This function uses the internal authenticator to identify the user
     # You can overload this to pass username/password to an LDAP server for exemple
-    if config.auth.internal.enabled:
-        if username and password:
-            user = storage.user.get(username)
-            if user:
-                if verify_password(password, user.password):
-                    return username, ["R", "W", "E"]
+    if config.auth.internal.enabled and username and password:
+        user = storage.user.get(username)
+        if user:
+            if verify_password(password, user.password):
+                return username, ["R", "W", "E"]
 
-            raise AuthenticationException("Wrong username or password")
+        raise AuthenticationException("Wrong username or password")
 
     return None, None
 

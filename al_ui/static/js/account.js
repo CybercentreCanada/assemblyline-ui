@@ -46,7 +46,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             $scope.loading_extra = true;
             $http({
                 method: 'GET',
-                url: "/api/v3/u2f/remove/" + name + "/"
+                url: "/api/v4/u2f/remove/" + name + "/"
             })
             .success(function (data) {
                 $scope.loading_extra = false;
@@ -88,7 +88,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         $scope.cancelled_u2f = false;
         $http({
             method: 'GET',
-            url: "/api/v3/u2f/enroll/"
+            url: "/api/v4/u2f/enroll/"
         })
         .success(function (data) {
             $scope.loading_extra = false;
@@ -101,7 +101,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                     $scope.loading_extra = true;
                     $http({
                         method: 'POST',
-                        url: "/api/v3/u2f/bind/" + $scope.u2fkey_name + "/",
+                        url: "/api/v4/u2f/bind/" + $scope.u2fkey_name + "/",
                         data: deviceResponse
                     })
                     .success(function (data) {
@@ -157,7 +157,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         $scope.loading_extra = true;
         $http({
             method: 'GET',
-            url: "/api/v3/auth/apikey/" + $scope.apikey_name + "/" + $scope.apikey_priv + "/"
+            url: "/api/v4/auth/apikey/" + $scope.apikey_name + "/" + $scope.apikey_priv + "/"
         })
         .success(function (data) {
             $scope.loading_extra = false;
@@ -201,7 +201,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         function () {
             $http({
                 method: 'DELETE',
-                url: "/api/v3/auth/apikey/" + key + "/"
+                url: "/api/v4/auth/apikey/" + key + "/"
             })
             .success(function (data) {
                 $scope.current_user.apikeys.splice($scope.current_user.apikeys.indexOf(key), 1);
@@ -227,7 +227,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/auth/setup_otp/"
+            url: "/api/v4/auth/setup_otp/"
         })
         .success(function (data) {
             $scope.otp_data = data.api_response;
@@ -251,7 +251,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.validate_2fa = function(){
         $http({
             method: 'GET',
-            url: "/api/v3/auth/validate_otp/" + $scope.temp_otp_token + "/"
+            url: "/api/v4/auth/validate_otp/" + $scope.temp_otp_token + "/"
         })
         .success(function (data) {
             $scope.success = "2-Factor Authentication enabled on your account.";
@@ -294,7 +294,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
 
             $http({
                 method: 'GET',
-                url: "/api/v3/auth/disable_otp/"
+                url: "/api/v4/auth/disable_otp/"
             })
             .success(function (data) {
                 $scope.current_user['2fa_enabled'] = false;
@@ -321,7 +321,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
 
         $http({
             method: 'POST',
-            url: "/api/v3/user/" + $scope.user.uname + "/",
+            url: "/api/v4/user/" + $scope.user.uname + "/",
             data: $scope.current_user
         })
             .success(function () {
@@ -367,7 +367,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         $scope.loading = true;
         $http({
             method: 'GET',
-            url: "/api/v3/user/" + $scope.user.uname + "/?load_avatar"
+            url: "/api/v4/user/" + $scope.user.uname + "/?load_avatar"
         })
             .success(function (data) {
                 $scope.loading = false;

@@ -133,6 +133,12 @@ def login(uname, path=None):
 
 
 def save_user_account(username, data, user):
+    # Clear non user account data
+    avatar = data.pop('avatar', None)
+    data.pop('2fa_enabled', None)
+    data.pop('u2f_enabled', None)
+    data.pop('has_password', None)
+
     data = User(data).as_primitives()
 
     if username != data['uname']:
@@ -150,7 +156,6 @@ def save_user_account(username, data, user):
     else:
         raise InvalidDataException("You cannot save a user that does not exists [%s]." % username)
 
-    avatar = data.pop('avatar', None)
     if avatar is None:
         STORAGE.user_avatar.delete(username)
     else:

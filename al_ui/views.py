@@ -23,14 +23,14 @@ Classification = forge.get_classification()
 views = Blueprint("views", __name__, template_folder="templates")
 
 
-# ######################################
-# # All users pages
-# @views.route("/account.html")
-# @protected_renderer(audit=False)
-# def account(**kwargs):
-#     return custom_render("account.html", **kwargs)
-#
-#
+######################################
+# All users pages
+@views.route("/account.html")
+@protected_renderer(audit=False)
+def account(**kwargs):
+    return custom_render("account.html", **kwargs)
+
+
 # # noinspection PyBroadException
 # @views.route("/alerts.html")
 # @protected_renderer(audit=False)
