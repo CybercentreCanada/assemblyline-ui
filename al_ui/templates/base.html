@@ -4,7 +4,7 @@
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatbile" content="IE-edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>{% block title_page %}{{app_name}} {{build_master}}{% endblock %}</title>
+		<title>{% block title_page %}{{app_name}} {{build}}{% endblock %}</title>
 		{% block fav_icon %}<link rel="shortcut icon" href="/static/images/favicon.ico"/>{% endblock %}
 		<link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
 		<link rel="stylesheet" href="/static/css/whhg.css"/>
@@ -207,7 +207,7 @@
             {% block poweredby %}
 			<div class="text-center"><a class="text-large" href="https://bitbucket.org/cse-assemblyline/assemblyline">Powered by <img style="vertical-align: bottom" height="32px" src="/static/images/banner.svg"></a></div>
             {% endblock %}
-            <div class="build-no text-right">{% if not is_prod %}<b>DEV build</b> {% endif %}:: {{app_name}} v{{build_master}} :: {{build_no}} ::</div>
+            <div class="build-no text-right">{% if not is_prod %}<b>DEV build</b> {% endif %}:: {{app_name}} :: v{{build}} ::</div>
 		</div>
 	</body>
 </html>

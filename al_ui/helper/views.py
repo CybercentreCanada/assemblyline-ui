@@ -70,7 +70,7 @@ class protected_renderer(BaseSecurityRenderer):
             self.audit_if_required(args, kwargs, logged_in_uname, user, func)
 
             # Dump Generic KWARGS
-            kwargs['build_master'] = "%s.%s" % (BUILD_MASTER, BUILD_LOWER)
+            kwargs['build'] = f"{BUILD_MASTER}.{BUILD_LOWER}.{BUILD_NO}"
             kwargs['user'] = user
             kwargs['user_js'] = json.dumps(user)
             kwargs['debug'] = str(DEBUG).lower()
@@ -87,8 +87,6 @@ class protected_renderer(BaseSecurityRenderer):
 
             if self.load_settings:
                 kwargs['settings'] = json.dumps(settings)
-
-            kwargs["build_no"] = BUILD_NO
 
             return func(*args, **kwargs)
         base.protected = True
