@@ -451,13 +451,13 @@ def yara_help(**kwargs):
 #                          file_map=file_map, fname=my_file, **kwargs)
 #
 #
-# @views.route("/admin/errors.html")
-# @protected_renderer(require_admin=True, audit=False)
-# def admin_errors(**kwargs):
-#     query = angular_safe(request.args.get('filter', ""))
-#     return custom_render("admin_errors.html", filter=query, **kwargs)
-#
-#
+@views.route("/admin/errors.html")
+@protected_renderer(require_admin=True, audit=False)
+def admin_errors(**kwargs):
+    query = angular_safe(request.args.get('filter', ""))
+    return custom_render("admin_errors.html", filter=query, **kwargs)
+
+
 # @views.route("/admin/hosts.html")
 # @protected_renderer(require_admin=True, audit=False, allow_readonly=False)
 # def admin_hosts(**kwargs):

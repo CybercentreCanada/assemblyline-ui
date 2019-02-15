@@ -13,7 +13,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.error_list = null;
         $scope.started = false;
         $scope.filtered = false;
-        $scope.filter = "*";
+        $scope.filter = "";
 
         $scope.total = 0;
         $scope.offset = 0;
@@ -37,9 +37,6 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
         //Load params from datastore
         $scope.start = function () {
-            if ($scope.filter == "") {
-                $scope.filter = "*"
-            }
             $scope.offset -= $scope.count;
         };
 
@@ -91,7 +88,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
             $http({
                 method: 'GET',
-                url: "/api/v3/error/list/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+                url: "/api/v4/error/list/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -103,7 +100,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.total = data.api_response.total;
                     $scope.started = true;
 
-                    $scope.filtered = $scope.filter != "*";
+                    $scope.filtered = $scope.filter != "";
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;

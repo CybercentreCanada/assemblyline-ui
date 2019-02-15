@@ -46,7 +46,7 @@ def get_error(error_key, **kwargs):
 
 @error_api.route("/list/", methods=["GET"])
 @api_login(require_admin=True)
-def list_errors(**kwargs):
+def list_errors(**_):
     """
     List all error in the system (per page)
     
@@ -70,7 +70,7 @@ def list_errors(**kwargs):
     """
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*")
+    query = request.args.get('query', "id:*") or "id:*"
 
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
