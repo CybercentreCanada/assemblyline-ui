@@ -12,6 +12,7 @@ from flask import Blueprint, render_template, request, abort, redirect, Markup
 from assemblyline.common.isotime import iso_to_local
 from assemblyline.common import forge
 from al_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue
+from al_ui.helper.search import list_all_fields
 from al_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
 from assemblyline.odm.models.user import User
 
@@ -262,20 +263,20 @@ def reset():
 #     return custom_render("search.html", query=query, id=STORAGE.ID, **kwargs)
 #
 #
-# @views.route("/search_help.html")
-# @protected_renderer(audit=False)
-# def search_help(**kwargs):
-#     field_list = {k: sorted([(x, y) for x, y in v.iteritems()])
-#                   for k, v in STORAGE.generate_field_list(False).iteritems()}
-#     lookup = {
-#         "text_ws": "whitespace separated text",
-#         "text_ws_dsplit": "dot and whitespace separated text",
-#         "text_general": "tokenized text",
-#         "text_fuzzy": "separated fuzzy patterns",
-#     }
-#     return custom_render("search_help.html", field_list=field_list, lookup=lookup, **kwargs)
-#
-#
+@views.route("/search_help.html")
+@protected_renderer(audit=False)
+def search_help(**kwargs):
+    field_list = {k: sorted([(x, y) for x, y in v.items()])
+                  for k, v in list_all_fields().items()}
+    lookup = {
+        "text_ws": "whitespace separated text",
+        "text_ws_dsplit": "dot and whitespace separated text",
+        "text_general": "tokenized text",
+        "text_fuzzy": "separated fuzzy patterns",
+    }
+    return custom_render("search_help.html", field_list=field_list, lookup=lookup, **kwargs)
+
+
 # @views.route("/services.html")
 # @protected_renderer(audit=False, allow_readonly=False)
 # def services(**kwargs):

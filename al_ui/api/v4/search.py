@@ -1,18 +1,10 @@
 
 from flask import request
 
+from al_ui.helper.search import BUCKET_MAP, list_all_fields
 from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
-
-BUCKET_MAP = {
-    'alert': STORAGE.alert,
-    'file': STORAGE.file,
-    'result': STORAGE.result,
-    'signature': STORAGE.signature,
-    'submission': STORAGE.submission
-}
-
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -300,7 +292,7 @@ def list_bucket_fields(bucket, **_):
     if bucket in BUCKET_MAP:
         return make_api_response(BUCKET_MAP[bucket].fields())
     elif bucket == "ALL":
-        return make_api_response({k: BUCKET_MAP[k].fields() for k in BUCKET_MAP.keys()})
+        return make_api_response(list_all_fields())
     else:
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
