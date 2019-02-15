@@ -20,14 +20,14 @@
 			<a href="/api/v4/file/download/{{sha256}}/" class="btn btn-default" title="Download file"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download File</span></a>
 			</div>
 			<ul class="nav nav-tabs" id="tabContent">
-				<li id="raw_tab" class="active"><a href="#raw" data-toggle="tab">Raw</a></li>
+				<li id="ascii_tab" class="active"><a href="#ascii" data-toggle="tab">Ascii</a></li>
 				<li id="string_tab"><a href="#string" data-toggle="tab">Strings</a></li>
 				<li id="hex_tab"><a href="#hex" data-toggle="tab" >Hex</a></li>
 			</ul>
 			
 			<div class="tab-content">
-				<div class="tab-pane active" style="margin-top: 20px" id="raw">
-					<pre>{{raw}}</pre>
+				<div class="tab-pane active" style="margin-top: 20px" id="ascii">
+					<pre>{{ascii}}</pre>
 				</div>
                 <div class="tab-pane" style="margin-top: 20px" id="string">
 					<pre>{{string}}</pre>

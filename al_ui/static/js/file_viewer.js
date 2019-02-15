@@ -28,7 +28,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
         $scope.start = function () {
             $http({
                 method: 'GET',
-                url: "/api/v3/file/hex/" + $scope.sha256 + "/"
+                url: "/api/v4/file/hex/" + $scope.sha256 + "/"
             })
                 .success(function (data) {
                     $scope.hex = data.api_response;
@@ -52,7 +52,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                 });
             $http({
                 method: 'GET',
-                url: "/api/v3/file/strings/" + $scope.sha256 + "/"
+                url: "/api/v4/file/strings/" + $scope.sha256 + "/"
             })
                 .success(function (data) {
                     $scope.string = data.api_response;
@@ -76,10 +76,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                 });
             $http({
                 method: 'GET',
-                url: "/api/v3/file/raw/" + $scope.sha256 + "/"
+                url: "/api/v4/file/ascii/" + $scope.sha256 + "/"
             })
                 .success(function (data) {
-                    $scope.raw = data.api_response;
+                    $scope.ascii = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
                     if (data == "") {

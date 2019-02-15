@@ -146,26 +146,26 @@ def file_detail(**kwargs):
     return custom_render("file_detail.html", sha256=sha256, id="id", **kwargs)
 
 
-# @views.route("/file_viewer.html")
-# @protected_renderer(audit=False)
-# def file_viewer(**kwargs):
-#     user = kwargs['user']
-#     sha256 = angular_safe(request.args.get("sha256", None))
-#
-#     if not sha256:
-#         abort(404)
-#
-#     data = STORAGE.files.get(sha256)
-#
-#     if not data:
-#         abort(404)
-#
-#     if not Classification.is_accessible(user['classification'], data['classification']):
-#         abort(403)
-#
-#     return custom_render("file_viewer.html", sha256=sha256, **kwargs)
-#
-#
+@views.route("/file_viewer.html")
+@protected_renderer(audit=False)
+def file_viewer(**kwargs):
+    user = kwargs['user']
+    sha256 = angular_safe(request.args.get("sha256", None))
+
+    if not sha256:
+        abort(404)
+
+    data = STORAGE.file.get(sha256, as_obj=False)
+
+    if not data:
+        abort(404)
+
+    if not Classification.is_accessible(user['classification'], data['classification']):
+        abort(403)
+
+    return custom_render("file_viewer.html", sha256=sha256, **kwargs)
+
+
 # # Site-Specific heuristics page
 # @views.route("/heuristics.html")
 # @protected_renderer(audit=False, allow_readonly=False)
