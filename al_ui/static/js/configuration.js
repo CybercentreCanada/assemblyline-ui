@@ -38,7 +38,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/help/configuration/"
+                url: "/api/v4/help/configuration/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -63,7 +63,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/help/constants/"
+                url: "/api/v4/help/constants/"
             })
                 .success(function (data) {
                     $scope.constants = data.api_response;

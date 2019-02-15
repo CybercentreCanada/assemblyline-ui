@@ -105,12 +105,12 @@ def classification_help(*_, **kwargs):
     return custom_render("classification_help.html", **kwargs)
 
 
-# @views.route("/configuration.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def configuration(**kwargs):
-#     return custom_render("configuration.html", **kwargs)
-#
-#
+@views.route("/configuration.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def configuration(**kwargs):
+    return custom_render("configuration.html", **kwargs)
+
+
 # @views.route("/dashboard.html")
 # @protected_renderer(audit=False, allow_readonly=False)
 # def dashboard(**kwargs):
