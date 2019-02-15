@@ -42,8 +42,11 @@
 					<h3 class="anchor-offset">History</h3>
 					<ul>
 						<li>
-							<b>1.0.x - Initial draft.</b>
+							<b>1.0.0 - Initial draft.</b>
 						</li>
+                        <li>
+							<b>1.1.0 - Small changes to rule ID for ALv4 compatibility</b>
+                        </li>
 					</ul>
 				</div>
 			{% endblock %}
@@ -184,20 +187,6 @@
 					<p>Example:</p>
 					<div><pre>description = "My blarg blobs foo bar"</pre></div>
 				</div>
-				<div class="bs-docs-section" id="id">
-					<h3 class="anchor-offset">id</h3>
-					<p>This field is a unique rule identifier to be used by organisations as a point
-					of reference.</p>
-					<p>The format of the <em>rule</em> must be as follows:</p>
-					<ul>
-						<li>Must begin with the organisation name from the organisation field.</li>
-						<li>Organisation must be uppercase.</li>
-						<li>Must end with a 6 digit value as determined by the originating organisation.</li>
-						<li>The organisation and numerical value are separated by a single underscore “_”.</li>
-					</ul>
-					<p>Example:</p>
-					<div><pre>id = "ORG_000459"</pre></div>
-				</div>
 				{% block organisation %}
 				<div class="bs-docs-section" id="organisation">
 					<h3 class="anchor-offset">organisation</h3>
@@ -218,6 +207,20 @@
 					</ul>
 					<p>Example:</p>
 					<div><pre>poc = "bob@org, user@org"</pre></div>
+				</div>
+				<div class="bs-docs-section" id="rule-id">
+					<h3 class="anchor-offset">rule_id</h3>
+					<p>This field is a unique rule identifier to be used by organisations as a point
+					of reference.</p>
+					<p>The format of the <em>rule</em> must be as follows:</p>
+					<ul>
+						<li>Must begin with the organisation name from the organisation field.</li>
+						<li>Organisation must be uppercase.</li>
+						<li>Must end with a 6 digit value as determined by the originating organisation.</li>
+						<li>The organisation and numerical value are separated by a single underscore “_”.</li>
+					</ul>
+					<p>Example:</p>
+					<div><pre>rule_id = "ORG_000459"</pre></div>
 				</div>
 				<div class="bs-docs-section" id="rule-version">
 					<h3 class="anchor-offset">rule_version</h3>
