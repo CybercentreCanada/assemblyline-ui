@@ -28,7 +28,7 @@ STRIP_KW = ['download_encoding', 'hide_raw_results', 'expand_min_score', 'servic
 # noinspection PyUnusedLocal
 @submit_api.route("/checkexists/", methods=["POST"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-def check_srl_exists(*args, **kwargs):
+def check_sha256_exists(*args, **kwargs):
     """
     Check if the the provided Resource locators exist in the
     system or not.
@@ -40,20 +40,20 @@ def check_srl_exists(*args, **kwargs):
     None
     
     Data Block (REQUIRED): 
-    ["SRL1", SRL2]    # List of SRLs (SHA256)
+    ["sha2561", sha2562]    # List of sha256s (SHA256)
     
     Result example:
     {
-     "existing": [],  # List of existing SRLs
-     "missing": []    # List of missing SRLs
+     "existing": [],  # List of existing sha256s
+     "missing": []    # List of missing sha256s
      }
     """
-    srls_to_check = request.json
-    if type(srls_to_check) != list:
-        return make_api_response("", "Expecting a list of SRLs", 403)
+    sha256s_to_check = request.json
+    if type(sha256s_to_check) != list:
+        return make_api_response("", "Expecting a list of sha256s", 403)
 
     with forge.get_filestore() as f_transport:
-        check_results = SubmissionWrapper.check_exists(f_transport, srls_to_check)
+        check_results = SubmissionWrapper.check_exists(f_transport, sha256s_to_check)
     return make_api_response(check_results)
 
 
@@ -157,14 +157,14 @@ def pre_submission(*args, **kwargs):
 
 
 # noinspection PyUnusedLocal
-@submit_api.route("/dynamic/<srl>/", methods=["GET"])
+@submit_api.route("/dynamic/<sha256>/", methods=["GET"])
 @api_login(required_priv=['W'], allow_readonly=False)
-def resubmit_for_dynamic(srl, *args, **kwargs): 
+def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     Resubmit a file for dynamic analysis
     
     Variables:
-    srl         => Resource locator (SHA256)
+    sha256         => Resource locator (SHA256)
     
     Arguments (Optional): 
     copy_sid    => Mimic the attributes of this SID.
@@ -185,7 +185,7 @@ def resubmit_for_dynamic(srl, *args, **kwargs):
     """
     user = kwargs['user']
     copy_sid = request.args.get('copy_sid', None)
-    name = request.args.get('name', srl)
+    name = request.args.get('name', sha256)
     
     if copy_sid:
         submission = STORAGE.get_submission(copy_sid)
@@ -207,11 +207,11 @@ def resubmit_for_dynamic(srl, *args, **kwargs):
         task['selected'] = params["services"]
         task['classification'] = params['classification']
 
-    task['sha256'] = srl
+    task['sha256'] = sha256
     with forge.get_filestore() as f_transport:
-        if not f_transport.exists(srl):
+        if not f_transport.exists(sha256):
             return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
-                                         % srl, status_code=404)
+                                         % sha256, status_code=404)
 
         task['path'] = name
         task['submitter'] = user['uname']
