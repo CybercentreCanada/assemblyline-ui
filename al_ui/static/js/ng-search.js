@@ -259,23 +259,34 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
 
     $scope.load_suggestions = function () {
         if ($scope.disabled) return;
-        var params = {};
+        var bucket = "ALL";
+
         if ($scope.bucket != null) {
-            params.bucket = $scope.bucket;
+            bucket = $scope.bucket;
         }
         $http({
             method: 'GET',
-            url: "/api/v4/search/fields/ALL/",
-            params: params
+            url: "/api/v4/search/fields/" + bucket + "/"
         })
             .success(function (data) {
-                for (var bucket_name in data.api_response) {
-                    var bucket = data.api_response[bucket_name];
-                    for (var field_name in bucket) {
-                        var field = bucket[field_name];
-                        var lookup_name = field_name + ":";
-                        if (field.indexed && $scope.suggestions.indexOf(lookup_name) == -1) {
-                            $scope.suggestions.push(lookup_name);
+                if (bucket === "ALL") {
+                    for (var bucket_name in data.api_response) {
+                        var res_bucket = data.api_response[bucket_name];
+                        for (var field_name in res_bucket) {
+                            var field = res_bucket[field_name];
+                            var lookup_name = field_name + ":";
+                            if (field.indexed && $scope.suggestions.indexOf(lookup_name) === -1) {
+                                $scope.suggestions.push(lookup_name);
+                            }
+                        }
+                    }
+                }
+                else{
+                   for (var n_field in data.api_response) {
+                        var f = data.api_response[n_field];
+                        var l_name = n_field + ":";
+                        if (f.indexed && $scope.suggestions.indexOf(l_name) === -1) {
+                            $scope.suggestions.push(l_name);
                         }
                     }
                 }

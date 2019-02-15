@@ -22,7 +22,7 @@ ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 
 @user_api.route("/<username>/", methods=["PUT"])
 @api_login(require_admin=True)
-def add_user_account(username, **_):
+def add_user_account(username, **kwargs):
     """
     Add a user to the system
     
@@ -66,11 +66,17 @@ def add_user_account(username, **_):
         # Data's username as to match the API call username
         data['uname'] = username
 
+        # Clear non user account data
+        avatar = data.pop('avatar', None)
+
+        if avatar is not None:
+            STORAGE.user_avatar.save(username, avatar)
+
         try:
-            STORAGE.user.save(username, User(data))
+            return make_api_response({"success": STORAGE.user.save(username, User(data))})
         except ValueError as e:
             return make_api_response({"success": False}, str(e), 400)
-        return make_api_response({"success": True})
+
     else:
         return make_api_response({"success": False}, "The username you are trying to add already exists.", 400)
 
@@ -502,7 +508,7 @@ def list_users(**_):
     """
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*")
+    query = request.args.get('query', "id:*") or "id:*"
 
     try:
         return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, as_obj=False))

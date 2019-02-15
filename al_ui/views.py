@@ -482,12 +482,12 @@ def admin_site_map(**kwargs):
     return custom_render("admin_site_map.html", **kwargs)
 
 
-# @views.route("/admin/users.html")
-# @protected_renderer(require_admin=True, audit=False)
-# def admin_user(**kwargs):
-#     return custom_render("admin_users.html", **kwargs)
-#
-#
+@views.route("/admin/users.html")
+@protected_renderer(require_admin=True, audit=False)
+def admin_user(**kwargs):
+    return custom_render("admin_users.html", **kwargs)
+
+
 # @views.route("/admin/virtual_machines.html")
 # @protected_renderer(require_admin=True, audit=False, allow_readonly=False)
 # def admin_vm(**kwargs):

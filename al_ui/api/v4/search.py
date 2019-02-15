@@ -264,7 +264,7 @@ def inspect_search(bucket, **kwargs):
 # noinspection PyUnusedLocal
 @search_api.route("/fields/<bucket>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def list_bucket_fields(bucket, **_):
+def list_bucket_fields(bucket, **kwargs):
     """
     List all available fields for a given bucket
 
@@ -289,8 +289,10 @@ def list_bucket_fields(bucket, **_):
 
     }
     """
-    if bucket in BUCKET_MAP:
+    if bucket in BUCKET_MAP or ():
         return make_api_response(BUCKET_MAP[bucket].fields())
+    elif kwargs['user']['is_admin'] and hasattr(STORAGE, bucket):
+        return make_api_response(getattr(STORAGE, bucket).fields())
     elif bucket == "ALL":
         return make_api_response(list_all_fields())
     else:

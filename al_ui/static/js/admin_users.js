@@ -35,12 +35,14 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
         $scope.editmode = false;
         $scope.current_user = {
             avatar: null,
-            groups: ["DEFAULT_GROUP"],
+            groups: ["USERS"],
             is_active: true,
             is_admin: false,
             classification: classification_definition.UNRESTRICTED,
             name: "",
-            uname: ""
+            uname: "",
+            api_quota: 10,
+            submission_quota: 5
         };
         $scope.current_user.new_pass = null;
         $scope.error = '';
@@ -113,11 +115,11 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'DELETE',
-            url: "/api/v3/user/" + user.uname + "/"
+            url: "/api/v4/user/" + user.uname + "/"
         })
             .success(function () {
                 $scope.loading_extra = false;
-                $scope.success = "User " + $scope.user.uname + " successfully removed!";
+                $scope.success = "User " + user.uname.toUpperCase() + " successfully removed!";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -151,7 +153,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/user/" + user.uname + "/?load_avatar=true"
+            url: "/api/v4/user/" + user.uname + "/?load_avatar=true"
         })
             .success(function (data) {
                 $scope.loading_extra = false;
@@ -189,13 +191,13 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'POST',
-            url: "/api/v3/user/" + $scope.current_user.uname + "/",
+            url: "/api/v4/user/" + $scope.current_user.uname + "/",
             data: $scope.current_user
         })
             .success(function () {
                 $scope.loading_extra = false;
                 $("#myModal").modal('hide');
-                $scope.success = "User " + $scope.current_user.uname + " successfully updated!";
+                $scope.success = "User " + $scope.current_user.uname.toUpperCase() + " successfully updated!";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -257,13 +259,13 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'PUT',
-            url: "/api/v3/user/" + $scope.current_user.uname + "/",
+            url: "/api/v4/user/" + $scope.current_user.uname + "/",
             data: $scope.current_user
         })
             .success(function () {
                 if (!$scope.editmode) $scope.user_list.push($scope.current_user);
                 $("#myModal").modal('hide');
-                $scope.success = "User " + $scope.current_user.uname + " successfully added!";
+                $scope.success = "User " + $scope.current_user.uname.toUpperCase() + " successfully added!";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -316,7 +318,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/user/list/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+            url: "/api/v4/user/list/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;
