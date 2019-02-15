@@ -15,7 +15,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.uname = null;
         $scope.started = false;
         $scope.filtered = false;
-        $scope.filter = "*";
+        $scope.filter = "";
 
         //DEBUG MODE
         $scope.debug = false;
@@ -35,7 +35,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
                 if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
-                    $scope.filter = "*";
+                    $scope.filter = "";
                 }
                 else {
                     $scope.filter = $scope.searchText;
@@ -60,7 +60,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             if ($scope.group) {
                 $http({
                     method: 'GET',
-                    url: "/api/v3/submission/list/group/" + $scope.group + "/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+                    url: "/api/v4/submission/list/group/" + $scope.group + "/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
                 })
                     .success(function (data) {
                         $scope.loading_extra = false;
@@ -70,7 +70,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                         $scope.pages = $scope.pagerArray();
                         $scope.started = true;
 
-                        $scope.filtered = $scope.filter != "*";
+                        $scope.filtered = $scope.filter != "";
                     })
                     .error(function (data, status, headers, config) {
                         $scope.loading_extra = false;
@@ -97,7 +97,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             else {
                 $http({
                     method: 'GET',
-                    url: "/api/v3/submission/list/user/" + $scope.uname + "/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+                    url: "/api/v4/submission/list/user/" + $scope.uname + "/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
                 })
                     .success(function (data) {
                         $scope.loading_extra = false;
@@ -107,7 +107,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                         $scope.pages = $scope.pagerArray();
                         $scope.started = true;
 
-                        $scope.filtered = $scope.filter != "*";
+                        $scope.filtered = $scope.filter != "";
                     })
                     .error(function (data, status, headers, config) {
                         $scope.loading_extra = false;

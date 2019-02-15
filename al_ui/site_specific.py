@@ -8,7 +8,7 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from al_ui.config import config, APP_ID
 from al_ui.http_exceptions import AuthenticationException
 
-APP_NAME = "Assemblyline"
+APP_NAME = "Assemblyline 4"
 TEMPLATE_PREFIX = {}
 
 basic_dn_parser = None

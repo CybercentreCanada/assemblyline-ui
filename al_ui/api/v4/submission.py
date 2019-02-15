@@ -547,7 +547,7 @@ def list_submissions_for_group(group, **kwargs):
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    filters = request.args.get('query', None)
+    filters = request.args.get('query', None) or None
     
     if group == "ALL":
         group_query = "id:*"
@@ -598,7 +598,7 @@ def list_submissions_for_user(username, **kwargs):
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', None)
+    query = request.args.get('query', None) or None
     
     account = STORAGE.user.get(username)
     if not account: 

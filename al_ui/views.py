@@ -344,20 +344,20 @@ def settings(**kwargs):
 #     return custom_render("submission_detail.html", sid=sid, new=new, **kwargs)
 #
 #
-# @views.route("/submissions.html")
-# @protected_renderer(audit=False)
-# def submissions(**kwargs):
-#     user = kwargs['user']
-#
-#     group = angular_safe(request.args.get('group', None))
-#     uname = None
-#
-#     if not group:
-#         uname = angular_safe(request.args.get('user', user['uname']))
-#
-#     return custom_render("submissions.html", uname=uname, group=group, **kwargs)
-#
-#
+@views.route("/submissions.html")
+@protected_renderer(audit=False)
+def submissions(**kwargs):
+    user = kwargs['user']
+
+    group = angular_safe(request.args.get('group', None))
+    uname = None
+
+    if not group:
+        uname = angular_safe(request.args.get('user', user['uname']))
+
+    return custom_render("submissions.html", uname=uname, group=group, **kwargs)
+
+
 # @views.route("/submit.html")
 # @protected_renderer(audit=False)
 # def submit(**kwargs):

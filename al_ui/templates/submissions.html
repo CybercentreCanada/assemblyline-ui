@@ -31,9 +31,9 @@
 				<tbody>
 					<tr ng-repeat="submission in submission_list | orderBy:'times.submitted':true">
 						<td nowrap><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-						<td class="{{submission.submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.submission.sid}}"><strong>{{submission.submission.max_score}}</strong></a></td>
-						<td width="100%"><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.submission.description | maxLength:140 | breakableStr}}</a></td>
-						<td nowrap><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.submission.submitter}}</a></td>
+						<td class="{{submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.submission.sid}}"><strong>{{submission.max_score}}</strong></a></td>
+						<td width="100%"><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.params.description | maxLength:140 | breakableStr}}</a></td>
+						<td nowrap><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.params.submitter}}</a></td>
 						<td><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.file_count}}</a></td>
 						<td ng-if="user.c12n_enforcing"><a href="/submission_detail.html?sid={{submission.submission.sid}}"><label class="label classification {{submission.classification | class_label_color}}">{{submission.classification | class_sm }}</label></a></td>
 						<td nowrap>
