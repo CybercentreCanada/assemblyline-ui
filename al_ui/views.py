@@ -256,13 +256,13 @@ def reset():
     return custom_render("reset.html", reset_id=reset_id)
 
 
-# @views.route("/search.html")
-# @protected_renderer(load_settings=True, audit=False)
-# def search(**kwargs):
-#     query = angular_safe(request.args.get('query', None))
-#     return custom_render("search.html", query=query, id=STORAGE.ID, **kwargs)
-#
-#
+@views.route("/search.html")
+@protected_renderer(load_settings=True, audit=False)
+def search(**kwargs):
+    query = angular_safe(request.args.get('query', None))
+    return custom_render("search.html", query=query, **kwargs)
+
+
 @views.route("/search_help.html")
 @protected_renderer(audit=False)
 def search_help(**kwargs):

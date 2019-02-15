@@ -4,7 +4,7 @@
 {% block js_import %}
 	<script src="/static/js/search.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};id='{{id}}';settings={{settings}};debug={{debug}};{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};settings={{settings}};debug={{debug}};{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
