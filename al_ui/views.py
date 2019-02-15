@@ -123,29 +123,29 @@ def configuration(**kwargs):
 def default(**kwargs):
     # TODO: switch back to main page
     # return submit(**kwargs)
-    return unsupported()
+    return submissions(**kwargs)
 
 
-# @views.route("/file_detail.html", methods=["GET"])
-# @protected_renderer(load_settings=True, audit=False)
-# def file_detail(**kwargs):
-#     user = kwargs['user']
-#     sha256 = angular_safe(request.args.get("sha256", None))
-#
-#     if not sha256:
-#         abort(404)
-#
-#     data = STORAGE.files.get(sha256)
-#
-#     if not data:
-#         abort(404)
-#
-#     if not Classification.is_accessible(user['classification'], data['classification']):
-#         abort(403)
-#
-#     return custom_render("file_detail.html", sha256=sha256, id=STORAGE.ID, **kwargs)
-#
-#
+@views.route("/file_detail.html", methods=["GET"])
+@protected_renderer(load_settings=True, audit=False)
+def file_detail(**kwargs):
+    user = kwargs['user']
+    sha256 = angular_safe(request.args.get("sha256", None))
+
+    if not sha256:
+        abort(404)
+
+    data = STORAGE.file.get(sha256, as_obj=False)
+
+    if not data:
+        abort(404)
+
+    if not Classification.is_accessible(user['classification'], data['classification']):
+        abort(403)
+
+    return custom_render("file_detail.html", sha256=sha256, id="id", **kwargs)
+
+
 # @views.route("/file_viewer.html")
 # @protected_renderer(audit=False)
 # def file_viewer(**kwargs):

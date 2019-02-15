@@ -45,7 +45,7 @@ def list_file_active_keys(sha256, access_control=None):
 
 
 def list_file_childrens(sha256, access_control=None):
-    query = 'id:{sha256}* AND response.extracted.sha256:*'
+    query = f'id:{sha256}* AND response.extracted.sha256:*'
     resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id',
                                          sort="created desc", access_control=access_control,
                                          as_obj=False)

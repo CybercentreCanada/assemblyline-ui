@@ -37,7 +37,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                                 if (item[$scope.id] !== undefined) {
                                     $http({
                                         method: 'GET',
-                                        url: "/api/v3/service/result/" + item[$scope.id] + "/"
+                                        url: "/api/v4/service/result/" + item[$scope.id] + "/"
                                     })
                                         .success(function (data) {
                                             $scope.current_file.results[i] = data.api_response;
@@ -134,7 +134,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
             $http({
                 method: 'GET',
-                url: "/api/v3/submit/dynamic/" + sha256 + "/"
+                url: "/api/v4/submit/dynamic/" + sha256 + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = true;
@@ -207,7 +207,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             $scope.loading_extra = true;
             $http({
                 method: 'GET',
-                url: "/api/v3/file/result/" + $scope.sha256 + "/"
+                url: "/api/v4/file/result/" + $scope.sha256 + "/"
             })
                 .success(function (data) {
                     $scope.current_file = data.api_response;
