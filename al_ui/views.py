@@ -277,12 +277,12 @@ def search_help(**kwargs):
     return custom_render("search_help.html", field_list=field_list, lookup=lookup, **kwargs)
 
 
-# @views.route("/services.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def services(**kwargs):
-#     return custom_render("services.html", **kwargs)
-#
-#
+@views.route("/services.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def services(**kwargs):
+    return custom_render("services.html", **kwargs)
+
+
 @views.route("/settings.html")
 @protected_renderer(audit=False)
 def settings(**kwargs):

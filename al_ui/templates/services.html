@@ -16,7 +16,7 @@
             <div ng-repeat="srv in service_list" class="col-md-6">
                 <div class="alert_card" ng-class="{danger: !srv.enabled}">
                     <div ng-if="!srv.enabled" class="pull-right label label-danger text-large">Disabled</div>
-                    <div><span class="text-big">{{ srv.name }}</span><span style="padding-left: 10px" class="text-muted">:: {{ srv.classpath }}</span></div>
+                    <div><span class="text-big">{{ srv.name }}</span></div>
                     <div class="pad" style="height: 100px; overflow: hidden">{{ srv.description }}</div>
                     <div class="row">
                         <div class="col-sm-6"><label>Accepts:&nbsp;</label>{{ srv.accepts }}</div>
