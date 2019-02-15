@@ -93,12 +93,12 @@ def account(**kwargs):
 #         abort(403)
 #
 #
-# @views.route("/api_doc.html")
-# @protected_renderer(audit=False)
-# def api_doc(**kwargs):
-#     return custom_render("api_doc.html", **kwargs)
-#
-#
+@views.route("/api_doc.html")
+@protected_renderer(audit=False)
+def api_doc(**kwargs):
+    return custom_render("api_doc.html", **kwargs)
+
+
 # @views.route("/classification_help.html")
 # @protected_renderer(audit=False)
 # def classification_help(*_, **kwargs):
