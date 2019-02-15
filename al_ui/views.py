@@ -99,12 +99,12 @@ def api_doc(**kwargs):
     return custom_render("api_doc.html", **kwargs)
 
 
-# @views.route("/classification_help.html")
-# @protected_renderer(audit=False)
-# def classification_help(*_, **kwargs):
-#     return custom_render("classification_help.html", **kwargs)
-#
-#
+@views.route("/classification_help.html")
+@protected_renderer(audit=False)
+def classification_help(*_, **kwargs):
+    return custom_render("classification_help.html", **kwargs)
+
+
 # @views.route("/configuration.html")
 # @protected_renderer(audit=False, allow_readonly=False)
 # def configuration(**kwargs):
