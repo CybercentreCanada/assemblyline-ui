@@ -74,7 +74,7 @@ def get_signup_queue(key):
 # Audit log
 al_log.init_logging("ui")
 AUDIT_KW_TARGET = ["sid",
-                   "srl",
+                   "sha256",
                    "copy_sid",
                    "filter",
                    "query",

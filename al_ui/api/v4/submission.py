@@ -112,9 +112,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
         if not Classification.is_accessible(user['classification'], temp_file['classification']):
             return make_api_response("", "You are not allowed to view the data of this file", 403)
         output['file_info'] = temp_file
-        
-        temp_results = STORAGE.result.multiget([x for x in res_keys if x.startswith(sha256)],
-                                               as_obj=False, as_dictionary=False)
+
+        temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
+                                                         cl_engine=Classification, as_obj=False).values())
         results = []
         for r in temp_results:
             r = format_result(user['classification'], r, temp_file['classification'])
@@ -437,22 +437,22 @@ def get_summary(sid, **kwargs):
                     or not Classification.is_accessible(user['classification'], t['classification']):
                 continue
 
-            srl = t["key"][:64]
+            sha256 = t["key"][:64]
             tag_key = t['type'] + "__" + t['value']
 
             # File map
             if tag_key not in output['map']:
                 output['map'][tag_key] = []
 
-            if srl not in output['map'][tag_key]:
-                output['map'][tag_key].append(srl)
+            if sha256 not in output['map'][tag_key]:
+                output['map'][tag_key].append(sha256)
 
             # Tag map
-            if srl not in output['map']:
-                output['map'][srl] = []
+            if sha256 not in output['map']:
+                output['map'][sha256] = []
 
-            if srl not in output['map'][srl]:
-                output['map'][srl].append(tag_key)
+            if sha256 not in output['map'][sha256]:
+                output['map'][sha256].append(tag_key)
 
             # Tags
             if t['type'] not in output['tags']:

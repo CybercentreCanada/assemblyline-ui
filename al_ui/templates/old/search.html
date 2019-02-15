@@ -60,7 +60,7 @@
 		</div>
 		
 		<div class="pull-right hidden-xs">
-			<a href="/api/v3/signature/download/?query={{query}}" title="Download signatures" ng-show="export_btn" class="btn btn-default" style="font-size: 10pt; margin-top: 5px;"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download Signatures</span></a>
+			<a href="/api/v4/signature/download/?query={{query}}" title="Download signatures" ng-show="export_btn" class="btn btn-default" style="font-size: 10pt; margin-top: 5px;"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download Signatures</span></a>
 		</div>
 		<div ng-controller="pagerCtrl" ng-init="pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null">
 			<ul class="nav nav-tabs" id="tabContent">
@@ -140,12 +140,12 @@
 							</thead>
 							<tbody>
 								<tr ng-repeat="file in file_list.items | orderBy:'seen_last':true">
-									<td><a href="/file_detail.html?srl={{file.sha256}}">{{file.seen_last | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td><a href="/file_detail.html?srl={{file.sha256}}">{{file.seen_count}}</a></td>
-									<td><a href="/file_detail.html?srl={{file.sha256}}">{{file.tag}}</a></td>
-									<td><a href="/file_detail.html?srl={{file.sha256}}">{{file.sha256 | breakableStr}}</a></td>
-									<td><a href="/file_detail.html?srl={{file.sha256}}">{{file.size}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?srl={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen_last | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen_count}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.tag}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.sha256 | breakableStr}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.size}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
 							<tfoot ng-if="!settings.hide_raw_results">
@@ -181,11 +181,11 @@
 							</thead>
 							<tbody>
 								<tr ng-repeat="result in result_list.items | orderBy:'file_info.seen_last':true">
-									<td><a href="/file_detail.html?srl={{result[id] | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td><a href="/file_detail.html?srl={{result[id] | getHashFromKey}}">{{result.response.service_name}}</a></td>
-									<td class="{{result.result.score | score_color}}"><a href="/file_detail.html?srl={{result[id] | getHashFromKey}}"><strong>{{result.result.score}}</strong></a></td>
-									<td><a href="/file_detail.html?srl={{result[id] | getHashFromKey}}">{{result[id] | getHashFromKey | breakableStr}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?srl={{result.file_info.sha256}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
+									<td><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}">{{result.response.service_name}}</a></td>
+									<td class="{{result.result.score | score_color}}"><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}"><strong>{{result.result.score}}</strong></a></td>
+									<td><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}">{{result[id] | getHashFromKey | breakableStr}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{result.file_info.sha256}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
 							<tfoot ng-if="!settings.hide_raw_results">
@@ -213,7 +213,7 @@
 	            {%raw%}
 				<div class="tab-pane" style="margin-top: 20px" id="signature">
 					<div ng-show="signature_list.total > 0">
-						<a href="/api/v3/signature/download/?query={{query}}" ng-show="export_btn" class="btn btn-default visible-xs" style="font-size: 10pt; margin-bottom: 15px; margin-right: 5px;"><span class="glyphicon glyphicon-download-alt">&nbsp;</span>Download signatures</a>
+						<a href="/api/v4/signature/download/?query={{query}}" ng-show="export_btn" class="btn btn-default visible-xs" style="font-size: 10pt; margin-bottom: 15px; margin-right: 5px;"><span class="glyphicon glyphicon-download-alt">&nbsp;</span>Download signatures</a>
 						<div pager></div>
 					</div>
 					<section class="table-responsive" ng-show="signature_list.total > 0">

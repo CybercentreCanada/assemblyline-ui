@@ -130,12 +130,12 @@ def default(**kwargs):
 # @protected_renderer(load_settings=True, audit=False)
 # def file_detail(**kwargs):
 #     user = kwargs['user']
-#     srl = angular_safe(request.args.get("srl", None))
+#     sha256 = angular_safe(request.args.get("sha256", None))
 #
-#     if not srl:
+#     if not sha256:
 #         abort(404)
 #
-#     data = STORAGE.files.get(srl)
+#     data = STORAGE.files.get(sha256)
 #
 #     if not data:
 #         abort(404)
@@ -143,19 +143,19 @@ def default(**kwargs):
 #     if not Classification.is_accessible(user['classification'], data['classification']):
 #         abort(403)
 #
-#     return custom_render("file_detail.html", srl=srl, id=STORAGE.ID, **kwargs)
+#     return custom_render("file_detail.html", sha256=sha256, id=STORAGE.ID, **kwargs)
 #
 #
 # @views.route("/file_viewer.html")
 # @protected_renderer(audit=False)
 # def file_viewer(**kwargs):
 #     user = kwargs['user']
-#     srl = angular_safe(request.args.get("srl", None))
+#     sha256 = angular_safe(request.args.get("sha256", None))
 #
-#     if not srl:
+#     if not sha256:
 #         abort(404)
 #
-#     data = STORAGE.files.get(srl)
+#     data = STORAGE.files.get(sha256)
 #
 #     if not data:
 #         abort(404)
@@ -163,7 +163,7 @@ def default(**kwargs):
 #     if not Classification.is_accessible(user['classification'], data['classification']):
 #         abort(403)
 #
-#     return custom_render("file_viewer.html", srl=srl, **kwargs)
+#     return custom_render("file_viewer.html", sha256=sha256, **kwargs)
 #
 #
 # # Site-Specific heuristics page
@@ -332,18 +332,18 @@ def settings(**kwargs):
 #     return custom_render("signature_statistics.html", **kwargs)
 #
 #
-# @views.route("/submission_detail.html", methods=["GET"])
-# @protected_renderer(load_settings=True)
-# def submission_detail(**kwargs):
-#     sid = angular_safe(request.args.get("sid", None))
-#     new = "new" in request.args
-#     if new:
-#         new = 'true'
-#     else:
-#         new = 'false'
-#     return custom_render("submission_detail.html", sid=sid, new=new, **kwargs)
-#
-#
+@views.route("/submission_detail.html", methods=["GET"])
+@protected_renderer(load_settings=True)
+def submission_detail(**kwargs):
+    sid = angular_safe(request.args.get("sid", None))
+    new = "new" in request.args
+    if new:
+        new = 'true'
+    else:
+        new = 'false'
+    return custom_render("submission_detail.html", sid=sid, new=new, **kwargs)
+
+
 @views.route("/submissions.html")
 @protected_renderer(audit=False)
 def submissions(**kwargs):

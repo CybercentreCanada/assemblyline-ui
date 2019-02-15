@@ -1,6 +1,6 @@
 {% extends base_template %}
 {% block html_param %}ng-app="app"{% endblock %}
-{% block title_page %}AL - File detail [{{srl}}]{% endblock %}
+{% block title_page %}AL - File detail [{{sha256}}]{% endblock %}
 {% block css_import %}<link rel="stylesheet" href="/static/css/jsoneditor.css"/>{% endblock %}
 {% block js_import %}
     <script src="/static/js/d3/d3.v3.js"></script>
@@ -10,7 +10,7 @@
 	<script src="/static/js/jsoneditor/jsoneditor.js"></script>
     <script src="/static/js/ng-jsoneditor.min.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};id='{{id}}';srl='{{srl}}';settings={{settings}};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};id='{{id}}';sha256='{{sha256}}';settings={{settings}};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}

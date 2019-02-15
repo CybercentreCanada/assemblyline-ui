@@ -197,7 +197,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     });
                     $http({
                         method: 'DELETE',
-                        url: "/api/v3/submission/" + $scope.sid + "/"
+                        url: "/api/v4/submission/" + $scope.sid + "/"
                     })
                         .success(function () {
                             swal("Deleted!", "Submission was succesfully deleted.", "success");
@@ -225,7 +225,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             swal("Share submission", "Sharing function not implemented just yet...", "info");
         };
 
-        $scope.resubmit_dynamic_async = function (srl, sid, name) {
+        $scope.resubmit_dynamic_async = function (sha256, sid, name) {
             $scope.error = '';
             $scope.success = '';
             $scope.loading_extra = true;
@@ -234,7 +234,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: 'GET',
-                url: "/api/v3/submit/dynamic/" + srl + "/",
+                url: "/api/v4/submit/dynamic/" + sha256 + "/",
                 params: data
             })
                 .success(function (data) {
@@ -268,7 +268,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: 'GET',
-                url: "/api/v3/submit/resubmit/" + $scope.sid + "/"
+                url: "/api/v4/submit/resubmit/" + $scope.sid + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = true;
@@ -403,9 +403,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     var route = next.slice(idx + 2);
                     var sep_idx = route.indexOf("/");
                     if (sep_idx != -1) {
-                        var srl = route.slice(0, sep_idx);
+                        var sha256 = route.slice(0, sep_idx);
                         var name = decodeURIComponent(route.slice(sep_idx + 1));
-                        $scope.view_file_details(srl, name);
+                        $scope.view_file_details(sha256, name);
                     }
                 }
             }
@@ -463,7 +463,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 if ($scope.run_count == 5) {
                     $http({
                         method: 'GET',
-                        url: "/api/v3/live/outstanding_services/" + $scope.sid + "/"
+                        url: "/api/v4/live/outstanding_services/" + $scope.sid + "/"
                     })
                         .success(function (data) {
                             $scope.outstanding = data.api_response;
@@ -493,7 +493,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: 'POST',
-                url: "/api/v3/service/multiple/keys/",
+                url: "/api/v4/service/multiple/keys/",
                 data: data
             })
                 .success(function (data) {
@@ -524,7 +524,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.get_cache_key = function (key) {
             $http({
                 method: 'GET',
-                url: "/api/v3/service/result/" + key + "/"
+                url: "/api/v4/service/result/" + key + "/"
             })
                 .success(function (data) {
                     if (!$scope.completed) {
@@ -550,7 +550,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.get_cache_key_error = function (key) {
             $http({
                 method: 'GET',
-                url: "/api/v3/service/error/" + key + "/"
+                url: "/api/v4/service/error/" + key + "/"
             })
                 .success(function (data) {
                     if (!$scope.completed) {
@@ -597,20 +597,20 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         };
 
-        $scope.view_file_details = function (srl, name) {
+        $scope.view_file_details = function (sha256, name) {
             var method = 'GET';
             var data = null;
-            if ($scope.file_res[srl] !== undefined) {
+            if ($scope.file_res[sha256] !== undefined) {
                 if (data == null) {
                     data = {};
                 }
-                data.extra_result_keys = $scope.file_res[srl];
+                data.extra_result_keys = $scope.file_res[sha256];
             }
-            if ($scope.file_errors[srl] !== undefined) {
+            if ($scope.file_errors[sha256] !== undefined) {
                 if (data == null) {
                     data = {};
                 }
-                data.extra_error_keys = $scope.file_errors[srl];
+                data.extra_error_keys = $scope.file_errors[sha256];
             }
 
             if (data != null) {
@@ -623,7 +623,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: method,
-                url: "/api/v3/submission/" + $scope.sid + "/file/" + srl + "/",
+                url: "/api/v4/submission/" + $scope.sid + "/file/" + sha256 + "/",
                 data: data
             })
                 .success(function (data) {
@@ -649,7 +649,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             $scope.outstanding = null;
             $http({
                 method: 'GET',
-                url: "/api/v3/submission/" + $scope.sid + "/"
+                url: "/api/v4/submission/" + $scope.sid + "/"
             })
                 .success(function (data) {
                     $scope.data = data.api_response;
@@ -743,7 +743,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.get_summary = function () {
             $http({
                 method: 'GET',
-                url: "/api/v3/submission/summary/" + $scope.sid + "/"
+                url: "/api/v4/submission/summary/" + $scope.sid + "/"
             })
                 .success(function (data) {
                     $scope.summary = data.api_response.tags;
@@ -768,7 +768,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.get_file_tree = function () {
             $http({
                 method: 'GET',
-                url: "/api/v3/submission/tree/" + $scope.sid + "/"
+                url: "/api/v4/submission/tree/" + $scope.sid + "/"
             })
                 .success(function (data) {
                     if ($scope.file_tree != null) {
@@ -806,7 +806,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: 'GET',
-                url: "/api/v3/live/setup_watch_queue/" + $scope.sid + "/",
+                url: "/api/v4/live/setup_watch_queue/" + $scope.sid + "/",
                 params: params
             })
                 .success(function (data) {
@@ -944,9 +944,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }
         };
 
-        $scope.get_file_name_from_srl = function (srl) {
+        $scope.get_file_name_from_sha256 = function (sha256) {
             for (var i in $scope.data.files) {
-                if ($scope.data.files[i][1] == srl) {
+                if ($scope.data.files[i][1] == sha256) {
                     return $scope.data.files[i][0]
                 }
             }
@@ -963,7 +963,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             var to_update = $scope.search_file_tree(key, $scope.file_tree);
 
             if (to_update.length == 0) {
-                var fname = $scope.get_file_name_from_srl(key);
+                var fname = $scope.get_file_name_from_sha256(key);
 
                 if (fname != null) {
                     $scope.file_tree[key] = {};
@@ -1000,25 +1000,25 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 }
 
                 for (var i in result.response.extracted) {
-                    var srl = result.response.extracted[i][1];
+                    var sha256 = result.response.extracted[i][1];
                     var name = result.response.extracted[i][0];
 
-                    if (!item['children'].hasOwnProperty(srl)) {
-                        if ($scope.file_tree.hasOwnProperty("TBD") && $scope.file_tree["TBD"]['children'].hasOwnProperty(srl)) {
-                            item['children'][srl] = $scope.file_tree["TBD"]['children'][srl];
-                            item['children'][srl]['name'] = [name];
-                            if (to_del_tbd.indexOf(srl) == -1) to_del_tbd.push(srl);
+                    if (!item['children'].hasOwnProperty(sha256)) {
+                        if ($scope.file_tree.hasOwnProperty("TBD") && $scope.file_tree["TBD"]['children'].hasOwnProperty(sha256)) {
+                            item['children'][sha256] = $scope.file_tree["TBD"]['children'][sha256];
+                            item['children'][sha256]['name'] = [name];
+                            if (to_del_tbd.indexOf(sha256) == -1) to_del_tbd.push(sha256);
                         }
                         else {
-                            item['children'][srl] = {};
-                            item['children'][srl]['children'] = {};
-                            item['children'][srl]['name'] = [name];
-                            item['children'][srl]['score'] = 0;
+                            item['children'][sha256] = {};
+                            item['children'][sha256]['children'] = {};
+                            item['children'][sha256]['name'] = [name];
+                            item['children'][sha256]['score'] = 0;
                             $scope.num_files += 1;
                         }
                     }
                     else {
-                        item['children'][srl]['name'].push(name)
+                        item['children'][sha256]['name'].push(name)
                     }
 
                 }
@@ -1029,13 +1029,13 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }
         };
 
-        $scope.search_file_tree = function (srl, tree) {
+        $scope.search_file_tree = function (sha256, tree) {
             var output = [];
             for (var key in tree) {
                 if ($scope.obj_len(tree[key]['children']) != 0) {
-                    output.push.apply(output, $scope.search_file_tree(srl, tree[key]['children']));
+                    output.push.apply(output, $scope.search_file_tree(sha256, tree[key]['children']));
                 }
-                if (key == srl) {
+                if (key == sha256) {
                     output.push(tree[key]);
                 }
             }

@@ -12,7 +12,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.options = null;
         $scope.loading = false;
         $scope.loading_extra = false;
-        $scope.srl = null;
+        $scope.sha256 = null;
         $scope.tag_map = null;
         $scope.current_file = null;
         $scope.selected_highlight = [];
@@ -127,14 +127,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             return angular.toJson(obj, true);
         };
 
-        $scope.resubmit_dynamic_async = function (srl, sid) {
+        $scope.resubmit_dynamic_async = function (sha256, sid) {
             $scope.error = '';
             $scope.success = '';
             $scope.loading_extra = true;
 
             $http({
                 method: 'GET',
-                url: "/api/v3/submit/dynamic/" + srl + "/"
+                url: "/api/v3/submit/dynamic/" + sha256 + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = true;
@@ -207,7 +207,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             $scope.loading_extra = true;
             $http({
                 method: 'GET',
-                url: "/api/v3/file/result/" + $scope.srl + "/"
+                url: "/api/v3/file/result/" + $scope.sha256 + "/"
             })
                 .success(function (data) {
                     $scope.current_file = data.api_response;

@@ -284,7 +284,7 @@ def get_file_children(sha256, **kwargs):
     Result example:
     [                           # List of children
      {"name": "NAME OF FILE",       # Name of the children
-      "sha256": "123..DEF"},           # SRL of the children (SHA256)
+      "sha256": "123..DEF"},           # sha256 of the children
     ]
     """
     user = kwargs['user']

@@ -80,31 +80,31 @@
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Description</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.submission.description}}
+								{{data.params.description}}
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Groups</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.submission.groups | joinBy:' | '}}
+								{{data.params.groups | joinBy:' | '}}
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Selected&nbsp;Services</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.services.selected | joinBy:' | '}}
+								{{data.params.services.selected | joinBy:' | '}}
 							</div>
 						</div>
-						<div class="row" ng-show="data.submission.eligible_parents">
+						<div class="row" ng-show="data.params.eligible_parents">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Eligible&nbsp;Parents</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.submission.eligible_parents | joinBy:' | '}}
+								{{data.params.eligible_parents | joinBy:' | '}}
 							</div>
 						</div>
-						<div class="row" ng-if="obj_len(data.submission.params) != 0">
+						<div class="row" ng-if="obj_len(data.params.service_spec) != 0">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Specific&nbsp;Parameters</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-                                <div ng-repeat="(service,extra) in data.submission.params">
+                                <div ng-repeat="(service,extra) in data.params.service_spec">
                                     <div><i>{{service}}</i>:</div>
                                     <div class="indent" ng-repeat="(var,val) in extra">{{var | titleCase}} => {{val}}</div>
                                 </div>
@@ -113,53 +113,53 @@
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Deep&nbsp;Scan</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								<span ng-if="data.submission.deep_scan" class="icon-check"></span>
-								<b><span ng-if="!data.submission.deep_scan" class="icon-roundrectangle"></span></b>
+								<span ng-if="data.params.deep_scan" class="icon-check"></span>
+								<b><span ng-if="!data.params.deep_scan" class="icon-roundrectangle"></span></b>
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Ignore&nbsp;Cache</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								<span ng-if="data.submission.ignore_cache" class="icon-check"></span>
-								<b><span ng-if="!data.submission.ignore_cache" class="icon-roundrectangle"></span></b>
+								<span ng-if="data.params.ignore_cache" class="icon-check"></span>
+								<b><span ng-if="!data.params.ignore_cache" class="icon-roundrectangle"></span></b>
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Ignore&nbsp;Dynamic Recursion Prevention</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								<span ng-if="data.submission.ignore_dynamic_recursion_prevention" class="icon-check"></span>
-								<b><span ng-if="!data.submission.ignore_dynamic_recursion_prevention" class="icon-roundrectangle"></span></b>
+								<span ng-if="data.params.ignore_dynamic_recursion_prevention" class="icon-check"></span>
+								<b><span ng-if="!data.params.ignore_dynamic_recursion_prevention" class="icon-roundrectangle"></span></b>
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Ignore&nbsp;Filtering</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								<span ng-if="data.submission.ignore_filtering" class="icon-check"></span>
-								<b><span ng-if="!data.submission.ignore_filtering" class="icon-roundrectangle"></span></b>
+								<span ng-if="data.params.ignore_filtering" class="icon-check"></span>
+								<b><span ng-if="!data.params.ignore_filtering" class="icon-roundrectangle"></span></b>
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Submitted&nbsp;By</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.submission.submitter}}
+								{{data.params.submitter}}
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Priority</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.submission.priority}}
+								{{data.params.priority}}
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Time&nbsp;To&nbsp;Live</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
-								{{data.submission.ttl}} days
+								{{data.params.ttl}} days
 							</div>
 						</div>
 						<div class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Max&nbsp;Score</strong></div>
-							<div class="col-xs-7 col-sm-9 col-md-10 {{data.submission.max_score | score_color}}">
-								<strong>{{data.submission.max_score}}</strong> 
+							<div class="col-xs-7 col-sm-9 col-md-10 {{data.max_score | score_color}}">
+								<strong>{{data.max_score}}</strong>
 							</div>
 						</div>
 						<div class="row">
@@ -187,13 +187,13 @@
                     </div>
 				</section>
 				
-				<section class="header_title" id="section_metadata" ng-hide="empty(data.submission.metadata)">
+				<section class="header_title" id="section_metadata" ng-hide="empty(data.metadata)">
 					<div class="menuheader" data-toggle="collapse" data-target="#metadata">
 						<span class="text-big">Metadata</span>
 					</div>
 					<div id="metadata" class="collapse in">
 						
-						<div class="row" ng-repeat="(key, val) in data.submission.metadata | orderBy:key">
+						<div class="row" ng-repeat="(key, val) in data.metadata | orderBy:key">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>{{key | titleCase }}</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10" style="white-space: pre-wrap">{{val | stripNull | joinBy:' | ' | objectViewer | iso_to_utc:true}}</div>
 						</div>
@@ -202,7 +202,7 @@
                         <div class="raw_footer" data-toggle="collapse" data-target="#meta_raw">
                             <div id="meta_raw" class="collapse">
                                 <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(data.submission.metadata)}}</pre>
+                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(data.metadata)}}</pre>
                             </div>
                         </div>
                     </div>

@@ -78,7 +78,7 @@ class protected_renderer(BaseSecurityRenderer):
             kwargs['avatar'] = STORAGE.user_avatar.get(user['uname'])
             kwargs['is_prod'] = SYSTEM_NAME == "production"
             kwargs['is_readonly'] = config.ui.read_only
-            settings = STORAGE.user_settings.get(user['uname'])
+            settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
             if not request.path == "/terms.html":
                 if not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                     return redirect(redirect_helper("/terms.html"))

@@ -14,7 +14,7 @@
 			<div><h4 ng-hide="signature_list == null || (total == 0 && !filtered)" class="text-muted">:: {{total}} Yara signature<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4></div>
 			<div ng-hide="signature_list == null || (total == 0 && !filtered)">
 				<a class="btn btn-success btn-sm" ng-click="add_signature();"><span class="glyphicon glyphicon-plus">&nbsp;</span>Add Signature</a>
-				<a ng-disabled="total == 0" href="/api/v3/signature/download/?query={{filter}}" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-download-alt">&nbsp;</span>Download <span ng-show="filtered">Filtered </span>Signatures</a>
+				<a ng-disabled="total == 0" href="/api/v4/signature/download/?query={{filter}}" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-download-alt">&nbsp;</span>Download <span ng-show="filtered">Filtered </span>Signatures</a>
 			</div>
 		</div>
 		<div ng-hide="signature_list == null || (!filtered && signature_list.length == 0)">
