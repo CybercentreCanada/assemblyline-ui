@@ -18,7 +18,6 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.selected_highlight = [];
         $scope.splitter = "__";
         $scope.switch_service = null;
-        $scope.id = null;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -34,10 +33,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     if (item.created == created) {
                         for (var i in $scope.current_file.results) {
                             if ($scope.current_file.results[i].response.service_name == service) {
-                                if (item[$scope.id] !== undefined) {
+                                if (item["id"] !== undefined) {
                                     $http({
                                         method: 'GET',
-                                        url: "/api/v4/service/result/" + item[$scope.id] + "/"
+                                        url: "/api/v4/service/result/" + item["id"] + "/"
                                     })
                                         .success(function (data) {
                                             $scope.current_file.results[i] = data.api_response;

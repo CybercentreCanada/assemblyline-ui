@@ -143,7 +143,7 @@ def file_detail(**kwargs):
     if not Classification.is_accessible(user['classification'], data['classification']):
         abort(403)
 
-    return custom_render("file_detail.html", sha256=sha256, id="id", **kwargs)
+    return custom_render("file_detail.html", sha256=sha256, **kwargs)
 
 
 @views.route("/file_viewer.html")
