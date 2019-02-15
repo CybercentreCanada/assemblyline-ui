@@ -476,12 +476,12 @@ def yara_help(**kwargs):
 #     return custom_render("admin_service_configs.html", **kwargs)
 #
 #
-# @views.route("/admin/site_map.html")
-# @protected_renderer(require_admin=True, audit=False)
-# def admin_site_map(**kwargs):
-#     return custom_render("admin_site_map.html", **kwargs)
-#
-#
+@views.route("/admin/site_map.html")
+@protected_renderer(require_admin=True, audit=False)
+def admin_site_map(**kwargs):
+    return custom_render("admin_site_map.html", **kwargs)
+
+
 # @views.route("/admin/users.html")
 # @protected_renderer(require_admin=True, audit=False)
 # def admin_user(**kwargs):
