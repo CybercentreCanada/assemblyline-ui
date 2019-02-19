@@ -294,32 +294,32 @@ def settings(**kwargs):
     return custom_render("settings.html", forced=forced, **kwargs)
 
 
-# @views.route("/signature_detail.html", methods=["GET"])
-# @protected_renderer(load_settings=True, audit=False, allow_readonly=False)
-# def signature_detail(**kwargs):
-#     user = kwargs['user']
-#     sid = angular_safe(request.args.get("sid", None))
-#     rev = angular_safe(request.args.get("rev", None))
-#
-#     if not sid or not rev:
-#         abort(404)
-#
-#     data = STORAGE.signatures.get("%sr.%s" % (sid, rev))
-#
-#     if not data:
-#         abort(404)
-#
-#     if not Classification.is_accessible(user['classification'],
-#                                         data['meta'].get('classification', Classification.UNRESTRICTED)):
-#         abort(403)
-#
-#     return custom_render("signature_detail.html",
-#                          sid=sid,
-#                          rev=rev,
-#                          organisation=ORGANISATION,
-#                          **kwargs)
-#
-#
+@views.route("/signature_detail.html", methods=["GET"])
+@protected_renderer(load_settings=True, audit=False, allow_readonly=False)
+def signature_detail(**kwargs):
+    user = kwargs['user']
+    sid = angular_safe(request.args.get("sid", None))
+    rev = angular_safe(request.args.get("rev", None))
+
+    if not sid or not rev:
+        abort(404)
+
+    data = STORAGE.signature.get("%sr.%s" % (sid, rev), as_obj=False)
+
+    if not data:
+        abort(404)
+
+    if not Classification.is_accessible(user['classification'],
+                                        data['meta'].get('classification', Classification.UNRESTRICTED)):
+        abort(403)
+
+    return custom_render("signature_detail.html",
+                         sid=sid,
+                         rev=rev,
+                         organisation=ORGANISATION,
+                         **kwargs)
+
+
 # @views.route("/signatures.html")
 # @protected_renderer(audit=False, allow_readonly=False)
 # def signatures(**kwargs):

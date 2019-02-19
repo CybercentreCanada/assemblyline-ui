@@ -1042,12 +1042,19 @@ utils.filter('signature', function () {
     return function (s) {
         if (s === undefined || s == null) return "";
         var malware_types = ['exploit', 'implant', 'info', 'technique', 'tool'];
-        var malware_important = ['classification', 'description', 'id', 'organisation', 'poc', 'rule_version', 'yara_version'];
+        var malware_important = ['classification', 'description', 'organisation', 'poc', 'rule_id', 'rule_version', 'yara_version'];
         var keys = [];
 
         var type_index = malware_types.indexOf(s.meta.rule_group);
         if (type_index > -1) {
             malware_types.splice(type_index, 1);
+        }
+
+        if (s.classification !== undefined){
+            s.meta.classification = s.classification;
+        }
+        if (s.meta_extra !== undefined){
+            s.meta = Object.assign({}, s.meta, s.meta_extra)
         }
 
         for (var key_meta in s.meta) {
@@ -1087,7 +1094,7 @@ utils.filter('signature', function () {
         for (var i_types in malware_types) {
             var key_types = malware_types[i_types];
             var idx_types = keys.indexOf(key_types);
-            if (idx_types != -1) {
+            if (idx_types !== -1 && s.meta[key_types] !== null) {
                 o += "        " + key_types + " = \"" + s.meta[key_types] + "\"\n";
                 keys.splice(idx_types, 1);
             }
@@ -1112,7 +1119,9 @@ utils.filter('signature', function () {
         //Do meta rest
         for (var i_meta in keys) {
             var key = keys[i_meta];
-            o += "        " + key + " = \"" + s.meta[key] + "\"\n";
+            if (s.meta[key] !== null){
+                o += "        " + key + " = \"" + s.meta[key] + "\"\n";
+            }
         }
         o += "    \n";
 

@@ -65,7 +65,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'POST',
-            url: "/api/v3/signature/" + $scope.current_signature.meta.id + "/" + $scope.current_signature.meta.rule_version + "/",
+            url: "/api/v4/signature/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/",
             data: $scope.current_signature
         })
             .success(function (data) {
@@ -101,11 +101,11 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.change_state = function (new_status) {
         $http({
             method: 'GET',
-            url: "/api/v3/signature/change_status/" + $scope.current_signature.meta.id + "/" + $scope.current_signature.meta.rule_version + "/" + new_status + "/"
+            url: "/api/v4/signature/change_status/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/" + new_status + "/"
         })
             .success(function () {
                 $("#myModal").modal('hide');
-                $scope.success = "Status of signature " + $scope.current_signature.meta.id + " r." + $scope.current_signature.meta.rule_version + " successfully changed to " + new_status + ".";
+                $scope.success = "Status of signature " + $scope.current_signature.meta.rule_id + " r." + $scope.current_signature.meta.rule_version + " successfully changed to " + new_status + ".";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -134,7 +134,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
         var out = [];
 
         if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            var exclusion = ['rule_group', 'classification', 'description', 'id', 'organisation', 'poc', 'rule_version', 'yara_version', 'al_status', $scope.current_signature.meta.rule_group];
+            var exclusion = ['rule_group', 'classification', 'description', 'rule_id', 'organisation', 'poc', 'rule_version', 'yara_version', 'al_status', $scope.current_signature.meta.rule_group];
             for (var key in $scope.current_signature.meta) {
                 if (exclusion.indexOf(key) == -1) {
                     out.push(key);
@@ -168,7 +168,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.load_data = function () {
         $http({
             method: 'GET',
-            url: "/api/v3/signature/" + $scope.sid + "/" + $scope.rev + "/"
+            url: "/api/v4/signature/" + $scope.sid + "/" + $scope.rev + "/"
         })
             .success(function (data) {
                 $scope.current_signature = data.api_response;

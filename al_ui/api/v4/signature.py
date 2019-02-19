@@ -8,7 +8,7 @@ from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.yara import YaraParser
 from assemblyline.datastore import SearchException
-from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
+from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES, VALID_GROUPS
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import LOGGER, STORAGE, ORGANISATION
@@ -457,11 +457,21 @@ def get_signature(sid, rev, **kwargs):
     """
     user = kwargs['user']
     data = STORAGE.signature.get(f"{sid}r.{rev}", as_obj=False)
+
     if data:
         if not Classification.is_accessible(user['classification'],
                                             data['meta'].get('classification',
                                                              Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
+
+        # Cleanup
+        for key in VALID_GROUPS:
+            if data['meta'].get(key, None) is None:
+                data['meta'].pop(key, None)
+
+        if not Classification.enforce:
+            data.pop('classification', None)
+
         return make_api_response(data)
     else:
         return make_api_response("", "Signature not found. (%s r.%s)" % (sid, rev), 404)
