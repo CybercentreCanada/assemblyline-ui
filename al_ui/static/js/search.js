@@ -19,6 +19,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
     $scope.new_query = null;
     $scope.invalid_query = null;
     $scope.export_btn = false;
+    $scope.buckets = ["submission", "file", "result", "signature", "alert"];
 
     //DEBUG MODE
     $scope.debug = false;
@@ -94,73 +95,54 @@ function SearchBaseCtrl($scope, $http, $timeout) {
             });
     };
 
+    $scope.show_tab = function(tab){
+        for (var tab_id in $scope.buckets){
+            var current_tab = tabs[tab_id];
+            if (tab === current_tab){
+                $('#' + current_tab + '_tab').addClass("active");
+                $('#' + current_tab).addClass("active");
+            }
+            else{
+                $('#' + current_tab + '_tab').removeClass("active");
+                $('#' + current_tab).removeClass("active");
+            }
+        }
+
+    };
+
     $scope.search_callback = function (bucket, data){
         data.bucket = bucket;
         $scope[bucket + "_list"] = data;
 
-        if ($scope.submission_list !== null && $scope.alert_list !== null && $scope.file_list !== null
-            && $scope.signature_list !== null && $scope.result_list !== null) {
-            if ($scope.submission_list.total === 0) {
-                if ($scope.file_list.total !== 0) {
-                    $('#submission_tab').removeClass("active");
-                    $('#submission').removeClass("active");
-                    $('#signature_tab').removeClass("active");
-                    $('#signature').removeClass("active");
-                    $('#alert_tab').removeClass("active");
-                    $('#alert').removeClass("active");
-                    $('#file_tab').addClass("active");
-                    $('#file').addClass("active");
-                    $scope.cur_list = $scope.file_list;
-                    $scope.total = $scope.file_list.total;
-                    $scope.export_btn = false;
-                } else if ($scope.result_list.total !== 0) {
-                    $('#submission_tab').removeClass("active");
-                    $('#submission').removeClass("active");
-                    $('#signature_tab').removeClass("active");
-                    $('#signature').removeClass("active");
-                    $('#alert_tab').removeClass("active");
-                    $('#alert').removeClass("active");
-                    $('#result_tab').addClass("active");
-                    $('#result').addClass("active");
-                    $scope.cur_list = $scope.result_list;
-                    $scope.total = $scope.result_list.total;
-                    $scope.export_btn = false;
-                } else if ($scope.signature_list.total !== 0) {
-                    $('#submission_tab').removeClass("active");
-                    $('#submission').removeClass("active");
-                    $('#signature_tab').addClass("active");
-                    $('#signature').addClass("active");
-                    $('#alert_tab').removeClass("active");
-                    $('#alert').removeClass("active");
-                    $('#result_tab').removeClass("active");
-                    $('#result').removeClass("active");
-                    $scope.cur_list = $scope.signature_list;
-                    $scope.total = $scope.signature_list.total;
-                    $scope.export_btn = $scope.total > 0;
-                } else if ($scope.alert_list != null && $scope.alert_list.total !== 0) {
-                    $('#submission_tab').removeClass("active");
-                    $('#submission').removeClass("active");
-                    $('#signature_tab').removeClass("active");
-                    $('#signature').removeClass("active");
-                    $('#alert_tab').addClass("active");
-                    $('#alert').addClass("active");
-                    $('#result_tab').removeClass("active");
-                    $('#result').removeClass("active");
-                    $scope.cur_list = $scope.alert_list;
-                    $scope.total = $scope.alert_list.total;
-                    $scope.export_btn = false;
-                } else {
-                    $scope.total = $scope.submission_list.total;
-                    $scope.cur_list = $scope.submission_list;
-                    $scope.export_btn = false;
-                }
-            } else {
+        if ($scope.submission_list !== null || $scope.alert_list !== null || $scope.file_list !== null
+            || $scope.signature_list !== null || $scope.result_list !== null) {
+            if ($scope.submission_list !== null && $scope.submission_list.total !== 0) {
+                $scope.show_tab('submission');
                 $scope.total = $scope.submission_list.total;
                 $scope.cur_list = $scope.submission_list;
                 $scope.export_btn = false;
+            } else if ($scope.file_list !== null && $scope.file_list.total !== 0) {
+                $scope.show_tab('file');
+                $scope.cur_list = $scope.file_list;
+                $scope.total = $scope.file_list.total;
+                $scope.export_btn = false;
+            } else if ($scope.result_list !== null && $scope.result_list.total !== 0) {
+                $scope.show_tab('result');
+                $scope.cur_list = $scope.result_list;
+                $scope.total = $scope.result_list.total;
+                $scope.export_btn = false;
+            } else if ($scope.signature_list !== null && $scope.signature_list.total !== 0) {
+                $scope.show_tab('signature');
+                $scope.cur_list = $scope.signature_list;
+                $scope.total = $scope.signature_list.total;
+                $scope.export_btn = $scope.total > 0;
+            } else if ($scope.alert_list !== null && $scope.alert_list.total !== 0) {
+                $scope.show_tab('alert');
+                $scope.cur_list = $scope.alert_list;
+                $scope.total = $scope.alert_list.total;
+                $scope.export_btn = false;
             }
             $scope.pages = $scope.pagerArray();
-
             $scope.started = true;
         }
     };
@@ -179,10 +161,8 @@ function SearchBaseCtrl($scope, $http, $timeout) {
             data['offset'] = $scope.offset;
             data['rows'] = $scope.rows;
 
-            var buckets = ["submission", "file", "result", "signature", "alert"];
-
-            for (var bucket in buckets) {
-                $scope.search_bucket(buckets[bucket], data, $scope.search_callback)
+            for (var bucket in $scope.buckets) {
+                $scope.search_bucket($scope.buckets[bucket], data, $scope.search_callback)
             }
 
         }, 50);

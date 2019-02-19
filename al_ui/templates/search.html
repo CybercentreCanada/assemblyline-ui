@@ -64,17 +64,17 @@
 		</div>
 		<div ng-controller="pagerCtrl" ng-init="pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null && alert_list.items == null && signature_list.items == null">
 			<ul class="nav nav-tabs" id="tabContent">
-				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{submission_list.total || "..."}})</a></li>
-				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{file_list.total || "..."}})</a></li>
-				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{result_list.total || "..."}})</a></li>
+				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{(submission_list.total === undefined) ? "..." : submission_list.total}})</a></li>
+				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{(file_list.total === undefined) ? "..." : file_list.total}})</a></li>
+				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{(result_list.total === undefined) ? "..." : result_list.total}})</a></li>
 				{% endraw %}
                 {% if not is_readonly %}
 	            {%raw%}
-                    <li id="signature_tab"><a href="#signature" data-toggle="tab" ng-click="page_switch(signature_list);show_export_btn(total>0)">Signatures ({{signature_list.total || "..."}})</a></li>
+                    <li id="signature_tab"><a href="#signature" data-toggle="tab" ng-click="page_switch(signature_list);show_export_btn(total>0)">Signatures ({{(signature_list.total === undefined) ? "..." : signature_list.total}})</a></li>
 				{% endraw %}
                 {% endif %}
 	            {%raw%}
-                <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{alert_list.total || "..."}})</a></li>
+                <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{(alert_list.total === undefined) ? "..." : alert_list.total}})</a></li>
 			</ul>
 						
 			<div class="tab-content">
@@ -92,7 +92,7 @@
 							<tbody>
 								<tr ng-repeat="submission in submission_list.items | orderBy:'times.submitted':true">
 									<td nowrap><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td class="{{submission.submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.sid}}"><strong>{{submission.max_score}}</strong></a></td>
+									<td class="{{submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.sid}}"><strong>{{submission.max_score}}</strong></a></td>
 									<td width="100%"><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.params.description | maxLength:140 | breakableStr}}</a></td>
 									<td nowrap><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.params.submitter}}</a></td>
 									<td><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.file_count}}</a></td>
@@ -143,17 +143,17 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Last Seen Time</th><th>Count</th><th nowrap>File Type</th><th>SHA256</th><th>Size</th><th ng-if="user.c12n_enforcing">Classification</th>
+									<th nowrap>Last Seen Time</th><th>Count</th><th>SHA256</th><th nowrap>File Type</th><th>Size</th><th ng-if="user.c12n_enforcing">Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="file in file_list.items | orderBy:'seen_last':true">
-									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen.last | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td nowrap><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen.last | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
 									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen.count}}</a></td>
-									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.type}}</a></td>
-									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.sha256 | breakableStr}}</a></td>
+									<td width="100%"><a href="/file_detail.html?sha256={{file.sha256}}">{{file.sha256 | breakableStr}}</a></td>
+									<td nowrap><a href="/file_detail.html?sha256={{file.sha256}}">{{file.type}}</a></td>
 									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.size}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
+									<td nowrap ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
 							<tfoot ng-if="!settings.hide_raw_results">
@@ -192,15 +192,15 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Creation Date</th><th>Service</th><th>Score</th><th>SHA256</th><th ng-if="user.c12n_enforcing">Classification</th>
+									<th nowrap>Creation Date</th><th>Score</th><th>SHA256</th><th>Service</th><th ng-if="user.c12n_enforcing">Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="result in result_list.items | orderBy:'file_info.seen_last':true">
-									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.response.service_name}}</a></td>
+									<td nowrap><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
 									<td class="{{result.result.score | score_color}}"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><strong>{{result.result.score}}</strong></a></td>
-									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.id | getHashFromKey | breakableStr}}</a></td>
+									<td width="100%"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.id | getHashFromKey | breakableStr}}</a></td>
+									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.response.service_name}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
@@ -306,16 +306,16 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Alert Time</th><th>Type</th><th>Status</th><th>Score</th><th>MD5</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
+									<th nowrap>Alert Time</th><th>Score</th><th>MD5</th><th>Status</th><th>Type</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="alert in alert_list.items | orderBy:'reporting_ts':true">
-									<td><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.reporting_ts | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.type}}</a></td>
-									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.status}}</a></td>
+									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.reporting_ts | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
 									<td class="{{alert.al.score | score_color}}"><a href="/alert_detail.html?alert_key={{alert.id}}"><strong>{{alert.al.score}}</strong></a></td>
-									<td><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.md5 | breakableStr}}</a></td>
+									<td width="100%"><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.md5 | breakableStr}}</a></td>
+									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.status}}</a></td>
+									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.type}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/alert_detail.html?alert_key={{alert.id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
