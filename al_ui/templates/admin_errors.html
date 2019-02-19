@@ -64,7 +64,7 @@
 
 
 
-		<section ng-hide="error_list == null || (!filtered && error_list.length == 0)" infinite-scroll="getNextErrorPage()" infinite-scroll-disabled="error_list.length >= total">
+		<section ng-hide="error_list == null || (!filtered && error_list.length == 0)" infinite-scroll="getNextErrorPage()" infinite-scroll-disabled="offset+rows > total || error_list.length >= total">
 			<div ng-repeat="error in error_list">
 				<div error-card></div>
 			</div>
