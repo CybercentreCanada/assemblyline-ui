@@ -524,7 +524,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.get_cache_key = function (key) {
             $http({
                 method: 'GET',
-                url: "/api/v4/service/result/" + key + "/"
+                url: "/api/v4/result/" + key + "/"
             })
                 .success(function (data) {
                     if (!$scope.completed) {
