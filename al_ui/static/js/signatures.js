@@ -20,7 +20,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.signature_changed = false;
     $scope.current_signature_state = "TESTING";
     $scope.filtered = false;
-    $scope.filter = "meta.id:*";
+    $scope.filter = "id:*";
     $scope.non_editable = ['creation_date', 'last_saved_by', 'modification_date', 'al_state_change_date', 'al_state_change_user'];
 
     //DEBUG MODE
@@ -40,8 +40,8 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.searchText = "";
     $scope.$watch('searchText', function () {
         if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-            if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
-                $scope.filter = "meta.id:*";
+            if ($scope.searchText === "") {
+                $scope.filter = "id:*";
             }
             else {
                 $scope.filter = $scope.searchText;
@@ -55,7 +55,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     });
 
     $scope.receiveClassification = function (classification) {
-        $scope.current_signature.meta.classification = classification;
+        $scope.current_signature.classification = classification;
     };
 
     $scope.del = function () {
@@ -80,12 +80,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'DELETE',
-            url: "/api/v3/signature/" + $scope.current_signature.meta.id + "/" + $scope.current_signature.meta.rule_version + "/"
+            url: "/api/v4/signature/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/"
         })
             .success(function () {
                 $scope.loading_extra = false;
                 $("#myModal").modal('hide');
-                $scope.success = "Signature '" + $scope.current_signature.meta.id + " r." + $scope.current_signature.meta.rule_version + "' successfully deleted!";
+                $scope.success = "Signature '" + $scope.current_signature.meta.rule_id + " r." + $scope.current_signature.meta.rule_version + "' successfully deleted!";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -93,7 +93,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
-                if (data == "") {
+                if (data === "") {
                     return;
                 }
 
@@ -110,19 +110,20 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.add_signature = function () {
         $scope.editmode = false;
         $scope.current_signature = {
+            classification: classification_definition.UNRESTRICTED,
             comments: [],
             condition: [],
             meta: {
                 al_status: "TESTING",
-                classification: classification_definition.UNRESTRICTED,
                 description: "",
-                id: $scope.organisation + "_XXXXXX",
                 organisation: $scope.organisation,
                 poc: $scope.user.uname + "@" + $scope.organisation.toLowerCase(),
                 rule_group: "info",
+                rule_id: $scope.organisation + "_XXXXXX",
                 rule_version: 1,
                 yara_version: "3.7"
             },
+            meta_extra: {},
             name: "",
             strings: [],
             tags: [],
@@ -138,7 +139,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.add_meta = function () {
-        if ($scope.sig_temp_key in $scope.current_signature.meta || $scope.sig_temp_key == "" || $scope.sig_temp_key == null) {
+        if ($scope.sig_temp_key in $scope.current_signature.meta || $scope.sig_temp_key === "" || $scope.sig_temp_key == null) {
             return;
         }
         $scope.current_signature.meta[$scope.sig_temp_key] = $scope.sig_temp_val;
@@ -151,9 +152,9 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         var out = [];
 
         if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            var exclusion = ['rule_group', 'classification', 'description', 'id', 'organisation', 'poc', 'rule_version', 'yara_version', 'al_status', $scope.current_signature.meta.rule_group];
+            var exclusion = ['rule_group', 'classification', 'description', 'rule_id', 'organisation', 'poc', 'rule_version', 'yara_version', 'al_status', $scope.current_signature.meta.rule_group];
             for (var key in $scope.current_signature.meta) {
-                if (exclusion.indexOf(key) == -1) {
+                if (exclusion.indexOf(key) === -1) {
                     out.push(key);
                 }
             }
@@ -203,7 +204,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/signature/" + sid + "/" + rev + "/"
+            url: "/api/v4/signature/" + sid + "/" + rev + "/"
         })
             .success(function (data) {
                 $scope.loading_extra = false;
@@ -212,7 +213,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
-                if (data == "") {
+                if (data === "") {
                     return;
                 }
 
@@ -255,7 +256,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         if (!$scope.editmode) {
             $http({
                 method: 'PUT',
-                url: "/api/v3/signature/add/",
+                url: "/api/v4/signature/add/",
                 data: $scope.current_signature
             })
                 .success(function (data) {
@@ -268,7 +269,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "") {
                         return;
                     }
 
@@ -283,12 +284,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         else {
             $http({
                 method: 'POST',
-                url: "/api/v3/signature/" + $scope.current_signature.meta.id + "/" + $scope.current_signature.meta.rule_version + "/",
+                url: "/api/v4/signature/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/",
                 data: $scope.current_signature
             })
                 .success(function (data) {
                     $("#myModal").modal('hide');
-                    if (data.api_response.rev != $scope.current_signature.meta.rule_version) {
+                    if (data.api_response.rev !== $scope.current_signature.meta.rule_version) {
                         $scope.success = "Signature " + data.api_response.sid + " succesfully saved and bumped to revision " + data.api_response.rev + ".";
                     }
                     else {
@@ -301,7 +302,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "") {
                         return;
                     }
 
@@ -319,11 +320,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.change_state = function (new_status) {
         $http({
             method: 'GET',
-            url: "/api/v3/signature/change_status/" + $scope.current_signature.meta.id + "/" + $scope.current_signature.meta.rule_version + "/" + new_status + "/"
+            url: "/api/v4/signature/change_status/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/" + new_status + "/"
         })
             .success(function () {
                 $("#myModal").modal('hide');
-                $scope.success = "Status of signature " + $scope.current_signature.meta.id + " r." + $scope.current_signature.meta.rule_version + " successfully changed to " + new_status + ".";
+                $scope.success = "Status of signature " + $scope.current_signature.meta.rule_id + " r." + $scope.current_signature.meta.rule_version + " successfully changed to " + new_status + ".";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -331,7 +332,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "") {
                     return;
                 }
 
@@ -359,7 +360,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
+            url: "/api/v4/signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;
@@ -370,12 +371,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.pages = $scope.pagerArray();
                 $scope.started = true;
 
-                $scope.filtered = $scope.filter != "meta.id:*";
+                $scope.filtered = $scope.filter !== "id:*";
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
 
-                if (data == "" || status == 400) {
+                if (data === "" || status === 400) {
                     $scope.signature_list = [];
                     $scope.total = 0;
                     $scope.filtered = true;

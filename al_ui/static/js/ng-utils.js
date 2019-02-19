@@ -1051,10 +1051,11 @@ utils.filter('signature', function () {
         }
 
         if (s.classification !== undefined){
-            s.meta.classification = s.classification;
+            keys.push('classification')
         }
-        if (s.meta_extra !== undefined){
-            s.meta = Object.assign({}, s.meta, s.meta_extra)
+
+        for (var key_meta_extra in s.meta_extra) {
+            keys.push(key_meta_extra);
         }
 
         for (var key_meta in s.meta) {
@@ -1108,7 +1109,12 @@ utils.filter('signature', function () {
             var idx = keys.indexOf(key_imp);
             if (idx != -1) {
                 doSpace = true;
-                o += "        " + key_imp + " = \"" + s.meta[key_imp] + "\"\n";
+                if (key_imp === 'classification'){
+                    o += "        " + key_imp + " = \"" + s.classification + "\"\n";
+                }
+                else if (key_imp in s.meta){
+                    o += "        " + key_imp + " = \"" + s.meta[key_imp] + "\"\n";
+                }
                 keys.splice(idx, 1);
             }
         }
@@ -1119,8 +1125,15 @@ utils.filter('signature', function () {
         //Do meta rest
         for (var i_meta in keys) {
             var key = keys[i_meta];
-            if (s.meta[key] !== null){
-                o += "        " + key + " = \"" + s.meta[key] + "\"\n";
+            var value = null;
+            if (key in s.meta){
+                value = s.meta[key];
+            }
+            else if (key in s.meta_extra){
+                value = s.meta_extra[key];
+            }
+            if (value !== null){
+                o += "        " + key + " = \"" + value + "\"\n";
             }
         }
         o += "    \n";

@@ -320,12 +320,12 @@ def signature_detail(**kwargs):
                          **kwargs)
 
 
-# @views.route("/signatures.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def signatures(**kwargs):
-#     return custom_render("signatures.html", org=ORGANISATION, **kwargs)
-#
-#
+@views.route("/signatures.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def signatures(**kwargs):
+    return custom_render("signatures.html", org=ORGANISATION, **kwargs)
+
+
 # @views.route("/signature_statistics.html")
 # @protected_renderer(audit=False, allow_readonly=False)
 # def signature_statistics(*_, **kwargs):

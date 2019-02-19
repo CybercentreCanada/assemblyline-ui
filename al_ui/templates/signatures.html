@@ -28,8 +28,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-click="editSignature(s.meta.id, s.meta.rule_version)" ng-repeat="s in signature_list" style="cursor: pointer;">
-						<td nowrap>{{s.meta.id}} r.{{s.meta.rule_version}}</td>
+					<tr ng-click="editSignature(s.meta.rule_id, s.meta.rule_version)" ng-repeat="s in signature_list" style="cursor: pointer;">
+						<td nowrap>{{s.meta.rule_id}} r.{{s.meta.rule_version}}</td>
 						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
 						<td>{{s.meta.rule_group}}</td>
 						<td ng-if="user.c12n_enforcing"><label class="label classification {{s.meta.classification | class_label_color}}">{{s.meta.classification | class_long}}</label></td>
@@ -76,7 +76,7 @@
 
                             <button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
-						<h4 class="modal_title" id="myModalLabel">Signature detail ::{{current_signature.meta.id}} r.{{current_signature.meta.rule_version}}::</h4>
+						<h4 class="modal_title" id="myModalLabel">Signature detail ::{{current_signature.meta.rule_id}} r.{{current_signature.meta.rule_version}}::</h4>
 					</div>
 					<div class="modal-body">
 						<div signature-detail></div>
