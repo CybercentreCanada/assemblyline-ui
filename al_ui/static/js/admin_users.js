@@ -59,7 +59,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
     $scope.pager_btn_text = "Add User";
     $scope.total = null;
     $scope.offset = 0;
-    $scope.count = 25;
+    $scope.rows = 25;
     $scope.searchText = "";
     $scope.$watch('searchText', function () {
         if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
@@ -318,7 +318,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v4/user/list/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
+            url: "/api/v4/user/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;

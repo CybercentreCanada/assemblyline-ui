@@ -45,7 +45,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
         $scope.total = 0;
         $scope.offset = 0;
-        $scope.count = 25;
+        $scope.rows = 25;
 
         $scope.searchText = "";
         $scope.$watch('searchText', function () {
@@ -305,7 +305,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
             $http({
                 method: 'GET',
-                url: "/api/v3/workflow/list/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+                url: "/api/v3/workflow/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;

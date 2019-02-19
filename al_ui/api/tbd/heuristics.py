@@ -74,7 +74,7 @@ def list_heuritics(**kwargs):
     
     Variables:
     offset     =>  Offset to start returning results
-    length     =>  Number of results to return
+    rows       =>  Number of results to return
     query      =>  Query to use to filter the results
     
     Arguments: 
@@ -101,17 +101,17 @@ def list_heuritics(**kwargs):
     user = kwargs['user']
         
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('length', 100))
-    query = request.args.get('filter', "*").lower()
+    rows = int(request.args.get('rows', 100))
+    query = request.args.get('query', "*").lower()
     
-    output = {"total": 0, "offset": offset, "count": length, "items": []}
+    output = {"total": 0, "offset": offset, "rows": rows, "items": []}
 
     if query == "*":
         cleared = []
         for item in HEUR:
             if user and Classification.is_accessible(user['classification'], item['classification']):
                 cleared.append(item)
-        output["items"] = cleared[offset:offset + length]
+        output["items"] = cleared[offset:offset + rows]
         output["total"] = len(cleared)
     elif query:
         filtered = []
@@ -122,7 +122,7 @@ def list_heuritics(**kwargs):
                     filtered.append(deepcopy(item))
                     break
 
-        output["items"] = filtered[offset:offset + length]
+        output["items"] = filtered[offset:offset + rows]
         output["total"] = len(filtered)
     
     return make_api_response(output)

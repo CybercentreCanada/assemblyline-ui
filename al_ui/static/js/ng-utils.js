@@ -134,8 +134,8 @@ utils.controller('pagerCtrl', function ($scope) {
         $scope.$parent.searchText = $scope.tempSearchText;
     });
 
-    $scope.$watch('count', function () {
-        $scope.$parent.count = $scope.count;
+    $scope.$watch('rows', function () {
+        $scope.$parent.rows = $scope.rows;
         if ($scope.offset == 0 && $scope.$parent.started) {
             $scope.$parent.load_data();
         }
@@ -152,11 +152,11 @@ utils.controller('pagerCtrl', function ($scope) {
     });
 
     $scope.load_page = function (page) {
-        $scope.offset = (page - 1) * $scope.$parent.count;
+        $scope.offset = (page - 1) * $scope.$parent.rows;
     };
 
     $scope.pagesToDisplay = function () {
-        var idx = ($scope.$parent.offset / $scope.$parent.count);
+        var idx = ($scope.$parent.offset / $scope.$parent.rows);
         var pages = [];
         var pages_start = 0;
         var pages_end = Math.min($scope.$parent.pages, 7);
@@ -185,21 +185,21 @@ utils.controller('pagerCtrl', function ($scope) {
 
     $scope.$parent.prev = function () {
         if ($scope.$parent.offset != 0) {
-            $scope.offset = $scope.$parent.offset - $scope.$parent.count;
+            $scope.offset = $scope.$parent.offset - $scope.$parent.rows;
         }
     };
 
     $scope.$parent.next = function () {
-        if ($scope.$parent.offset / $scope.$parent.count < $scope.$parent.pages) {
-            $scope.offset = $scope.$parent.offset + $scope.$parent.count;
+        if ($scope.$parent.offset / $scope.$parent.rows < $scope.$parent.pages) {
+            $scope.offset = $scope.$parent.offset + $scope.$parent.rows;
         }
     };
 
     $scope.$parent.pagerArray = function () {
         var out = 0;
         if ($scope.$parent.total != null) {
-            out = Math.floor($scope.$parent.total / $scope.$parent.count);
-            if (out == Math.ceil($scope.$parent.total / $scope.$parent.count)) {
+            out = Math.floor($scope.$parent.total / $scope.$parent.rows);
+            if (out == Math.ceil($scope.$parent.total / $scope.$parent.rows)) {
                 out--;
             }
         }
@@ -212,8 +212,8 @@ utils.controller('pagerCtrl', function ($scope) {
         $scope.$parent.offset = new_list.offset;
         $scope.offset = new_list.offset;
         $scope.$parent.total = new_list.total;
-        $scope.$parent.count = new_list.count;
-        $scope.count = new_list.count;
+        $scope.$parent.rows = new_list.rows;
+        $scope.rows = new_list.rows;
         $scope.$parent.pages = $scope.pagerArray();
         $scope.$parent.cur_list = new_list;
         $scope.$parent.started = true;

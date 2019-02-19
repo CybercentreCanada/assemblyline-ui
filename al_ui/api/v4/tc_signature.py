@@ -189,11 +189,11 @@ def list_signatures(**kwargs):
     """
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
-    length = int(request.args.get('rows', 100))
+    rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "id:*")
 
     try:
-        return make_api_response(STORAGE.tc_signature.search(query, offset=offset, rows=length,
+        return make_api_response(STORAGE.tc_signature.search(query, offset=offset, rows=rows,
                                                              access_control=user['access_control'], as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)

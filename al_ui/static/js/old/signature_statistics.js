@@ -21,7 +21,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.order = false;
         $scope.total = 0;
         $scope.offset = 0;
-        $scope.count = 25;
+        $scope.rows = 25;
         $scope.searchText = "";
 
         //DEBUG MODE
@@ -144,13 +144,13 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.load_data = function () {
             if ($scope.filter == "*") {
                 $scope.total = $scope.stats_list.length;
-                $scope.stats_output = $scope.stats_list.slice($scope.offset, $scope.offset + $scope.count);
+                $scope.stats_output = $scope.stats_list.slice($scope.offset, $scope.offset + $scope.rows);
                 $scope.pages = $scope.pagerArray();
                 $scope.filtered = false;
             }
             else {
                 $scope.total = $scope.stats_filtered.length;
-                $scope.stats_output = $scope.stats_filtered.slice($scope.offset, $scope.offset + $scope.count);
+                $scope.stats_output = $scope.stats_filtered.slice($scope.offset, $scope.offset + $scope.rows);
                 $scope.pages = $scope.pagerArray();
                 $scope.filtered = true;
             }

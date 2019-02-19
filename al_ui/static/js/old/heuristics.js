@@ -17,7 +17,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.total = 0;
         $scope.offset = 0;
-        $scope.count = 25;
+        $scope.rows = 25;
         $scope.searchText = "";
 
 
@@ -98,7 +98,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/heuristics/list/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+                url: "/api/v3/heuristics/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;

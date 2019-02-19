@@ -62,19 +62,19 @@
 		<div class="pull-right hidden-xs">
 			<a href="/api/v4/signature/download/?query={{query}}" title="Download signatures" ng-show="export_btn" class="btn btn-default" style="font-size: 10pt; margin-top: 5px;"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download Signatures</span></a>
 		</div>
-		<div ng-controller="pagerCtrl" ng-init="pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null">
+		<div ng-controller="pagerCtrl" ng-init="pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null && alert_list.items == null && signature_list.items == null">
 			<ul class="nav nav-tabs" id="tabContent">
-				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{submission_list.total}})</a></li>
-				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{file_list.total}})</a></li>
-				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{result_list.total}})</a></li>
+				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{submission_list.total || "..."}})</a></li>
+				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{file_list.total || "..."}})</a></li>
+				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{result_list.total || "..."}})</a></li>
 				{% endraw %}
                 {% if not is_readonly %}
 	            {%raw%}
-                    <li id="signature_tab"><a href="#signature" data-toggle="tab" ng-click="page_switch(signature_list);show_export_btn(total>0)">Signatures ({{signature_list.total}})</a></li>
+                    <li id="signature_tab"><a href="#signature" data-toggle="tab" ng-click="page_switch(signature_list);show_export_btn(total>0)">Signatures ({{signature_list.total || "..."}})</a></li>
 				{% endraw %}
                 {% endif %}
 	            {%raw%}
-                <li ng-show="alert_list!=null" id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{alert_list.total}})</a></li>
+                <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{alert_list.total || "..."}})</a></li>
 			</ul>
 						
 			<div class="tab-content">
@@ -91,14 +91,14 @@
 							</thead>
 							<tbody>
 								<tr ng-repeat="submission in submission_list.items | orderBy:'times.submitted':true">
-									<td nowrap><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td class="{{submission.submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.submission.sid}}"><strong>{{submission.submission.max_score}}</strong></a></td>
-									<td width="100%"><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.submission.description | maxLength:140 | breakableStr}}</a></td>
-									<td nowrap><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.submission.submitter}}</a></td>
-									<td><a href="/submission_detail.html?sid={{submission.submission.sid}}">{{submission.file_count}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/submission_detail.html?sid={{submission.submission.sid}}"><label class="label classification {{submission.classification | class_label_color}}">{{submission.classification | class_sm }}</label></a></td>
+									<td nowrap><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td class="{{submission.submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.sid}}"><strong>{{submission.max_score}}</strong></a></td>
+									<td width="100%"><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.params.description | maxLength:140 | breakableStr}}</a></td>
+									<td nowrap><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.params.submitter}}</a></td>
+									<td><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.file_count}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/submission_detail.html?sid={{submission.sid}}"><label class="label classification {{submission.classification | class_label_color}}">{{submission.classification | class_sm }}</label></a></td>
 									<td nowrap>
-										<a href="/submission_detail.html?sid={{submission.submission.sid}}">
+										<a href="/submission_detail.html?sid={{submission.sid}}">
 											<span ng-show="submission.state=='completed'&&submission.error_count==0" class="glyphicon glyphicon-ok text-success"></span>
 											<span ng-show="submission.state=='completed'&&submission.error_count>0" class="glyphicon glyphicon-remove text-danger"></span>
 											<span ng-show="submission.state=='completed'&&submission.error_count===undefined" class="text-muted"><strong>?</strong></span>
@@ -125,6 +125,14 @@
 							</h3>
 						</div>
 					</div>
+					<div ng-show="submission_list == null">
+						<div class="bigpad jumbotron text-center">
+							<h2 class="text-muted">Loading</h2>
+							<div class="throbber">
+								Loading
+							</div>
+						</div>
+					</div>
 					
 				</div>
 				<div class="tab-pane" style="margin-top: 20px" id="file">
@@ -140,9 +148,9 @@
 							</thead>
 							<tbody>
 								<tr ng-repeat="file in file_list.items | orderBy:'seen_last':true">
-									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen_last | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen_count}}</a></td>
-									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.tag}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen.last | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.seen.count}}</a></td>
+									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.type}}</a></td>
 									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.sha256 | breakableStr}}</a></td>
 									<td><a href="/file_detail.html?sha256={{file.sha256}}">{{file.size}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
@@ -167,6 +175,14 @@
 							</h3>
 						</div>
 					</div>
+					<div ng-show="file_list == null">
+						<div class="bigpad jumbotron text-center">
+							<h2 class="text-muted">Loading</h2>
+							<div class="throbber">
+								Loading
+							</div>
+						</div>
+					</div>
 				</div>
 				<div class="tab-pane" style="margin-top: 20px" id="result">
 					<div ng-show="result_list.total > 0">
@@ -181,11 +197,11 @@
 							</thead>
 							<tbody>
 								<tr ng-repeat="result in result_list.items | orderBy:'file_info.seen_last':true">
-									<td><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}">{{result.response.service_name}}</a></td>
-									<td class="{{result.result.score | score_color}}"><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}"><strong>{{result.result.score}}</strong></a></td>
-									<td><a href="/file_detail.html?sha256={{result[id] | getHashFromKey}}">{{result[id] | getHashFromKey | breakableStr}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{result.file_info.sha256}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
+									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.response.service_name}}</a></td>
+									<td class="{{result.result.score | score_color}}"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><strong>{{result.result.score}}</strong></a></td>
+									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.id | getHashFromKey | breakableStr}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
 							<tfoot ng-if="!settings.hide_raw_results">
@@ -207,6 +223,14 @@
 							</h3>
 						</div>
 					</div>
+					<div ng-show="result_list == null">
+						<div class="bigpad jumbotron text-center">
+							<h2 class="text-muted">Loading</h2>
+							<div class="throbber">
+								Loading
+							</div>
+						</div>
+					</div>
 				</div>
                 {% endraw %}
                 {% if not is_readonly %}
@@ -225,14 +249,14 @@
 							</thead>
 							<tbody>
 								<tr ng-repeat="s in signature_list.items">
-									<td nowrap><a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}">{{s.meta.id}} r.{{s.meta.rule_version}}</a></td>
-									<td width="100%"><a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}">{{s.name | breakableStr}}</a></td>
-									<td><a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}">{{s.meta.rule_group}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}"><label class="label classification {{s.meta.classification | class_label_color}}">{{s.meta.classification | class_sm}}</label></a></td>
-									<td><a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}">{{s.meta.poc}}</a></td>
-									<td><a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}">{{s.meta.yara_version}}</a></td>
+									<td nowrap><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.rule_id}} r.{{s.meta.rule_version}}</a></td>
+									<td width="100%"><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.name | breakableStr}}</a></td>
+									<td><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.rule_group}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}"><label class="label classification {{s.meta.classification | class_label_color}}">{{s.meta.classification | class_sm}}</label></a></td>
+									<td><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.poc}}</a></td>
+									<td><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.yara_version}}</a></td>
 									<td>
-										<a href="/signature_detail.html?sid={{s.meta.id}}&rev={{s.meta.rule_version}}">
+										<a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">
 											<span ng-show="s.meta.al_status=='DEPLOYED'" class="label classification label-success">{{s.meta.al_status}}</span>
 											<span ng-show="s.meta.al_status=='NOISY'" class="label classification label-info">{{s.meta.al_status}}</span>
 											<span ng-show="s.meta.al_status=='DISABLED'" class="label classification label-danger">{{s.meta.al_status}}</span>
@@ -262,6 +286,14 @@
 							</h3>
 						</div>
 					</div>
+					<div ng-show="signature_list == null">
+						<div class="bigpad jumbotron text-center">
+							<h2 class="text-muted">Loading</h2>
+							<div class="throbber">
+								Loading
+							</div>
+						</div>
+					</div>
 				</div>
                 {% endraw %}
                 {% endif %}
@@ -274,17 +306,17 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Alert Time</th><th>Type</th><th>Status</th><th>Score</th><th>MD5</th><th nowrap>Classification</th>
+									<th nowrap>Alert Time</th><th>Type</th><th>Status</th><th>Score</th><th>MD5</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="alert in alert_list.items | orderBy:'reporting_ts':true">
-									<td><a href="/alert_detail.html?alert_key={{alert.event_id}}">{{alert.reporting_ts | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td nowrap><a href="/alert_detail.html?alert_key={{alert.event_id}}">{{alert.type}}</a></td>
-									<td nowrap><a href="/alert_detail.html?alert_key={{alert.event_id}}">{{alert.status}}</a></td>
-									<td class="{{alert.al_score | score_color}}"><a href="/alert_detail.html?alert_key={{alert.event_id}}"><strong>{{alert.al_score}}</strong></a></td>
-									<td><a href="/alert_detail.html?alert_key={{alert.event_id}}">{{alert.md5 | breakableStr}}</a></td>
-									<td><a href="/alert_detail.html?alert_key={{alert.event_id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>
+									<td><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.reporting_ts | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.type}}</a></td>
+									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.status}}</a></td>
+									<td class="{{alert.al.score | score_color}}"><a href="/alert_detail.html?alert_key={{alert.id}}"><strong>{{alert.al.score}}</strong></a></td>
+									<td><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.md5 | breakableStr}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/alert_detail.html?alert_key={{alert.id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
 							<tfoot ng-if="!settings.hide_raw_results">
@@ -306,10 +338,18 @@
 							</h3>
 						</div>
 					</div>
+					<div ng-show="alert_list == null">
+						<div class="bigpad jumbotron text-center">
+							<h2 class="text-muted">Loading</h2>
+							<div class="throbber">
+								Loading
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
 	</section>
 	{%endraw%}
 {% endblock %}				
-{% block loading_jumbo %}ng-hide="file_list.items != null || submission_list.items != null || result_list.items != null || alert_list.items != null || query == null || invalid_query != null"{% endblock %}
+{% block loading_jumbo %}ng-hide="file_list.items != null || submission_list.items != null || result_list.items != null || alert_list.items != null || signature_list.items != null || query == null || invalid_query != null"{% endblock %}

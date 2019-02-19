@@ -25,7 +25,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
         $scope.total = 0;
         $scope.offset = 0;
-        $scope.count = 25;
+        $scope.rows = 25;
         $scope.filtering_group_by = [];
         $scope.non_filtering_group_by = [];
         $scope.group_by = 'md5';
@@ -511,7 +511,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
         //Load params from datastore
         $scope.start = function () {
-            $scope.offset -= $scope.count;
+            $scope.offset -= $scope.rows;
             for (var key in $scope.filter_queries) {
                 $scope.filter_queries[key] = $scope.filter_queries[key];
             }
@@ -537,7 +537,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         };
 
         $scope.getNextAlertPage = function () {
-            $scope.offset += $scope.count;
+            $scope.offset += $scope.rows;
             $scope.load_data();
         };
 
@@ -595,7 +595,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
         $scope.load_data = function () {
             var url = null;
-            var url_params = "?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter);
+            var url_params = "?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter);
             $scope.loading_extra = true;
             if ($scope.view_type == "list") {
                 url = "/api/v3/alert/list/";

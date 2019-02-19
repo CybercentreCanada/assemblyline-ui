@@ -33,7 +33,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     //pager dependencies
     $scope.total = null;
     $scope.offset = 0;
-    $scope.count = 25;
+    $scope.rows = 25;
     $scope.searchText = "";
     $scope.$watch('searchText', function () {
         if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
@@ -292,7 +292,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/tc_signature/list/?offset=" + $scope.offset + "&length=" + $scope.count + "&filter=" + encodeURIComponent($scope.filter)
+            url: "/api/v3/tc_signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;

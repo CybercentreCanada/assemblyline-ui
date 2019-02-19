@@ -29,7 +29,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         //pager dependencies
         $scope.total = 0;
         $scope.offset = 0;
-        $scope.count = 25;
+        $scope.rows = 25;
         $scope.cur_page = 1;
         $scope.searchText = "";
         $scope.$watch('searchText', function () {
@@ -60,7 +60,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             if ($scope.group) {
                 $http({
                     method: 'GET',
-                    url: "/api/v4/submission/list/group/" + $scope.group + "/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
+                    url: "/api/v4/submission/list/group/" + $scope.group + "/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
                 })
                     .success(function (data) {
                         $scope.loading_extra = false;
@@ -97,7 +97,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             else {
                 $http({
                     method: 'GET',
-                    url: "/api/v4/submission/list/user/" + $scope.uname + "/?offset=" + $scope.offset + "&rows=" + $scope.count + "&query=" + encodeURIComponent($scope.filter)
+                    url: "/api/v4/submission/list/user/" + $scope.uname + "/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
                 })
                     .success(function (data) {
                         $scope.loading_extra = false;
