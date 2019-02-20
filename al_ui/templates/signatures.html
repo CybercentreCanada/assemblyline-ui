@@ -32,7 +32,7 @@
 						<td nowrap>{{s.meta.rule_id}} r.{{s.meta.rule_version}}</td>
 						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
 						<td>{{s.meta.rule_group}}</td>
-						<td ng-if="user.c12n_enforcing"><label class="label classification {{s.meta.classification | class_label_color}}">{{s.meta.classification | class_long}}</label></td>
+						<td ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_long}}</label></td>
 						<td nowrap>{{s.meta.poc}}</td>
 						<td>{{s.meta.yara_version}}</td>
 						<td>

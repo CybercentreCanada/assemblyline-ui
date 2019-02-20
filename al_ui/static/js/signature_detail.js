@@ -20,7 +20,26 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.state_changed = false;
     $scope.signature_changed = false;
     $scope.current_signature_state = "TESTING";
-    $scope.non_editable = ['creation_date', 'last_saved_by', 'modification_date', 'al_state_change_date', 'al_state_change_user'];
+    $scope.exclusion = [
+        'rule_group',
+        'classification',
+        'description',
+        'rule_id',
+        'organisation',
+        'poc',
+        'rule_version',
+        'yara_version',
+        'al_status'
+    ];
+    $scope.non_editable = [
+        'al_imported_by',
+        'al_state_change_date',
+        'al_state_change_user',
+        'creation_date',
+        'last_modified',
+        'last_saved_by',
+        'modification_date'
+    ];
 
     //DEBUG MODE
     $scope.debug = false;
@@ -33,7 +52,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.success = '';
 
     $scope.receiveClassification = function (classification) {
-        $scope.current_signature.meta.classification = classification;
+        $scope.current_signature.classification = classification;
     };
 
     $scope.beautify_error_message = function (data) {
@@ -70,7 +89,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
         })
             .success(function (data) {
                 $("#myModal").modal('hide');
-                if (data.api_response.rev != $scope.current_signature.meta.rule_version) {
+                if (data.api_response.rev !== $scope.current_signature.meta.rule_version) {
                     $scope.success = "Signature " + data.api_response.sid + " succesfully saved and bumped to revision " + data.api_response.rev + ".";
                 }
                 else {
@@ -83,7 +102,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "") {
                     return;
                 }
 
@@ -113,7 +132,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
 
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "") {
                     return;
                 }
 
@@ -130,13 +149,12 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
         $scope.state_changed = true;
     };
 
-    $scope.otherKeys = function () {
+    $scope.extraKeys = function () {
         var out = [];
 
         if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            var exclusion = ['rule_group', 'classification', 'description', 'rule_id', 'organisation', 'poc', 'rule_version', 'yara_version', 'al_status', $scope.current_signature.meta.rule_group];
-            for (var key in $scope.current_signature.meta) {
-                if (exclusion.indexOf(key) == -1) {
+            for (var key in $scope.current_signature.meta_extra) {
+                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
                     out.push(key);
                 }
             }
@@ -146,15 +164,40 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
         return out;
     };
 
-    $scope.remove_meta = function (key) {
-        delete $scope.current_signature.meta[key];
+    $scope.otherKeys = function () {
+        var out = [];
+
+        if ($scope.current_signature !== undefined && $scope.current_signature != null) {
+            for (var key in $scope.current_signature.meta) {
+                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
+                    out.push(key);
+                }
+            }
+        }
+        out.sort();
+
+        return out;
+    };
+
+    $scope.remove_meta = function (key, is_extra) {
+        if (is_extra === undefined){
+            is_extra = false;
+        }
+        if (is_extra){
+            delete $scope.current_signature.meta_extra[key];
+        }
+        else{
+            delete $scope.current_signature.meta[key];
+        }
     };
 
     $scope.add_meta = function () {
-        if ($scope.sig_temp_key in $scope.current_signature.meta || $scope.sig_temp_key == "" || $scope.sig_temp_key == null) {
+        if ($scope.sig_temp_key in $scope.current_signature.meta_extra ||
+            $scope.sig_temp_key in $scope.current_signature.meta ||
+            $scope.sig_temp_key === "" || $scope.sig_temp_key == null) {
             return;
         }
-        $scope.current_signature.meta[$scope.sig_temp_key] = $scope.sig_temp_val;
+        $scope.current_signature.meta_extra[$scope.sig_temp_key] = $scope.sig_temp_val;
 
         $scope.sig_temp_key = "";
         $scope.sig_temp_val = "";
@@ -175,7 +218,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
                 $scope.current_signature_state = data.api_response.meta.al_status;
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "") {
                     return;
                 }
 

@@ -97,7 +97,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
 
     $scope.show_tab = function(tab){
         for (var tab_id in $scope.buckets){
-            var current_tab = tabs[tab_id];
+            var current_tab = $scope.buckets[tab_id];
             if (tab === current_tab){
                 $('#' + current_tab + '_tab').addClass("active");
                 $('#' + current_tab).addClass("active");

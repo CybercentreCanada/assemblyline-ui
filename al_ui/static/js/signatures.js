@@ -21,7 +21,26 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.current_signature_state = "TESTING";
     $scope.filtered = false;
     $scope.filter = "id:*";
-    $scope.non_editable = ['creation_date', 'last_saved_by', 'modification_date', 'al_state_change_date', 'al_state_change_user'];
+    $scope.exclusion = [
+        'rule_group',
+        'classification',
+        'description',
+        'rule_id',
+        'organisation',
+        'poc',
+        'rule_version',
+        'yara_version',
+        'al_status'
+    ];
+    $scope.non_editable = [
+        'al_imported_by',
+        'al_state_change_date',
+        'al_state_change_user',
+        'creation_date',
+        'last_modified',
+        'last_saved_by',
+        'modification_date'
+    ];
 
     //DEBUG MODE
     $scope.debug = false;
@@ -134,27 +153,51 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         $("#myModal").modal('show');
     };
 
-    $scope.remove_meta = function (key) {
-        delete $scope.current_signature.meta[key];
+    $scope.remove_meta = function (key, is_extra) {
+        if (is_extra === undefined){
+            is_extra = false;
+        }
+        if (is_extra){
+            delete $scope.current_signature.meta_extra[key];
+        }
+        else{
+            delete $scope.current_signature.meta[key];
+        }
     };
 
     $scope.add_meta = function () {
-        if ($scope.sig_temp_key in $scope.current_signature.meta || $scope.sig_temp_key === "" || $scope.sig_temp_key == null) {
+        if ($scope.sig_temp_key in $scope.current_signature.meta_extra ||
+            $scope.sig_temp_key in $scope.current_signature.meta ||
+            $scope.sig_temp_key === "" || $scope.sig_temp_key == null) {
             return;
         }
-        $scope.current_signature.meta[$scope.sig_temp_key] = $scope.sig_temp_val;
+        $scope.current_signature.meta_extra[$scope.sig_temp_key] = $scope.sig_temp_val;
 
         $scope.sig_temp_key = "";
         $scope.sig_temp_val = "";
+    };
+
+    $scope.extraKeys = function () {
+        var out = [];
+
+        if ($scope.current_signature !== undefined && $scope.current_signature != null) {
+            for (var key in $scope.current_signature.meta_extra) {
+                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
+                    out.push(key);
+                }
+            }
+        }
+        out.sort();
+
+        return out;
     };
 
     $scope.otherKeys = function () {
         var out = [];
 
         if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            var exclusion = ['rule_group', 'classification', 'description', 'rule_id', 'organisation', 'poc', 'rule_version', 'yara_version', 'al_status', $scope.current_signature.meta.rule_group];
             for (var key in $scope.current_signature.meta) {
-                if (exclusion.indexOf(key) === -1) {
+                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
                     out.push(key);
                 }
             }

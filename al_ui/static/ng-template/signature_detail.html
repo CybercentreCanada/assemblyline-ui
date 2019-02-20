@@ -8,7 +8,7 @@
 	<div class="tab-content">
 		<div class="tab-pane active" id="preview">
 			<div ng-if="user.c12n_enforcing" class="pad">
-				<div class="label classification {{current_signature.meta.classification | class_label_color}}">{{current_signature.meta.classification | class_long}}</div>
+				<div class="label classification {{current_signature.classification | class_label_color}}">{{current_signature.classification | class_long}}</div>
 			</div>
 			<pre style="word-wrap: normal;">{{current_signature | signature}}</pre>
 			<div ng-show="current_signature.depends.length > 0">
@@ -23,7 +23,7 @@
 		<div class="tab-pane" id="edit" ng-hide="organisation!=current_signature.meta.organisation">
 			<div class="pad">
 				<p ng-show="current_signature.meta.al_status=='DEPLOYED'||current_signature.meta.al_status=='NOISY'||current_signature.meta.al_status=='DISABLED'" class="text-center text-danger pad"><b>Warning:</b> Because this signature is not in a TESTING/STAGING phase anymore, any important modification will trigger a revision bump.</p>
-				<div ng-if="user.c12n_enforcing" class="label classification {{current_signature.meta.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_signature.meta.classification)">{{current_signature.meta.classification | class_long}}</div>
+				<div ng-if="user.c12n_enforcing" class="label classification {{current_signature.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_signature.classification)">{{current_signature.classification | class_long}}</div>
 			</div>
 			<section class="row">
 				<div class="col-md-12">
@@ -89,7 +89,7 @@
 					<label class="control-label">classification:</label>
 				</div>
 				<div class="col-md-10">
-                    <input type="text" class="form-control input-sm clickable" ng-model="current_signature.meta.classification" readonly data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_signature.meta.classification)">
+                    <input type="text" class="form-control input-sm clickable" ng-model="current_signature.classification" readonly data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_signature.classification)">
 				</div>
 			</section>
 			<section class="row">
@@ -152,6 +152,20 @@
 				</div>
 				<div class="col-md-1">
 					<span ng-if="non_editable.indexOf(key)==-1" class="btn btn-sm btn-danger" ng-click="remove_meta(key);"><span class="glyphicon glyphicon-minus"></span></span>
+				</div>
+			</div>
+			<section class="row">
+				<div class="col-md-12 pad"></div>
+			</section>
+			<div ng-repeat="key in extraKeys() | orderBy:key " class="row">
+				<div class="col-md-2">
+					<label class="control-label">{{key}}:</label>
+				</div>
+				<div class="col-md-9">
+					<input type="text" class="form-control input-sm" ng-model="current_signature.meta_extra[key]" ng-disabled="non_editable.indexOf(key)!=-1">
+				</div>
+				<div class="col-md-1">
+					<span ng-if="non_editable.indexOf(key)==-1" class="btn btn-sm btn-danger" ng-click="remove_meta(key, true);"><span class="glyphicon glyphicon-minus"></span></span>
 				</div>
 			</div>
 			<section class="row">
