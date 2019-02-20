@@ -106,7 +106,7 @@ def add_signature(**kwargs):
         # Save the signature
         return make_api_response({"success": STORAGE.signature.save(key, data),
                                   "sid": data['meta']['rule_id'],
-                                  "rev": data['meta']['rule_version']})
+                                  "rev": int(data['meta']['rule_version'])})
     else:
         return make_api_response({"success": False}, res, 400)
 
@@ -627,7 +627,7 @@ def set_signature(sid, rev, **kwargs):
             data['warning'] = res.get('warning', None)
             return make_api_response({"success": STORAGE.signature.save(key, data),
                                       "sid": data['meta']['rule_id'],
-                                      "rev": data['meta']['rule_version']})
+                                      "rev": int(data['meta']['rule_version'])})
         else:
             return make_api_response({"success": False}, res, 403)
     else:
@@ -652,7 +652,7 @@ def signature_statistics(**kwargs):
     Result example:
     [                             # List of signature stats
       {"sid": "ORG_000000",          # Signature ID
-       "rev": "1",                   # Signature version
+       "rev": 1,                     # Signature version
        "classification": "U",        # Classification of the signature
        "name": "Signature Name"      # Signature name
        "count": "100",               # Count of times signatures seen
@@ -671,7 +671,7 @@ def signature_statistics(**kwargs):
         if stats['count'] == 0:
             return {
                 'sid': p_sid,
-                'rev': p_rev,
+                'rev': int(p_rev),
                 'name': p_name,
                 'classification': p_classification,
                 'count': stats['count'],
@@ -682,7 +682,7 @@ def signature_statistics(**kwargs):
         else:
             return {
                 'sid': p_sid,
-                'rev': p_rev,
+                'rev': int(p_rev),
                 'name': p_name,
                 'classification': p_classification,
                 'count': stats['count'],

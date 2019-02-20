@@ -140,7 +140,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 rule_group: "info",
                 rule_id: $scope.organisation + "_XXXXXX",
                 rule_version: 1,
-                yara_version: "3.7"
+                yara_version: "3.8"
             },
             meta_extra: {},
             name: "",
