@@ -17,7 +17,7 @@
 			</div>
 		</div>
 		<div ng-hide="signature_list == null || (!filtered && signature_list.length == 0)">
-			<div ng-controller="pagerCtrl" ng-init="pager_page='tc_signature'" pager></div>
+			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='tc_signature'" pager></div>
 		</div>
 		<section class="table-responsive" ng-hide="signature_list == null || (!filtered && signature_list.length == 0)">
 			<table class="table table-hover">

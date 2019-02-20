@@ -62,7 +62,7 @@
 		<div class="pull-right hidden-xs">
 			<a href="/api/v4/signature/download/?query={{query}}" title="Download signatures" ng-show="export_btn" class="btn btn-default" style="font-size: 10pt; margin-top: 5px;"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download Signatures</span></a>
 		</div>
-		<div ng-controller="pagerCtrl" ng-init="pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null && alert_list.items == null && signature_list.items == null">
+		<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null && alert_list.items == null && signature_list.items == null">
 			<ul class="nav nav-tabs" id="tabContent">
 				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{(submission_list.total === undefined) ? "..." : submission_list.total}})</a></li>
 				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{(file_list.total === undefined) ? "..." : file_list.total}})</a></li>

@@ -19,7 +19,7 @@
 		</div>
 		
 		<div ng-hide="submission_list == null || (!filtered && submission_list.length == 0)">
-			<div ng-controller="pagerCtrl" ng-init="pager_page='submission'" pager></div>
+			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='submission'" pager></div>
 		</div>
 		<section class="table-responsive" ng-hide="submission_list == null || (!filtered && submission_list.length == 0)">
 			<table class="table table-hover table-striped table-clickthrough">

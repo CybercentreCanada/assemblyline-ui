@@ -13,7 +13,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.stats_list = null;
         $scope.stats_filtered = null;
         $scope.stats_output = null;
-        $scope.sort = {"column": "id", "order": true};
+        $scope.sort = {"column": "sid", "order": true};
         $scope.started = false;
         $scope.filtered = false;
         $scope.filter = "*";
@@ -35,7 +35,8 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-                if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+                $scope.searchText = $scope.searchText.toLowerCase();
+                if ($scope.searchText === "") {
                     $scope.filter = "*";
                 }
                 else {
@@ -44,11 +45,11 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
                 var filtered = [];
                 for (var sig in $scope.stats_list) {
-                    if (JSON.stringify($scope.stats_list[sig]).indexOf($scope.searchText) > -1) {
+                    if (JSON.stringify($scope.stats_list[sig]).toLowerCase().indexOf($scope.searchText) > -1) {
                         filtered.push($scope.stats_list[sig]);
                     }
                 }
-                if (filtered != []) {
+                if (filtered !== []) {
                     $scope.stats_filtered = filtered;
                 }
                 //$scope.started = false;
@@ -68,7 +69,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/signature/" + signature + "/" + rev + "/"
+                url: "/api/v4/signature/" + signature + "/" + rev + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -96,7 +97,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.sort_stats = function (column) {
             if (column !== undefined) {
-                if ($scope.sort["column"] == column) {
+                if ($scope.sort["column"] === column) {
                     $scope.sort["order"] = !$scope.sort["order"];
                 }
                 else {
@@ -105,7 +106,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 }
             }
 
-            if ($scope.filter == "*") {
+            if ($scope.filter === "*") {
                 $scope.stats_list.sort($scope.sort_by($scope.sort["column"], $scope.sort["order"]));
             }
             else {
@@ -118,7 +119,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.sort_by = function (field, order) {
 
             var field1 = field;
-            var field2 = "id";
+            var field2 = "sid";
 
             if (order) {
                 order = 1;
@@ -128,7 +129,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             }
 
             return function (a, b) {
-                if (a[field1] != b[field1]) {
+                if (a[field1] !== b[field1]) {
                     if (a[field1] > b[field1]) return 1 * order;
                     if (a[field1] < b[field1]) return -1 * order;
                     return 0;
@@ -142,7 +143,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
 
         $scope.load_data = function () {
-            if ($scope.filter == "*") {
+            if ($scope.filter === "*") {
                 $scope.total = $scope.stats_list.length;
                 $scope.stats_output = $scope.stats_list.slice($scope.offset, $scope.offset + $scope.rows);
                 $scope.pages = $scope.pagerArray();
@@ -161,13 +162,12 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/signature/stats/"
+                url: "/api/v4/signature/stats/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
-                    $scope.stats_list = data.api_response.items;
-                    $scope.timestamp = data.api_response.timestamp;
-                    $scope.total = data.api_response.total;
+                    $scope.stats_list = data.api_response;
+                    $scope.total = data.api_response.length;
                     $scope.started = true;
                     $scope.sort_stats();
                     $scope.load_data();
@@ -175,7 +175,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;

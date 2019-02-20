@@ -326,12 +326,12 @@ def signatures(**kwargs):
     return custom_render("signatures.html", org=ORGANISATION, **kwargs)
 
 
-# @views.route("/signature_statistics.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def signature_statistics(*_, **kwargs):
-#     return custom_render("signature_statistics.html", **kwargs)
-#
-#
+@views.route("/signature_statistics.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def signature_statistics(*_, **kwargs):
+    return custom_render("signature_statistics.html", **kwargs)
+
+
 @views.route("/submission_detail.html", methods=["GET"])
 @protected_renderer(load_settings=True)
 def submission_detail(**kwargs):

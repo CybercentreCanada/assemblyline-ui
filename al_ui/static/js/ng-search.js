@@ -8,6 +8,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     $scope.global_toggled = [];
     $scope.query = "";
     $scope.bucket = null;
+    $scope.should_load_suggestion = true;
     $scope.page = null;
     $scope.disabled = false;
     $scope.cur_favorite = {};
@@ -379,7 +380,9 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     };
 
     $timeout(function () {
-        $scope.load_suggestions()
+        if ($scope.should_load_suggestion) {
+            $scope.load_suggestions();
+        }
     }, 0);
 });
 

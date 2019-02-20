@@ -15,7 +15,7 @@
             <h4 class="text-muted"><span ng-hide="timestamp == null"> Last update: {{timestamp}}</span></h4>
 		</div>
 		<div>
-			<div ng-controller="pagerCtrl" ng-init="pager_page='heuristic'" pager></div>
+			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='heuristic'" pager></div>
 		</div>
 		<section class="table-responsive">
 			<table class="table table-hover">
