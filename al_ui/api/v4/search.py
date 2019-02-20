@@ -5,6 +5,7 @@ from al_ui.helper.search import BUCKET_MAP, list_all_fields
 from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
+from assemblyline.odm import Integer
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -439,5 +440,65 @@ def histogram(bucket, field, **kwargs):
 
     try:
         return make_api_response(collection.histogram(field, **params))
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
+
+
+@search_api.route("/stats/<bucket>/<int_field>/", methods=["GET", "POST"])
+@api_login(required_priv=['R'])
+def stats(bucket, int_field, **kwargs):
+    """
+    Perform statistical analysis of an integer field to get its min, max, average and count values
+
+    Variables:
+    bucket       =>   Bucket to search in (alert, submission,...)
+    int_field    =>   Integer field to analyse
+
+    Optional Arguments:
+    query        =>   Query to search for
+    filters      =>   Additional query to limit to output
+
+    Data Block (POST ONLY):
+    {"query": "id:*",
+     "filters": ['fq']}
+
+    Result example:
+    {                 # Stats results
+     "count": 1,        # Number of times this field is seen
+     "min": 1,          # Minimum value
+     "max": 1,          # Maximum value
+     "avg": 1,          # Average value
+     "sum": 1           # Sum of all values
+    }
+    """
+    if bucket not in BUCKET_MAP:
+        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+    collection = BUCKET_MAP[bucket]
+
+    field_info = collection.fields().get(int_field, None)
+    if field_info is None:
+       return make_api_response("", f"Field '{int_field}' is not a valid field in bucket: {bucket}", 400)
+
+    if field_info['type'] not in ["integer", "float"]:
+        return make_api_response("", f"Field '{int_field}' is not a numeric field.", 400)
+
+    user = kwargs['user']
+    fields = ["query"]
+    multi_fields = ['filters']
+
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    else:
+        req_data = request.args
+        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    params.update({'access_control': user['access_control']})
+
+    try:
+        return make_api_response(collection.stats(int_field, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
