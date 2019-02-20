@@ -366,12 +366,12 @@ def submissions(**kwargs):
 #     return custom_render("submit.html", show_tos=show_tos, show_url=show_url, **kwargs)
 #
 #
-# @views.route("/tc_signatures.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def tagcheck_sigs(**kwargs):
-#     return custom_render("tc_signatures.html", org=ORGANISATION, **kwargs)
-#
-#
+@views.route("/tc_signatures.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def tagcheck_sigs(**kwargs):
+    return custom_render("tc_signatures.html", org=ORGANISATION, **kwargs)
+
+
 @views.route("/terms.html")
 @protected_renderer(audit=False)
 def tos(**kwargs):

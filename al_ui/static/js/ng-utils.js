@@ -1229,7 +1229,10 @@ utils.filter('tc_signature', function () {
         if (s === undefined || s == null) return "";
         var o = "";
 
-        o += s.comment + "\n\n";
+        o += "** " + s.name + " **\n\n";
+        if (s.comment !== null && s.comment !== undefined && s.comment !== ""){
+            o += s.comment + "\n\n";
+        }
         if (s.threat_actor !== undefined && s.threat_actor !== null && s.threat_actor !== ""){
             o += "Associated threat actor: " + s.threat_actor + "\n";
         }
@@ -1239,7 +1242,7 @@ utils.filter('tc_signature', function () {
         if (s.callback !== undefined && s.callback !== null && s.callback !== ""){
             o += "Callback function: " + s.callback + "\n";
         }
-        o += "Score: " + s.score + "\n\nPatterns:\n";
+        o += "Score: " + s.al_score + "\n\nPatterns:\n";
         for (var i in s.values){
             var regex = s.values[i];
             o += regex + "\n"

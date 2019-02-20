@@ -11,7 +11,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.loading = false;
     $scope.loading_extra = false;
     $scope.current_signature = null;
-    $scope.current_signature_name = "";
+    $scope.current_id = null;
     $scope.started = false;
     $scope.editmode = true;
     $scope.state_changed = false;
@@ -58,16 +58,15 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.add_signature = function () {
         $scope.editmode = false;
         $scope.current_signature = {
-            callback: "",
-            classification: "",
-            comment: "",
-            implant_family: "",
-            score: "HIGH",
-            status: "TESTING",
-            threat_actor: "",
+            al_score: "HIGH",
+            al_status: "TESTING",
+            callback: null,
+            classification: null,
+            comment: null,
+            implant_family: null,
+            threat_actor: null,
             values: []
         };
-        $scope.current_signature_name = "";
         $scope.error = '';
         $scope.success = '';
         $("#myModal").modal('show');
@@ -126,12 +125,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'DELETE',
-            url: "/api/v3/tc_signature/" + $scope.current_signature_name + "/"
+            url: "/api/v4/tc_signature/" + $scope.current_id + "/"
         })
             .success(function () {
                 $scope.loading_extra = false;
                 $("#myModal").modal('hide');
-                $scope.success = "Tagcheck signature '" + $scope.current_signature_name + "' successfully deleted!";
+                $scope.success = "Tagcheck signature '" + $scope.current_id + "' successfully deleted!";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -153,19 +152,19 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             });
     };
 
-    $scope.editSignature = function (name) {
+    $scope.editSignature = function (ID) {
         $scope.loading_extra = true;
         $scope.editmode = true;
         $scope.error = '';
         $scope.success = '';
+        $scope.current_id = ID;
 
         $http({
             method: 'GET',
-            url: "/api/v3/tc_signature/" + name + "/"
+            url: "/api/v4/tc_signature/" + ID + "/"
         })
             .success(function (data) {
                 $scope.loading_extra = false;
-                $scope.current_signature_name = name;
                 $scope.current_signature = data.api_response;
                 $("#myModal").modal('show');
             })
@@ -186,19 +185,19 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     };
 
     //Save params
-    $scope.save = function (name) {
+    $scope.save = function () {
         $scope.error = '';
         $scope.success = '';
 
         if (!$scope.editmode) {
             $http({
                 method: 'PUT',
-                url: "/api/v3/tc_signature/" + name + "/",
+                url: "/api/v4/tc_signature/",
                 data: $scope.current_signature
             })
                 .success(function (data) {
                     $("#myModal").modal('hide');
-                    $scope.success = "Signature '" + name + "' successfully added!";
+                    $scope.success = "Signature '" + data.api_response.tc_id + "' successfully added!";
                     $timeout(function () {
                         $scope.success = "";
                         $scope.load_data();
@@ -221,12 +220,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         else {
             $http({
                 method: 'POST',
-                url: "/api/v3/tc_signature/" + name + "/",
+                url: "/api/v4/tc_signature/" + $scope.current_id + "/",
                 data: $scope.current_signature
             })
                 .success(function (data) {
                     $("#myModal").modal('hide');
-                    $scope.success = "Signature '" + name + "' succesfully updated.";
+                    $scope.success = "Signature '" + $scope.current_id + "' succesfully updated.";
 
                     $timeout(function () {
                         $scope.success = "";
@@ -249,14 +248,14 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
     };
 
-    $scope.change_state = function (name, new_status) {
+    $scope.change_state = function (ID, new_status) {
         $http({
             method: 'GET',
-            url: "/api/v3/tc_signature/change_status/" + name + "/" + new_status + "/"
+            url: "/api/v4/tc_signature/change_status/" + ID + "/" + new_status + "/"
         })
             .success(function () {
                 $("#myModal").modal('hide');
-                $scope.success = "Status of signature '" + name + "' successfully changed to " + new_status + ".";
+                $scope.success = "Status of signature '" + ID + "' successfully changed to " + new_status + ".";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -292,7 +291,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v3/tc_signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
+            url: "/api/v4/tc_signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;
