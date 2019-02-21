@@ -50,7 +50,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
         $scope.loading = true;
         $http({
             method: 'POST',
-            url: "/api/v3/submit/",
+            url: "/api/v4/submit/",
             data: data
         })
         .success(function (data) {
@@ -159,7 +159,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
             }
             $http({
                 method: 'POST',
-                url: "/api/v3/ui/start/" + uuid + "/",
+                url: "/api/v4/ui/start/" + uuid + "/",
                 data: $scope.params
             })
                 .success(function (data) {
@@ -265,7 +265,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
         $scope.loading = true;
         $http({
             method: 'GET',
-            url: "/api/v3/user/settings/" + $scope.user.uname + "/"
+            url: "/api/v4/user/settings/" + $scope.user.uname + "/"
         })
             .success(function (data) {
                 $scope.loading = false;
@@ -294,7 +294,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
 function flowFactory(flowFactoryProvider) {
     flowFactoryProvider.defaults = {
-        target: '/api/v3/ui/flowjs/',
+        target: '/api/v4/ui/flowjs/',
         permanentErrors: [412, 404, 500],
         maxChunkRetries: 1,
         chunkRetryInterval: 2000,

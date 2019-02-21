@@ -121,9 +121,7 @@ def configuration(**kwargs):
 @views.route("/")
 @protected_renderer(audit=False)
 def default(**kwargs):
-    # TODO: switch back to main page
-    # return submit(**kwargs)
-    return submissions(**kwargs)
+    return submit(**kwargs)
 
 
 @views.route("/file_detail.html", methods=["GET"])
@@ -358,14 +356,14 @@ def submissions(**kwargs):
     return custom_render("submissions.html", uname=uname, group=group, **kwargs)
 
 
-# @views.route("/submit.html")
-# @protected_renderer(audit=False)
-# def submit(**kwargs):
-#     show_tos = config.ui.get("tos", None) is not None
-#     show_url = config.ui.get('allow_url_submissions', True)
-#     return custom_render("submit.html", show_tos=show_tos, show_url=show_url, **kwargs)
-#
-#
+@views.route("/submit.html")
+@protected_renderer(audit=False)
+def submit(**kwargs):
+    show_tos = config.ui.tos is not None
+    show_url = config.ui.allow_url_submissions
+    return custom_render("submit.html", show_tos=show_tos, show_url=show_url, **kwargs)
+
+
 @views.route("/tc_signatures.html")
 @protected_renderer(audit=False, allow_readonly=False)
 def tagcheck_sigs(**kwargs):

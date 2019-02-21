@@ -8,7 +8,7 @@ import uuid
 from flask import request
 
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, STORAGE, F_READ_CHUNK_SIZE
+from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE
 from al_ui.helper.service import ui_to_dispatch_task
 from al_ui.helper.user import check_submission_quota
 from assemblyline.common import forge
@@ -17,7 +17,7 @@ Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'ui'
-ui_api = make_subapi_blueprint(SUB_API)
+ui_api = make_subapi_blueprint(SUB_API, api_version=4)
 ui_api._doc = "UI specific operations"
 
 
@@ -263,7 +263,9 @@ def start_ui_submission(ui_sid, **kwargs):
             # Submit to dispatcher
             dispatch_task = ui_to_dispatch_task(task, kwargs['user']['uname'], str(uuid.uuid4()))
             with forge.get_filestore() as f_transport:
-                result = SubmissionWrapper.submit_inline(STORAGE, f_transport, request_files, **dispatch_task)
+                # TODO: Acutally submit the thing
+                # result = SubmissionWrapper.submit_inline(STORAGE, f_transport, request_files, **dispatch_task)
+                result = {"submission": {"sid": dispatch_task['sid']}}
             if result['submission']['sid'] != dispatch_task['sid']:
                 raise Exception('ID does not match what was returned by the dispatcher. Cancelling request...')
             return make_api_response({"started": True, "sid": result['submission']['sid']})
