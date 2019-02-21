@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.bootstrap', 'ngSanitize', 'ui.select'])
+let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.bootstrap', 'ngSanitize', 'ui.select'])
     .controller('ALController', function ($scope, $http, $timeout) {
         //Parameters vars
         $scope.user = null;
@@ -14,11 +14,9 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.started = false;
         $scope.filtered = false;
         $scope.filter = "";
-        $scope.time_slice_array = [{value: "", name: "None (slow)"},
-            {value: "24HOUR", name: "24 Hours"},
-            {value: "4DAY", name: "4 Days"},
-            {value: "7DAY", name: "1 Week"}];
-        $scope.time_slice = $scope.time_slice_array[2].value;
+        $scope.time_slice_array = null;
+        $scope.time_slice = null;
+        $scope.time_separator = "";
         $scope.start_time = null;
         $scope.label_suggestions = ['PHISHING', 'COMPROMISE', 'CRIME', 'ATTRIBUTED', 'WHITELISTED',
             'FALSE_POSITIVE', 'REPORTED', 'MITIGATED', 'PENDING'];
@@ -28,7 +26,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.rows = 25;
         $scope.filtering_group_by = [];
         $scope.non_filtering_group_by = [];
-        $scope.group_by = 'md5';
+        $scope.group_by = 'file.sha256';
         $scope.counted_total = 0;
         $scope.view_type = "grouped";
         $scope.filter_queries = [];
@@ -41,49 +39,12 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.related_ids = null;
         $scope.last_params = null;
 
-        $scope.banned = [
-            "__access_grp1__",
-            "__access_grp2__",
-            "__access_lvl__",
-            "__access_req__",
-            "__expiry_ts__",
-            "al_attrib",
-            "al_av",
-            "al_domain",
-            "al_domain_dynamic",
-            "al_domain_static",
-            "al_ip",
-            "al_ip_dynamic",
-            "al_ip_static",
-            "al_request_end_time",
-            "al_score",
-            "classification",
-            "event_id",
-            "extended_scan",
-            "filename",
-            "group_count",
-            "label",
-            "md5",
-            "priority",
-            "reporting_ts",
-            "sha1",
-            "sha256",
-            "sid",
-            "size",
-            "status",
-            "summary",
-            "tag",
-            "ts",
-            "type",
-            "yara"
-        ];
-
         $scope.showmenu = false;
         $scope.toggleMenu = function () {
             $scope.showmenu = (!$scope.showmenu);
         };
         $scope.forceOpenMenu = function () {
-            if ($scope.showmenu == false) {
+            if ($scope.showmenu === false) {
                 $scope.showmenu = true;
             }
         };
@@ -97,19 +58,17 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         };
 
         $scope.getToday = function () {
-            var today = new Date();
-            var dd = today.getDate();
+            let today = new Date();
+            let dd = today.getDate();
             if (dd < 10) {
                 dd = '0' + dd;
-            }
-            else {
+            } else {
                 dd = '' + dd;
             }
-            var mm = today.getMonth() + 1;
+            let mm = today.getMonth() + 1;
             if (mm < 10) {
                 mm = '0' + mm;
-            }
-            else {
+            } else {
                 mm = '' + mm;
             }
             return today.getFullYear() + mm + dd;
@@ -123,8 +82,9 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             if ($scope.current_alert && ($scope.current_alert.group_count === undefined || $scope.current_alert.group_count == null)) {
                 if (action.priority) {
                     $http({
-                        method: 'GET',
-                        url: "/api/v3/alert/priority/" + $scope.current_alert.event_id + "/" + action.priority + "/"
+                        method: 'POST',
+                        url: "/api/v4/alert/priority/" + $scope.current_alert.alert_id + "/",
+                        data: JSON.stringify(action.priority)
                     })
                         .success(function () {
                             $scope.alert_list[$scope.current_alert_idx]['priority'] = action.priority;
@@ -137,8 +97,9 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 }
                 if (action.status) {
                     $http({
-                        method: 'GET',
-                        url: "/api/v3/alert/status/" + $scope.current_alert.event_id + "/" + action.status + "/"
+                        method: 'POST',
+                        url: "/api/v4/alert/status/" + $scope.current_alert.alert_id + "/",
+                        data: JSON.stringify(action.status)
                     })
                         .success(function () {
                             $scope.alert_list[$scope.current_alert_idx]['status'] = action.status;
@@ -151,16 +112,17 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 }
                 if (action.label.length > 0) {
                     $http({
-                        method: 'GET',
-                        url: "/api/v3/alert/label/" + $scope.current_alert.event_id + "/" + action.label.join(",") + "/"
+                        method: 'POST',
+                        url: "/api/v4/alert/label/" + $scope.current_alert.alert_id + "/",
+                        data: action.label
                     })
                         .success(function () {
                             if ($scope.alert_list[$scope.current_alert_idx]['label'] === undefined) {
                                 $scope.alert_list[$scope.current_alert_idx]['label'] = []
                             }
-                            for (var i in action.label) {
-                                var label = action.label[i];
-                                if ($scope.alert_list[$scope.current_alert_idx]['label'].indexOf(label) == -1) {
+                            for (let i in action.label) {
+                                let label = action.label[i];
+                                if ($scope.alert_list[$scope.current_alert_idx]['label'].indexOf(label) === -1) {
                                     $scope.alert_list[$scope.current_alert_idx]['label'].push(label);
                                 }
                             }
@@ -171,31 +133,30 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.last_error = data.api_error_message;
                         });
                 }
-            }
-            else {
-                var params = {
+            } else {
+                let params = {
                     q: $scope.filter,
                     tc: $scope.time_slice,
-                    start: $scope.start_time,
+                    tc_start: $scope.start_time,
                     fq: $scope.filter_queries.slice()
                 };
 
                 if ($scope.current_alert) {
-                    params.fq.push($scope.group_by + ":" + $scope.current_alert[$scope.group_by]);
+                    params.fq.push($scope.group_by + ":" + $scope.get_object_value($scope.current_alert, $scope.group_by));
                 }
 
                 if (action.priority) {
                     $http({
-                        method: 'GET',
-                        url: "/api/v3/alert/priority/batch/" + action.priority + "/",
+                        method: 'POST',
+                        url: "/api/v4/alert/priority/batch/",
+                        data: JSON.stringify(action.priority),
                         params: params
                     })
                         .success(function () {
                             if ($scope.current_alert_idx !== undefined) {
                                 $scope.alert_list[$scope.current_alert_idx]['priority'] = action.priority;
-                            }
-                            else {
-                                for (var idx in $scope.alert_list) {
+                            } else {
+                                for (let idx in $scope.alert_list) {
                                     $scope.alert_list[idx]['priority'] = action.priority;
                                 }
                             }
@@ -208,16 +169,16 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 }
                 if (action.status) {
                     $http({
-                        method: 'GET',
-                        url: "/api/v3/alert/status/batch/" + action.status + "/",
+                        method: 'POST',
+                        url: "/api/v4/alert/status/batch/",
+                        data: JSON.stringify(action.status),
                         params: params
                     })
                         .success(function () {
                             if ($scope.current_alert_idx !== undefined) {
                                 $scope.alert_list[$scope.current_alert_idx]['status'] = action.status;
-                            }
-                            else {
-                                for (var idx in $scope.alert_list) {
+                            } else {
+                                for (let idx in $scope.alert_list) {
                                     $scope.alert_list[idx]['status'] = action.status;
                                 }
                             }
@@ -230,8 +191,9 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 }
                 if (action.label.length > 0) {
                     $http({
-                        method: 'GET',
-                        url: "/api/v3/alert/label/batch/" + action.label.join(",") + "/",
+                        method: 'POST',
+                        url: "/api/v4/alert/label/batch/",
+                        data: action.label,
                         params: params
                     })
                         .success(function () {
@@ -239,21 +201,20 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                                 if ($scope.alert_list[$scope.current_alert_idx]['label'] === undefined) {
                                     $scope.alert_list[$scope.current_alert_idx]['label'] = []
                                 }
-                                for (var i in action.label) {
-                                    var label = action.label[i];
-                                    if ($scope.alert_list[$scope.current_alert_idx]['label'].indexOf(label) == -1) {
+                                for (let i in action.label) {
+                                    let label = action.label[i];
+                                    if ($scope.alert_list[$scope.current_alert_idx]['label'].indexOf(label) === -1) {
                                         $scope.alert_list[$scope.current_alert_idx]['label'].push(label);
                                     }
                                 }
-                            }
-                            else {
-                                for (var idx in $scope.alert_list) {
+                            } else {
+                                for (let idx in $scope.alert_list) {
                                     if ($scope.alert_list[idx]['label'] === undefined) {
                                         $scope.alert_list[idx]['label'] = []
                                     }
-                                    for (var x in action.label) {
-                                        var label_item = action.label[x];
-                                        if ($scope.alert_list[idx]['label'].indexOf(label_item) == -1) {
+                                    for (let x in action.label) {
+                                        let label_item = action.label[x];
+                                        if ($scope.alert_list[idx]['label'].indexOf(label_item) === -1) {
                                             $scope.alert_list[idx]['label'].push(label_item);
                                         }
                                     }
@@ -299,7 +260,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             if (alert && (alert.group_count === undefined || alert.group_count == null)) {
                 swal({
                         title: "Take ownership",
-                        text: "\n\nDo you want to take ownership of this alert?\n\n" + alert.event_id,
+                        text: "\n\nDo you want to take ownership of this alert?\n\n" + alert.alert_id,
                         type: "info",
                         showCancelButton: true,
                         confirmButtonColor: "#d9534f",
@@ -309,7 +270,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     function () {
                         $http({
                             method: 'GET',
-                            url: "/api/v3/alert/ownership/" + alert.event_id + "/"
+                            url: "/api/v4/alert/ownership/" + alert.alert_id + "/"
                         })
                             .success(function () {
                                 $scope.alert_list[alert_idx]['owner'] = $scope.user.uname;
@@ -328,19 +289,18 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                                 }, 250);
                             });
                     });
-            }
-            else {
-                var params = {
+            } else {
+                let params = {
                     q: $scope.filter,
                     tc: $scope.time_slice,
-                    start: $scope.start_time,
+                    tc_start: $scope.start_time,
                     fq: $scope.filter_queries.slice()
                 };
 
-                var text = "\n\nDo you want to take ownership of all " + $scope.total + " alert(s) filtered in the current view?";
+                let text = "\n\nDo you want to take ownership of all " + $scope.total + " alert(s) filtered in the current view?";
                 if (alert) {
-                    params.fq.push($scope.group_by + ":" + alert[$scope.group_by]);
-                    text = "\n\nDo you want to take ownership of " + alert.group_count + " alert(s) related to this " + $scope.group_by + "?\n\n" + alert[$scope.group_by];
+                    params.fq.push($scope.group_by + ":" + $scope.get_object_value(alert, $scope.group_by));
+                    text = "\n\nDo you want to take ownership of " + alert.group_count + " alert(s) related to this " + $scope.group_by + "?\n\n" + $scope.get_object_value(alert, $scope.group_by);
                 }
 
                 swal({
@@ -355,15 +315,14 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     function () {
                         $http({
                             method: 'GET',
-                            url: "/api/v3/alert/ownership/batch/",
+                            url: "/api/v4/alert/ownership/batch/",
                             params: params
                         })
                             .success(function () {
                                 if (alert_idx) {
                                     $scope.alert_list[alert_idx]['owner'] = $scope.user.uname;
-                                }
-                                else {
-                                    for (var idx in $scope.alert_list) {
+                                } else {
+                                    for (let idx in $scope.alert_list) {
                                         $scope.alert_list[idx]['owner'] = $scope.user.uname;
                                     }
                                 }
@@ -385,29 +344,38 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             }
         };
 
+        $scope.get_object_value = function(obj, key){
+            let res = key.split(".", 2);
+            if (res.length === 1){
+                return obj[res[0]];
+            }
+            else{
+                return $scope.get_object_value(obj[res[0]], res[1]);
+            }
+        };
+
         $scope.list_related_alerts = function (alert) {
             if (alert && (alert.group_count === undefined || alert.group_count == null)) {
-                $scope.last_params = {q: "event_id:" + alert.event_id};
-                $scope.related_ids = [alert.event_id];
+                $scope.last_params = {q: "alert_id:" + alert.alert_id};
+                $scope.related_ids = [alert.alert_id];
                 $("#related_ids_mdl").modal('show');
-            }
-            else {
-                var params = {
+            } else {
+                let params = {
                     q: $scope.filter,
                     tc: $scope.time_slice,
-                    start: $scope.start_time,
+                    tc_start: $scope.start_time,
                     fq: $scope.filter_queries.slice()
                 };
 
                 if (alert) {
-                    params.fq.push($scope.group_by + ":" + alert[$scope.group_by]);
+                    params.fq.push($scope.group_by + ":" + $scope.get_object_value(alert, $scope.group_by));
                 }
 
                 $scope.last_params = params;
 
                 $http({
                     method: 'GET',
-                    url: "/api/v3/alert/related/",
+                    url: "/api/v4/alert/related/",
                     params: params
                 })
                     .success(function (data) {
@@ -433,18 +401,18 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.lock_in_timestamp = function (alert) {
             $scope.filter_queries.push("reporting_ts:[" + alert.reporting_ts + " TO *]");
             $scope.gen_forced_filter(false);
-            var url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
-            for (var key in $scope.filter_queries) {
-                var fq = $scope.filter_queries[key];
+            let url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+            for (let key in $scope.filter_queries) {
+                let fq = $scope.filter_queries[key];
                 url += "&fq=" + fq;
             }
             window.location = url;
         };
 
         $scope.count_similar = function (alert, alert_idx) {
-            var ctrl = $("#" + alert_idx + "_similar");
-            var disabled = ctrl.attr('disabled');
-            if (disabled === undefined && disabled == false) {
+            let ctrl = $("#" + alert_idx + "_similar");
+            let disabled = ctrl.attr('disabled');
+            if (disabled === undefined && disabled === false) {
                 return;
             }
 
@@ -453,12 +421,12 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             ctrl.addClass("btn-default");
             ctrl.text("Counting alerts...");
 
-            var url = "/api/v3/search/advanced/alert/?q=" + $scope.group_by + ":\"" + alert[$scope.group_by] + "\"&rows=0";
+            let url = "/api/v4/search/alert/?query=" + $scope.group_by + ":\"" + $scope.get_object_value(alert, $scope.group_by) + "\"&rows=0";
             $http({method: 'GET', url: url})
                 .success(function (data) {
                     ctrl.removeClass("btn-default");
                     ctrl.addClass("btn-primary");
-                    ctrl.text(data.api_response.response.numFound + " similar alerts")
+                    ctrl.text(data.api_response.total + " similar alerts")
                 })
                 .error(function (data) {
                     ctrl.removeClass("btn-default");
@@ -479,9 +447,9 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.invalid_query = "";
 
         $scope.filterData = function (searchText) {
-            var url = "/alerts.html?filter=" + encodeURIComponent(searchText) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
-            for (var key in $scope.filter_queries) {
-                var fq = $scope.filter_queries[key];
+            let url = "/alerts.html?filter=" + encodeURIComponent(searchText) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+            for (let key in $scope.filter_queries) {
+                let fq = $scope.filter_queries[key];
                 url += "&fq=" + fq;
             }
 
@@ -489,30 +457,18 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         };
 
         $scope.has_meta = function (alert) {
-            for (var k in alert) {
-                if ($scope.banned.indexOf(k) == -1) {
-                    return true;
-                }
+            if (alert != null && alert.hasOwnProperty('metadata')) {
+                let size = Object.keys(alert).length;
+                return size > 0;
             }
 
             return false;
-        };
-        $scope.get_alert_meta = function (alert) {
-            var out = {};
-
-            for (var k in alert) {
-                if ($scope.banned.indexOf(k) == -1) {
-                    out[k] = alert[k];
-                }
-            }
-
-            return out;
         };
 
         //Load params from datastore
         $scope.start = function () {
             $scope.offset -= $scope.rows;
-            for (var key in $scope.filter_queries) {
+            for (let key in $scope.filter_queries) {
                 $scope.filter_queries[key] = $scope.filter_queries[key];
             }
             $scope.gen_forced_filter(true);
@@ -521,14 +477,14 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
         $scope.gen_forced_filter = function (do_count) {
             $scope.forced_filter = "";
-            for (var key in $scope.filter_queries) {
-                var fq = $scope.filter_queries[key];
-                if (fq.indexOf($scope.group_by + ":\"") != -1) {
+            for (let key in $scope.filter_queries) {
+                let fq = $scope.filter_queries[key];
+                if (fq.indexOf($scope.group_by + ":\"") !== -1) {
                     $scope.field_fq = fq;
                 }
                 $scope.forced_filter += "&fq=" + fq;
             }
-            if ($scope.view_type == 'list' && $scope.start_time) {
+            if ($scope.view_type === 'list' && $scope.start_time) {
                 $scope.forced_filter += "&start_time=" + $scope.start_time;
                 if ($scope.field_fq != null && do_count) {
                     $scope.count_instances();
@@ -542,24 +498,23 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         };
 
         $scope.clear_forced_filter = function () {
-            var url = "";
+            let url = "";
 
-            if ($scope.view_type == "list") {
-                var new_fq = [];
-                for (var fq_key in $scope.filter_queries) {
-                    var item = $scope.filter_queries[fq_key];
-                    if (item.indexOf($scope.group_by + ":") != -1) {
+            if ($scope.view_type === "list") {
+                let new_fq = [];
+                for (let fq_key in $scope.filter_queries) {
+                    let item = $scope.filter_queries[fq_key];
+                    if (item.indexOf($scope.group_by + ":") !== -1) {
                         new_fq.push(item);
                     }
                 }
 
                 url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
-                for (var key in new_fq) {
-                    var fq = new_fq[key];
+                for (let key in new_fq) {
+                    let fq = new_fq[key];
                     url += "&fq=" + fq;
                 }
-            }
-            else {
+            } else {
                 url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
             }
 
@@ -567,7 +522,7 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         };
 
         $scope.count_instances = function () {
-            var url = "/api/v3/search/alert/?query=" + encodeURIComponent($scope.field_fq) + "&length=0";
+            let url = "/api/v4/search/alert/?query=" + encodeURIComponent($scope.field_fq) + "&rows=0";
 
             $scope.loading_extra = true;
 
@@ -582,38 +537,36 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                 });
         };
 
         $scope.load_data = function () {
-            var url = null;
-            var url_params = "?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter);
+            let url = null;
+            let url_params = "?offset=" + $scope.offset + "&rows=" + $scope.rows + "&q=" + encodeURIComponent($scope.filter);
             $scope.loading_extra = true;
-            if ($scope.view_type == "list") {
-                url = "/api/v3/alert/list/";
-            }
-            else {
-                url = "/api/v3/alert/grouped/" + $scope.group_by + "/";
+            if ($scope.view_type === "list") {
+                url = "/api/v4/alert/list/";
+            } else {
+                url = "/api/v4/alert/grouped/" + $scope.group_by + "/";
             }
 
             if ($scope.start_time != null) {
                 url_params += "&start_time=" + $scope.start_time;
             }
 
-            if ($scope.time_slice != "") {
+            if ($scope.time_slice !== "") {
                 url_params += "&time_slice=" + $scope.time_slice;
             }
 
-            for (var key in $scope.filter_queries) {
-                var fq = $scope.filter_queries[key];
+            for (let key in $scope.filter_queries) {
+                let fq = $scope.filter_queries[key];
                 url_params += "&fq=" + fq;
             }
 
@@ -631,26 +584,25 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     }
                     Array.prototype.push.apply($scope.alert_list, data.api_response.items);
                     $scope.total = data.api_response.total;
-                    if ($scope.view_type != "list") {
+                    if ($scope.view_type !== "list") {
                         $scope.counted_total += data.api_response.counted_total;
-                        $scope.start_time = data.api_response.start_time;
-                    }
-                    else {
+                        $scope.start_time = data.api_response.tc_start;
+                    } else {
                         $scope.counted_total += data.api_response.items.length;
                     }
                     $scope.started = true;
 
-                    $scope.filtered = (($scope.filter != "*" && $scope.filter != "") || $scope.time_slice != "" || $scope.forced_filter != "" || $scope.filtering_group_by.indexOf($scope.group_by) != -1);
+                    $scope.filtered = (($scope.filter !== "*" && $scope.filter !== "") || $scope.time_slice !== "" || $scope.forced_filter !== "" || $scope.filtering_group_by.indexOf($scope.group_by) !== -1);
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
-                    if (status == 400) {
+                    if (status === 400) {
                         $timeout(function () {
                             $("#search-term").addClass("has-error");
-                            var sb = $("#search-box");
+                            let sb = $("#search-box");
                             sb.select();
                             sb.focus();
                         }, 0);
@@ -666,20 +618,19 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
 
                 });
 
-            $scope.stats_url = "/api/v3/alert/statistics/" + url_params + "&fq=" + $scope.group_by + ":*";
-            $scope.labels_url = "/api/v3/alert/labels/" + url_params + "&fq=" + $scope.group_by + ":*";
-            $scope.statuses_url = "/api/v3/alert/statuses/" + url_params + "&fq=" + $scope.group_by + ":*";
-            $scope.priorities_url = "/api/v3/alert/priorities/" + url_params + "&fq=" + $scope.group_by + ":*";
+            $scope.stats_url = "/api/v4/alert/statistics/" + url_params + "&fq=" + $scope.group_by + ":*";
+            $scope.labels_url = "/api/v4/alert/labels/" + url_params + "&fq=" + $scope.group_by + ":*";
+            $scope.statuses_url = "/api/v4/alert/statuses/" + url_params + "&fq=" + $scope.group_by + ":*";
+            $scope.priorities_url = "/api/v4/alert/priorities/" + url_params + "&fq=" + $scope.group_by + ":*";
 
-            if ($scope.view_type != "list") {
+            if ($scope.view_type !== "list") {
                 $scope.get_labels();
                 $scope.get_statuses();
                 $scope.get_priorities();
@@ -700,12 +651,11 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
@@ -726,12 +676,11 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
@@ -752,12 +701,11 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
@@ -783,17 +731,20 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "") return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
 
                 });
+        };
+
+        $scope.safe_key = function(key){
+            return key.replace(/\./g, "_");
         };
 
         $scope.expand = function (id) {
@@ -802,19 +753,22 @@ var app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         };
 
         $scope.overflows = function () {
-            var skipped = 0;
-            for (var stat_id in $scope.statistics) {
-                var target = $("#" + stat_id)[0];
-                if (target.scrollHeight == 0) {
-                    skipped += 1;
-                    continue;
-                }
-                if (target.offsetHeight >= target.scrollHeight &&
-                    target.offsetWidth >= target.scrollWidth) {
-                    $scope.expand(stat_id);
+            let skipped = 0;
+            for (let stat_id in $scope.statistics) {
+                stat_id = $scope.safe_key(stat_id)
+                let target = $("#" + stat_id)[0];
+                if (target !== undefined){
+                    if (target.scrollHeight === 0) {
+                        skipped += 1;
+                        continue;
+                    }
+                    if (target.offsetHeight >= target.scrollHeight &&
+                        target.offsetWidth >= target.scrollWidth) {
+                        $scope.expand(stat_id);
+                    }
                 }
             }
-            if (skipped == $scope.getKeys($scope.statistics).length) {
+            if (skipped === $scope.getKeys($scope.statistics).length) {
                 $timeout(function () {
                     $scope.overflows();
                 }, 0);

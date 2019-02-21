@@ -293,7 +293,7 @@ def set_user_avatar(username, **kwargs):
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
 @api_login(audit=False)
-def add_to_user_favorite(username, favorite_type, **_):
+def add_to_user_favorite(username, favorite_type, **kwargs):
     """
     Add an entry to the user's favorites
 
@@ -317,6 +317,7 @@ def add_to_user_favorite(username, favorite_type, **_):
         return make_api_response({}, "%s is not a valid favorite type" % favorite_type, 500)
 
     data = request.json
+    data['created_by'] = kwargs['user']['uname']
     if 'name' not in data or 'query' not in data:
         return make_api_response({}, "Wrong format for favorite.", 400)
 
@@ -327,7 +328,7 @@ def add_to_user_favorite(username, favorite_type, **_):
         "submission": [],
         "error": []
     }
-    res_favorites = STORAGE.user_favorites.get(username)
+    res_favorites = STORAGE.user_favorites.get(username, as_obj=False)
     if res_favorites:
         favorites.update(res_favorites)
 

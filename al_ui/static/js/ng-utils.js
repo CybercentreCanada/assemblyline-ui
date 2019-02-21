@@ -1253,7 +1253,7 @@ utils.filter('tc_signature', function () {
 
 utils.filter('titleCase', function () {
     return function (input) {
-        input = input.replace(/_/g, " ");
+        input = input.replace(/_/g, " ").replace(/\./g, " ");
         return input.toProperCase();
     }
 });

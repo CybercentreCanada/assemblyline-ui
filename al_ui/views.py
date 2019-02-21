@@ -32,52 +32,52 @@ def account(**kwargs):
     return custom_render("account.html", **kwargs)
 
 
-# # noinspection PyBroadException
-# @views.route("/alerts.html")
-# @protected_renderer(audit=False)
-# def alerts(*_, **kwargs):
-#     filtering_group_fields = config.core.alerter.filtering_group_fields
-#     non_filtering_group_fields = config.core.alerter.non_filtering_group_fields
-#     possible_group_fields = filtering_group_fields + non_filtering_group_fields
-#
-#     search_filter = angular_safe(request.args.get("filter", "*"))
-#
-#     search_text = search_filter
-#     if search_filter == "":
-#         search_filter = "*"
-#     elif search_filter == "*":
-#         search_text = ""
-#
-#     filter_queries = [angular_safe(x) for x in request.args.getlist("fq") if x != ""]
-#
-#     time_slice = angular_safe(request.args.get("time_slice", "4{DAY}".format(**STORAGE.DATE_FORMAT)))
-#     start_time = angular_safe(request.args.get("start_time", None))
-#     view_type = angular_safe(request.args.get("view_type", "grouped"))
-#     group_by = angular_safe(request.args.get("group_by", config.core.alerter.default_group_field))
-#     if group_by not in possible_group_fields:
-#         group_by = config.core.alerter.default_group_field
-#     temp = time_slice.replace("HOUR", "").replace("MINUTE", "").replace("DAY", "").replace("WEEK", "")\
-#         .replace("YEAR", "")
-#
-#     if time_slice != "":
-#         try:
-#             int(temp)
-#         except Exception:
-#             time_slice = "4{DAY}".format(**STORAGE.DATE_FORMAT)
-#
-#     return custom_render("alerts.html",
-#                          search_text=search_text,
-#                          filter=search_filter,
-#                          start_time=start_time,
-#                          time_slice=time_slice,
-#                          view_type=view_type,
-#                          filter_queries=json.dumps(filter_queries),
-#                          group_by=group_by,
-#                          filtering_group_fields=json.dumps(filtering_group_fields),
-#                          non_filtering_group_fields=json.dumps(non_filtering_group_fields),
-#                          **kwargs)
-#
-#
+# noinspection PyBroadException
+@views.route("/alerts.html")
+@protected_renderer(audit=False)
+def alerts(*_, **kwargs):
+    filtering_group_fields = config.core.alerter.filtering_group_fields
+    non_filtering_group_fields = config.core.alerter.non_filtering_group_fields
+    possible_group_fields = filtering_group_fields + non_filtering_group_fields
+
+    search_filter = angular_safe(request.args.get("filter", "*"))
+
+    search_text = search_filter
+    if search_filter == "":
+        search_filter = "*"
+    elif search_filter == "*":
+        search_text = ""
+
+    filter_queries = [angular_safe(x) for x in request.args.getlist("fq") if x != ""]
+
+    time_slice = angular_safe(request.args.get("time_slice", "4{DAY}".format(**STORAGE.ds.DATE_FORMAT)))
+    time_slice_array = [
+        {"value": "", "name": "None (slow)"},
+        {"value": "24{HOUR}".format(**STORAGE.ds.DATE_FORMAT), "name": "24 Hours"},
+        {"value": "4{DAY}".format(**STORAGE.ds.DATE_FORMAT), "name": "4 Days"},
+        {"value": "7{DAY}".format(**STORAGE.ds.DATE_FORMAT), "name": "1 Week"}
+    ]
+    start_time = angular_safe(request.args.get("start_time", None))
+    view_type = angular_safe(request.args.get("view_type", "grouped"))
+    group_by = angular_safe(request.args.get("group_by", config.core.alerter.default_group_field))
+    if group_by not in possible_group_fields:
+        group_by = config.core.alerter.default_group_field
+
+    return custom_render("alerts.html",
+                         search_text=search_text,
+                         filter=search_filter,
+                         start_time=start_time,
+                         time_slice=time_slice,
+                         view_type=view_type,
+                         filter_queries=json.dumps(filter_queries),
+                         group_by=group_by,
+                         filtering_group_fields=json.dumps(filtering_group_fields),
+                         non_filtering_group_fields=json.dumps(non_filtering_group_fields),
+                         time_slice_array=time_slice_array,
+                         time_separator=angular_safe(STORAGE.ds.DATE_FORMAT["SEPARATOR"]),
+                         **kwargs)
+
+
 @views.route("/alert_detail.html")
 @protected_renderer(audit=False)
 def alert_detail(*_, **kwargs):

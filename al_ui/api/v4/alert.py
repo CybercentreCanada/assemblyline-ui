@@ -22,7 +22,7 @@ alert_api._doc = "Perform operations on alerts"
 def get_timming_filter(tc_start, tc):
     if tc:
         if tc_start:
-            return f"reporting_ts:[{tc_start}-{tc} TO {tc_start}]"
+            return f"reporting_ts:[{tc_start}{STORAGE.ds.DATE_FORMAT['SEPARATOR']}-{tc} TO {tc_start}]"
         else:
             return f"reporting_ts:[{STORAGE.ds.now}-{tc} TO {STORAGE.ds.now}]"
     elif tc_start:
@@ -32,6 +32,8 @@ def get_timming_filter(tc_start, tc):
 
 
 def get_stats_for_fields(fields, query, tc_start, tc, access_control):
+    if not tc_start and "no_delay" not in request.args:
+        tc_start = now_as_iso(ALERT_OFFSET)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
     timming_filter = get_timming_filter(tc_start, tc)
@@ -108,6 +110,7 @@ def alerts_statistics(**kwargs):
     q          => Query to apply to the alert list
     tc_start   => Time offset at which we start the time constraint
     tc         => Time constraint applied to the API
+    no_delay   => Do not delay alerts
 
     Data Block:
     None
@@ -139,6 +142,7 @@ def alerts_labels(**kwargs):
     q          => Query to apply to the alert list
     tc_start   => Time offset at which we start the time constraint
     tc         => Time constraint applied to the API
+    no_delay   => Do not delay alerts
 
     Data Block:
     None
@@ -169,6 +173,7 @@ def alerts_priorities(**kwargs):
     q          => Query to apply to the alert list
     tc_start   => Time offset at which we start the time constraint
     tc         => Time constraint applied to the API
+    no_delay   => Do not delay alerts
 
     Data Block:
     None
@@ -199,6 +204,7 @@ def alerts_statuses(**kwargs):
     q          => Query to apply to the alert list
     tc_start   => Time offset at which we start the time constraint
     tc         => Time constraint applied to the API
+    no_delay   => Do not delay alerts
 
     Data Block:
     None
@@ -227,6 +233,7 @@ def list_alerts(**kwargs):
     Arguments:
     fq         => Post filter queries (you can have multiple of those)
     q          => Query to apply to the alert list
+    no_delay   => Do not delay alerts
     offset     => Offset at which we start giving alerts
     rows       => Numbers of alerts to return
     tc_start   => Time offset at which we start the time constraint
@@ -251,9 +258,11 @@ def list_alerts(**kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
+    if not tc_start and "no_delay" not in request.args:
+        tc_start = now_as_iso(ALERT_OFFSET)
     tc = request.args.get('tc', None)
-    if tc and config.ui.get('read_only', False):
-        tc += config.ui.get('read_only_offset', "")
+    if tc and config.ui.read_only:
+        tc += config.ui.read_only_offset
     timming_filter = get_timming_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
@@ -297,10 +306,11 @@ def list_grouped_alerts(field, **kwargs):
 
     Result example:
     {"total": 201,                # Total alerts found
+     "counted_total": 123,        # Number of alert returned in the current call
      "offset": 0,                 # Offset in the alert list
-     "count": 100,                # Number of alerts returned
+     "rows": 100,                 # Number of alerts returned
      "items": [],                 # List of alert blocks
-     "tc_start": "2015-05..."   # UTC timestamp for future query (ISO Format)
+     "tc_start": "2015-05..."     # UTC timestamp for future query (ISO Format)
     }
     """
     def get_dict_item(parent, cur_item):
@@ -336,7 +346,9 @@ def list_grouped_alerts(field, **kwargs):
         hash_list = []
         hint_list = []
         group_count = {}
+        counted_total = 0
         for item in res['items']:
+            counted_total += item['total']
             group_count[item['value']] = item['total']
             data = item['items'][0]
             alert_keys.append(data['alert_id'])
@@ -360,6 +372,7 @@ def list_grouped_alerts(field, **kwargs):
 
         res['items'] = alerts
         res['tc_start'] = tc_start
+        res['counted_total'] = counted_total
         return make_api_response(res)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
@@ -516,7 +529,7 @@ def change_priority_by_batch(**kwargs):
     Apply priority to all alerts matching the given filters
 
     Variables:
-    priority     =>  priority to apply
+    None
 
     Arguments:
     q          =>  Main query to filter the data [REQUIRED]
@@ -778,8 +791,8 @@ def find_related_alert_ids(**kwargs):
     if not query:
         query = fq.pop(0)
     tc = request.args.get('tc', None)
-    if tc and config.ui.get('read_only', False):
-        tc += config.ui.get('read_only_offset', "")
+    if tc and config.ui.read_only:
+        tc += config.ui.read_only_offset
     tc_start = request.args.get('tc_start', None)
     timming_filter = get_timming_filter(tc_start, tc)
 

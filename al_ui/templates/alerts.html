@@ -12,7 +12,7 @@
     <script src="/static/js/angular/angular-sanitize.min.js"></script>
     <script src="/static/js/ui-select/select.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};filter='{{search_text}}';time_slice='{{time_slice}}';group_by='{{group_by}}';filtering_group_by={{filtering_group_fields}};non_filtering_group_by={{non_filtering_group_fields}};{% if start_time %}start_time='{{start_time}}';{% endif %}filter_queries={{filter_queries}};view_type='{{view_type}}';start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};filter='{{search_text}}';time_separator='{{time_separator}}';time_slice='{{time_slice}}';time_slice_array={{time_slice_array}};group_by='{{group_by}}';filtering_group_by={{filtering_group_fields}};non_filtering_group_by={{non_filtering_group_fields}};{% if start_time %}start_time='{{start_time}}';{% endif %}filter_queries={{filter_queries}};view_type='{{view_type}}';start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	<section id="appContent" class="container">
@@ -38,7 +38,7 @@
                 <b>Post filters :</b> <span class="text-muted">{{filter_queries | split}}</span>
             </div>
             <div ng-if="view_type == 'list' && start_time && time_slice">
-                <b>Time restiction :</b> <span class="text-muted"> reporting_ts:[{{ start_time }}-{{ time_slice }} TO {{ start_time }}]</span>
+                <b>Time restiction :</b> <span class="text-muted"> reporting_ts:[{{ start_time }}{{ time_separator }}-{{ time_slice }} TO {{ start_time }}]</span>
             </div>
             <div ng-if="(view_type=='list'&&time_slice)||(view_type=='list'&&start_time)||filter_queries.length>1||(view_type=='grouped'&&filter_queries.length>0)"><a href="" ng-click="clear_forced_filter()" class="btn btn-default btn-xs">Clear extra filters</a></div>
         </div>
@@ -50,12 +50,12 @@
                         <h3 class="modal_title" id="statsModalLabel">Alert statistics</h3>
                     </div>
                     <div class="modal-body">
-                        <div ng-show="val.length>0" ng-repeat="(key, val) in statistics">
+                        <div ng-show="getKeys(val).length>0" ng-repeat="(key, val) in statistics">
                             <div class="row hint_row">
                                 <div class="col-xs-4 col-sm-3 col-md-2"><strong style="font-size: 110%;">{{key | titleCase}}</strong></div>
-                                <div id='{{key}}' class="col-xs-8 col-sm-9 col-md-10 expandable-tags">
-                                    <div id='{{key}}_expand' class="clickable pull-right" ng-click="expand(key);">&nbsp;<span class="glyphicon glyphicon-chevron-right"></span></div>
-                                    <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq={{key}}:&quot;{{meta.0 | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="meta in val">{{meta.1}}x {{meta.0}}</a>
+                                <div id='{{safe_key(key)}}' class="col-xs-8 col-sm-9 col-md-10 expandable-tags">
+                                    <div id='{{safe_key(key)}}_expand' class="clickable pull-right" ng-click="expand(safe_key(key));">&nbsp;<span class="glyphicon glyphicon-chevron-right"></span></div>
+                                    <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq={{key}}:&quot;{{meta | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(meta, count) in val">{{count}}x {{meta}}</a>
                                 </div>
                             </div>
                         </div>
@@ -168,7 +168,7 @@
                         </div>
                         <div id="statuses" class="collapse in">
                             <div ng-hide="current_statuses.length"><i>No statuses matching this query</i></div>
-                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=status:&quot;{{status.0 | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="status in current_statuses">{{status.1}}x {{status.0}}</a>
+                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=status:&quot;{{status | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(status, count) in current_statuses">{{count}}x {{status}}</a>
                         </div>
 
                         <div class="menuheader" data-toggle="collapse" data-target="#priorities">
@@ -176,7 +176,7 @@
                         </div>
                         <div id="statuses" class="collapse in">
                             <div ng-hide="current_priorities.length"><i>No priorities matching this query</i></div>
-                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=priority:&quot;{{priority.0 | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="priority in current_priorities">{{priority.1}}x {{priority.0}}</a>
+                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=priority:&quot;{{priority | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(priority, count) in current_priorities">{{count}}x {{priority}}</a>
                         </div>
 
                         <div class="menuheader" data-toggle="collapse" data-target="#labels">
@@ -184,7 +184,7 @@
                         </div>
                         <div id="labels" class="collapse in">
                             <div ng-hide="current_labels.length"><i>No labels matching this query</i></div>
-                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=label:&quot;{{label.0 | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="label in current_labels">{{label.1}}x {{label.0}}</a>
+                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=label:&quot;{{label | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(label, count) in current_labels">{{count}}x {{label}}</a>
                         </div>
 
                         <div class="menuheader" data-toggle="collapse" data-target="#global_filters">

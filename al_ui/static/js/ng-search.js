@@ -254,7 +254,6 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
             },
             function () {
                 $scope.do_remove(name, type);
-                $scope.update_suggestions();
             });
     };
 
