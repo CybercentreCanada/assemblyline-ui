@@ -398,12 +398,12 @@ def yara_help(**kwargs):
     return custom_render("yara_standard.html", **kwargs)
 
 
-# @views.route("/workflows.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def workflows(**kwargs):
-#     return custom_render("workflows.html", **kwargs)
-#
-#
+@views.route("/workflows.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def workflows(**kwargs):
+    return custom_render("workflows.html", **kwargs)
+
+
 ############################################
 # Admin Protected pages
 @views.route("/admin/documentation.html")

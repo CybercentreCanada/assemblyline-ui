@@ -61,11 +61,11 @@
             <div class="modal-dialog modal-resize">
                 <div ng-controller="SearchController" ng-init="page='workflows';load_favorites=true;load_global_favorites=false" class="modal-content">
                     <div class="modal-header">
-                        <div ng-show="cur_workflow.id" class="pull-right" style="padding-top: 5px;">
+                        <div ng-show="cur_workflow.workflow_id" class="pull-right" style="padding-top: 5px;">
 							<button type="button" class="btn btn-danger" ng-click="delWorkflow(cur_workflow);">Remove</button>
 						</div>
-						<h3 ng-hide="!cur_workflow.id" class="modal_title" id="myModalLabel">Edit workflow filter</h3>
-                        <h3 ng-hide="cur_workflow.id" class="modal_title" id="myModalLabel">Adding workflow filter</h3>
+						<h3 ng-hide="!cur_workflow.workflow_id" class="modal_title" id="myModalLabel">Edit workflow filter</h3>
+                        <h3 ng-hide="cur_workflow.workflow_id" class="modal_title" id="myModalLabel">Adding workflow filter</h3>
                     </div>
                     <div class="modal-body">
                         <div class="text-danger text-center text-large">{{ last_error }}</div>
@@ -80,7 +80,7 @@
                         </div>
                         <div class="form-group form-inline">
                             <label class="control-label">Labels</label><br/>
-                            <ui-select tagging multiple tagging-tokens='ENTER|TAB|SPACE|,' autofocus="true" ng-model="cur_workflow.label" theme="bootstrap" class="form-control input" style="width: 100%">
+                            <ui-select tagging multiple tagging-tokens='ENTER|TAB|SPACE|,' autofocus="true" ng-model="cur_workflow.labels" theme="bootstrap" class="form-control input" style="width: 100%">
                                 <ui-select-match>{{ $item }}</ui-select-match>
                                 <ui-select-choices repeat="label in label_suggestions | filter:$select.search">{{ label }}</ui-select-choices>
                             </ui-select>
@@ -116,8 +116,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button ng-if="cur_workflow.id" id="default_btn" type="button" class="btn btn-primary" ng-click="saveWorkflow();">Save workflow</button>
-                        <button ng-if="!cur_workflow.id" id="default_btn" type="button" class="btn btn-primary" ng-click="addWorkflow();">Add workflow</button>
+                        <button ng-if="cur_workflow.workflow_id" id="default_btn" type="button" class="btn btn-primary" ng-click="saveWorkflow();">Save workflow</button>
+                        <button ng-if="!cur_workflow.workflow_id" id="default_btn" type="button" class="btn btn-primary" ng-click="addWorkflow();">Add workflow</button>
                     </div>
                 </div>
             </div>

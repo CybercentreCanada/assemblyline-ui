@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate', 'ngSanitize', 'ui.select'])
+let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate', 'ngSanitize', 'ui.select'])
     .controller('ALController', function ($scope, $http, $timeout) {
         //Parameters vars
         $scope.workflow_list = null;
@@ -24,7 +24,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
         $scope.pager_add = function () {
             $scope.reset_error_ctrls();
             $scope.cur_workflow = {
-                label: [],
+                labels: [],
                 priority: '',
                 status: '',
                 classification: classification_definition.UNRESTRICTED,
@@ -50,10 +50,9 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
         $scope.searchText = "";
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-                if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+                if ($scope.searchText === "") {
                     $scope.filter = "";
-                }
-                else {
+                } else {
                     $scope.filter = $scope.searchText;
                 }
 
@@ -91,7 +90,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
             $http({
                 method: 'DELETE',
-                url: "/api/v3/workflow/" + wf.id + "/"
+                url: "/api/v4/workflow/" + wf.workflow_id + "/"
             })
                 .success(function () {
                     $scope.loading_extra = false;
@@ -102,7 +101,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "") {
                         return;
                     }
 
@@ -110,8 +109,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
@@ -128,7 +126,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
             $http({
                 method: 'GET',
-                url: "/api/v3/workflow/" + wf.id + "/"
+                url: "/api/v4/workflow/" + wf.workflow_id + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -136,15 +134,14 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     $("#workflowModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "") {
                         return;
                     }
 
                     $scope.loading_extra = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                 });
@@ -159,7 +156,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
             $http({
                 method: 'POST',
-                url: "/api/v3/workflow/" + $scope.cur_workflow.id + "/",
+                url: "/api/v4/workflow/" + $scope.cur_workflow.workflow_id + "/",
                 data: $scope.cur_workflow
             })
                 .success(function () {
@@ -172,20 +169,18 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
+                    let ctrl;
                     $scope.loading_extra = false;
 
-                    if (data == "") {
+                    if (data === "") {
                         return;
                     }
 
-                    if (status == 400) {
-                        if (data.api_error_message.startsWith("Name")){
-                            //noinspection JSDuplicatedDeclaration
-                            var ctrl = $("#name");
-                        }
-                        else if(data.api_error_message.startsWith("Query")) {
-                            //noinspection JSDuplicatedDeclaration
-                            var ctrl = $("#query");
+                    if (status === 400) {
+                        if (data.api_error_message.startsWith("Name")) {
+                            ctrl = $("#name");
+                        } else if (data.api_error_message.startsWith("Query")) {
+                            ctrl = $("#query");
                         }
                         ctrl.addClass("has-error");
                         ctrl.find("input").select();
@@ -195,26 +190,25 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                 });
         };
-        
+
         $scope.reset_error_ctrls = function () {
             $("#name").removeClass("has-error");
             $("#query").removeClass("has-error");
         };
-    
+
         $scope.addWorkflow = function () {
             $scope.reset_error_ctrls();
             $scope.error = '';
             $scope.success = '';
-    
+
             $http({
                 method: 'PUT',
-                url: "/api/v3/workflow/",
+                url: "/api/v4/workflow/",
                 data: $scope.cur_workflow
             })
                 .success(function () {
@@ -226,20 +220,18 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
+                    let ctrl;
                     $scope.loading_extra = false;
 
-                    if (data == ""){
+                    if (data === "") {
                         return;
                     }
 
-                    if (status == 400) {
-                        if (data.api_error_message.startsWith("Name")){
-                            //noinspection JSDuplicatedDeclaration
-                            var ctrl = $("#name");
-                        }
-                        else if(data.api_error_message.startsWith("Query")) {
-                            //noinspection JSDuplicatedDeclaration
-                            var ctrl = $("#query");
+                    if (status === 400) {
+                        if (data.api_error_message.startsWith("Name")) {
+                            ctrl = $("#name");
+                        } else if (data.api_error_message.startsWith("Query")) {
+                            ctrl = $("#query");
                         }
                         ctrl.addClass("has-error");
                         ctrl.find("input").select();
@@ -247,11 +239,10 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                         return;
                     }
 
-    
+
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                 });
@@ -272,29 +263,28 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
             $scope.load_label_suggestions();
         };
 
-        $scope.load_label_suggestions = function(){
+        $scope.load_label_suggestions = function () {
             $http({
                 method: 'GET',
-                url: "/api/v3/workflow/labels/"
+                url: "/api/v4/workflow/labels/"
             })
                 .success(function (data) {
-                    for (var item_id in data.api_response){
-                        var item = data.api_response[item_id];
-                        if ($scope.label_suggestions.indexOf(item) == -1){
+                    for (let item_id in data.api_response) {
+                        let item = data.api_response[item_id];
+                        if ($scope.label_suggestions.indexOf(item) === -1) {
                             $scope.label_suggestions.push(item);
                         }
                     }
                 })
                 .error(function (data, status, headers, config) {
 
-                    if (data == "" || status == 400) {
+                    if (data === "" || status === 400) {
                         return;
                     }
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                 });
@@ -305,7 +295,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
             $http({
                 method: 'GET',
-                url: "/api/v3/workflow/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
+                url: "/api/v4/workflow/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -316,12 +306,12 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     $scope.pages = $scope.pagerArray();
                     $scope.started = true;
 
-                    $scope.filtered = $scope.filter != "";
+                    $scope.filtered = $scope.filter !== "";
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "" || status == 400) {
+                    if (data === "" || status === 400) {
                         $scope.workflow_list = [];
                         $scope.total = 0;
                         $scope.filtered = true;
@@ -332,8 +322,7 @@ var app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
                     $scope.started = true;
