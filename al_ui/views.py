@@ -78,22 +78,22 @@ def account(**kwargs):
 #                          **kwargs)
 #
 #
-# @views.route("/alert_detail.html")
-# @protected_renderer(audit=False)
-# def alert_detail(*_, **kwargs):
-#     user = kwargs['user']
-#
-#     alert_key = angular_safe(request.args.get("alert_key", None))
-#     if not alert_key:
-#         abort(404)
-#
-#     alert = STORAGE.alerts.get(alert_key)
-#     if user and alert and Classification.is_accessible(user['classification'], alert['classification']):
-#         return custom_render("alert_detail.html", alert_key=alert_key, **kwargs)
-#     else:
-#         abort(403)
-#
-#
+@views.route("/alert_detail.html")
+@protected_renderer(audit=False)
+def alert_detail(*_, **kwargs):
+    user = kwargs['user']
+
+    alert_key = angular_safe(request.args.get("alert_key", None))
+    if not alert_key:
+        abort(404)
+
+    alert = STORAGE.alert.get(alert_key, as_obj=False)
+    if user and alert and Classification.is_accessible(user['classification'], alert['classification']):
+        return custom_render("alert_detail.html", alert_key=alert_key, **kwargs)
+    else:
+        abort(403)
+
+
 @views.route("/api_doc.html")
 @protected_renderer(audit=False)
 def api_doc(**kwargs):

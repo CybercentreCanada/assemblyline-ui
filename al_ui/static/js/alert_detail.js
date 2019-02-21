@@ -17,62 +17,13 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.label_suggestions = ['PHISHING', 'COMPROMISE', 'CRIME', 'ATTRIBUTED', 'WHITELISTED',
             'FALSE_POSITIVE', 'REPORTED', 'MITIGATED', 'PENDING'];
 
-        $scope.banned = [
-            "__access_grp1__",
-            "__access_grp2__",
-            "__access_lvl__",
-            "__access_req__",
-            "__expiry_ts__",
-            "al_attrib",
-            "al_av",
-            "al_domain",
-            "al_domain_dynamic",
-            "al_domain_static",
-            "al_ip",
-            "al_ip_dynamic",
-            "al_ip_static",
-            "al_request_end_time",
-            "al_score",
-            "classification",
-            "event_id",
-            "extended_scan",
-            "filename",
-            "group_count",
-            "label",
-            "md5",
-            "priority",
-            "reporting_ts",
-            "sha1",
-            "sha256",
-            "sid",
-            "size",
-            "status",
-            "summary",
-            "tag",
-            "ts",
-            "type",
-            "yara"
-        ];
-
         $scope.has_meta = function (alert) {
-            for (var k in alert) {
-                if ($scope.banned.indexOf(k) == -1) {
-                    return true;
-                }
+            if (alert != null && alert.hasOwnProperty('metadata')){
+                var size = Object.keys(alert).length;
+                return size > 0;
             }
 
             return false;
-        };
-        $scope.get_alert_meta = function (alert) {
-            var out = {};
-
-            for (var k in alert) {
-                if ($scope.banned.indexOf(k) == -1) {
-                    out[k] = alert[k];
-                }
-            }
-
-            return out;
         };
 
         //DEBUG MODE
@@ -90,8 +41,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
         $scope.list_related_alerts = function (alert) {
             if (alert && (alert.group_count === undefined || alert.group_count == null)) {
-                $scope.last_params = {q: "event_id:" + alert.event_id};
-                $scope.related_ids = [alert.event_id];
+                $scope.last_params = {q: "alert_id:" + alert.alert_id};
+                $scope.related_ids = [alert.alert_id];
                 $("#related_ids_mdl").modal('show');
             }
             else {
@@ -110,7 +61,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
                 $http({
                     method: 'GET',
-                    url: "/api/v3/alert/related/",
+                    url: "/api/v4/alert/related/",
                     params: params
                 })
                     .success(function (data) {
@@ -146,7 +97,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                 function () {
                     var ctrl = $("#" + alert_idx + "_ownership");
                     var disabled = ctrl.attr('disabled');
-                    if (disabled === undefined && disabled == false) {
+                    if (disabled === undefined && disabled === false) {
                         return;
                     }
 
@@ -155,7 +106,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
                     $http({
                         method: 'GET',
-                        url: "/api/v3/alert/ownership/" + alert.event_id + "/"
+                        url: "/api/v4/alert/ownership/" + alert.alert_id + "/"
                     })
                         .success(function () {
                             ctrl.text("Has ownership");
@@ -174,7 +125,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.count_similar = function (alert, alert_idx) {
             var ctrl = $("#" + alert_idx + "_similar");
             var disabled = ctrl.attr('disabled');
-            if (disabled === undefined && disabled == false) {
+            if (disabled === undefined && disabled === false) {
                 return;
             }
 
@@ -183,12 +134,12 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             ctrl.addClass("btn-default");
             ctrl.text("Counting alerts...");
 
-            var url = "/api/v3/search/advanced/alert/?q=md5:\"" + alert['md5'] + "\"&rows=0";
+            var url = "/api/v4/search/alert/?query=file.md5:" + alert['file']['md5'] + "&rows=0";
             $http({method: 'GET', url: url})
                 .success(function (data) {
                     ctrl.removeClass("btn-default");
                     ctrl.addClass("btn-primary");
-                    ctrl.text(data.api_response.response.numFound + " similar alerts")
+                    ctrl.text(data.api_response.total + " similar alerts")
                 })
                 .error(function (data) {
                     ctrl.removeClass("btn-default");
@@ -201,8 +152,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.workflow_action = function (action) {
             if (action.priority) {
                 $http({
-                    method: 'GET',
-                    url: "/api/v3/alert/priority/" + $scope.alert.event_id + "/" + action.priority + "/"
+                    method: 'POST',
+                    url: "/api/v4/alert/priority/" + $scope.alert.alert_id + "/",
+                    data: JSON.stringify(action.priority)
                 })
                     .success(function () {
                         $scope.alert['priority'] = action.priority;
@@ -210,15 +162,16 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.last_error = "";
                     })
                     .error(function (data) {
-                        if (data.api_error_message.indexOf("already has") == -1) {
+                        if (data.api_error_message.indexOf("already has") === -1) {
                             $scope.last_error = data.api_error_message;
                         }
                     });
             }
             if (action.status) {
                 $http({
-                    method: 'GET',
-                    url: "/api/v3/alert/status/" + $scope.alert.event_id + "/" + action.status + "/"
+                    method: 'POST',
+                    url: "/api/v4/alert/status/" + $scope.alert.alert_id + "/",
+                    data: JSON.stringify(action.status)
                 })
                     .success(function () {
                         $scope.alert['status'] = action.status;
@@ -226,15 +179,16 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.last_error = "";
                     })
                     .error(function (data) {
-                        if (data.api_error_message.indexOf("already has") == -1) {
+                        if (data.api_error_message.indexOf("already has") === -1) {
                             $scope.last_error = data.api_error_message;
                         }
                     });
             }
             if (action.label.length > 0) {
                 $http({
-                    method: 'GET',
-                    url: "/api/v3/alert/label/" + $scope.alert.event_id + "/" + action.label.join(",") + "/"
+                    method: 'POST',
+                    url: "/api/v4/alert/label/" + $scope.alert.alert_id + "/",
+                    data: action.label
                 })
                     .success(function () {
                         if ($scope.alert['label'] === undefined) {
@@ -242,7 +196,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         }
                         for (var i in action.label) {
                             var label = action.label[i];
-                            if ($scope.alert['label'].indexOf(label) == -1) {
+                            if ($scope.alert['label'].indexOf(label) === -1) {
                                 $scope.alert['label'].push(label);
                             }
                         }
@@ -250,7 +204,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.last_error = "";
                     })
                     .error(function (data) {
-                        if (data.api_error_message.indexOf("already has") == -1) {
+                        if (data.api_error_message.indexOf("already has") === -1) {
                             $scope.last_error = data.api_error_message;
                         }
                     });
@@ -286,14 +240,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             $scope.loading_extra = true;
             $http({
                 method: 'GET',
-                url: "/api/v3/alert/" + $scope.alert_key + "/"
+                url: "/api/v4/alert/" + $scope.alert_key + "/"
             })
                 .success(function (data) {
                     $scope.alert = data.api_response;
                     $scope.loading_extra = false;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "") {
                         return;
                     }
 

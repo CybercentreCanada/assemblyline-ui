@@ -17,7 +17,7 @@
 	<section id="appContent" class="container" ng-show="alert">
 		<div class="header_title text-right">
 			<h1>Alert Details</h1>
-			<h4 ng-show="alert.event_id" class="text-muted">:: {{alert.event_id}} ::</h4>
+			<h4 ng-show="alert.alert_id" class="text-muted">:: {{alert.alert_id}} ::</h4>
 		</div>
         <div class="modal fade" id="related_ids_mdl" tabindex="-1" role="dialog" aria-labelledby="related_id_label" aria-hidden="true">
             <div class="modal-dialog modal-resize">
@@ -52,7 +52,7 @@
                         <h3 class="modal_title" id="worflow_action_lbl">Workflow action</h3>
                     </div>
                     <div class="modal-body">
-                        <h4>The workflow action will be applied to a single alert with the following alert ID: {{ alert.event_id }}</h4>
+                        <h4>The workflow action will be applied to a single alert with the following alert ID: {{ alert.alert_id }}</h4>
                         <hr/>
                         <h4>Change the following workflow attributes:</h4>
                         <div style="padding-top: 20px;" class="form-group form-inline">
