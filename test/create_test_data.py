@@ -50,7 +50,8 @@ for svc in SERVICES:
         "repo": f"alsvc_{svc.lower()}",
         "enabled": True,
         "category": random.choice(config.services.categories),
-        "stage": random.choice(config.services.stages)
+        "stage": random.choice(config.services.stages),
+        "version": "4.0.0"
     })
     ds.service.save(service_data.name, service_data)
     print(f'\t{svc}')
