@@ -5,16 +5,18 @@ import shutil
 from uuid import uuid4
 from flask import request
 
+from al_ui.helper.service import ui_to_submission_params
 from assemblyline.common import forge, identify
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.odm.messages.submission import Submission
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
-from al_ui.helper.user import remove_ui_specific_settings
+from al_ui.helper.user import get_default_user_settings
 
 SUB_API = 'ingest'
-ingest_api = make_subapi_blueprint(SUB_API)
+ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
 ingest_api._doc = "Ingest files for large volume processing"
 
 # TODO: We will assume that middleman will not be sharded that the new version will work with any number of middleman
@@ -97,9 +99,11 @@ def get_all_messages(notification_queue, **kwargs):
 def ingest_single_file(**kwargs):
     """
     Ingest a single file in the system
+
         Note:
-            Binary and sha256 fields are optional but at least one of them has to be there
-            notification_queue, notification_threshold and generate_alert fields are optional
+            * Binary, sha256 and url fields are optional but at least one of them has to be there
+            * notification_queue, notification_threshold and generate_alert fields are optional
+
         Note 2:
             The ingest API uses the user's default settings to submit files to the system
             unless these settings are overridden in the 'params' field. Although, there are
@@ -116,36 +120,35 @@ def ingest_single_file(**kwargs):
     {
      "name": "file.exe",             # Name of the file
      "binary": "A24AB..==",          # Base64 encoded file binary
+     "sha256": "1234...CDEF"         # SHA256 hash of the file
+     "url": "http://...",            # Url to fetch the file from
+
      "metadata": {                   # Submission Metadata
          "key": val,                    # Key/Value pair for metadata parameters
          },
+
      "params": {                     # Submission parameters
          "key": val,                    # Key/Value pair for params that differ from the user's defaults
          },                                 # DEFAULT: /api/v3/user/submission_params/<user>/
-     "sha256": "1234...CDEF"         # SHA256 hash of the file
-     "srv_spec": {                   # Service specifics parameters
-         "Extract": {
-             "password": "Try_this_password!@"
-             },
-         },
-     "type": "SUBMISSION_TYPE"       # Required type field,
+
+     "generate_alert": False,        # Generate an alert in our alerting system or not
      "notification_queue": None,     # Name of the notification queue
      "notification_threshold": None, # Threshold for notification
-     "generate_alert": False         # Generate an alert in our alerting system or not
     }
 
     Result example:
     { "success": true }
     """
     user = kwargs['user']
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, uuid4().get_hex())
-
+    out_dir = os.path.join(TEMP_SUBMIT_DIR, str(uuid4()))
     with forge.get_filestore() as f_transport:
         try:
+            # Get data block
             data = request.json
             if not data:
                 return make_api_response({}, "Missing data block", 400)
 
+            # Get notification queue parameters
             notification_queue = data.get('notification_queue', None)
             if notification_queue:
                 notification_queue = "nq-%s" % notification_queue
@@ -154,24 +157,28 @@ def ingest_single_file(**kwargs):
             if not isinstance(notification_threshold, int) and notification_threshold:
                 return make_api_response({}, "notification_threshold should be and int", 400)
 
+            # Get generate alert parameter
             generate_alert = data.get('generate_alert', False)
             if not isinstance(generate_alert, bool):
                 return make_api_response({}, "generate_alert should be a boolean", 400)
 
+            # Get file name
             name = data.get("name", None)
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
-            ingest_msg_type = data.get("type", None)
-            if not ingest_msg_type:
-                return make_api_response({}, "Required type field missing", 400)
+            name = os.path.basename(name)
+            if not name:
+                return make_api_response({}, "Invalid filename", 400)
 
-            out_file = os.path.join(out_dir, os.path.basename(name))
+            out_file = os.path.join(out_dir, name)
+
             try:
                 os.makedirs(out_dir)
             except Exception:
                 pass
 
+            # Load file
             binary = data.get("binary", None)
             if not binary:
                 sha256 = data.get('sha256', None)
@@ -183,7 +190,7 @@ def ingest_single_file(**kwargs):
                 else:
                     url = data.get('url', None)
                     if url:
-                        if not config.ui.get('allow_url_submissions', True):
+                        if not config.ui.allow_url_submissions:
                             return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                         try:
@@ -200,51 +207,68 @@ def ingest_single_file(**kwargs):
                 with open(out_file, "wb") as my_file:
                     my_file.write(base64.b64decode(binary))
 
-            overrides = STORAGE.get_user_settings(user['uname'])
-            overrides['selected'] = overrides['services']
-            overrides.update({
+            # Load default user params
+            s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
+            if not s_params:
+                s_params = get_default_user_settings(user)
+
+            # Reset dangerous user settings to safe values
+            s_params.update({
                 'deep_scan': False,
                 "priority": 150,
                 "ignore_cache": False,
                 "ignore_dynamic_recursion_prevention": False,
-                "ignore_filtering": False
+                "ignore_filtering": False,
+                "type": "INGEST"
             })
-            overrides.update(data.get("params", {}))
-            overrides.update({
-                'description': "[%s] Inspection of file: %s" % (ingest_msg_type, name),
+
+            # Apply provided params
+            s_params.update(data.get("params", {}))
+
+            # Override final parameters
+            s_params.update({
+                'description': "[%s] Inspection of file: %s" % (s_params['type'], name),
                 'generate_alert': generate_alert,
-                'max_extracted': 100,
-                'max_supplementary': 100,
-                'params': data.get("srv_spec", {}),
-                'submitter': user['uname'],
+                'max_extracted': config.core.middleman.default_max_extracted,
+                'max_supplementary': config.core.middleman.default_max_supplementary,
+                'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
+                'submitter': user['uname']
             })
-            if notification_queue:
-                overrides.update({"notification_queue": notification_queue,
-                                  "notification_threshold": notification_threshold})
 
-            overrides['priority'] = min(overrides.get("priority", 150), config.ui.get('ingest_max_priority', 250))
-
-            metadata = data.get("metadata", {})
-            metadata['type'] = ingest_msg_type
-            if 'ts' not in metadata:
-                metadata['ts'] = now_as_iso()
-
+            # Calculate file digest and save it to filestore
             digests = identify.get_digests_for_file(out_file)
-            digests.pop('path', None)
-
             sha256 = digests['sha256']
             if not f_transport.exists(sha256):
                 f_transport.put(out_file, sha256, location='far')
 
-            msg = {
-                "priority": overrides['priority'],
-                "type": ingest_msg_type,
-                "overrides": remove_ui_specific_settings(overrides),
-                "metadata": metadata
-            }
-            msg.update(digests)
+            # Setup notification queue if needed
+            if notification_queue:
+                notification_params = {
+                    "notification_queue": notification_queue,
+                    "notification_threshold": notification_threshold
+                }
+            else:
+                notification_params = {}
 
-            ingest.push(msg)
+            # Load metadata and setup some default values if they are missing
+            metadata = data.get("metadata", {})
+            metadata['type'] = s_params['type']
+            if 'ts' not in metadata:
+                metadata['ts'] = now_as_iso()
+
+            # Create submission object
+            try:
+                submission_obj = Submission({
+                    "files": [{'name': name, 'sha256': sha256}],
+                    "notification": notification_params,
+                    "metadata": metadata,
+                    "params": s_params
+                })
+            except ValueError as e:
+                return make_api_response("", err=str(e), status_code=400)
+
+            # Send submission object for processing
+            ingest.push(submission_obj.as_primitives())
 
             return make_api_response({"success": True})
         finally:

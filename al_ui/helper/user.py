@@ -198,18 +198,6 @@ def load_user_settings(user):
     return settings
 
 
-# noinspection PyBroadException
-def remove_ui_specific_settings(task):
-    # Cleanup task object
-    task.pop('download_encoding', None)
-    task.pop('expand_min_score', None)
-    task.pop('hide_raw_results', None)
-    task.pop('service_spec', None)
-    task.pop('services', None)
-
-    return task
-
-
 def save_user_settings(username, data):
     data["service_spec"] = {}
     data["services"] = {'selected': simplify_services(data["services"])}

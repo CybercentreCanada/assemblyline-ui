@@ -171,14 +171,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     None
     
     Result example:
-    {
-     "submission":{},       # Submission Block
-     "request": {},         # Request Block
-     "times": {},           # Timing Block
-     "state": "submitted",  # Submission state
-     "services": {},        # Service selection Block
-     "fileinfo": {}         # File information Block
-     }
+    # Submission message object as a json dictionary
     """
     user = kwargs['user']
     copy_sid = request.args.get('copy_sid', None)
@@ -246,14 +239,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     None
 
     Result example:
-    {
-     "submission":{},       # Submission Block
-     "request": {},         # Request Block
-     "times": {},           # Timing Block
-     "state": "submitted",  # Submission state
-     "services": {},        # Service selection Block
-     "fileinfo": {}         # File information Block
-    }
+    # Submission message object as a json dictionary
     """
     user = kwargs['user']
     submission = STORAGE.submission.get(sid, as_obj=False)
@@ -349,10 +335,10 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 #     return make_api_response(submit_results)
 
 
-# noinspection PyBroadException,PyUnusedLocal
+# noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-def submit(*args, **kwargs):
+def submit(**kwargs):
     """
     Submit a single file or url
     
@@ -368,27 +354,22 @@ def submit(*args, **kwargs):
      "binary": "A24AB..==",  # Base64 encoded file binary
      "sha256": "123...DEF",  # SHA256 hash of the file if you know the file is already in the datastore
      "url": "http://...",    # Url to fetch the file from
-     "params": {             # Submission parameters
-         "key": val,            # Key/Value pair for params that different then defaults
-         },                     # Default params can be fetch at /api/v3/user/submission_params/<user>/
+
      "metadata": {           # Submission metadata
          "key": val,            # Key/Value pair metadata values
          },
+
+     "params": {             # Submission parameters
+         "key": val,            # Key/Value pair for params that different then defaults
+         },                     # Default params can be fetch at /api/v3/user/submission_params/<user>/
+
      "ui_params": {          # UI submission parameters (Only used by UI)
          "key": val,            # UI Key/Value pair of the parameters for the submission
          }
     }
     
     Result example:
-    {
-     "submission":{},        # Submission Block
-     "times": {},            # Timing Block
-     "state": "submitted",   # Submission state
-     "services": {},         # Service selection Block
-     "fileinfo": {}          # File information Block
-     "files": []             # List of submitted files
-     "request": {}           # Request detail block
-    }
+    # Submission message object as a json dictionary
     """
     user = kwargs['user']
     check_submission_quota(user)
@@ -416,7 +397,6 @@ def submit(*args, **kwargs):
             except Exception:
                 pass
 
-            submission_files = []
             binary = data.get("binary", None)
             if not binary:
                 sha256 = data.get('sha256', None)
