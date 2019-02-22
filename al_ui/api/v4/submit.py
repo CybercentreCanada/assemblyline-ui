@@ -2,16 +2,17 @@
 import base64
 import os
 import shutil
+import uuid
 
 from flask import request
-from uuid import uuid4
 
 from assemblyline.common import forge
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import check_submission_quota, get_default_user_settings
-from al_ui.helper.service import ui_to_dispatch_task
+from al_ui.helper.service import ui_to_submission_params
+from assemblyline.odm.messages.submission import Submission
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -19,9 +20,6 @@ config = forge.get_config()
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
 submit_api._doc = "Submit files to the system"
-
-STRIP_KW = ['download_encoding', 'hide_raw_results', 'expand_min_score', 'service_spec', 'services', 'description',
-            'sid', 'watch_queue', 'max_score']
 
 
 # # noinspection PyUnusedLocal
@@ -187,7 +185,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     name = request.args.get('name', sha256)
     
     if copy_sid:
-        submission = STORAGE.get_submission(copy_sid)
+        submission = STORAGE.submission.get(copy_sid, as_obj=False)
     else:
         submission = None
         
@@ -195,36 +193,40 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         if not Classification.is_accessible(user['classification'], submission['classification']):
             return make_api_response("", "You are not allowed to re-submit a submission that you don't have access to",
                                      403)
-            
-        task = {k: v for k, v in submission['submission'].iteritems() if k not in STRIP_KW}
-        task.update({k: v for k, v in submission['services'].iteritems() if k not in STRIP_KW})
-        task['classification'] = submission['classification']
+
+        submission_params = submission['params']
+        submission_params['classification'] = submission['classification']
         
     else:
-        params = STORAGE.get_user_settings(user['uname'])
-        task = {k: v for k, v in params.iteritems() if k not in STRIP_KW}
-        task['selected'] = params["services"]
-        task['classification'] = params['classification']
+        submission_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
 
-    task['sha256'] = sha256
     with forge.get_filestore() as f_transport:
         if not f_transport.exists(sha256):
             return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
                                          % sha256, status_code=404)
 
-        task['path'] = name
-        task['submitter'] = user['uname']
-        if 'priority' not in task:
-            task['priority'] = 500
-        task['description'] = "Resubmit %s for Dynamic Analysis" % name
-        if "Dynamic Analysis" not in task['selected']:
-            task['selected'].append("Dynamic Analysis")
+        files = [{'name': name, 'sha256': sha256}]
+
+        submission_params['submitter'] = user['uname']
+        if 'priority' not in submission_params:
+            submission_params['priority'] = 500
+        submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
+        if "Dynamic Analysis" not in submission_params['services']['selected']:
+            submission_params['services']['selected'].append("Dynamic Analysis")
+
+        try:
+            submission_obj = Submission({
+                "files": files,
+                "params": submission_params
+            })
+        except ValueError as e:
+            return make_api_response("", err=str(e), status_code=400)
 
         # TODO: Actually submit the thing ...
-        #submit_result = SubmissionWrapper.submit(f_transport, STORAGE, **task)
-        submit_result = {"sid": str(uuid4())}
+        # submit_result = SubmissionWrapper.submit(f_transport, STORAGE, **task)
+        submit_result = submission_obj
 
-    return make_api_response(submit_result)
+    return make_api_response(submit_result.as_primitives())
 
 
 # noinspection PyUnusedLocal
@@ -254,34 +256,34 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     }
     """
     user = kwargs['user']
-    submission = STORAGE.get_submission(sid)
+    submission = STORAGE.submission.get(sid, as_obj=False)
 
     if submission:
         if not Classification.is_accessible(user['classification'], submission['classification']):
             return make_api_response("", "You are not allowed to re-submit a submission that you don't have access to",
                                      403)
 
-        task = {k: v for k, v in submission['submission'].iteritems() if k not in STRIP_KW}
-        task.update({k: v for k, v in submission['services'].iteritems() if k not in STRIP_KW})
-        task['classification'] = submission['classification']
+        submission_params = submission['params']
+        submission_params['classification'] = submission['classification']
     else:
         return make_api_response({}, "Submission %s does not exists." % sid, status_code=404)
 
-    task['submitter'] = user['uname']
-    if 'priority' not in task:
-        task['priority'] = 500
+    submission_params['submitter'] = user['uname']
+    submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name'] for x in submission["files"]])
 
-    names = []
-    for name, _ in submission["files"]:
-        names.append(name)
-
-    task['description'] = "Resubmit %s for analysis" % ", ".join(names)
+    try:
+        submission_obj = Submission({
+            "files": submission["files"],
+            "params": submission_params
+        })
+    except ValueError as e:
+        return make_api_response("", err=str(e), status_code=400)
 
     with forge.get_filestore() as f_transport:
         # TODO: Actually submit the thing ...
         # submit_result = SubmissionWrapper.submit_multi(STORAGE, f_transport, submission["files"], **task)
-        submit_result = {"sid": str(uuid4())}
-        return make_api_response(submit_result)
+        submit_result = submission_obj
+        return make_api_response(submit_result.as_primitives())
 
 
 # # noinspection PyUnusedLocal
@@ -350,9 +352,9 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 # noinspection PyBroadException,PyUnusedLocal
 @submit_api.route("/", methods=["POST"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-def submit_file(*args, **kwargs):
+def submit(*args, **kwargs):
     """
-    Submit a single file inline
+    Submit a single file or url
     
     Variables:
     None
@@ -369,11 +371,9 @@ def submit_file(*args, **kwargs):
      "params": {             # Submission parameters
          "key": val,            # Key/Value pair for params that different then defaults
          },                     # Default params can be fetch at /api/v3/user/submission_params/<user>/
-     "srv_spec": {           # Service specifics parameters
-         "Extract": {
-             "password": "Try_this_password!@"
-             },
-         }
+     "metadata": {           # Submission metadata
+         "key": val,            # Key/Value pair metadata values
+         },
      "ui_params": {          # UI submission parameters (Only used by UI)
          "key": val,            # UI Key/Value pair of the parameters for the submission
          }
@@ -391,10 +391,9 @@ def submit_file(*args, **kwargs):
     }
     """
     user = kwargs['user']
-
     check_submission_quota(user)
         
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, str(uuid4()))
+    out_dir = os.path.join(TEMP_SUBMIT_DIR, str(uuid.uuid4()))
 
     with forge.get_filestore() as f_transport:
         try:
@@ -417,9 +416,7 @@ def submit_file(*args, **kwargs):
             except Exception:
                 pass
 
-            if os.path.exists(out_file):
-                return make_api_response({}, "File already exist!?", 400)
-
+            submission_files = []
             binary = data.get("binary", None)
             if not binary:
                 sha256 = data.get('sha256', None)
@@ -449,41 +446,38 @@ def submit_file(*args, **kwargs):
                     my_file.write(base64.b64decode(binary))
 
             # Create task object
-            if "ui_params" in data and config.ui.allow_url_submissions:
-                task = data['ui_params']
-                task['groups'] = kwargs['user']['groups']
-                task['quota_item'] = True
-                if not task['description']:
-                    task['description'] = "Inspection of file: %s" % name
-                task = ui_to_dispatch_task(task, kwargs['user']['uname'], str(uuid4()))
+            if "ui_params" in data:
+                s_params = ui_to_submission_params(data['ui_params'])
             else:
-                task = STORAGE.get_user_settings(user['uname'])
-                if not task:
-                    task = get_default_user_settings(user)
+                s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
 
-                task.update(data.get("params", {}))
-                if 'groups' not in task:
-                    task['groups'] = user['groups']
+            if not s_params:
+                s_params = get_default_user_settings(user)
 
-                task["params"] = data.get("srv_spec", {})
-                if 'services' in task and "selected" not in task:
-                    task["selected"] = task["services"]
+            s_params.update(data.get("params", {}))
+            if 'groups' not in s_params:
+                s_params['groups'] = user['groups']
 
-                task['quota_item'] = True
-                task['submitter'] = user['uname']
-                task['sid'] = str(uuid4())
-                if not task['description']:
-                    task['description'] = "Inspection of file: %s" % name
+            s_params['quota_item'] = True
+            s_params['submitter'] = user['uname']
+            if not s_params['description']:
+                s_params['description'] = "Inspection of file: %s" % name
+
+            try:
+                submission_obj = Submission({
+                    "files": [],
+                    "metadata": data.get('metadata', {}),
+                    "params": s_params
+                })
+            except ValueError as e:
+                return make_api_response("", err=str(e), status_code=400)
 
             # TODO: Actually submit the thing ...
             # result = SubmissionWrapper.submit_inline(STORAGE, f_transport, [out_file],
             #                                                      **remove_ui_specific_settings(task))
-            result = {"submission": {"sid": task['sid']}}
+            result = submission_obj
 
-
-            if result['submission']['sid'] != task['sid']:
-                raise Exception('ID does not match what was returned by the dispatcher. Cancelling request...')
-            return make_api_response(result)
+            return make_api_response(result.as_primitives())
 
         finally:
             try:

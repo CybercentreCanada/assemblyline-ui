@@ -219,7 +219,7 @@
                     {% endif %}
 
                     <div class="bigpad text-center">
-                        <button type="submit" class="btn btn-primary bigbutton" ng-click="submit_url(submission_url);" ng-disabled="!url_form.urlbox.$valid||submission_url.length==0||loading">Scan Url</button>
+                        <button type="submit" class="btn btn-primary bigbutton" ng-click="prepare_transfer(submission_url);" ng-disabled="!url_form.urlbox.$valid||submission_url.length==0||loading">Scan Url</button>
                     </div>
                 </form>
             </div>

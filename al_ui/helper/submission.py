@@ -53,8 +53,8 @@ def validate_redirect(r, **_):
 
 def safe_download(download_url, target):
     validate_url(download_url)
-    headers = config.ui.get('url_submission_headers', None)
-    proxies = config.ui.get('url_submission_proxy', None)
+    headers = config.ui.url_submission_headers
+    proxies = config.ui.url_submission_proxies
 
     r = requests.get(download_url,
                      verify=False,
@@ -62,7 +62,7 @@ def safe_download(download_url, target):
                      headers=headers,
                      proxies=proxies)
 
-    if int(r.headers.get('content-length', 0)) > config.submissions.max.size:
+    if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
         raise FileTooBigException("File too big to be scanned.")
 
     written = 0
@@ -71,7 +71,7 @@ def safe_download(download_url, target):
         for chunk in r.iter_content(chunk_size=512 * 1024):
             if chunk:  # filter out keep-alive new chunks
                 written += 512 * 1024
-                if written > config.submissions.max.size:
+                if written > config.submission.max_file_size:
                     f.close()
                     os.unlink(target)
                     raise FileTooBigException("File too big to be scanned.")

@@ -3,15 +3,15 @@
 
 import os
 import glob
-import uuid
 
 from flask import request
 
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE
-from al_ui.helper.service import ui_to_dispatch_task
+from al_ui.helper.service import ui_to_submission_params
 from al_ui.helper.user import check_submission_quota
 from assemblyline.common import forge
+from assemblyline.odm.messages.submission import Submission
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -47,10 +47,10 @@ def reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks):
         pass
     
     for my_file in range(int(flow_total_chunks)):
-        with open(target_file, "a") as t:
+        with open(target_file, "ab") as t:
             chunk = str(my_file + 1)
             cur_chunk_file = os.path.join(mydir, "chunk.part%s" % chunk)
-            with open(cur_chunk_file) as s:
+            with open(cur_chunk_file, "rb") as s:
                 t.write(s.read())
             os.unlink(cur_chunk_file)
     
@@ -58,7 +58,7 @@ def reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks):
 
 
 def validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
-    if flow_total_chunks > 1:
+    if int(flow_total_chunks) > 1:
         last_chunk_size = int(flow_total_size) - ((int(flow_total_chunks) - 1) * int(flow_chunk_size))
     else:
         last_chunk_size = int(flow_total_size)
@@ -221,7 +221,7 @@ def start_ui_submission(ui_sid, **kwargs):
     None
     
     Data Block (REQUIRED):
-    Dictionary of user settings obtained by calling 'GET /api/v4/user/settings/<username>/'
+    Dictionary of UI specific user settings
     
     Result example:
     {
@@ -233,11 +233,12 @@ def start_ui_submission(ui_sid, **kwargs):
 
     check_submission_quota(user)
 
-    task = request.json
-    task['groups'] = kwargs['user']['groups']
-    task['quota_item'] = True
+    ui_params = request.json
+    ui_params['groups'] = kwargs['user']['groups']
+    ui_params['quota_item'] = True
+    ui_params['submitter'] = user['uname']
     
-    if not Classification.is_accessible(user['classification'], task['classification']):
+    if not Classification.is_accessible(user['classification'], ui_params['classification']):
         return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
                                                                   "classification then you're allowed to see", 403)
     
@@ -256,19 +257,25 @@ def start_ui_submission(ui_sid, **kwargs):
                     if myfile not in fnames:
                         fnames.append(myfile)
                         
-            if not task['description']:
-                task['description'] = "Inspection of file%s: %s" % ({True: "s", False: ""}[len(fnames) > 1],
-                                                                    ", ".join(fnames))
+            if not ui_params['description']:
+                ui_params['description'] = "Inspection of file%s: %s" % ({True: "s", False: ""}[len(fnames) > 1],
+                                                                         ", ".join(fnames))
 
             # Submit to dispatcher
-            dispatch_task = ui_to_dispatch_task(task, kwargs['user']['uname'], str(uuid.uuid4()))
-            with forge.get_filestore() as f_transport:
-                # TODO: Acutally submit the thing
+            try:
+                submission_obj = Submission({
+                    "files": [],
+                    "params": ui_to_submission_params(ui_params)
+                })
+            except ValueError as e:
+                return make_api_response("", err=str(e), status_code=400)
+
+            # TODO: Actually submit the thing
+            # with forge.get_filestore() as f_transport:
                 # result = SubmissionWrapper.submit_inline(STORAGE, f_transport, request_files, **dispatch_task)
-                result = {"submission": {"sid": dispatch_task['sid']}}
-            if result['submission']['sid'] != dispatch_task['sid']:
-                raise Exception('ID does not match what was returned by the dispatcher. Cancelling request...')
-            return make_api_response({"started": True, "sid": result['submission']['sid']})
+            result = submission_obj
+
+            return make_api_response({"started": True, "sid": result.sid})
         else:
             return make_api_response({"started": False, "sid": None}, "No files where found for ID %s. "
                                                                       "Try again..." % ui_sid, 404)

@@ -7,7 +7,7 @@ from assemblyline.common.security import get_password_hash, check_password_requi
 from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, CLASSIFICATION, config
-from al_ui.helper.service import ui_to_dispatch_task
+from al_ui.helper.service import ui_to_submission_params
 from al_ui.helper.user import load_user_settings, save_user_settings, save_user_account
 from al_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
@@ -22,7 +22,7 @@ ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 
 @user_api.route("/<username>/", methods=["PUT"])
 @api_login(require_admin=True)
-def add_user_account(username, **kwargs):
+def add_user_account(username, **_):
     """
     Add a user to the system
     
@@ -645,10 +645,11 @@ def get_user_submission_params(username, **kwargs):
         user = STORAGE.user.get(username, as_obj=False)
 
     params = load_user_settings(user)
-    dispatch_task = ui_to_dispatch_task(params, kwargs['user']['uname'])
-    dispatch_task['groups'] = user['groups']
+    submission_params = ui_to_submission_params(params)
+    submission_params['submitter'] = username
+    submission_params['groups'] = user['groups']
 
-    return make_api_response(dispatch_task)
+    return make_api_response(submission_params)
 
 
 ######################################################

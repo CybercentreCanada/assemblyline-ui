@@ -242,7 +242,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.success = 'File successfully resubmitted for dynamic analysis. You will be redirected...';
                     $timeout(function () {
                         $scope.success = "";
-                        window.location = "/submission_detail.html?sid=" + data.api_response.submission.sid;
+                        window.location = "/submission_detail.html?sid=" + data.api_response.sid;
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
@@ -275,7 +275,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.success = 'Current submission successfully resubmitted for analysis. You will be redirected...';
                     $timeout(function () {
                         $scope.success = "";
-                        window.location = "/submission_detail.html?sid=" + data.api_response.submission.sid;
+                        window.location = "/submission_detail.html?sid=" + data.api_response.sid;
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {

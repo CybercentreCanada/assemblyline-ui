@@ -54,7 +54,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
             data: data
         })
         .success(function (data) {
-            window.location = "/submission_detail.html?new&sid=" + data.api_response.submission.sid;
+            window.location = "/submission_detail.html?new&sid=" + data.api_response.sid;
         })
         .error(function (data, status, headers, config) {
             if (data === "") {
@@ -74,11 +74,15 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
     };
 
-    $scope.prepare_transfer = function () {
+    $scope.prepare_transfer = function (url) {
+        let type = "file(s)";
+        if (url !== undefined){
+            type = "url";
+        }
         if ($scope.user.c12n_enforcing) {
             swal({
                     title: $scope.params.classification,
-                    text: "\n\nAre you sure this is the right classification for your files?\n\n",
+                    text: "\n\nAre you sure this is the right classification for your " + type + "?\n\n",
                     type: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#d9534f",
@@ -87,16 +91,20 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                 },
                 function () {
                     $timeout(function () {
-                        $scope.check_external();
+                        $scope.check_external(url);
                     }, 250)
                 });
         }
         else {
-            $scope.check_external();
+            $scope.check_external(url);
         }
     };
 
-    $scope.check_external = function () {
+    $scope.check_external = function (url) {
+        let type = "file(s)";
+        if (url !== undefined){
+            type = "url";
+        }
         var raise_warning = false;
         for (var i = 0; i < $scope.params.services.length; i++) {
             for (var x = 0; x < $scope.params.services[i].services.length; x++) {
@@ -110,7 +118,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
         if (raise_warning) {
             swal({
                     title: "External Submission!",
-                    text: "\n\nYou are about to submit your file(s) to a service outside of our infrastructure.\n\nThis may take several minutes...\n\n",
+                    text: "\n\nYou are about to submit your " + type + " to a service outside of our infrastructure.\n\nThis may take several minutes...\n\n",
                     type: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#d9534f",
@@ -128,14 +136,29 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                             }
                         }
                     }
-                    $scope.start_transfer();
+                    if (type === "url"){
+                        $scope.submit_url(url);
+                    }
+                    else{
+                        $scope.start_transfer();
+                    }
                 },
                 function () {
-                    $scope.start_transfer();
+                    if (type === "url"){
+                        $scope.submit_url(url);
+                    }
+                    else{
+                        $scope.start_transfer();
+                    }
                 });
         }
         else {
-            $scope.start_transfer();
+            if (type === "url"){
+                $scope.submit_url(url);
+            }
+            else{
+                $scope.start_transfer();
+            }
         }
     };
 

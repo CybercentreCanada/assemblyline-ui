@@ -1,6 +1,6 @@
 
 from al_ui.config import STORAGE, SYSTEM_SERVICE_CATEGORY_NAME
-from assemblyline.odm.models.user_settings import DEFAULT_SRV_SEL
+from assemblyline.odm.models.submission import DEFAULT_SRV_SEL
 
 
 def get_default_service_spec(srv_list=None):
@@ -60,29 +60,23 @@ def simplify_service_spec(service_spec):
     return params
 
 
-def ui_to_dispatch_task(task, uname, sid=None):
+def ui_to_submission_params(params):
+    if params is None:
+        return params
+
     # Simplify services params
-    if "service_spec" in task:
-        task["params"] = simplify_service_spec(task["service_spec"])
-        del(task['service_spec'])
+    if "service_spec" in params:
+        params["service_spec"] = simplify_service_spec(params["service_spec"])
+    else:
+        params['service_spec'] = {}
         
     # Simplify service selection
-    if "services" in task:
-        task['selected'] = simplify_services(task["services"])
-        del(task['services'])
-    
-    # Add username
-    task['submitter'] = uname
-    
-    if sid:
-        task['sid'] = sid
+    if "services" in params and isinstance(params['services'], list):
+        params['services'] = {'selected': simplify_services(params["services"])}
     
     # Remove UI specific params
-    if "download_encoding" in task:
-        del(task['download_encoding'])
-    if "expand_min_score" in task:
-        del(task['expand_min_score'])
-    if "hide_raw_results" in task:
-        del(task['hide_raw_results'])
-    
-    return task
+    params.pop('download_encoding', None)
+    params.pop('expand_min_score', None)
+    params.pop('hide_raw_results', None)
+
+    return params

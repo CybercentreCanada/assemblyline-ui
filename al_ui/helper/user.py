@@ -169,8 +169,7 @@ def get_default_user_settings(user):
 
 
 def load_user_settings(user):
-    default_settings = UserSettings({
-        "classification": Classification.default_user_classification(user)}).as_primitives()
+    default_settings = get_default_user_settings(user)
 
     settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
     srv_list = [x for x in STORAGE.list_all_services(as_obj=False, full=True) if x['enabled']]
@@ -188,7 +187,7 @@ def load_user_settings(user):
             if key not in default_settings:
                 del settings[key]
                 
-        def_srv_list = settings.get('services', None)
+        def_srv_list = settings.get('services', {}).get('selected', None)
     
     settings['service_spec'] = get_default_service_spec(srv_list)
     settings['services'] = get_default_service_list(srv_list, def_srv_list)
@@ -213,6 +212,6 @@ def remove_ui_specific_settings(task):
 
 def save_user_settings(username, data):
     data["service_spec"] = {}
-    data["services"] = simplify_services(data["services"])
+    data["services"] = {'selected': simplify_services(data["services"])}
     
     return STORAGE.user_settings.save(username, data)
