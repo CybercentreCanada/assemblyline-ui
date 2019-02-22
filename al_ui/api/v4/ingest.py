@@ -244,14 +244,16 @@ def ingest_single_file(**kwargs):
             # Setup notification queue if needed
             if notification_queue:
                 notification_params = {
-                    "notification_queue": notification_queue,
-                    "notification_threshold": notification_threshold
+                    "queue": notification_queue,
+                    "threshold": notification_threshold
                 }
             else:
                 notification_params = {}
 
             # Load metadata and setup some default values if they are missing
+            ingest_id = str(uuid4())
             metadata = data.get("metadata", {})
+            metadata['ingest_id'] = ingest_id
             metadata['type'] = s_params['type']
             if 'ts' not in metadata:
                 metadata['ts'] = now_as_iso()
@@ -259,6 +261,7 @@ def ingest_single_file(**kwargs):
             # Create submission object
             try:
                 submission_obj = Submission({
+                    "sid": ingest_id,
                     "files": [{'name': name, 'sha256': sha256}],
                     "notification": notification_params,
                     "metadata": metadata,
@@ -269,8 +272,7 @@ def ingest_single_file(**kwargs):
 
             # Send submission object for processing
             ingest.push(submission_obj.as_primitives())
-
-            return make_api_response({"success": True})
+            return make_api_response({"ingest_id": ingest_id})
         finally:
             try:
                 # noinspection PyUnboundLocalVariable
