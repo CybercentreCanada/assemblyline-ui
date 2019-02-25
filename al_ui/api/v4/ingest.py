@@ -19,8 +19,6 @@ SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
 ingest_api._doc = "Ingest files for large volume processing"
 
-# TODO: We will assume that middleman will not be sharded that the new version will work with any number of middleman
-#       working the same queue.
 ingest = NamedQueue(
     "m-ingest",
     host=config.core.redis.persistent.host,

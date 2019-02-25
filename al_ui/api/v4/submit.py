@@ -6,12 +6,13 @@ import uuid
 
 from flask import request
 
-from assemblyline.common import forge
+from al_core.submission_client import SubmissionClient, SubmissionException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import check_submission_quota, get_default_user_settings
 from al_ui.helper.service import ui_to_submission_params
+from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
 
 Classification = forge.get_classification()
@@ -215,9 +216,11 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         except ValueError as e:
             return make_api_response("", err=str(e), status_code=400)
 
-        # TODO: Actually submit the thing ...
-        # submit_result = SubmissionWrapper.submit(f_transport, STORAGE, **task)
-        submit_result = submission_obj
+        try:
+            submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
+                                             config=config).submit(submission_obj)
+        except SubmissionException as e:
+            return make_api_response("", err=str(e), status_code=400)
 
     return make_api_response(submit_result.as_primitives())
 
@@ -266,10 +269,14 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         return make_api_response("", err=str(e), status_code=400)
 
     with forge.get_filestore() as f_transport:
-        # TODO: Actually submit the thing ...
-        # submit_result = SubmissionWrapper.submit_multi(STORAGE, f_transport, submission["files"], **task)
-        submit_result = submission_obj
-        return make_api_response(submit_result.as_primitives())
+        try:
+            submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
+                                             config=config).submit(submission_obj)
+        except SubmissionException as e:
+            return make_api_response("", err=str(e), status_code=400)
+
+
+    return make_api_response(submit_result.as_primitives())
 
 
 # # noinspection PyUnusedLocal
@@ -452,10 +459,11 @@ def submit(**kwargs):
             except ValueError as e:
                 return make_api_response("", err=str(e), status_code=400)
 
-            # TODO: Actually submit the thing ...
-            # result = SubmissionWrapper.submit_inline(STORAGE, f_transport, [out_file],
-            #                                                      **remove_ui_specific_settings(task))
-            result = submission_obj
+            try:
+                result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
+                                          config=config).submit(submission_obj, local_files=[out_file], cleanup=False)
+            except SubmissionException as e:
+                return make_api_response("", err=str(e), status_code=400)
 
             return make_api_response(result.as_primitives())
 

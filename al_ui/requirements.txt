@@ -6,3 +6,5 @@ eventlet
 python_u2flib_server
 pyqrcode
 markdown
+assemblyline
+assemblyline-core

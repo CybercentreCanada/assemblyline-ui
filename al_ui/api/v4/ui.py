@@ -6,8 +6,9 @@ import glob
 
 from flask import request
 
+from al_core.submission_client import SubmissionClient, SubmissionException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE
+from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
 from al_ui.helper.service import ui_to_submission_params
 from al_ui.helper.user import check_submission_quota
 from assemblyline.common import forge
@@ -270,10 +271,13 @@ def start_ui_submission(ui_sid, **kwargs):
             except ValueError as e:
                 return make_api_response("", err=str(e), status_code=400)
 
-            # TODO: Actually submit the thing
-            # with forge.get_filestore() as f_transport:
-                # result = SubmissionWrapper.submit_inline(STORAGE, f_transport, request_files, **dispatch_task)
-            result = submission_obj
+            with forge.get_filestore() as f_transport:
+                try:
+                    result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
+                                              config=config).submit(submission_obj,
+                                                                    local_files=request_files, cleanup=False)
+                except SubmissionException as e:
+                    return make_api_response("", err=str(e), status_code=400)
 
             return make_api_response({"started": True, "sid": result.sid})
         else:
