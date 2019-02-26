@@ -10,15 +10,14 @@ angular.module('socket-io', []).
 provider('socketFactory', function () {
 
 	// when forwarding events, prefix the event name
-	var defaultPrefix = 'socket:',
-	ioSocket;
+	let defaultPrefix = 'socket:';
 
 	// expose to provider
 	this.$get = function ($rootScope, $timeout) {
 
-		var asyncAngularify = function (socket, callback) {
+		let asyncAngularify = function (socket, callback) {
 			return callback ? function () {
-				var args = arguments;
+				let args = arguments;
 				$timeout(function () {
 					callback.apply(socket, args);
 				}, 0);
@@ -27,76 +26,78 @@ provider('socketFactory', function () {
 
 		return function socketFactory (options) {
 			options = options || {};
-			var socket = options.ioSocket || io.connect("", {"connect timeout": 500, "max reconnection attempts": 7, "transports": ['websocket', 'xhr-polling']});
-			var prefix = options.prefix || defaultPrefix;
-			var defaultScope = options.scope || $rootScope;
+			let socket = options.ioSocket || io("", {
+				"timeout": 500,
+				"reconnectionAttempts": 7,
+				"transports": ['polling', 'websocket']
+			});
+			let prefix = options.prefix || defaultPrefix;
+			let defaultScope = options.scope || $rootScope;
 
-			socket.on('error', function(event){
+			socket.on('error', function(){
 				console.log("NG-SocketIO::Failed to connect to:", socket.socket);
-			})
-			socket.on('connect', function(event){
+			});
+			socket.on('connect_timeout', function(timeout){
+				console.log("NG-SocketIO::Connection timeout reached. (" + timeout + "ms)");
+			});
+			socket.on('connect', function(){
 				console.log("NG-SocketIO::Connected");
-			})
-			socket.on('reconnecting', function(timeout, number){
-				console.log("NG-SocketIO::Reconnection attemp #"+number+" failed. Next retry in " + timeout + " ms");
-			})
-			
-			var addListener = function (eventName, callback) {
+			});
+			socket.on('reconnecting', function(attempNumber){
+				console.log("NG-SocketIO::Reconnecting to SocketIO server. (attempt #"+attempNumber+")");
+			});
+
+			let addListener = function (eventName, callback) {
+				socket.on(eventName, callback);
 				socket.on(eventName, asyncAngularify(socket, callback));
 			};
 
-			var setConnectionCallback = function (callback){
+			let setConnectionCallback = function (callback) {
 				socket.on('connect', asyncAngularify(socket, callback));
 			};
-			
-			var wrappedSocket = {
-					connected: function (){
-						return socket.socket.connected;
-					},
 
-					connecting: function (){
-						return socket.socket.connecting;
-					},
+			return {
+				connected: function () {
+					return socket.socket.connected;
+				},
 
-					get_socket: function (){
-						return socket.socket;
-					},
+				connecting: function () {
+					return socket.socket.connecting;
+				},
 
-					on: addListener,
-					addListener: addListener,
-					setConnectionCallback: setConnectionCallback,
+				on: addListener,
+				addListener: addListener,
+				setConnectionCallback: setConnectionCallback,
 
-					emit: function (eventName, data, callback) {
-						return socket.emit(eventName, data, asyncAngularify(socket, callback));
-					},
+				emit: function (eventName, data, callback) {
+					return socket.emit(eventName, data, asyncAngularify(socket, callback));
+				},
 
-					removeListener: function () {
-						return socket.removeListener.apply(socket, arguments);
-					},
+				removeListener: function () {
+					return socket.removeListener.apply(socket, arguments);
+				},
 
-					// when socket.on('someEvent', fn (data) { ... }),
-					// call scope.$broadcast('someEvent', data)
-					forward: function (events, scope) {
-						if (events instanceof Array === false) {
-							events = [events];
-						}
-						if (!scope) {
-							scope = defaultScope;
-						}
-						events.forEach(function (eventName) {
-							var prefixedEvent = prefix + eventName;
-							var forwardBroadcast = asyncAngularify(socket, function (data) {
-								scope.$broadcast(prefixedEvent, data);
-							});
-							scope.$on('$destroy', function () {
-								socket.removeListener(eventName, forwardBroadcast);
-							});
-							socket.on(eventName, forwardBroadcast);
-						});
+				// when socket.on('someEvent', fn (data) { ... }),
+				// call scope.$broadcast('someEvent', data)
+				forward: function (events, scope) {
+					if (events instanceof Array === false) {
+						events = [events];
 					}
+					if (!scope) {
+						scope = defaultScope;
+					}
+					events.forEach(function (eventName) {
+						let prefixedEvent = prefix + eventName;
+						let forwardBroadcast = asyncAngularify(socket, function (data) {
+							scope.$broadcast(prefixedEvent, data);
+						});
+						scope.$on('$destroy', function () {
+							socket.removeListener(eventName, forwardBroadcast);
+						});
+						socket.on(eventName, forwardBroadcast);
+					});
+				}
 			};
-
-			return wrappedSocket;
 		};
 	};
 });

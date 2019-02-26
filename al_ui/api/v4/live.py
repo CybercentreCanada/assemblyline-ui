@@ -123,7 +123,7 @@ def outstanding_services(sid, **kwargs):
     Result example:
     {"MY SERVICE": 1, ... } # Dictionnary of services and number of files
     """
-    data = STORAGE.ubmission.get(sid, as_obj=False)
+    data = STORAGE.submission.get(sid, as_obj=False)
     user = kwargs['user']
     
     if user and data and Classification.is_accessible(user['classification'], data['classification']):

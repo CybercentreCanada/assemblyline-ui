@@ -309,6 +309,37 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $scope.error = data.err_msg;
             }
         });
+        mySocket.on('socket:start', function () {
+            $scope.started = true;
+            for (var idx in $scope.messages) {
+                if ($scope.messages[idx] == "start") {
+                    return;
+                }
+            }
+            $scope.messages.push("start");
+            sessionStorage.setItem("msg_" + $scope.sid, JSON.stringify($scope.messages));
+
+            if ($scope.temp_data != null) {
+                $scope.draw_temp_data();
+            }
+            $scope.timed_redraw();
+        });
+        mySocket.on('start', function () {
+            $scope.started = true;
+            for (var idx in $scope.messages) {
+                if ($scope.messages[idx] == "start") {
+                    return;
+                }
+            }
+            $scope.messages.push("start");
+            sessionStorage.setItem("msg_" + $scope.sid, JSON.stringify($scope.messages));
+
+            if ($scope.temp_data != null) {
+                $scope.draw_temp_data();
+            }
+            $scope.timed_redraw();
+        });
+
         $scope.$on('socket:start', function () {
             $scope.started = true;
             for (var idx in $scope.messages) {
