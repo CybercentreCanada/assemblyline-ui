@@ -1,6 +1,4 @@
 
-from flask import request
-
 from al_core.dispatching.client import DispatchClient
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -41,9 +39,7 @@ def get_message(wq_id, **_):
      "msg": ""           # Message
     } 
     """
-    u = NamedQueue(wq_id)
-    
-    msg = u.pop(blocking=False)
+    msg = NamedQueue(wq_id).pop(blocking=False)
     
     if msg is None:
         response = {'type': 'timeout', 'err_msg': 'Timeout waiting for a message.', 'status_code': 408, 'msg': None}
@@ -57,7 +53,7 @@ def get_message(wq_id, **_):
     elif msg['status'] == 'FAIL':
         response = {'type': 'cachekeyerr', 'err_msg': None, 'status_code': 200, 'msg': msg['cache_key']}
     else:
-        response = {'type': 'error', 'err_msg': "Unknown message", 'status_code': 500, 'msg': msg}
+        response = {'type': 'error', 'err_msg': "Unknown message", 'status_code': 400, 'msg': msg}
         
     return make_api_response(response)
 
@@ -90,6 +86,7 @@ def get_messages(wq_id, **_):
         msg = u.pop(blocking=False)
         if msg is None:
             break
+
         elif msg['status'] == 'STOP':
             response = {'type': 'stop', 'err_msg': None, 'status_code': 200,
                         'msg': "All messages received, closing queue..."}
@@ -100,7 +97,7 @@ def get_messages(wq_id, **_):
         elif msg['status'] == 'FAIL':
             response = {'type': 'cachekeyerr', 'err_msg': None, 'status_code': 200, 'msg': msg['cache_key']}
         else:
-            response = {'type': 'error', 'err_msg': "Unknown message", 'status_code': 500, 'msg': msg}
+            response = {'type': 'error', 'err_msg': "Unknown message", 'status_code': 400, 'msg': msg}
         
         resp_list.append(response)
             
@@ -130,7 +127,7 @@ def outstanding_services(sid, **kwargs):
     user = kwargs['user']
     
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(DispatchClient(STORAGE).outstanding_services(sid))
+        return make_api_response(DispatchClient(datastore=STORAGE).outstanding_services(sid))
     else:
         return make_api_response({}, "You are not allowed to access this submissions.", 403)
 
@@ -157,6 +154,6 @@ def setup_watch_queue(sid, **kwargs):
     user = kwargs['user']
     
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response({"wq_id": DispatchClient(STORAGE).setup_watch_queue(sid)})
+        return make_api_response({"wq_id": DispatchClient(datastore=STORAGE).setup_watch_queue(sid)})
     else:
         return make_api_response("", "You are not allowed to access this submissions.", 403)
