@@ -7,7 +7,7 @@
 
 var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'ui.bootstrap', 'ng.jsoneditor'])
     .factory('mySocket', function (socketFactory) {
-        var mySocket = socketFactory({namespace: "/live_submission"});
+        var mySocket = socketFactory();
         mySocket.forward('error');
         mySocket.forward('start');
         mySocket.forward('stop');

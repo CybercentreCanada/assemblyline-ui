@@ -2,7 +2,7 @@
 from flask import request
 from flask_socketio import join_room
 
-from al_ui.socketio.base import get_request_id, SecureNamespace, LOGGER
+from al_ui.socketio.base import get_request_id, SecureNamespace, LOGGER, authenticated_only
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 
@@ -74,6 +74,7 @@ class LiveSubmissionNamespace(SecureNamespace):
 
         LOGGER.info(f"SocketIO:{self.namespace} - {uname} - Watch queue thread terminated for queue: {queue_id}")
 
+    @authenticated_only
     def on_listen(self, data):
         sid = get_request_id(request)
         queue_id = data['wq_id']

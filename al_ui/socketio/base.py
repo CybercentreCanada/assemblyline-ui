@@ -1,12 +1,15 @@
+
+import functools
 import logging
 import threading
 
 from flask import request, session
-from flask_socketio import Namespace, disconnect
+from flask_socketio import Namespace, disconnect, emit
 
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.hash import Hash
 
+classification = forge.get_classification()
 config = forge.get_config()
 datastore = forge.get_datastore()
 
@@ -17,11 +20,28 @@ KV_SESSION = Hash("flask_sessions",
 LOGGER = logging.getLogger('assemblyline.ui.socketio')
 
 
+def authenticated_only(f):
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        self = args[0]
+        if get_request_id(request) not in self.connections:
+            disconnect()
+        else:
+            return f(*args, **kwargs)
+
+    return wrapped
+
+
 class SecureNamespace(Namespace):
     def __init__(self, namespace=None):
         self.connections_lock = threading.RLock()
         self.connections = {}
         super().__init__(namespace=namespace)
+
+    def get_info_from_sid(self, sid):
+        return self.connections.get(sid, {'uname': "unknown",
+                                          'classification': classification.UNRESTRICTED,
+                                          'ip': '0.0.0.0'})
 
     def get_user_from_sid(self, sid):
         if sid in self.connections:
@@ -32,7 +52,7 @@ class SecureNamespace(Namespace):
         info = get_user_info(request, session)
 
         if info.get('uname', None) is None:
-            disconnect()
+            return
 
         sid = get_request_id(request)
 
