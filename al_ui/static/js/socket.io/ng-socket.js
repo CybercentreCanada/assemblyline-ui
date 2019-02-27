@@ -26,9 +26,8 @@ provider('socketFactory', function () {
 
 		return function socketFactory (options) {
 			options = options || {};
-			let socket = options.ioSocket || io("", {
+			let socket = options.ioSocket || io(options.namespace || "", {
 				"timeout": 500,
-				"reconnectionAttempts": 7,
 				"transports": ['polling', 'websocket']
 			});
 			let prefix = options.prefix || defaultPrefix;

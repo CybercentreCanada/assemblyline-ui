@@ -7,7 +7,7 @@
 
 var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'ui.bootstrap', 'ng.jsoneditor'])
     .factory('mySocket', function (socketFactory) {
-        var mySocket = socketFactory();
+        var mySocket = socketFactory({namespace: "/live_submission"});
         mySocket.forward('error');
         mySocket.forward('start');
         mySocket.forward('stop');
@@ -305,41 +305,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         //SocketIO
         $scope.$on('socket:error', function (event, data) {
-            if (data.err_msg) {
-                $scope.error = data.err_msg;
+            if (data.msg) {
+                $scope.error = data.msg;
             }
         });
-        mySocket.on('socket:start', function () {
-            $scope.started = true;
-            for (var idx in $scope.messages) {
-                if ($scope.messages[idx] == "start") {
-                    return;
-                }
-            }
-            $scope.messages.push("start");
-            sessionStorage.setItem("msg_" + $scope.sid, JSON.stringify($scope.messages));
-
-            if ($scope.temp_data != null) {
-                $scope.draw_temp_data();
-            }
-            $scope.timed_redraw();
-        });
-        mySocket.on('start', function () {
-            $scope.started = true;
-            for (var idx in $scope.messages) {
-                if ($scope.messages[idx] == "start") {
-                    return;
-                }
-            }
-            $scope.messages.push("start");
-            sessionStorage.setItem("msg_" + $scope.sid, JSON.stringify($scope.messages));
-
-            if ($scope.temp_data != null) {
-                $scope.draw_temp_data();
-            }
-            $scope.timed_redraw();
-        });
-
         $scope.$on('socket:start', function () {
             $scope.started = true;
             for (var idx in $scope.messages) {
@@ -524,7 +493,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: 'POST',
-                url: "/api/v4/service/multiple/keys/",
+                url: "/api/v4/result/multiple_keys/",
                 data: data
             })
                 .success(function (data) {
