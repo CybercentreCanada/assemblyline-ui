@@ -1,47 +1,23 @@
-import logging
-import threading
 
-from flask import request, session
-from flask_socketio import Namespace, join_room, disconnect
+from flask import request
+from flask_socketio import join_room
 
-from al_ui.socketio.base import get_user_info
+from al_ui.socketio.base import get_request_id, SecureNamespace, LOGGER
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
-LOGGER = logging.getLogger('assemblyline.ui.socketio')
 
-
-# noinspection PyMethodMayBeStatic,PyUnresolvedReferences
-class LiveSubmissionNamespace(Namespace):
+class LiveSubmissionNamespace(SecureNamespace):
     def __init__(self, namespace=None):
-        self.connections_lock = threading.RLock()
-        self.connections = {}
         self.watch_queues = {}
         super().__init__(namespace=namespace)
 
-    def on_connect(self):
-        info = get_user_info(request, session)
-
-        if info.get('uname', None) is None:
-            disconnect()
-
-        with self.connections_lock:
-            self.connections[request.sid] = info
-
-        LOGGER.info(f"SocketIO:{self.namespace} - {info['uname']} - New connection establish from: {info['ip']}")
-
-    def on_disconnect(self):
-        with self.connections_lock:
-            if request.sid in self.connections:
-                info = self.connections[request.sid]
-                LOGGER.info(f"SocketIO:{self.namespace} - {info['uname']} - User disconnected from: {info['ip']}")
-
-            self.connections.pop(request.sid, None)
-            for room_id in list(self.watch_queues.keys()):
-                if self.watch_queues[room_id] == request.sid:
-                    self.watch_queues.pop(room_id, None)
+    def _extra_cleanup(self, sid):
+        for watch_queue in list(self.watch_queues.keys()):
+            if self.watch_queues[watch_queue] == sid:
+                self.watch_queues.pop(watch_queue, None)
 
     def watch_message_queue(self, queue_id):
-        uname = self.connections[self.watch_queues[queue_id]]['uname']
+        uname = self.get_user_from_sid(self.watch_queues[queue_id])
         queue = NamedQueue(queue_id, private=True)
         max_retry = 30
         retry = 0
@@ -99,13 +75,14 @@ class LiveSubmissionNamespace(Namespace):
         LOGGER.info(f"SocketIO:{self.namespace} - {uname} - Watch queue thread terminated for queue: {queue_id}")
 
     def on_listen(self, data):
-        info = self.connections[request.sid]
+        sid = get_request_id(request)
         queue_id = data['wq_id']
 
-        LOGGER.info(f"SocketIO:{self.namespace} - {info['uname']} - Listening event received for queue: {queue_id}")
+        LOGGER.info(f"SocketIO:{self.namespace} - {self.get_user_from_sid(sid)} - "
+                    f"Listening event received for queue: {queue_id}")
 
         with self.connections_lock:
-            self.watch_queues[queue_id] = request.sid
+            self.watch_queues[queue_id] = sid
         self.socketio.start_background_task(target=self.watch_message_queue, queue_id=queue_id)
 
         join_room(queue_id)

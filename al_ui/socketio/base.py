@@ -1,3 +1,9 @@
+import logging
+import threading
+
+from flask import request, session
+from flask_socketio import Namespace, disconnect
+
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.hash import Hash
 
@@ -8,6 +14,54 @@ KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
                   port=config.core.redis.nonpersistent.port,
                   db=config.core.redis.nonpersistent.db)
+LOGGER = logging.getLogger('assemblyline.ui.socketio')
+
+
+class SecureNamespace(Namespace):
+    def __init__(self, namespace=None):
+        self.connections_lock = threading.RLock()
+        self.connections = {}
+        super().__init__(namespace=namespace)
+
+    def get_user_from_sid(self, sid):
+        if sid in self.connections:
+            return f"{self.connections[sid]['uname']}({sid[:4]})"
+        return "unknown"
+
+    def on_connect(self):
+        info = get_user_info(request, session)
+
+        if info.get('uname', None) is None:
+            disconnect()
+
+        sid = get_request_id(request)
+
+        with self.connections_lock:
+            self.connections[sid] = info
+
+        LOGGER.info(f"SocketIO:{self.namespace} - {self.get_user_from_sid(sid)} - "
+                    f"New connection establish from: {info['ip']}")
+        print(self.connections)
+
+    def on_disconnect(self):
+        sid = get_request_id(request)
+        with self.connections_lock:
+            if sid in self.connections:
+                info = self.connections[get_request_id(request)]
+                LOGGER.info(f"SocketIO:{self.namespace} - {self.get_user_from_sid(sid)} - "
+                            f"User disconnected from: {info['ip']}")
+
+            self.connections.pop(sid, None)
+            self._extra_cleanup(sid)
+
+    def _extra_cleanup(self, sid):
+        pass
+
+
+def get_request_id(request_p):
+    if hasattr(request_p, "sid"):
+        return request_p.sid
+    return None
 
 
 def get_user_info(request_p, session_p):
