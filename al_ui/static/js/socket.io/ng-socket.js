@@ -34,8 +34,8 @@ provider('socketFactory', function () {
 			let prefix = options.prefix || defaultPrefix;
 			let defaultScope = options.scope || $rootScope;
 
-			socket.on('error', function(){
-				console.log("NG-SocketIO::Failed to connect to:", socket.socket);
+			socket.on('error', function(error){
+				console.log("NG-SocketIO::Failed to connect to:", socket.io.uri);
 			});
 			socket.on('connect_timeout', function(timeout){
 				console.log("NG-SocketIO::Connection timeout reached. (" + timeout + "ms)");

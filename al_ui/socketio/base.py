@@ -24,9 +24,11 @@ def authenticated_only(f):
     @functools.wraps(f)
     def wrapped(*args, **kwargs):
         self = args[0]
-        if get_request_id(request) not in self.connections:
+        user_info = self.connections.get(get_request_id(request), None)
+        if not user_info:
             disconnect()
         else:
+            kwargs['user_info'] = user_info
             return f(*args, **kwargs)
 
     return wrapped
@@ -37,16 +39,6 @@ class SecureNamespace(Namespace):
         self.connections_lock = threading.RLock()
         self.connections = {}
         super().__init__(namespace=namespace)
-
-    def get_info_from_sid(self, sid):
-        return self.connections.get(sid, {'uname': "unknown",
-                                          'classification': classification.UNRESTRICTED,
-                                          'ip': '0.0.0.0'})
-
-    def get_user_from_sid(self, sid):
-        if sid in self.connections:
-            return f"{self.connections[sid]['uname']}({sid[:4]})"
-        return "unknown"
 
     def on_connect(self):
         info = get_user_info(request, session)
@@ -59,16 +51,15 @@ class SecureNamespace(Namespace):
         with self.connections_lock:
             self.connections[sid] = info
 
-        LOGGER.info(f"SocketIO:{self.namespace} - {self.get_user_from_sid(sid)} - "
+        LOGGER.info(f"SocketIO:{self.namespace} - {info['display']} - "
                     f"New connection establish from: {info['ip']}")
-        print(self.connections)
 
     def on_disconnect(self):
         sid = get_request_id(request)
         with self.connections_lock:
             if sid in self.connections:
                 info = self.connections[get_request_id(request)]
-                LOGGER.info(f"SocketIO:{self.namespace} - {self.get_user_from_sid(sid)} - "
+                LOGGER.info(f"SocketIO:{self.namespace} - {info['display']} - "
                             f"User disconnected from: {info['ip']}")
 
             self.connections.pop(sid, None)
@@ -85,6 +76,8 @@ def get_request_id(request_p):
 
 
 def get_user_info(request_p, session_p):
+    src_ip = request_p.headers.get("X-Forward-For", request_p.remote_addr)
+    sid = get_request_id(request_p)
     uname = None
     current_session = KV_SESSION.get(session_p.get("session_id", None))
     if current_session:
@@ -97,9 +90,15 @@ def get_user_info(request_p, session_p):
         user = datastore.user.get(uname, as_obj=False)
         if user:
             user_classification = user.get('classification', None)
+    # TODO: Fake user
+    else:
+        uname = "FAKE"
+        user_classification = classification.RESTRICTED
 
     return {
         'uname': uname,
+        'display': f"{uname}({sid[:4]})",
         'classification': user_classification,
-        'ip': request_p.headers.get("X-Forward-For", None)
+        'ip': src_ip,
+        'sid': sid
     }

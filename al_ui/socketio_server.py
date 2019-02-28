@@ -133,18 +133,20 @@ def listen_on(data):
     LOGGER.info(f"SocketIO:Listen - {info['uname']}@{info['ip']} - Listening event received for queue: {queue_id}")
     try:
         u = NamedQueue(queue_id, private=True)
-        max_retry = 30
+        max_retry = 5
         retry = 0
         while True:
             msg = u.pop(timeout=1)
+            retry += 1
             if msg is None:
                 if retry >= max_retry:
                     emit('error', {'status_code': 503, 'msg': "Dispatcher does not seem to be responding..."})
                     LOGGER.info(f"SocketIO:Listen - {info['uname']}@{info['ip']} - Max retry reach for queue: {queue_id}")
                     break
+                emit('cachekey', {'status_code': 200, 'msg': "292457b9950aef4a48a1284356f577f562c945ea9f7d964e802afe58a9141f7c.Metadefender.v4_0_0_2e1fa7e.c0"})
                 continue
 
-            retry += 1
+
 
             try:
                 status = msg['status']
@@ -158,7 +160,7 @@ def listen_on(data):
                 emit('start', {'status_code': 200, 'msg': "Start listening..."})
                 LOGGER.info(f"SocketIO:Listen - {info['uname']}@{info['ip']} - "
                             f"Stating processing message on queue: {queue_id}")
-                max_retry = 300
+                max_retry = 5
                 retry = 0
             elif status == 'STOP':
                 emit('stop', {'status_code': 200, 'msg': "All messages received, closing queue..."})
