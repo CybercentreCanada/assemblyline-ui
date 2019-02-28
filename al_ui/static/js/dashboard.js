@@ -11,13 +11,13 @@ function add(a, b) {
 //noinspection JSUnusedLocalSymbols
 var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'ui.bootstrap'])
     .factory('mySocket', function (socketFactory) {
-        var mySocket = socketFactory();
-        mySocket.forward('DispHeartbeat');
+        var mySocket = socketFactory({namespace: '/status'});
+        mySocket.forward('DispatcherHeartbeat');
         mySocket.forward('IngestHeartbeat');
-        mySocket.forward('HardDriveFailures');
-        mySocket.forward('SvcHeartbeat');
-        mySocket.forward('OrchestratorHeartbeat');
-        mySocket.forward('connected');
+        // mySocket.forward('HardDriveFailures');
+        mySocket.forward('ServiceHeartbeat');
+        // mySocket.forward('OrchestratorHeartbeat');
+        mySocket.forward('monitoring');
         mySocket.setConnectionCallback(function () {
             mySocket.emit("monitor", {'status': "start"});
         });
@@ -120,12 +120,8 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         };
 
         $scope.$on('socket:IngestHeartbeat', function (event, data) {
-            if (data.sender === undefined) {
-                return;
-            }
-
             try {
-                //console.log('Socket-IO::IngestHeartbeat message', data.body);
+                console.log('Socket-IO::IngestHeartbeat message', data);
                 var index_jump = 1;
                 var cur_time = Math.floor(new Date().getTime() / 1000);
                 if ($scope.last_mm_hb !== undefined) {
@@ -211,6 +207,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
 
         });
 
+        /*
         $scope.$on('socket:HardDriveFailures', function (event, data) {
             if (data.sender === undefined) {
                 return;
@@ -255,6 +252,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             }
 
         });
+        */
 
         $scope.middleman_in_error = function (middleman) {
             try {
@@ -349,13 +347,9 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             $scope.data.dispatchers_stat = temp;
         };
 
-        $scope.$on('socket:DispHeartbeat', function (event, data) {
-            if (data.sender === undefined) {
-                return;
-            }
-
+        $scope.$on('socket:DispatcherHeartbeat', function (event, data) {
             try {
-                //console.log('Socket-IO::DispHeartbeat message', data.body.shard, data.body);
+                console.log('Socket-IO::DispatcherHeartbeat message', data);
                 $scope.data.shards[data.body.shard].entries = data.body.entries;
                 $scope.data.shards[data.body.shard].queues = data.body.queues;
                 $scope.data.shards[data.body.shard].services = {up: [], down: [], not_provisioned: []};
@@ -395,7 +389,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 if ($scope.disp_msg_count % $scope.dispatcher_shards_count === 0) $scope.aggregate_dispatcher_stats();
             }
             catch (e) {
-                console.log('Socket-IO::DispHeartbeat [ERROR] Invalid message', data, e);
+                console.log('Socket-IO::DispatcherHeartbeat [ERROR] Invalid message', data, e);
             }
 
         });
@@ -413,14 +407,11 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             return false;
         };
 
-        $scope.$on('socket:SvcHeartbeat', function (event, data) {
+        $scope.$on('socket:ServiceHeartbeat', function (event, data) {
             var cur_time = new Date().getTime();
-            if (data.sender === undefined) {
-                return;
-            }
 
             try {
-                //console.log('Socket-IO::SvcHeartbeat message', data.body);
+                console.log('Socket-IO::ServiceHeartbeat message', data);
                 if (data.body.services === undefined || data.body.services == null) return;
                 $scope.service_expiry[data.body.mac] = cur_time;
 
@@ -434,7 +425,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 }
             }
             catch (e) {
-                console.log('Socket-IO::SvcHeartbeat [ERROR] Invalid message', data, e);
+                console.log('Socket-IO::ServiceHeartbeat [ERROR] Invalid message', data, e);
             }
 
         });
@@ -443,7 +434,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             return angular.toJson(obj, true);
         };
 
-        $scope.$on('socket:connected', function (event, data) {
+        $scope.$on('socket:monitoring', function (event, data) {
             $scope.socket_status = 'ok';
             console.log('Socket-IO::Connected', data);
         });
