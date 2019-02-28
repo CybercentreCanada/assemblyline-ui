@@ -36,27 +36,22 @@ class SubmissionMonitoringNamespace(SecureNamespace):
                     self.socketio.emit(msg_type, submission, room=sid, namespace=self.namespace)
                     LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
                                 f"Sending {msg_type} event for submission matching ID: {submission['sid']}")
+
                     if AUDIT:
                         AUDIT_LOG.info(
                             f"{user_info['uname']} [{user_info['classification']}]"
                             f" :: SubmissionMonitoringNamespace.get_submission(sid={submission['sid']})")
+
         except Exception:
             LOGGER.exception(f"SocketIO:{self.namespace} - {user_info['display']}")
         finally:
-            LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
-                        f"Connection to client was terminated")
-            if AUDIT:
-                AUDIT_LOG.info(f"{user_info['uname']} [{user_info['classification']}]"
-                               f" :: SubmissionMonitoringNamespace.on_submission(stop)")
+            LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - Connection to client was terminated")
 
     @authenticated_only
     def on_submission(self, data, user_info):
 
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
                     f"User as started monitoring submissions...")
-        if AUDIT:
-            AUDIT_LOG.info(f"{user_info['uname']} [{user_info['classification']}]"
-                           f" :: SubmissionMonitoringNamespace.on_submission(start)")
 
         join_room(user_info['sid'])
         self.socketio.start_background_task(target=self.monitor_submissions, user_info=user_info)

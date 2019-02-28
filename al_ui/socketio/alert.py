@@ -16,10 +16,6 @@ AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 
 
 class AlertMonitoringNamespace(SecureNamespace):
-    def __init__(self, namespace=None):
-        self.background_task_started = False
-        super().__init__(namespace=namespace)
-
     # noinspection PyBroadException
     def monitor_alerts(self, user_info):
         sid = user_info['sid']
@@ -36,27 +32,22 @@ class AlertMonitoringNamespace(SecureNamespace):
                     self.socketio.emit(msg_type, alert, room=sid, namespace=self.namespace)
                     LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
                                 f"Sending {msg_type} event for alert matching ID: {alert['alert_id']}")
+
                     if AUDIT:
                         AUDIT_LOG.info(
                             f"{user_info['uname']} [{user_info['classification']}]"
                             f" :: AlertMonitoringNamespace.get_alert(alert_id={alert['alert_id']})")
+
         except Exception:
             LOGGER.exception(f"SocketIO:{self.namespace} - {user_info['display']}")
         finally:
-            LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
-                        f"Connection to client was terminated")
-            if AUDIT:
-                AUDIT_LOG.info(f"{user_info['uname']} [{user_info['classification']}]"
-                               f" :: AlertMonitoringNamespace.on_alert(stop)")
+            LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - Connection to client was terminated")
 
     @authenticated_only
     def on_alert(self, data, user_info):
 
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
                     f"User as started monitoring alerts...")
-        if AUDIT:
-            AUDIT_LOG.info(f"{user_info['uname']} [{user_info['classification']}]"
-                           f" :: AlertMonitoringNamespace.on_alert(start)")
 
         join_room(user_info['sid'])
         self.socketio.start_background_task(target=self.monitor_alerts, user_info=user_info)

@@ -4,7 +4,7 @@ import logging
 import threading
 
 from flask import request, session
-from flask_socketio import Namespace, disconnect, emit
+from flask_socketio import Namespace, disconnect
 
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.hash import Hash
@@ -18,6 +18,9 @@ KV_SESSION = Hash("flask_sessions",
                   port=config.core.redis.nonpersistent.port,
                   db=config.core.redis.nonpersistent.db)
 LOGGER = logging.getLogger('assemblyline.ui.socketio')
+
+class AuthenticationFailure(Exception):
+    pass
 
 
 def authenticated_only(f):
@@ -41,9 +44,10 @@ class SecureNamespace(Namespace):
         super().__init__(namespace=namespace)
 
     def on_connect(self):
-        info = get_user_info(request, session)
-
-        if info.get('uname', None) is None:
+        try:
+            info = get_user_info(request, session)
+        except AuthenticationFailure as e:
+            LOGGER.warning(str(e))
             return
 
         sid = get_request_id(request)
@@ -90,10 +94,8 @@ def get_user_info(request_p, session_p):
         user = datastore.user.get(uname, as_obj=False)
         if user:
             user_classification = user.get('classification', None)
-    # TODO: Fake user
     else:
-        uname = "FAKE"
-        user_classification = classification.RESTRICTED
+        raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
 
     return {
         'uname': uname,

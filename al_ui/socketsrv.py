@@ -1,5 +1,3 @@
-from al_ui.socketio.submission import SubmissionMonitoringNamespace
-
 try:
     from gevent.monkey import patch_all
     patch_all()
@@ -13,6 +11,8 @@ from flask_socketio import SocketIO
 
 from al_ui.socketio.alert import AlertMonitoringNamespace
 from al_ui.socketio.live_submission import LiveSubmissionNamespace
+from al_ui.socketio.status import SystemStatusNamespace
+from al_ui.socketio.submission import SubmissionMonitoringNamespace
 from assemblyline.common import forge, log as al_log
 
 config = forge.get_config()
@@ -32,6 +32,7 @@ socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "thread
 socketio.on_namespace(AlertMonitoringNamespace('/alerts'))
 socketio.on_namespace(LiveSubmissionNamespace('/live_submission'))
 socketio.on_namespace(SubmissionMonitoringNamespace('/submissions'))
+socketio.on_namespace(SystemStatusNamespace('/status'))
 
 if __name__ == '__main__':
     # Run debug mode
