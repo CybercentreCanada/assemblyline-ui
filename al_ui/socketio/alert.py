@@ -60,4 +60,4 @@ class AlertMonitoringNamespace(SecureNamespace):
 
         join_room(user_info['sid'])
         self.socketio.start_background_task(target=self.monitor_alerts, user_info=user_info)
-        emit('connected', data, room=user_info['sid'], namespace=self.namespace)
+        emit('monitoring', data, room=user_info['sid'], namespace=self.namespace)

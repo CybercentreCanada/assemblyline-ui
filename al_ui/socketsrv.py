@@ -1,3 +1,5 @@
+from al_ui.socketio.submission import SubmissionMonitoringNamespace
+
 try:
     from gevent.monkey import patch_all
     patch_all()
@@ -29,6 +31,7 @@ socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "thread
 # Loading the different namespaces
 socketio.on_namespace(AlertMonitoringNamespace('/alerts'))
 socketio.on_namespace(LiveSubmissionNamespace('/live_submission'))
+socketio.on_namespace(SubmissionMonitoringNamespace('/submissions'))
 
 if __name__ == '__main__':
     # Run debug mode
