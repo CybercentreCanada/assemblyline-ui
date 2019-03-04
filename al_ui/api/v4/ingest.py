@@ -227,8 +227,8 @@ def ingest_single_file(**kwargs):
             s_params.update({
                 'description': "[%s] Inspection of file: %s" % (s_params['type'], name),
                 'generate_alert': generate_alert,
-                'max_extracted': config.core.middleman.default_max_extracted,
-                'max_supplementary': config.core.middleman.default_max_supplementary,
+                'max_extracted': config.core.ingester.default_max_extracted,
+                'max_supplementary': config.core.ingester.default_max_supplementary,
                 'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
                 'submitter': user['uname']
             })

@@ -50,47 +50,47 @@
         </div>
         <div class="row" style="margin: 0;">
             <div class="col-lg-5 col-md-12 col-sm-12 col-xs-12">
-                <div class="dashboard_card dashboard_card_big" ng-class="{disabled: data.middleman_stat.count==0,ok: data.middleman_stat.count!=0&&!middleman_in_error(data.middleman), error: data.middleman_stat.count!=0&&middleman_in_error(data.middleman)}">
+                <div class="dashboard_card dashboard_card_big" ng-class="{disabled: data.ingester_stat.count==0,ok: data.ingester_stat.count!=0&&!ingester_in_error(data.ingester), error: data.ingester_stat.count!=0&&ingester_in_error(data.ingester)}">
                     <div class="row ">
-                        <div class="title col-sm-11 col-xs-10">Middleman :: {{data.middleman_stat.count}} / {{ middleman_shards_count }}</div>
-                        <div ng-show="data.middleman_stat.count!=0&&middleman_in_error(data.middleman)" class="col-sm-1 col-xs-2 text-right"><span class="text-danger text-icon icon-erroralt"></span></div>
+                        <div class="title col-sm-11 col-xs-10">Ingester :: {{data.ingester_stat.count}} / {{ ingester_shards_count }}</div>
+                        <div ng-show="data.ingester_stat.count!=0&&ingester_in_error(data.ingester)" class="col-sm-1 col-xs-2 text-right"><span class="text-danger text-icon icon-erroralt"></span></div>
                         <div class="col-sm-3 col-xs-12">
                             <div><label>Ingest:</label></div>
                             <div>
-                                <span title="Ingest Queue" ng-class="{'text-muted': data.middleman.ingest <= 100000, 'text-danger': data.middleman.ingest > 100000}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': data.middleman.ingest > 100000}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.ingest}}&nbsp;</span>&nbsp;
+                                <span title="Ingest Queue" ng-class="{'text-muted': data.ingester.ingest <= 100000, 'text-danger': data.ingester.ingest > 100000}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': data.ingester.ingest > 100000}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.ingest}}&nbsp;</span>&nbsp;
                             </div>
                         </div>
                         <div class="col-sm-6 col-xs-12">
                             <div><label>Queued:</label></div>
                             <div>
-                                <span title="Critical Priority Files Waiting" ng-class="{'text-muted': data.middleman.ingesting.critical==1, 'text-danger': data.middleman.ingesting.critical!=1}" class="text-icon icon-squarec"></span><span ng-class="{'text-danger': data.middleman.ingesting.critical!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.queues.critical}}&nbsp;</span><span class="text-danger" ng-show="data.middleman.ingesting.critical!=1" style="vertical-align: top; font-size: 11pt;">({{data.middleman.ingesting.critical * 100 | floatStr}}%)&nbsp;</span>&nbsp;
-                                <span title="High Priority Files Waiting" ng-class="{'text-muted': data.middleman.ingesting.high==1, 'text-danger': data.middleman.ingesting.high!=1}" class="text-icon icon-squareh"></span><span ng-class="{'text-danger': data.middleman.ingesting.high!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.queues.high}}&nbsp;</span><span class="text-danger" ng-show="data.middleman.ingesting.high!=1" style="vertical-align: top; font-size: 11pt;">({{data.middleman.ingesting.high * 100 | floatStr}}%)&nbsp;</span>&nbsp;
-                                <span title="Medium Priority Files Waiting" ng-class="{'text-muted': data.middleman.ingesting.medium==1, 'text-danger': data.middleman.ingesting.medium!=1}" class="text-icon icon-squarem"></span><span ng-class="{'text-danger': data.middleman.ingesting.medium!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.queues.medium}}&nbsp;</span><span class="text-danger" ng-show="data.middleman.ingesting.medium!=1" style="vertical-align: top; font-size: 11pt;">({{data.middleman.ingesting.medium * 100 | floatStr}}%)&nbsp;</span>&nbsp;
-                                <span title="Low Priority Files Waiting" ng-class="{'text-muted': data.middleman.ingesting.low==1, 'text-danger': data.middleman.ingesting.low!=1}" class="text-icon icon-squarel"></span><span ng-class="{'text-danger': data.middleman.ingesting.low!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.queues.low}}&nbsp;</span><span class="text-danger" ng-show="data.middleman.ingesting.low!=1" style="vertical-align: top; font-size: 11pt;">({{data.middleman.ingesting.low * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                <span title="Critical Priority Files Waiting" ng-class="{'text-muted': data.ingester.ingesting.critical==1, 'text-danger': data.ingester.ingesting.critical!=1}" class="text-icon icon-squarec"></span><span ng-class="{'text-danger': data.ingester.ingesting.critical!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.queues.critical}}&nbsp;</span><span class="text-danger" ng-show="data.ingester.ingesting.critical!=1" style="vertical-align: top; font-size: 11pt;">({{data.ingester.ingesting.critical * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                <span title="High Priority Files Waiting" ng-class="{'text-muted': data.ingester.ingesting.high==1, 'text-danger': data.ingester.ingesting.high!=1}" class="text-icon icon-squareh"></span><span ng-class="{'text-danger': data.ingester.ingesting.high!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.queues.high}}&nbsp;</span><span class="text-danger" ng-show="data.ingester.ingesting.high!=1" style="vertical-align: top; font-size: 11pt;">({{data.ingester.ingesting.high * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                <span title="Medium Priority Files Waiting" ng-class="{'text-muted': data.ingester.ingesting.medium==1, 'text-danger': data.ingester.ingesting.medium!=1}" class="text-icon icon-squarem"></span><span ng-class="{'text-danger': data.ingester.ingesting.medium!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.queues.medium}}&nbsp;</span><span class="text-danger" ng-show="data.ingester.ingesting.medium!=1" style="vertical-align: top; font-size: 11pt;">({{data.ingester.ingesting.medium * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                <span title="Low Priority Files Waiting" ng-class="{'text-muted': data.ingester.ingesting.low==1, 'text-danger': data.ingester.ingesting.low!=1}" class="text-icon icon-squarel"></span><span ng-class="{'text-danger': data.ingester.ingesting.low!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.queues.low}}&nbsp;</span><span class="text-danger" ng-show="data.ingester.ingesting.low!=1" style="vertical-align: top; font-size: 11pt;">({{data.ingester.ingesting.low * 100 | floatStr}}%)&nbsp;</span>&nbsp;
                             </div>
                         </div>
                         <div class="col-sm-3 col-xs-12">
                             <div><label>Processing:</label></div>
                             <div>
-                                <span title="Inflight Submissions" class="text-muted text-icon icon-squarei"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.inflight}}&nbsp;</span>
-                                <span title="Waiting for Submission" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.waiting}}&nbsp;</span>
+                                <span title="Inflight Submissions" class="text-muted text-icon icon-squarei"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.inflight}}&nbsp;</span>
+                                <span title="Waiting for Submission" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.waiting}}&nbsp;</span>
                             </div>
                         </div>
                         <div class="col-sm-3 col-xs-12">
                             <div><label>Uptime:</label></div>
                             <div>
-                                <span class="text-muted text-icon icon-uptime"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman.up_hours | floatStr}}h</span>
+                                <span class="text-muted text-icon icon-uptime"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.up_hours | floatStr}}h</span>
                             </div>
                         </div>
                         <div class="col-sm-9 col-xs-12">
                             <div><label>Throughput: (for the last minute)</label></div>
                             <div>
-                                <span title="Completed files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman['ingest.files_completed'] | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Completed submissions" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman['ingest.submissions_completed'] | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Whitelisted files" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman['ingest.whitelisted'] | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Skipped files" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman['ingest.skipped'] | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Duplicate files" class="text-muted text-icon icon-squared"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman['ingest.duplicates'] | floatStr}}&nbsp;</span>
-                                <span ng-class="{'text-muted': data.middleman_stat.count==0||data.middleman['ingest.bytes_completed'] != 0, 'text-danger': data.middleman_stat.count!=0&&data.middleman['ingest.bytes_completed'] == 0}" class="text-icon icon-speed"></span><span ng-class="{'text-danger': data.middleman_stat.count!=0&&data.middleman['ingest.bytes_completed'] == 0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.middleman['ingest.bytes_completed']/((1024*1024*60)/8) | floatStr}} / {{data.middleman['ingest.bytes_ingested']/((1024*1024*60)/8) | floatStr}} Mbps</span>
+                                <span title="Completed files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester['ingest.files_completed'] | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Completed submissions" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester['ingest.submissions_completed'] | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Whitelisted files" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester['ingest.whitelisted'] | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Skipped files" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester['ingest.skipped'] | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Duplicate files" class="text-muted text-icon icon-squared"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester['ingest.duplicates'] | floatStr}}&nbsp;</span>
+                                <span ng-class="{'text-muted': data.ingester_stat.count==0||data.ingester['ingest.bytes_completed'] != 0, 'text-danger': data.ingester_stat.count!=0&&data.ingester['ingest.bytes_completed'] == 0}" class="text-icon icon-speed"></span><span ng-class="{'text-danger': data.ingester_stat.count!=0&&data.ingester['ingest.bytes_completed'] == 0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester['ingest.bytes_completed']/((1024*1024*60)/8) | floatStr}} / {{data.ingester['ingest.bytes_ingested']/((1024*1024*60)/8) | floatStr}} Mbps</span>
                             </div>
                         </div>
                     </div>

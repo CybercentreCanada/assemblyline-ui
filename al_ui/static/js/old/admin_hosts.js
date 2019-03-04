@@ -312,11 +312,11 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 var mac = data.body.hostinfo.mac_address;
 
                 $scope.last_msg_time = cur_time;
-                $scope.host_array[mac]['middleman_status'] = 'up';
-                $scope.host_array[mac]['middleman_timer'] = cur_time;
+                $scope.host_array[mac]['ingester_status'] = 'up';
+                $scope.host_array[mac]['ingester_timer'] = cur_time;
 
-                if ($scope.host_array[mac].middleman_stat === undefined) {
-                    $scope.host_array[mac].middleman_stat = {
+                if ($scope.host_array[mac].ingester_stat === undefined) {
+                    $scope.host_array[mac].ingester_stat = {
                         count: 0,
                         index: 0,
                         'inflight': [],
@@ -349,47 +349,47 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     }
 
                     if (index_jump > 0) {
-                        $scope.host_array[mac].middleman_stat.index += index_jump;
+                        $scope.host_array[mac].ingester_stat.index += index_jump;
                         for (var x = index_jump - 1; x > 0; x--) {
-                            $scope.host_array[mac].middleman_stat['ingest.submissions_completed'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
-                            $scope.host_array[mac].middleman_stat['ingest.bytes_completed'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
-                            $scope.host_array[mac].middleman_stat['ingest.bytes_ingested'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
-                            $scope.host_array[mac].middleman_stat['ingest.files_completed'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
-                            $scope.host_array[mac].middleman_stat['ingest.skipped'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
-                            $scope.host_array[mac].middleman_stat['ingest.whitelisted'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
-                            $scope.host_array[mac].middleman_stat['ingest.duplicates'][($scope.host_array[mac].middleman_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.submissions_completed'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.bytes_completed'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.bytes_ingested'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.files_completed'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.skipped'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.whitelisted'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
+                            $scope.host_array[mac].ingester_stat['ingest.duplicates'][($scope.host_array[mac].ingester_stat.index - x) % 60] = 0;
                         }
 
-                        $scope.host_array[mac].middleman_stat['ingest.submissions_completed'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.submissions_completed'];
-                        $scope.host_array[mac].middleman_stat['ingest.bytes_completed'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.bytes_completed'];
-                        $scope.host_array[mac].middleman_stat['ingest.bytes_ingested'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.bytes_ingested'];
-                        $scope.host_array[mac].middleman_stat['ingest.files_completed'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.files_completed'];
-                        $scope.host_array[mac].middleman_stat['ingest.skipped'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.skipped'];
-                        $scope.host_array[mac].middleman_stat['ingest.whitelisted'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.whitelisted'];
-                        $scope.host_array[mac].middleman_stat['ingest.duplicates'][$scope.host_array[mac].middleman_stat.index % 60] = data.body['ingest.duplicates'];
+                        $scope.host_array[mac].ingester_stat['ingest.submissions_completed'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.submissions_completed'];
+                        $scope.host_array[mac].ingester_stat['ingest.bytes_completed'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.bytes_completed'];
+                        $scope.host_array[mac].ingester_stat['ingest.bytes_ingested'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.bytes_ingested'];
+                        $scope.host_array[mac].ingester_stat['ingest.files_completed'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.files_completed'];
+                        $scope.host_array[mac].ingester_stat['ingest.skipped'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.skipped'];
+                        $scope.host_array[mac].ingester_stat['ingest.whitelisted'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.whitelisted'];
+                        $scope.host_array[mac].ingester_stat['ingest.duplicates'][$scope.host_array[mac].ingester_stat.index % 60] = data.body['ingest.duplicates'];
                     } else {
-                        $scope.host_array[mac].middleman_stat['ingest.submissions_completed'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.submissions_completed'];
-                        $scope.host_array[mac].middleman_stat['ingest.bytes_completed'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.bytes_completed'];
-                        $scope.host_array[mac].middleman_stat['ingest.bytes_ingested'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.bytes_ingested'];
-                        $scope.host_array[mac].middleman_stat['ingest.files_completed'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.files_completed'];
-                        $scope.host_array[mac].middleman_stat['ingest.skipped'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.skipped'];
-                        $scope.host_array[mac].middleman_stat['ingest.whitelisted'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.whitelisted'];
-                        $scope.host_array[mac].middleman_stat['ingest.duplicates'][$scope.host_array[mac].middleman_stat.index % 60] += data.body['ingest.duplicates'];
+                        $scope.host_array[mac].ingester_stat['ingest.submissions_completed'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.submissions_completed'];
+                        $scope.host_array[mac].ingester_stat['ingest.bytes_completed'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.bytes_completed'];
+                        $scope.host_array[mac].ingester_stat['ingest.bytes_ingested'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.bytes_ingested'];
+                        $scope.host_array[mac].ingester_stat['ingest.files_completed'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.files_completed'];
+                        $scope.host_array[mac].ingester_stat['ingest.skipped'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.skipped'];
+                        $scope.host_array[mac].ingester_stat['ingest.whitelisted'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.whitelisted'];
+                        $scope.host_array[mac].ingester_stat['ingest.duplicates'][$scope.host_array[mac].ingester_stat.index % 60] += data.body['ingest.duplicates'];
                     }
 
                     var shard = data.body['shard'];
-                    $scope.host_array[mac].middleman_stat['inflight'][shard] = data.body['inflight'];
-                    $scope.host_array[mac].middleman_stat['ingest'][shard] = data.body['ingest'];
-                    $scope.host_array[mac].middleman_stat['ingesting.critical'][shard] = data.body['ingesting']['critical'];
-                    $scope.host_array[mac].middleman_stat['ingesting.high'][shard] = data.body['ingesting']['high'];
-                    $scope.host_array[mac].middleman_stat['ingesting.low'][shard] = data.body['ingesting']['low'];
-                    $scope.host_array[mac].middleman_stat['ingesting.medium'][shard] = data.body['ingesting']['medium'];
-                    $scope.host_array[mac].middleman_stat['queues.critical'][shard] = data.body['queues']['critical'];
-                    $scope.host_array[mac].middleman_stat['queues.high'][shard] = data.body['queues']['high'];
-                    $scope.host_array[mac].middleman_stat['queues.low'][shard] = data.body['queues']['low'];
-                    $scope.host_array[mac].middleman_stat['queues.medium'][shard] = data.body['queues']['medium'];
-                    $scope.host_array[mac].middleman_stat['up_hours'][shard] = data.body['up_hours'];
-                    $scope.host_array[mac].middleman_stat['waiting'][shard] = data.body['waiting'];
+                    $scope.host_array[mac].ingester_stat['inflight'][shard] = data.body['inflight'];
+                    $scope.host_array[mac].ingester_stat['ingest'][shard] = data.body['ingest'];
+                    $scope.host_array[mac].ingester_stat['ingesting.critical'][shard] = data.body['ingesting']['critical'];
+                    $scope.host_array[mac].ingester_stat['ingesting.high'][shard] = data.body['ingesting']['high'];
+                    $scope.host_array[mac].ingester_stat['ingesting.low'][shard] = data.body['ingesting']['low'];
+                    $scope.host_array[mac].ingester_stat['ingesting.medium'][shard] = data.body['ingesting']['medium'];
+                    $scope.host_array[mac].ingester_stat['queues.critical'][shard] = data.body['queues']['critical'];
+                    $scope.host_array[mac].ingester_stat['queues.high'][shard] = data.body['queues']['high'];
+                    $scope.host_array[mac].ingester_stat['queues.low'][shard] = data.body['queues']['low'];
+                    $scope.host_array[mac].ingester_stat['queues.medium'][shard] = data.body['queues']['medium'];
+                    $scope.host_array[mac].ingester_stat['up_hours'][shard] = data.body['up_hours'];
+                    $scope.host_array[mac].ingester_stat['waiting'][shard] = data.body['waiting'];
 
                     $scope.last_mm_hb = cur_mm_time;
 
@@ -397,33 +397,33 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                         return;
                     }
 
-                    $scope.host_array[mac].middleman_stat.count = $scope.host_array[mac].middleman_stat['inflight'].length;
-                    data.body['inflight'] = $scope.host_array[mac].middleman_stat['inflight'].reduce(add, 0);
-                    data.body['ingest'] = $scope.host_array[mac].middleman_stat['ingest'].reduce(add, 0);
-                    data.body['ingesting']['critical'] = $scope.host_array[mac].middleman_stat['ingesting.critical'].reduce(add, 0) / $scope.host_array[mac].middleman_stat['ingesting.critical'].length;
-                    data.body['ingesting']['high'] = $scope.host_array[mac].middleman_stat['ingesting.high'].reduce(add, 0) / $scope.host_array[mac].middleman_stat['ingesting.high'].length;
-                    data.body['ingesting']['low'] = $scope.host_array[mac].middleman_stat['ingesting.low'].reduce(add, 0) / $scope.host_array[mac].middleman_stat['ingesting.low'].length;
-                    data.body['ingesting']['medium'] = $scope.host_array[mac].middleman_stat['ingesting.medium'].reduce(add, 0) / $scope.host_array[mac].middleman_stat['ingesting.medium'].length;
-                    data.body['queues']['critical'] = $scope.host_array[mac].middleman_stat['queues.critical'].reduce(add, 0);
-                    data.body['queues']['high'] = $scope.host_array[mac].middleman_stat['queues.high'].reduce(add, 0);
-                    data.body['queues']['low'] = $scope.host_array[mac].middleman_stat['queues.low'].reduce(add, 0);
-                    data.body['queues']['medium'] = $scope.host_array[mac].middleman_stat['queues.medium'].reduce(add, 0);
-                    data.body['up_hours'] = $scope.host_array[mac].middleman_stat['up_hours'].reduce(add, 0) / $scope.host_array[mac].middleman_stat['up_hours'].length;
-                    data.body['waiting'] = $scope.host_array[mac].middleman_stat['waiting'].reduce(add, 0);
+                    $scope.host_array[mac].ingester_stat.count = $scope.host_array[mac].ingester_stat['inflight'].length;
+                    data.body['inflight'] = $scope.host_array[mac].ingester_stat['inflight'].reduce(add, 0);
+                    data.body['ingest'] = $scope.host_array[mac].ingester_stat['ingest'].reduce(add, 0);
+                    data.body['ingesting']['critical'] = $scope.host_array[mac].ingester_stat['ingesting.critical'].reduce(add, 0) / $scope.host_array[mac].ingester_stat['ingesting.critical'].length;
+                    data.body['ingesting']['high'] = $scope.host_array[mac].ingester_stat['ingesting.high'].reduce(add, 0) / $scope.host_array[mac].ingester_stat['ingesting.high'].length;
+                    data.body['ingesting']['low'] = $scope.host_array[mac].ingester_stat['ingesting.low'].reduce(add, 0) / $scope.host_array[mac].ingester_stat['ingesting.low'].length;
+                    data.body['ingesting']['medium'] = $scope.host_array[mac].ingester_stat['ingesting.medium'].reduce(add, 0) / $scope.host_array[mac].ingester_stat['ingesting.medium'].length;
+                    data.body['queues']['critical'] = $scope.host_array[mac].ingester_stat['queues.critical'].reduce(add, 0);
+                    data.body['queues']['high'] = $scope.host_array[mac].ingester_stat['queues.high'].reduce(add, 0);
+                    data.body['queues']['low'] = $scope.host_array[mac].ingester_stat['queues.low'].reduce(add, 0);
+                    data.body['queues']['medium'] = $scope.host_array[mac].ingester_stat['queues.medium'].reduce(add, 0);
+                    data.body['up_hours'] = $scope.host_array[mac].ingester_stat['up_hours'].reduce(add, 0) / $scope.host_array[mac].ingester_stat['up_hours'].length;
+                    data.body['waiting'] = $scope.host_array[mac].ingester_stat['waiting'].reduce(add, 0);
 
-                    data.body['ingest.submissions_completed'] = $scope.host_array[mac].middleman_stat['ingest.submissions_completed'].reduce(add, 0);
-                    data.body['ingest.bytes_completed'] = $scope.host_array[mac].middleman_stat['ingest.bytes_completed'].reduce(add, 0);
-                    data.body['ingest.bytes_ingested'] = $scope.host_array[mac].middleman_stat['ingest.bytes_ingested'].reduce(add, 0);
-                    data.body['ingest.files_completed'] = $scope.host_array[mac].middleman_stat['ingest.files_completed'].reduce(add, 0);
-                    data.body['ingest.skipped'] = $scope.host_array[mac].middleman_stat['ingest.skipped'].reduce(add, 0);
-                    data.body['ingest.whitelisted'] = $scope.host_array[mac].middleman_stat['ingest.whitelisted'].reduce(add, 0);
-                    data.body['ingest.duplicates'] = $scope.host_array[mac].middleman_stat['ingest.duplicates'].reduce(add, 0);
+                    data.body['ingest.submissions_completed'] = $scope.host_array[mac].ingester_stat['ingest.submissions_completed'].reduce(add, 0);
+                    data.body['ingest.bytes_completed'] = $scope.host_array[mac].ingester_stat['ingest.bytes_completed'].reduce(add, 0);
+                    data.body['ingest.bytes_ingested'] = $scope.host_array[mac].ingester_stat['ingest.bytes_ingested'].reduce(add, 0);
+                    data.body['ingest.files_completed'] = $scope.host_array[mac].ingester_stat['ingest.files_completed'].reduce(add, 0);
+                    data.body['ingest.skipped'] = $scope.host_array[mac].ingester_stat['ingest.skipped'].reduce(add, 0);
+                    data.body['ingest.whitelisted'] = $scope.host_array[mac].ingester_stat['ingest.whitelisted'].reduce(add, 0);
+                    data.body['ingest.duplicates'] = $scope.host_array[mac].ingester_stat['ingest.duplicates'].reduce(add, 0);
                 }
                 catch (e) {
                     console.log('Socket-IO::IngestHeartbeat [ERROR] Invalid message', data, e);
                 }
 
-                $scope.host_array[mac].middleman = data.body;
+                $scope.host_array[mac].ingester = data.body;
             }
             catch (e) {
                 console.log('Socket-IO::IngestHeartbeat [ERROR] Invalid message', data, e);
@@ -864,22 +864,22 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
 
             for (var mac in $scope.host_array) {
                 var item = $scope.host_array[mac];
-                if ((item['middleman_timer'] + timer - cur_time) < 0) {
+                if ((item['ingester_timer'] + timer - cur_time) < 0) {
                     if (!mySocket.connected()) {
-                        item['middleman_status'] = 'init';
+                        item['ingester_status'] = 'init';
                     }
                     else {
-                        if (item['middleman_status'] == 'init') {
-                            item['middleman_status'] = 'grace-period';
+                        if (item['ingester_status'] == 'init') {
+                            item['ingester_status'] = 'grace-period';
                         }
                         else {
-                            item['middleman_status'] = 'down';
+                            item['ingester_status'] = 'down';
                         }
                     }
                 }
                 if ((item['orchestrator_timer'] + timer - cur_time) < 0) {
                     if (!mySocket.connected()) {
-                        item['middleman_status'] = 'init';
+                        item['ingester_status'] = 'init';
                     }
                     else {
                         if (item['orchestrator_status'] == 'init') {
@@ -992,8 +992,8 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                             $scope.host_list.push(item);
                             item['hostagent_status'] = 'init';
                             item['hostagent_timer'] = 0;
-                            item['middleman_status'] = 'init';
-                            item['middleman_timer'] = 0;
+                            item['ingester_status'] = 'init';
+                            item['ingester_timer'] = 0;
                             item['dispatcher_status'] = 'init';
                             item['dispatcher_timer'] = 0;
                             item['controller_status'] = 'init';
@@ -1048,8 +1048,8 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                         var item = $scope.host_list[h];
                         item['hostagent_status'] = 'init';
                         item['hostagent_timer'] = 0;
-                        item['middleman_status'] = 'init';
-                        item['middleman_timer'] = 0;
+                        item['ingester_status'] = 'init';
+                        item['ingester_timer'] = 0;
                         item['dispatcher_status'] = 'init';
                         item['dispatcher_timer'] = 0;
                         item['controller_status'] = 'init';
@@ -1085,7 +1085,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 .success(function (data) {
                     $scope.loading_extra = false;
                     $scope.dispatcher_shards_count = data.api_response.dispatcher;
-                    $scope.middleman_shards_count = data.api_response.middleman;
+                    $scope.ingester_shards_count = data.api_response.ingester;
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;

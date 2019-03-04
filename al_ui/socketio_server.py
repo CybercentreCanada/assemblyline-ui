@@ -210,7 +210,7 @@ def submission_on(data):
                     'body': body,
                     'mtype': 'SubmissionIngested',
                     'reply_to': None,
-                    'sender': u'middleman',
+                    'sender': u'ingester',
                     'succeeded': True,
                     'to': u'*'
                 }

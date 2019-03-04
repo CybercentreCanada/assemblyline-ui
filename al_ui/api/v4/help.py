@@ -84,8 +84,8 @@ def get_system_configuration(**_):
             stg_map[stg] = temp_stg
 
     shareable_config_items = [
-        "core.middleman.default_max_extracted",
-        "core.middleman.default_max_supplementary",
+        "core.ingester.default_max_extracted",
+        "core.ingester.default_max_supplementary",
         "services.categories",
         "services.stages",
         "services.system_category",
