@@ -21,6 +21,8 @@ SUB_API = 'signature'
 signature_api = make_subapi_blueprint(SUB_API, api_version=4)
 signature_api._doc = "Perform operations on signatures"
 
+DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
+
 
 @signature_api.route("/add/", methods=["PUT"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False)
@@ -260,7 +262,7 @@ def download_signatures(**kwargs):
 
     query_hash = sha256(f'{query}.{access}.{last_modified}'.encode('utf-8')).hexdigest()
 
-    with forge.get_cachestore() as signature_cache:
+    with forge.get_cachestore('al_ui.signature') as signature_cache:
         response = _get_cached_signatures(signature_cache, query_hash)
         if response:
             return response
@@ -420,7 +422,7 @@ def download_signatures(**kwargs):
             rule_file_bin = header + YaraParser().dump_rule_file(signature_list)
             rule_file_bin = rule_file_bin
 
-            signature_cache.save(query_hash, rule_file_bin)
+            signature_cache.save(query_hash, rule_file_bin, ttl=DEFAULT_CACHE_TTL)
 
             return make_file_response(
                 rule_file_bin, f"al_yara_signatures_{query_hash[:7]}.yar",
