@@ -227,8 +227,8 @@ def ingest_single_file(**kwargs):
             s_params.update({
                 'description': "[%s] Inspection of file: %s" % (s_params['type'], name),
                 'generate_alert': generate_alert,
-                'max_extracted': config.core.middleman.default_max_extracted,
-                'max_supplementary': config.core.middleman.default_max_supplementary,
+                'max_extracted': config.core.ingester.default_max_extracted,
+                'max_supplementary': config.core.ingester.default_max_supplementary,
                 'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
                 'submitter': user['uname']
             })
@@ -236,6 +236,7 @@ def ingest_single_file(**kwargs):
             # Calculate file digest and save it to filestore
             digests = identify.get_digests_for_file(out_file)
             sha256 = digests['sha256']
+
             if not f_transport.exists(sha256):
                 f_transport.put(out_file, sha256, location='far')
 
@@ -260,7 +261,7 @@ def ingest_single_file(**kwargs):
             try:
                 submission_obj = Submission({
                     "sid": ingest_id,
-                    "files": [{'name': name, 'sha256': sha256}],
+                    "files": [{'name': name, 'sha256': sha256, 'size': digests['size']}],
                     "notification": notification_params,
                     "metadata": metadata,
                     "params": s_params

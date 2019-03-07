@@ -133,8 +133,8 @@
                                     <span ng-show="host.roles.indexOf('dispatcher') != -1" title="Dispatchers count">
                                         <i class="text-icon icon-squared" ng-class="{'text-danger': host.dispatcher_status == 'down'}"></i>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{host.dispatchers_stat.count || 0}}</span>&nbsp;
                                     </span>
-                                    <span ng-show="host.roles.indexOf('middleman') != -1" title="Middleman count">
-                                        <i class="text-icon icon-squarem" ng-class="{'text-danger': host.middleman_status == 'down'}"></i>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{host.middleman_stat.count || 0}}</span>&nbsp;
+                                    <span ng-show="host.roles.indexOf('ingester') != -1" title="Ingester count">
+                                        <i class="text-icon icon-squarem" ng-class="{'text-danger': host.ingester_status == 'down'}"></i>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{host.ingester_stat.count || 0}}</span>&nbsp;
                                     </span>
                                     <span ng-show="host.roles.indexOf('orchestrator') != -1" title="Orchestrator count">
                                         <i class="text-icon icon-squareo" ng-class="{'text-danger': host.orchestrator_status == 'down'}"></i>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{host.orchestrator_stat.count || 0}}</span>&nbsp;
@@ -148,7 +148,7 @@
                                 <span class="glyphicon glyphicon-resize-full"></span>
                             </a>
                             <div style="height: 120px; overflow: hidden;">
-                                <div ng-if="!host.last_hb&&!host.dispatchers&&!host.middleman" class="text-muted">
+                                <div ng-if="!host.last_hb&&!host.dispatchers&&!host.ingester" class="text-muted">
                                     Waiting for host information...
                                 </div>
                                 <div ng-if="hasLoadedVMs(host)">
@@ -213,7 +213,7 @@
                         <div class="col-sm-10 text-large">
                             <span ng-if="current_host.roles.indexOf('controller') != -1" class="label" ng-class="{'label-danger': current_host.controller_status=='down', 'label-success': current_host.controller_status=='up', 'label-default': current_host.controller_status!='up'&&current_host.controller_status!='down'}">CONTROLLER</span>
                             <span ng-if="current_host.roles.indexOf('hostagent') != -1" class="label" ng-class="{'label-danger': current_host.hostagent_status=='down', 'label-success': current_host.hostagent_status=='up', 'label-default': current_host.hostagent_status!='up'&&current_host.hostagent_status!='down'}">HOSTAGENT</span>
-                            <span ng-if="current_host.roles.indexOf('middleman') != -1" class="label" ng-class="{'label-danger': current_host.middleman_status=='down', 'label-success': current_host.middleman_status=='up', 'label-default': current_host.middleman_status!='up'&&current_host.middleman_status!='down'}">MIDDLEMAN</span>
+                            <span ng-if="current_host.roles.indexOf('ingester') != -1" class="label" ng-class="{'label-danger': current_host.ingester_status=='down', 'label-success': current_host.ingester_status=='up', 'label-default': current_host.ingester_status!='up'&&current_host.ingester_status!='down'}">INGESTER</span>
                             <span ng-if="current_host.roles.indexOf('dispatcher') != -1" class="label" ng-class="{'label-danger': current_host.dispatcher_status=='down', 'label-success': current_host.dispatcher_status=='up', 'label-default': current_host.dispatcher_status!='up'&&current_host.dispatcher_status!='down'}">DISPATCHER</span>
                             <span ng-if="current_host.roles.indexOf('orchestrator') != -1" class="label" ng-class="{'label-danger': current_host.orchestrator_status=='down', 'label-success': current_host.orchestrator_status=='up', 'label-default': current_host.orchestrator_status!='up'&&current_host.orchestrator_status!='down'}">ORCHESTRATOR</span>
                         </div>
@@ -267,7 +267,7 @@
                             </div>
                         </div>
 
-                        <div ng-if="current_host.last_hb||current_host.dispatchers||current_host.middleman" class="col-sm-12 col-md-6">
+                        <div ng-if="current_host.last_hb||current_host.dispatchers||current_host.ingester" class="col-sm-12 col-md-6">
                             <div class="dashboard_card dashboard_card_big">
                             <span class="text-large"><b>Load</b></span>
                             <div class="pad">
@@ -368,47 +368,47 @@
 
                         </div>
 
-                        <div ng-if="current_host.middleman" class="col-xs-12">
+                        <div ng-if="current_host.ingester" class="col-xs-12">
                             <div class="dashboard_card dashboard_card_big">
-                            <span class="title"><b>Middleman</b></span><span> :: {{current_host.middleman_stat.count}} / {{ middleman_shards_count }}</span>
+                            <span class="title"><b>Ingester</b></span><span> :: {{current_host.ingester_stat.count}} / {{ ingester_shards_count }}</span>
                             <div class="row">
                                 <div class="col-sm-3 col-xs-12">
                                     <div><label>Ingest:</label></div>
                                     <div>
-                                        <span title="Ingest Queue" ng-class="{'text-muted': current_host.middleman.ingest <= 100000, 'text-danger': current_host.middleman.ingest > 100000}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': current_host.middleman.ingest > 100000}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.ingest}}&nbsp;</span>&nbsp;
+                                        <span title="Ingest Queue" ng-class="{'text-muted': current_host.ingester.ingest <= 100000, 'text-danger': current_host.ingester.ingest > 100000}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': current_host.ingester.ingest > 100000}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.ingest}}&nbsp;</span>&nbsp;
                                     </div>
                                 </div>
                                 <div class="col-sm-6 col-xs-12">
                                     <div><label>Queued:</label></div>
                                     <div>
-                                        <span title="Critical Priority Files Waiting" ng-class="{'text-muted': current_host.middleman.ingesting.critical==1, 'text-danger': current_host.middleman.ingesting.critical!=1}" class="text-icon icon-squarec"></span><span ng-class="{'text-danger': current_host.middleman.ingesting.critical!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.queues.critical}}&nbsp;</span><span class="text-danger" ng-show="current_host.middleman.ingesting.critical!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.middleman.ingesting.critical * 100 | floatStr}}%)&nbsp;</span>&nbsp;
-                                        <span title="High Priority Files Waiting" ng-class="{'text-muted': current_host.middleman.ingesting.high==1, 'text-danger': current_host.middleman.ingesting.high!=1}" class="text-icon icon-squareh"></span><span ng-class="{'text-danger': current_host.middleman.ingesting.high!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.queues.high}}&nbsp;</span><span class="text-danger" ng-show="current_host.middleman.ingesting.high!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.middleman.ingesting.high * 100 | floatStr}}%)&nbsp;</span>&nbsp;
-                                        <span title="Medium Priority Files Waiting" ng-class="{'text-muted': current_host.middleman.ingesting.medium==1, 'text-danger': current_host.middleman.ingesting.medium!=1}" class="text-icon icon-squarem"></span><span ng-class="{'text-danger': current_host.middleman.ingesting.medium!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.queues.medium}}&nbsp;</span><span class="text-danger" ng-show="current_host.middleman.ingesting.medium!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.middleman.ingesting.medium * 100 | floatStr}}%)&nbsp;</span>&nbsp;
-                                        <span title="Low Priority Files Waiting" ng-class="{'text-muted': current_host.middleman.ingesting.low==1, 'text-danger': current_host.middleman.ingesting.low!=1}" class="text-icon icon-squarel"></span><span ng-class="{'text-danger': current_host.middleman.ingesting.low!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.queues.low}}&nbsp;</span><span class="text-danger" ng-show="current_host.middleman.ingesting.low!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.middleman.ingesting.low * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                        <span title="Critical Priority Files Waiting" ng-class="{'text-muted': current_host.ingester.ingesting.critical==1, 'text-danger': current_host.ingester.ingesting.critical!=1}" class="text-icon icon-squarec"></span><span ng-class="{'text-danger': current_host.ingester.ingesting.critical!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.queues.critical}}&nbsp;</span><span class="text-danger" ng-show="current_host.ingester.ingesting.critical!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.ingester.ingesting.critical * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                        <span title="High Priority Files Waiting" ng-class="{'text-muted': current_host.ingester.ingesting.high==1, 'text-danger': current_host.ingester.ingesting.high!=1}" class="text-icon icon-squareh"></span><span ng-class="{'text-danger': current_host.ingester.ingesting.high!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.queues.high}}&nbsp;</span><span class="text-danger" ng-show="current_host.ingester.ingesting.high!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.ingester.ingesting.high * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                        <span title="Medium Priority Files Waiting" ng-class="{'text-muted': current_host.ingester.ingesting.medium==1, 'text-danger': current_host.ingester.ingesting.medium!=1}" class="text-icon icon-squarem"></span><span ng-class="{'text-danger': current_host.ingester.ingesting.medium!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.queues.medium}}&nbsp;</span><span class="text-danger" ng-show="current_host.ingester.ingesting.medium!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.ingester.ingesting.medium * 100 | floatStr}}%)&nbsp;</span>&nbsp;
+                                        <span title="Low Priority Files Waiting" ng-class="{'text-muted': current_host.ingester.ingesting.low==1, 'text-danger': current_host.ingester.ingesting.low!=1}" class="text-icon icon-squarel"></span><span ng-class="{'text-danger': current_host.ingester.ingesting.low!=1}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.queues.low}}&nbsp;</span><span class="text-danger" ng-show="current_host.ingester.ingesting.low!=1" style="vertical-align: top; font-size: 11pt;">({{current_host.ingester.ingesting.low * 100 | floatStr}}%)&nbsp;</span>&nbsp;
                                     </div>
                                 </div>
                                 <div class="col-sm-3 col-xs-12">
                                     <div><label>Processing:</label></div>
                                     <div>
-                                        <span title="Inflight Submissions" class="text-muted text-icon icon-squarei"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.inflight}}&nbsp;</span>
-                                        <span title="Waiting for Submission" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.waiting}}&nbsp;</span>
+                                        <span title="Inflight Submissions" class="text-muted text-icon icon-squarei"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.inflight}}&nbsp;</span>
+                                        <span title="Waiting for Submission" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.waiting}}&nbsp;</span>
                                     </div>
                                 </div>
                                 <div class="col-sm-3 col-xs-12">
                                     <div><label>Uptime:</label></div>
                                     <div>
-                                        <span class="text-muted text-icon icon-uptime"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman.up_hours | floatStr}}h</span>
+                                        <span class="text-muted text-icon icon-uptime"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester.up_hours | floatStr}}h</span>
                                     </div>
                                 </div>
                                 <div class="col-sm-9 col-xs-12">
                                     <div><label>Throughput: (for the last minute)</label></div>
                                     <div>
-                                        <span title="Completed files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman['ingest.files_completed'] | floatStr}}&nbsp;</span>&nbsp;
-                                        <span title="Completed submissions" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman['ingest.submissions_completed'] | floatStr}}&nbsp;</span>&nbsp;
-                                        <span title="Whitelisted files" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman['ingest.whitelisted'] | floatStr}}&nbsp;</span>&nbsp;
-                                        <span title="Skipped files" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman['ingest.skipped'] | floatStr}}&nbsp;</span>&nbsp;
-                                        <span title="Duplicate files" class="text-muted text-icon icon-squared"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman['ingest.duplicates'] | floatStr}}&nbsp;</span>
-                                        <span ng-class="{'text-muted': current_host.middleman['ingest.bytes_completed'] != 0, 'text-danger': current_host.middleman['ingest.bytes_completed'] == 0}" class="text-icon icon-speed"></span><span ng-class="{'text-danger': current_host.middleman['ingest.bytes_completed'] == 0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.middleman['ingest.bytes_completed']/((1024*1024*60)/8) | floatStr}} / {{current_host.middleman['ingest.bytes_ingested']/((1024*1024*60)/8) | floatStr}} Mbps</span>
+                                        <span title="Completed files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester['ingest.files_completed'] | floatStr}}&nbsp;</span>&nbsp;
+                                        <span title="Completed submissions" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester['ingest.submissions_completed'] | floatStr}}&nbsp;</span>&nbsp;
+                                        <span title="Whitelisted files" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester['ingest.whitelisted'] | floatStr}}&nbsp;</span>&nbsp;
+                                        <span title="Skipped files" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester['ingest.skipped'] | floatStr}}&nbsp;</span>&nbsp;
+                                        <span title="Duplicate files" class="text-muted text-icon icon-squared"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester['ingest.duplicates'] | floatStr}}&nbsp;</span>
+                                        <span ng-class="{'text-muted': current_host.ingester['ingest.bytes_completed'] != 0, 'text-danger': current_host.ingester['ingest.bytes_completed'] == 0}" class="text-icon icon-speed"></span><span ng-class="{'text-danger': current_host.ingester['ingest.bytes_completed'] == 0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{current_host.ingester['ingest.bytes_completed']/((1024*1024*60)/8) | floatStr}} / {{current_host.ingester['ingest.bytes_ingested']/((1024*1024*60)/8) | floatStr}} Mbps</span>
                                     </div>
                                 </div>
                             </div>

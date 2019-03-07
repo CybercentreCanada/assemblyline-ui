@@ -112,12 +112,12 @@ def configuration(**kwargs):
     return custom_render("configuration.html", **kwargs)
 
 
-# @views.route("/dashboard.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def dashboard(**kwargs):
-#     return custom_render("dashboard.html", **kwargs)
-#
-#
+@views.route("/dashboard.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def dashboard(**kwargs):
+    return custom_render("dashboard.html", **kwargs)
+
+
 @views.route("/")
 @protected_renderer(audit=False)
 def default(**kwargs):

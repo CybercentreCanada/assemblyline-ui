@@ -7,7 +7,7 @@
 
 var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'ui.bootstrap', 'ng.jsoneditor'])
     .factory('mySocket', function (socketFactory) {
-        var mySocket = socketFactory();
+        var mySocket = socketFactory({namespace: "/live_submission"});
         mySocket.forward('error');
         mySocket.forward('start');
         mySocket.forward('stop');
@@ -305,11 +305,13 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         //SocketIO
         $scope.$on('socket:error', function (event, data) {
-            if (data.err_msg) {
-                $scope.error = data.err_msg;
+            console.log(event.name, data);
+            if (data.msg) {
+                $scope.error = data.msg;
             }
         });
-        $scope.$on('socket:start', function () {
+        $scope.$on('socket:start', function (event) {
+            console.log(event.name);
             $scope.started = true;
             for (var idx in $scope.messages) {
                 if ($scope.messages[idx] == "start") {
@@ -324,7 +326,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }
             $scope.timed_redraw();
         });
-        $scope.$on('socket:stop', function () {
+        $scope.$on('socket:stop', function (event) {
+            console.log(event.name);
             var should_push = true;
             for (var idx in $scope.messages) {
                 if ($scope.messages[idx] == "stop") {
@@ -348,6 +351,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         });
         $scope.$on('socket:cachekey', function (event, data) {
+            console.log(event.name, data);
             for (var idx in $scope.messages) {
                 if ($scope.messages[idx] == data.msg) {
                     return;
@@ -360,6 +364,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             $scope.temp_keys.result.push(data.msg)
         });
         $scope.$on('socket:cachekeyerr', function (event, data) {
+            console.log(event.name, data);
             for (var idx in $scope.messages_error) {
                 if ($scope.messages_error[idx] == data.msg) {
                     return;
@@ -493,7 +498,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $http({
                 method: 'POST',
-                url: "/api/v4/service/multiple/keys/",
+                url: "/api/v4/result/multiple_keys/",
                 data: data
             })
                 .success(function (data) {

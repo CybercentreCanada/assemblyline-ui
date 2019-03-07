@@ -42,7 +42,7 @@ def get_multiple_service_results(**kwargs):
     results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False)
 
     file_infos = STORAGE.file.multiget(list(set([x[:64] for x in results.keys()])), as_dictionary=True, as_obj=False)
-    for r_key in results.keys():
+    for r_key in list(results.keys()):
         r_value = format_result(user['classification'], results[r_key], file_infos[r_key[:64]]['classification'])
         if not r_value:
             del results[r_key]

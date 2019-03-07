@@ -130,5 +130,5 @@ def get_expected_shard_count(**_):
     """
     return make_api_response({
         'dispatcher': config.core.dispatcher.shards,
-        'middleman': config.core.middleman.shards,
+        'ingester': config.core.ingester.shards,
     })
