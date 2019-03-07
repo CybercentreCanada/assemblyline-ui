@@ -236,6 +236,7 @@ def ingest_single_file(**kwargs):
             # Calculate file digest and save it to filestore
             digests = identify.get_digests_for_file(out_file)
             sha256 = digests['sha256']
+
             if not f_transport.exists(sha256):
                 f_transport.put(out_file, sha256, location='far')
 
@@ -260,7 +261,7 @@ def ingest_single_file(**kwargs):
             try:
                 submission_obj = Submission({
                     "sid": ingest_id,
-                    "files": [{'name': name, 'sha256': sha256}],
+                    "files": [{'name': name, 'sha256': sha256, 'size': digests['size']}],
                     "notification": notification_params,
                     "metadata": metadata,
                     "params": s_params
