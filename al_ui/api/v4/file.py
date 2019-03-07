@@ -146,12 +146,12 @@ def download_file(sha256, **kwargs):
     <THE FILE BINARY ENCODED IN SPECIFIED FORMAT>
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj.classification):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         params = load_user_settings(user)
     
         name = request.args.get('name', sha256) or sha256
