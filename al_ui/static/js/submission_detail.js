@@ -4,10 +4,9 @@
 /**
  * Main App Module
  */
-
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'ui.bootstrap', 'ng.jsoneditor'])
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'ui.bootstrap', 'ng.jsoneditor'])
     .factory('mySocket', function (socketFactory) {
-        var mySocket = socketFactory({namespace: "/live_submission"});
+        let mySocket = socketFactory({namespace: "/live_submission"});
         mySocket.forward('error');
         mySocket.forward('start');
         mySocket.forward('stop');
@@ -57,7 +56,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         //Filters
-        var tagTypes = [];
+        let tagTypes = [];
         $scope.tagTypeList = function (myTagList) {
             tagTypes = [];
             if (myTagList === undefined || myTagList == null) return [];
@@ -65,7 +64,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.filterTagType = function (tag) {
-            var isNewType = tagTypes.indexOf(tag.type) == -1;
+            let isNewType = tagTypes.indexOf(tag.type) === -1;
             if (isNewType) {
                 tagTypes.push(tag.type);
             }
@@ -74,49 +73,46 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         $scope.useless_results = function () {
             return function (item) {
-                return !(item.result.score == 0 && item.result.sections.length == 0 && item.result.tags.length == 0 && item.response.extracted.length == 0);
+                return !(item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0);
 
             }
         };
 
         $scope.good_results = function () {
             return function (item) {
-                return item.result.score == 0 && item.result.sections.length == 0 && item.result.tags.length == 0 && item.response.extracted.length == 0;
+                return item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0;
 
             }
         };
 
         $scope.futile_errors = function (error_list) {
-            var out = {MAX_DEPTH_REACHED: [], MAX_FILES_REACHED: [], MAX_RETRY_REACHED: [], SERVICE_DOWN: []};
-            for (var idx in error_list) {
-                var key = error_list[idx];
-                var ehash = key.substr(65, key.length);
-                var srv = key.substr(65, key.length);
+            let out = {MAX_DEPTH_REACHED: [], MAX_FILES_REACHED: [], MAX_RETRY_REACHED: [], SERVICE_DOWN: []};
+            for (let idx in error_list) {
+                let key = error_list[idx];
+                let ehash = key.substr(65, key.length);
+                let srv = key.substr(65, key.length);
 
-                if (srv.indexOf(".") != -1) {
+                if (srv.indexOf(".") !== -1) {
                     srv = srv.substr(0, srv.indexOf("."));
                 }
-                if (ehash.indexOf(".e") != -1) {
+                if (ehash.indexOf(".e") !== -1) {
                     ehash = ehash.substr(ehash.indexOf(".e") + 1, ehash.length);
                 }
 
-                if (ehash == "eb54dc2e040a925f84e55e91ff27601ad") {
-                    if (out["SERVICE_DOWN"].indexOf(srv) == -1) {
+                if (ehash === "eb54dc2e040a925f84e55e91ff27601ad") {
+                    if (out["SERVICE_DOWN"].indexOf(srv) === -1) {
                         out["SERVICE_DOWN"].push(srv);
                     }
-                }
-                else if (ehash == "ec502020e499f01f230e06a58ad9b5dcc") {
-                    if (out["MAX_RETRY_REACHED"].indexOf(srv) == -1) {
+                } else if (ehash === "ec502020e499f01f230e06a58ad9b5dcc") {
+                    if (out["MAX_RETRY_REACHED"].indexOf(srv) === -1) {
                         out["MAX_RETRY_REACHED"].push(srv);
                     }
-                }
-                else if (ehash == "e56d398ad9e9c4de4dd0ea8897073d430") {
-                    if (out["MAX_DEPTH_REACHED"].indexOf(srv) == -1) {
+                } else if (ehash === "e56d398ad9e9c4de4dd0ea8897073d430") {
+                    if (out["MAX_DEPTH_REACHED"].indexOf(srv) === -1) {
                         out["MAX_DEPTH_REACHED"].push(srv);
                     }
-                }
-                else if (ehash == "e6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
-                    if (out["MAX_FILES_REACHED"].indexOf(srv) == -1) {
+                } else if (ehash === "e6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
+                    if (out["MAX_FILES_REACHED"].indexOf(srv) === -1) {
                         out["MAX_FILES_REACHED"].push(srv);
                     }
                 }
@@ -132,16 +128,16 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.relevant_errors = function (error_list) {
-            var out = [];
-            for (var idx in error_list) {
-                var key = error_list[idx];
-                var ehash = key.substr(65, key.length);
+            let out = [];
+            for (let idx in error_list) {
+                let key = error_list[idx];
+                let ehash = key.substr(65, key.length);
 
-                if (ehash.indexOf(".e") != -1) {
+                if (ehash.indexOf(".e") !== -1) {
                     ehash = ehash.substr(ehash.indexOf(".e") + 1, ehash.length);
                 }
 
-                if (ehash != "eb54dc2e040a925f84e55e91ff27601ad" && ehash != "ec502020e499f01f230e06a58ad9b5dcc" && ehash != "e56d398ad9e9c4de4dd0ea8897073d430" && ehash != "e6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
+                if (ehash !== "eb54dc2e040a925f84e55e91ff27601ad" && ehash !== "ec502020e499f01f230e06a58ad9b5dcc" && ehash !== "e56d398ad9e9c4de4dd0ea8897073d430" && ehash !== "e6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
                     out.push(key);
                 }
             }
@@ -158,8 +154,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             return Object.keys(o).length;
         };
 
-        $scope.empty = function (obj){
-            if (obj === null || obj === undefined){
+        $scope.empty = function (obj) {
+            if (obj === null || obj === undefined) {
                 return true;
             }
             return Object.keys(obj).length === 0;
@@ -206,15 +202,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             }, 1500);
                         })
                         .error(function (data, status, headers, config) {
-                            if (data == "") {
+                            if (data === "" || data === null) {
                                 return;
                             }
 
                             $scope.loading_extra = false;
                             if (data.api_error_message) {
                                 $scope.error = data.api_error_message;
-                            }
-                            else {
+                            } else {
                                 $scope.error = config.url + " (" + status + ")";
                             }
                         });
@@ -230,7 +225,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             $scope.success = '';
             $scope.loading_extra = true;
 
-            var data = {'name': name, 'copy_sid': sid};
+            let data = {'name': name, 'copy_sid': sid};
 
             $http({
                 method: 'GET',
@@ -246,15 +241,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading_extra = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -279,15 +273,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading_extra = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -313,8 +306,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.$on('socket:start', function (event) {
             console.log(event.name);
             $scope.started = true;
-            for (var idx in $scope.messages) {
-                if ($scope.messages[idx] == "start") {
+            for (let idx in $scope.messages) {
+                if ($scope.messages[idx] === "start") {
                     return;
                 }
             }
@@ -328,15 +321,15 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         });
         $scope.$on('socket:stop', function (event) {
             console.log(event.name);
-            var should_push = true;
-            for (var idx in $scope.messages) {
-                if ($scope.messages[idx] == "stop") {
+            let should_push = true;
+            for (let idx in $scope.messages) {
+                if ($scope.messages[idx] === "stop") {
                     if (idx < 1) {
                         should_push = false;
                     }
                 }
             }
-            if (should_push && $scope.messages.length != 0) {
+            if (should_push && $scope.messages.length !== 0) {
                 $scope.messages.push("stop");
                 sessionStorage.setItem("msg_" + $scope.sid, JSON.stringify($scope.messages))
             }
@@ -351,9 +344,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         });
         $scope.$on('socket:cachekey', function (event, data) {
-            console.log(event.name, data);
-            for (var idx in $scope.messages) {
-                if ($scope.messages[idx] == data.msg) {
+            //console.log(event.name, data);
+            for (let idx in $scope.messages) {
+                if ($scope.messages[idx] === data.msg) {
                     return;
                 }
             }
@@ -364,9 +357,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             $scope.temp_keys.result.push(data.msg)
         });
         $scope.$on('socket:cachekeyerr', function (event, data) {
-            console.log(event.name, data);
-            for (var idx in $scope.messages_error) {
-                if ($scope.messages_error[idx] == data.msg) {
+            //console.log(event.name, data);
+            for (let idx in $scope.messages_error) {
+                if ($scope.messages_error[idx] === data.msg) {
                     return;
                 }
             }
@@ -381,15 +374,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             if ($scope.showslider) {
                 $scope.backto = $window.scrollY;
                 $('body').addClass('modal-open');
-            }
-            else {
+            } else {
                 $('body').removeClass('modal-open');
                 $window.scrollTo(0, $scope.backto);
             }
         }, true);
 
         angular.element($window).on('keydown', function (e) {
-            if (e.which == 27 && $scope.showslider) {
+            if (e.which === 27 && $scope.showslider) {
                 $window.history.back();
             }
         });
@@ -399,17 +391,16 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.$on("$locationChangeStart", function (event, next, current) {
-            if (current.indexOf(next) == 0 && current !== next) {
+            if (current.indexOf(next) === 0 && current !== next) {
                 $scope.showslider = false;
-            }
-            else if (next.indexOf("#/") != -1 && next.indexOf("submission_detail.html") != -1) {
-                var idx = next.indexOf("#/");
-                if (idx != -1) {
-                    var route = next.slice(idx + 2);
-                    var sep_idx = route.indexOf("/");
-                    if (sep_idx != -1) {
-                        var sha256 = route.slice(0, sep_idx);
-                        var name = decodeURIComponent(route.slice(sep_idx + 1));
+            } else if (next.indexOf("#/") !== -1 && next.indexOf("submission_detail.html") !== -1) {
+                let idx = next.indexOf("#/");
+                if (idx !== -1) {
+                    let route = next.slice(idx + 2);
+                    let sep_idx = route.indexOf("/");
+                    if (sep_idx !== -1) {
+                        let sha256 = route.slice(0, sep_idx);
+                        let name = decodeURIComponent(route.slice(sep_idx + 1));
                         $scope.view_file_details(sha256, name);
                     }
                 }
@@ -418,27 +409,26 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         //Highlighter
         $scope.trigger_highlight = function (tag, value) {
-            var key = tag + $scope.splitter + value;
-            var idx = $scope.selected_highlight.indexOf(key);
-            if (idx == -1) {
+            let key = tag + $scope.splitter + value;
+            let idx = $scope.selected_highlight.indexOf(key);
+            if (idx === -1) {
                 $scope.selected_highlight.push(key);
-            }
-            else {
+            } else {
                 $scope.selected_highlight.splice(idx, 1);
             }
             $scope.file_highlight = [];
-            for (var item in $scope.selected_highlight) {
+            for (let item in $scope.selected_highlight) {
                 $scope.file_highlight.push.apply($scope.file_highlight, $scope.tag_map[$scope.selected_highlight[item]])
             }
         };
 
         $scope.remove_highlight = function (key) {
-            var values = key.split($scope.splitter, 2);
+            let values = key.split($scope.splitter, 2);
             $scope.trigger_highlight(values[0], values[1])
         };
 
         $scope.isHighlighted = function (tag, value) {
-            return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) != -1
+            return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) !== -1
         };
 
         $scope.hasContext = function (tag) {
@@ -446,8 +436,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.hasHighlightedTags = function (tags) {
-            for (var i in tags) {
-                var tag = tags[i];
+            for (let i in tags) {
+                let tag = tags[i];
                 if ($scope.isHighlighted(tag.type, tag.value)) {
                     return true;
                 }
@@ -462,10 +452,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
 
         $scope.fetch_keys = function () {
-            var data = $scope.temp_keys;
-            if (data.error.length == 0 && data.result.length == 0) {
+            let data = $scope.temp_keys;
+            if (data.error.length === 0 && data.result.length === 0) {
                 $scope.run_count += 1;
-                if ($scope.run_count == 5) {
+                if ($scope.run_count === 5) {
                     $http({
                         method: 'GET',
                         url: "/api/v4/live/outstanding_services/" + $scope.sid + "/"
@@ -474,15 +464,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             $scope.outstanding = data.api_response;
                         })
                         .error(function (data, status, headers, config) {
-                            if (data == "") {
+                            if (data === "" || data === null) {
                                 return;
                             }
 
                             $scope.loading = false;
                             if (data.api_error_message) {
                                 $scope.error = data.api_error_message;
-                            }
-                            else {
+                            } else {
                                 $scope.error = config.url + " (" + status + ")";
                             }
 
@@ -510,15 +499,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -537,15 +525,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -563,15 +550,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -593,8 +579,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $scope.current_file = data.api_response;
                 $scope.loading_extra = false;
                 $scope.slide_done = false;
-            }
-            else {
+            } else {
                 $timeout(function () {
                     $scope.render_file(data, name);
                 }, 20)
@@ -603,8 +588,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.view_file_details = function (sha256, name) {
-            var method = 'GET';
-            var data = null;
+            let method = 'GET';
+            let data = null;
             if ($scope.file_res[sha256] !== undefined) {
                 if (data == null) {
                     data = {};
@@ -635,15 +620,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.render_file(data, name);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading_extra = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -662,7 +646,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         listed: $scope.relevant_errors($scope.data.errors),
                         aggregated: $scope.futile_errors($scope.data.errors)
                     };
-                    if ($scope.data.state == "completed") {
+                    if ($scope.data.state === "completed") {
                         $scope.get_summary();
                         $scope.get_file_tree();
                         $scope.temp_data = null;
@@ -672,9 +656,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         $scope.file_errors = Object();
                         $scope.completed = true;
                         $scope.started = true;
-                    }
-                    else {
-                        if ($scope.final_timeout_count == 10) {
+                    } else {
+                        if ($scope.final_timeout_count === 10) {
                             $scope.final_timeout_count = 9;
                         }
 
@@ -686,12 +669,12 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
                     $scope.loading = false;
 
-                    if (status == 404) {
+                    if (status === 404) {
                         $timeout(function () {
                             swal({
                                     title: "Error",
@@ -702,17 +685,15 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                                     closeOnConfirm: false
                                 },
                                 function () {
-                                    if ($window.location == document.referrer) {
+                                    if ($window.location === document.referrer) {
                                         $window.location = "about:blank";
-                                    }
-                                    else {
+                                    } else {
                                         $window.location = document.referrer;
                                     }
                                 });
                         }, 100);
                         return;
-                    }
-                    else if (status == 403) {
+                    } else if (status === 403) {
                         $timeout(function () {
                             swal({
                                     title: "Error",
@@ -723,10 +704,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                                     closeOnConfirm: false
                                 },
                                 function () {
-                                    if ($window.location == document.referrer) {
+                                    if ($window.location === document.referrer) {
                                         $window.location = "about:blank";
-                                    }
-                                    else {
+                                    } else {
                                         $window.location = document.referrer;
                                     }
                                 });
@@ -737,8 +717,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -755,15 +734,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.tag_map = data.api_response.map;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -782,21 +760,19 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         $timeout(function () {
                             $scope.file_tree = data.api_response;
                         })
-                    }
-                    else {
+                    } else {
                         $scope.file_tree = data.api_response;
                     }
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -804,7 +780,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.setup_watch_queue = function (from_start, p_suffix) {
-            var params = {};
+            let params = {};
             if (p_suffix !== undefined) {
                 params = {suffix: p_suffix};
             }
@@ -820,15 +796,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
                     $scope.loading = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
-                    }
-                    else {
+                    } else {
                         $scope.error = config.url + " (" + status + ")";
                     }
 
@@ -841,8 +816,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 if ($scope.temp_data == null) {
                     $scope.error = "Nothing to draw ?! That's not right...";
                     return;
-                }
-                else {
+                } else {
                     $scope.data = $scope.temp_data;
                 }
 
@@ -853,8 +827,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             $scope.file_tree = {};
 
             //TODO: load file tree from file info...
-            for (var idx in $scope.data.fileinfo) {
-                var file_item = $scope.data.fileinfo[idx];
+            for (let idx in $scope.data.fileinfo) {
+                let file_item = $scope.data.fileinfo[idx];
                 $scope.file_tree[file_item.sha256] = {};
                 $scope.file_tree[file_item.sha256]['name'] = file_item.original_filename;
                 $scope.file_tree[file_item.sha256]['score'] = 0;
@@ -863,7 +837,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.draw_results = function () {
-            for (var key in $scope.temp_res) {
+            for (let key in $scope.temp_res) {
                 $scope.update_summary(key, $scope.temp_res[key]);
                 $scope.update_filetree(key, $scope.temp_res[key]);
                 if ($scope.file_res[key.substr(0, 64)] === undefined) {
@@ -873,7 +847,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }
             $scope.temp_res = {};
 
-            for (var key_err in $scope.temp_errors) {
+            for (let key_err in $scope.temp_errors) {
                 $scope.update_errors(key_err, $scope.temp_errors[key_err]);
                 if ($scope.file_errors[key_err.substr(0, 64)] === undefined) {
                     $scope.file_errors[key_err.substr(0, 64)] = [];
@@ -899,7 +873,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.update_summary = function (key, result) {
-            var valid_types = ["NET_IP", "NET_DOMAIN_NAME", "NET_FULL_URI", "AV_VIRUS_NAME", "IMPLANT_NAME", "IMPLANT_FAMILY", "TECHNIQUE_OBFUSCATION", "THREAT_ACTOR", "FILE_CONFIG", "FILE_OBFUSCATION", "EXPLOIT_NAME", "FILE_SUMMARY"];
+            let valid_types = ["NET_IP", "NET_DOMAIN_NAME", "NET_FULL_URI", "AV_VIRUS_NAME", "IMPLANT_NAME", "IMPLANT_FAMILY", "TECHNIQUE_OBFUSCATION", "THREAT_ACTOR", "FILE_CONFIG", "FILE_OBFUSCATION", "EXPLOIT_NAME", "FILE_SUMMARY"];
 
             key = key.substr(0, 64);
             if ($scope.summary == null) {
@@ -914,9 +888,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $scope.tag_map[key] = [];
             }
 
-            for (var tag in result['result']['tags']) {
-                var tag_item = result['result']['tags'][tag];
-                if (valid_types.indexOf(tag_item.type) == -1) {
+            for (let tag in result['result']['tags']) {
+                let tag_item = result['result']['tags'][tag];
+                if (valid_types.indexOf(tag_item.type) === -1) {
                     continue;
                 }
 
@@ -924,9 +898,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.summary[tag_item.type] = [];
                 }
 
-                var exists = false;
-                for (var i in $scope.summary[tag_item.type]) {
-                    if ($scope.summary[tag_item.type][i]["value"] == tag_item.value) {
+                let exists = false;
+                for (let i in $scope.summary[tag_item.type]) {
+                    if ($scope.summary[tag_item.type][i]["value"] === tag_item.value) {
                         exists = true;
                         break;
                     }
@@ -940,7 +914,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     })
                 }
 
-                var tag_key = tag_item.type + $scope.splitter + tag_item.value;
+                let tag_key = tag_item.type + $scope.splitter + tag_item.value;
                 $scope.tag_map[key].push(tag_key);
                 if (!$scope.tag_map.hasOwnProperty(tag_key)) {
                     $scope.tag_map[tag_key] = [];
@@ -950,9 +924,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.get_file_name_from_sha256 = function (sha256) {
-            for (var i in $scope.data.files) {
-                if ($scope.data.files[i][1] == sha256) {
-                    return $scope.data.files[i][0]
+            for (let i in $scope.data.files) {
+                if ($scope.data.files[i].sha256 === sha256) {
+                    return $scope.data.files[i].name
                 }
             }
 
@@ -965,10 +939,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $scope.file_tree = {};
             }
 
-            var to_update = $scope.search_file_tree(key, $scope.file_tree);
+            let to_update = $scope.search_file_tree(key, $scope.file_tree);
 
-            if (to_update.length == 0) {
-                var fname = $scope.get_file_name_from_sha256(key);
+            if (to_update.length === 0) {
+                let fname = $scope.get_file_name_from_sha256(key);
 
                 if (fname != null) {
                     $scope.file_tree[key] = {};
@@ -977,8 +951,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.file_tree[key]['score'] = 0;
                     $scope.num_files += 1;
                     to_update.push($scope.file_tree[key]);
-                }
-                else {
+                } else {
                     fname = key;
                     if (!$scope.file_tree.hasOwnProperty("TBD")) {
                         $scope.file_tree["TBD"] = {};
@@ -997,50 +970,48 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 }
 
             }
-            var to_del_tbd = [];
-            for (var idx in to_update) {
-                var item = to_update[idx];
+            let to_del_tbd = [];
+            for (let idx in to_update) {
+                let item = to_update[idx];
                 if (result.result['score'] !== undefined) {
                     item['score'] = item['score'] + result.result['score'];
                 }
 
-                for (var i in result.response.extracted) {
-                    var sha256 = result.response.extracted[i][1];
-                    var name = result.response.extracted[i][0];
+                for (let i in result.response.extracted) {
+                    let sha256 = result.response.extracted[i].sha256;
+                    let name = result.response.extracted[i].name;
 
                     if (!item['children'].hasOwnProperty(sha256)) {
                         if ($scope.file_tree.hasOwnProperty("TBD") && $scope.file_tree["TBD"]['children'].hasOwnProperty(sha256)) {
                             item['children'][sha256] = $scope.file_tree["TBD"]['children'][sha256];
                             item['children'][sha256]['name'] = [name];
-                            if (to_del_tbd.indexOf(sha256) == -1) to_del_tbd.push(sha256);
-                        }
-                        else {
+                            if (to_del_tbd.indexOf(sha256) === -1) to_del_tbd.push(sha256);
+                        } else {
                             item['children'][sha256] = {};
                             item['children'][sha256]['children'] = {};
                             item['children'][sha256]['name'] = [name];
                             item['children'][sha256]['score'] = 0;
                             $scope.num_files += 1;
                         }
-                    }
-                    else {
+                    } else {
                         item['children'][sha256]['name'].push(name)
                     }
 
                 }
             }
 
-            for (var idx_del in to_del_tbd) {
+            for (let idx_del in to_del_tbd) {
                 delete $scope.file_tree["TBD"]['children'][to_del_tbd[idx_del]];
             }
         };
 
         $scope.search_file_tree = function (sha256, tree) {
-            var output = [];
-            for (var key in tree) {
-                if ($scope.obj_len(tree[key]['children']) != 0) {
+            let output = [];
+            for (let key in tree) {
+                if ($scope.obj_len(tree[key]['children']) !== 0) {
                     output.push.apply(output, $scope.search_file_tree(sha256, tree[key]['children']));
                 }
-                if (key == sha256) {
+                if (key === sha256) {
                     output.push(tree[key]);
                 }
             }
@@ -1048,10 +1019,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.reload_messages = function () {
-            var ret_val = {get_final: false, queue_from_start: false};
+            let ret_val = {get_final: false, queue_from_start: false};
 
-            var temp = sessionStorage.getItem("msg_" + $scope.sid);
-            var temp_err = sessionStorage.getItem("error_" + $scope.sid);
+            let temp = sessionStorage.getItem("msg_" + $scope.sid);
+            let temp_err = sessionStorage.getItem("error_" + $scope.sid);
 
             if (temp != null) {
                 $scope.messages = JSON.parse(temp);
@@ -1060,27 +1031,24 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $scope.messages_error = JSON.parse(temp_err);
             }
 
-            if ($scope.messages.length == 0) {
+            if ($scope.messages.length === 0) {
                 ret_val.queue_from_start = true;
-            }
-            else if ($scope.messages[$scope.messages.length - 1] != "stop") {
-                for (var i = 0; i < $scope.messages.length; i++) {
-                    if ($scope.messages[i] == "start") {
+            } else if ($scope.messages[$scope.messages.length - 1] !== "stop") {
+                for (let i = 0; i < $scope.messages.length; i++) {
+                    if ($scope.messages[i] === "start") {
                         $scope.started = true;
                         $scope.draw_temp_data();
                         $scope.temp_data = null;
                         ret_val.queue_from_start = false;
-                    }
-                    else {
+                    } else {
                         $scope.temp_keys.result.push($scope.messages[i]);
                     }
                 }
-                for (var y = 0; y < $scope.messages_error.length; y++) {
+                for (let y = 0; y < $scope.messages_error.length; y++) {
                     $scope.temp_keys.error.push($scope.messages_error[y]);
                 }
                 $scope.timed_redraw();
-            }
-            else {
+            } else {
                 ret_val.get_final = true;
             }
 
@@ -1089,7 +1057,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         //Load params from datastore
         $scope.start = function () {
-            if ($scope.sid == null || $scope.sid == "") {
+            if ($scope.sid == null || $scope.sid === "") {
                 $timeout(function () {
                     swal({
                             title: "Error",
@@ -1100,16 +1068,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             closeOnConfirm: false
                         },
                         function () {
-                            if ($window.location == document.referrer) {
+                            if ($window.location === document.referrer) {
                                 $window.location = "about:blank";
-                            }
-                            else {
+                            } else {
                                 $window.location = document.referrer;
                             }
                         });
                 }, 100);
-            }
-            else {
+            } else {
                 $scope.get_final_data();
             }
         };
