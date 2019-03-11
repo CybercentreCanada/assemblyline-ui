@@ -89,29 +89,29 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             let out = {MAX_DEPTH_REACHED: [], MAX_FILES_REACHED: [], MAX_RETRY_REACHED: [], SERVICE_DOWN: []};
             for (let idx in error_list) {
                 let key = error_list[idx];
-                let ehash = key.substr(65, key.length);
+                let e_id = key.substr(65, key.length);
                 let srv = key.substr(65, key.length);
 
                 if (srv.indexOf(".") !== -1) {
                     srv = srv.substr(0, srv.indexOf("."));
                 }
-                if (ehash.indexOf(".e") !== -1) {
-                    ehash = ehash.substr(ehash.indexOf(".e") + 1, ehash.length);
+                if (e_id.indexOf(".e") !== -1) {
+                    e_id = e_id.substr(e_id.indexOf(".e") + 1, e_id.length);
                 }
 
-                if (ehash === "eb54dc2e040a925f84e55e91ff27601ad") {
+                if (e_id === "21") {
                     if (out["SERVICE_DOWN"].indexOf(srv) === -1) {
                         out["SERVICE_DOWN"].push(srv);
                     }
-                } else if (ehash === "ec502020e499f01f230e06a58ad9b5dcc") {
+                } else if (e_id === "12") {
                     if (out["MAX_RETRY_REACHED"].indexOf(srv) === -1) {
                         out["MAX_RETRY_REACHED"].push(srv);
                     }
-                } else if (ehash === "e56d398ad9e9c4de4dd0ea8897073d430") {
+                } else if (e_id === "10") {
                     if (out["MAX_DEPTH_REACHED"].indexOf(srv) === -1) {
                         out["MAX_DEPTH_REACHED"].push(srv);
                     }
-                } else if (ehash === "e6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
+                } else if (e_id === "11") {
                     if (out["MAX_FILES_REACHED"].indexOf(srv) === -1) {
                         out["MAX_FILES_REACHED"].push(srv);
                     }
@@ -131,13 +131,13 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             let out = [];
             for (let idx in error_list) {
                 let key = error_list[idx];
-                let ehash = key.substr(65, key.length);
+                let e_id = key.substr(65, key.length);
 
-                if (ehash.indexOf(".e") !== -1) {
-                    ehash = ehash.substr(ehash.indexOf(".e") + 1, ehash.length);
+                if (e_id.indexOf(".e") !== -1) {
+                    e_id = e_id.substr(e_id.indexOf(".e") + 1, e_id.length);
                 }
 
-                if (ehash !== "eb54dc2e040a925f84e55e91ff27601ad" && ehash !== "ec502020e499f01f230e06a58ad9b5dcc" && ehash !== "e56d398ad9e9c4de4dd0ea8897073d430" && ehash !== "e6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
+                if (e_id !== "21" && e_id !== "12" && e_id !== "10" && e_id !== "11") {
                     out.push(key);
                 }
             }

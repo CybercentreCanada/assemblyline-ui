@@ -766,32 +766,35 @@ utils.filter('floatStr', function () {
 
 utils.filter('getErrorTypeFromKey', function () {
     return function (key) {
-        var ehash = key.substr(65, key.length);
+        var e_id = key.substr(65, key.length);
 
-        if (ehash.indexOf(".e") != -1) {
-            ehash = ehash.substr(ehash.indexOf(".e") + 2, ehash.length);
+        if (e_id.indexOf(".e") !== -1) {
+            e_id = e_id.substr(e_id.indexOf(".e") + 2, e_id.length);
         }
 
-        if (ehash == "b54dc2e040a925f84e55e91ff27601ad") {
+        if (e_id === "21") {
             return "SERVICE DOWN";
         }
-        else if (ehash == "c502020e499f01f230e06a58ad9b5dcc") {
+        else if (e_id === "12") {
             return "MAX RETRY REACHED";
         }
-        else if (ehash == "56d398ad9e9c4de4dd0ea8897073d430") {
+        else if (e_id === "10") {
             return "MAX DEPTH REACHED";
         }
-        else if (ehash == "d0591b2ced7c98928b8c59c168670a86") {
+        else if (e_id === "30") {
             return "TASK PRE-EMPTED";
         }
-        else if (ehash == "ae4dcce1b2fcc4f2ffa14195d1e8e866") {
+        else if (e_id === "20") {
             return "SERVICE BUSY";
         }
-        else if (ehash == "6e34a5b7aa6fbfb6b1ac0d35f2c44d70") {
+        else if (e_id === "11") {
             return "MAX FILES REACHED";
         }
+        else if (e_id === "1") {
+            return "EXCEPTION";
+        }
 
-        return "EXCEPTION";
+        return "UNKNOWN";
     }
 });
 
