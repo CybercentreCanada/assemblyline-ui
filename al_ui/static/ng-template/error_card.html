@@ -1,8 +1,7 @@
-<div class="alert_card" ng-class="{danger: getErrorTypeFromKey(error.id)=='EXCEPTION'}">
+<div class="alert_card" ng-class="{danger: error.type=='EXCEPTION', warning: error.type=='UNKNOWN'}">
 	<div class="row">
 		<div class="col-sm-12">
-            <div class="pull-right text-muted small">{{ getErrorHash(error.id) }}</div>
-			<div><b ng-class="{'text-danger': getErrorTypeFromKey(error.id)=='EXCEPTION', 'text-primary': getErrorTypeFromKey(error.id)!='EXCEPTION'}">{{ error.id | getErrorTypeFromKey }}</b> :: <b>{{error.response.service_name}}<span ng-if="error.response.service_version"> - {{error.response.service_version}}</span></b> :: {{error.created | date:"yyyy-MM-dd HH:mm:ss"}}</div>
+            <div><b ng-class="{'text-danger': error.type=='EXCEPTION', 'text-warning': error.type=='UNKNOWN', 'text-primary': error.type!='EXCEPTION'&&error.type!='UNKNOWN'}">{{ error.type }}</b> :: <b>{{error.response.service_name}}<span ng-if="error.response.service_version"> - {{error.response.service_version}}</span></b> :: {{error.created | date:"yyyy-MM-dd HH:mm:ss"}}</div>
 			<pre style="background-color: #EEE">{{error.response.message}}</pre>
             <div class="pull-right text-muted small">File: {{ error.id | getHashFromKey }}</div>
 		</div>

@@ -293,7 +293,7 @@
 			<div id="errors" class="collapse in">
 				<div ng-repeat="res in current_file.errors | orderBy:sort_by_name">
 					<section id="{{res.response.service_name}}" class="card_error">
-						<div class="header_title" data-toggle="collapse" data-target="#{{res.response.service_name}}_content"><strong>{{res.response.service_name}}</strong>&nbsp;[<strong>{{res.response.status}}</strong>]&nbsp;<span ng-if="res.response.service_version" class="text-muted">:: {{res.response.service_version}}</span></div>
+						<div class="header_title" data-toggle="collapse" data-target="#{{res.response.service_name}}_content"><strong>{{res.response.service_name}}</strong>&nbsp;[<strong>{{res.type}}</strong>]&nbsp;<span ng-if="res.response.service_version" class="text-muted">:: {{res.response.service_version}}</span></div>
 						<div id="{{res.response.service_name}}_content" class="collapse in">
 							<p class="content">{{res.response.message}}</p>
 						</div>

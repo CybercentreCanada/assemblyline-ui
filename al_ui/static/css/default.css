@@ -834,6 +834,11 @@ section.container{
 	min-height: 100px;
 }
 
+.alert_card.warning {
+	background: #FED;
+	border: solid 1px #ffcc00;
+}
+
 .alert_card.danger {
 	background: #F8EEEE;
 	border: solid 1px #F2DEDE;

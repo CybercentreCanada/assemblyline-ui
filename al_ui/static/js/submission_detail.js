@@ -96,7 +96,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     srv = srv.substr(0, srv.indexOf("."));
                 }
                 if (e_id.indexOf(".e") !== -1) {
-                    e_id = e_id.substr(e_id.indexOf(".e") + 1, e_id.length);
+                    e_id = e_id.substr(e_id.indexOf(".e") + 2, e_id.length);
                 }
 
                 if (e_id === "21") {
@@ -134,7 +134,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 let e_id = key.substr(65, key.length);
 
                 if (e_id.indexOf(".e") !== -1) {
-                    e_id = e_id.substr(e_id.indexOf(".e") + 1, e_id.length);
+                    e_id = e_id.substr(e_id.indexOf(".e") + 2, e_id.length);
                 }
 
                 if (e_id !== "21" && e_id !== "12" && e_id !== "10" && e_id !== "11") {
