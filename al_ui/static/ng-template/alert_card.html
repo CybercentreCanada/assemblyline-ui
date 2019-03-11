@@ -20,7 +20,8 @@
                 <div class="row" ng-if="alert.priority"><div class="col-sm-2">Priority:</div><div class="col-sm-10"><label class="label label-tag label-default">{{alert.priority}}</label></div></div>
                 <div class="row" ng-if="alert.status"><div class="col-sm-2">Status:</div><div class="col-sm-10"><label class="label label-tag label-default">{{alert.status}}</label></div></div>
                 <div class="row"><div class="col-sm-2">File info:</div><div class="col-sm-10"><span class="text-primary"><b>{{alert.file.name}}</b></span><span ng-if="alert.file.type"> :: {{alert.file.type}}</span></div></div>
-                <div class="row"><div class="col-sm-2"></div><div class="col-sm-10 small"><span ng-if="alert.file.sha256">{SHA256}&nbsp;{{alert.file.sha256}} :: </span><span ng-if="alert.file.sha1">{SHA1}&nbsp;{{alert.file.sha1}} :: </span>{MD5}&nbsp;{{alert.file.md5}} :: <b>{{alert.file.size}}</b></div></div>
+                <div class="row"><div class="col-sm-2"></div><div class="col-sm-10 small">{SHA256}&nbsp;{{alert.file.sha256}} :: {SHA1}&nbsp;{{alert.file.sha1}}</div></div>
+                <div class="row"><div class="col-sm-2"></div><div class="col-sm-10 small">{MD5}&nbsp;{{alert.file.md5}} :: <b>{{alert.file.size}}</b></div></div>
                 <div class="row" ng-show="alert.owner"><div class="col-sm-2">Ownership:</div><div class="col-sm-10"><b>{{alert.owner}}</b></div></div>
                 <div class="row" ng-show="alert.hint_owner"><div class="col-sm-2">Ownership:</div><div class="col-sm-10"><b>There are owners for previous alerts in the group</b></div></div>
                 <div ng-if="has_meta(alert)" style="padding-top: 10px; padding-bottom: 10px;">
