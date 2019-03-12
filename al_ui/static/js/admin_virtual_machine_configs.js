@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http, $timeout) {
         //Parameters vars
         $scope.vm_list = null;
@@ -54,7 +54,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/vm/" + vm.name + "/"
+                url: "/api/v4/vm/" + vm.name + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -63,7 +63,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $("#myModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -85,7 +85,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'POST',
-                url: "/api/v3/vm/" + $scope.current_vm.name + "/",
+                url: "/api/v4/vm/" + $scope.current_vm.name + "/",
                 data: $scope.current_vm
             })
                 .success(function () {
@@ -99,7 +99,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -120,7 +120,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'PUT',
-                url: "/api/v3/vm/" + $scope.current_vm.name + "/",
+                url: "/api/v4/vm/" + $scope.current_vm.name + "/",
                 data: $scope.current_vm
             })
                 .success(function () {
@@ -135,7 +135,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "" || status == 400) {
+                    if (data === "" || data === null || status === 400) {
                         $("#vm_name_group").addClass("has-error");
                         $("#vm_name").select();
                         $scope.error_exist = data.api_error_message;
@@ -174,7 +174,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'DELETE',
-                url: "/api/v3/vm/" + $scope.current_vm.name + "/"
+                url: "/api/v4/vm/" + $scope.current_vm.name + "/"
             })
                 .success(function () {
                     $scope.loading_extra = false;
@@ -188,7 +188,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -207,19 +207,19 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 return [];
             }
 
-            var keys = [];
-            for (var i in $scope.vm_list) {
+            let keys = [];
+            for (let i in $scope.vm_list) {
                 keys.push($scope.vm_list[i].name);
             }
-            var array = [];
-            var found = false;
+            let array = [];
+            let found = false;
 
-            for (var idx in $scope.service_list) {
+            for (let idx in $scope.service_list) {
                 if (!$scope.service_list[idx].enabled) {
                     continue;
                 }
-                for (var k in keys) {
-                    if (keys[k] == $scope.service_list[idx].name) {
+                for (let k in keys) {
+                    if (keys[k] === $scope.service_list[idx].name) {
                         found = true;
                         break;
                     }
@@ -228,8 +228,8 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 found = false;
             }
 
-            for (var idx_vmname in array) {
-                if ($scope.current_vm.name == array[idx_vmname].name) {
+            for (let idx_vmname in array) {
+                if ($scope.current_vm.name === array[idx_vmname].name) {
                     found = true;
                     break;
                 }
@@ -251,17 +251,17 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/vm/list/"
+                url: "/api/v4/vm/list/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
-                    $scope.vm_list = data.api_response;
+                    $scope.vm_list = data.api_response.items;
                     $scope.started = true;
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "" || status == 400) {
+                    if (data === "" || data === null || status === 400) {
                         $scope.vm_list = [];
                         $scope.total = 0;
                         $scope.filtered = true;
@@ -286,17 +286,17 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/service/list/"
+                url: "/api/v4/service/list/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
 
-                    $scope.service_list = data.api_response;
+                    $scope.service_list = data.api_response.items;
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
