@@ -11,7 +11,6 @@ from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, config
 
-ALERT_OFFSET = -300.0
 Classification = forge.get_classification()
 SUB_API = 'alert'
 
@@ -32,8 +31,8 @@ def get_timming_filter(tc_start, tc):
 
 
 def get_stats_for_fields(fields, query, tc_start, tc, access_control):
-    if not tc_start and "no_delay" not in request.args:
-        tc_start = now_as_iso(ALERT_OFFSET)
+    if not tc_start and "no_delay" not in request.args and config.core.alerter.delay != 0:
+        tc_start = now_as_iso(config.core.alerter.delay * -1)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
     timming_filter = get_timming_filter(tc_start, tc)
@@ -258,8 +257,8 @@ def list_alerts(**kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
-    if not tc_start and "no_delay" not in request.args:
-        tc_start = now_as_iso(ALERT_OFFSET)
+    if not tc_start and "no_delay" not in request.args and config.core.alerter.delay != 0:
+        tc_start = now_as_iso(config.core.alerter.delay * -1)
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
@@ -326,8 +325,8 @@ def list_grouped_alerts(field, **kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
-    if not tc_start and "no_delay" not in request.args:
-        tc_start = now_as_iso(ALERT_OFFSET)
+    if not tc_start and "no_delay" not in request.args and config.core.alerter.delay != 0:
+        tc_start = now_as_iso(config.core.alerter.delay * -1)
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
