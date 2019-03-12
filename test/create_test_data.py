@@ -1,3 +1,4 @@
+import sys
 import os
 import random
 
@@ -62,103 +63,104 @@ parsed = yp.parse_file('al_yara_signatures.yar')
 yp.import_now([p['rule'] for p in parsed])
 signatures = [p['rule']['name'] for p in parsed]
 
-print("\nCreating 20 Files...")
-file_hashes = []
-for x in range(20):
-    f = random_model_obj(File)
-    file_hashes.append(f.sha256)
-    ds.file.save(f.sha256, f)
+if "full" in sys.argv:
+    print("\nCreating 20 Files...")
+    file_hashes = []
+    for x in range(20):
+        f = random_model_obj(File)
+        file_hashes.append(f.sha256)
+        ds.file.save(f.sha256, f)
 
-    temp_file = f'/tmp/{f.sha256}'
-    # noinspection PyBroadException
-    try:
-        os.unlink(temp_file)
-    except Exception:
-        pass
-    with open(temp_file, 'wb') as fh:
-        fh.write(f.sha256.encode("utf-8"))
-    fs.put(temp_file, f.sha256)
+        temp_file = f'/tmp/{f.sha256}'
+        # noinspection PyBroadException
+        try:
+            os.unlink(temp_file)
+        except Exception:
+            pass
+        with open(temp_file, 'wb') as fh:
+            fh.write(f.sha256.encode("utf-8"))
+        fs.put(temp_file, f.sha256)
 
-    print(f"\t{f.sha256}")
+        print(f"\t{f.sha256}")
 
-print("\nCreating 6 Results per file...")
-result_keys = []
-for fh in file_hashes:
-    other_files = list(set(file_hashes) - {fh})
+    print("\nCreating 6 Results per file...")
+    result_keys = []
+    for fh in file_hashes:
+        other_files = list(set(file_hashes) - {fh})
 
-    for x in range(6):
-        r = random_model_obj(Result)
-        r.sha256 = fh
+        for x in range(6):
+            r = random_model_obj(Result)
+            r.sha256 = fh
 
-        for ext in r.response.extracted:
-            ext.sha256 = random.choice(other_files)
-            if fh == ext.sha256:
-                raise Exception("Invalid extracted file")
+            for ext in r.response.extracted:
+                ext.sha256 = random.choice(other_files)
+                if fh == ext.sha256:
+                    raise Exception("Invalid extracted file")
 
-        for supp in r.response.supplementary:
-            supp.sha256 = random.choice(other_files)
-            if fh == supp.sha256:
-                raise Exception("Invalid supplementary file")
+            for supp in r.response.supplementary:
+                supp.sha256 = random.choice(other_files)
+                if fh == supp.sha256:
+                    raise Exception("Invalid supplementary file")
 
-        for tag in r.result.tags:
-            if random.randint(0,3) == 1:
-                tag.value = random.choice(signatures)
-                tag.type = "FILE_YARA_RULE"
+            for tag in r.result.tags:
+                if random.randint(0,3) == 1:
+                    tag.value = random.choice(signatures)
+                    tag.type = "FILE_YARA_RULE"
 
-        key = r.build_key()
-        result_keys.append(key)
-        ds.result.save(key, r)
-        print(f"\t{key}")
+            key = r.build_key()
+            result_keys.append(key)
+            ds.result.save(key, r)
+            print(f"\t{key}")
 
-print("\nCreating 4 EmptyResults per file...")
-for fh in file_hashes:
-    other_files = list(set(file_hashes) - {fh})
+    print("\nCreating 4 EmptyResults per file...")
+    for fh in file_hashes:
+        other_files = list(set(file_hashes) - {fh})
 
-    for x in range(4):
-        # Get a random result key
-        r = random_model_obj(Result)
-        r.sha256 = fh
-        key = f"{r.build_key()}.e"
-        result_keys.append(key)
+        for x in range(4):
+            # Get a random result key
+            r = random_model_obj(Result)
+            r.sha256 = fh
+            key = f"{r.build_key()}.e"
+            result_keys.append(key)
 
-        # Save an empty result using that key
-        ds.emptyresult.save(key, random_model_obj(EmptyResult))
-        print(f"\t{key}")
+            # Save an empty result using that key
+            ds.emptyresult.save(key, random_model_obj(EmptyResult))
+            print(f"\t{key}")
 
-print("\nCreating 2 Errors per file...")
-error_keys = []
-for fh in file_hashes:
-    for x in range(2):
-        e = random_model_obj(Error)
-        e.sha256 = fh
-        key = e.build_key()
-        error_keys.append(key)
-        ds.error.save(key, e)
-        print(f"\t{key}")
+    print("\nCreating 2 Errors per file...")
+    error_keys = []
+    for fh in file_hashes:
+        for x in range(2):
+            e = random_model_obj(Error)
+            e.sha256 = fh
+            key = e.build_key()
+            error_keys.append(key)
+            ds.error.save(key, e)
+            print(f"\t{key}")
 
-print("\nCreating 10 Submissions...")
-submissions = []
-for x in range(10):
-    s = random_model_obj(Submission)
-    s.results = random.choices(result_keys, k=random.randint(5, 15))
-    s.errors = random.choices(error_keys, k=random.randint(0, 3))
-    s_file_hashes = list(set([x[:64] for x in s.results]).union(set([x[:64] for x in s.errors])))
-    s.error_count = len(s.errors)
-    s.file_count = len(s_file_hashes)
-    for f in s.files:
-        f.sha256 = random.choice(s_file_hashes)
-    ds.submission.save(s.sid, s)
-    submissions.append({"sid": s.sid, "file": s.files[0].sha256})
-    print(f"\t{s.sid}")
+    print("\nCreating 10 Submissions...")
+    submissions = []
+    for x in range(10):
+        s = random_model_obj(Submission)
+        s.results = random.choices(result_keys, k=random.randint(5, 15))
+        s.errors = random.choices(error_keys, k=random.randint(0, 3))
+        s_file_hashes = list(set([x[:64] for x in s.results]).union(set([x[:64] for x in s.errors])))
+        s.error_count = len(s.errors)
+        s.file_count = len(s_file_hashes)
+        for f in s.files:
+            f.sha256 = random.choice(s_file_hashes)
+        ds.submission.save(s.sid, s)
+        submissions.append({"sid": s.sid, "file": s.files[0].sha256})
+        print(f"\t{s.sid}")
 
-print("\nCreating 50 Alerts...")
-for x in range(50):
-    submission = random.choice(submissions)
-    a = random_model_obj(Alert)
-    a.file.sha256 = submission['file']
-    a.sid = submission['sid']
-    a.owner = random.choice(['admin', 'user', 'other', None])
-    ds.alert.save(a.alert_id, a)
-    print(f"\t{a.alert_id}")
+    print("\nCreating 50 Alerts...")
+    for x in range(50):
+        submission = random.choice(submissions)
+        a = random_model_obj(Alert)
+        a.file.sha256 = submission['file']
+        a.sid = submission['sid']
+        a.owner = random.choice(['admin', 'user', 'other', None])
+        ds.alert.save(a.alert_id, a)
+        print(f"\t{a.alert_id}")
 
 print("\nDone.")
