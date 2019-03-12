@@ -5,7 +5,7 @@
  * Main App Module
  */
 
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.error = '';
@@ -23,15 +23,15 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         //API list custom filter
         $scope.APIMatching = function (group) {
-            var out = [];
-            for (var x in $scope.api_functions) {
-                var item = $scope.api_functions[x];
-                if (group == "documentation") {
-                    if (item.path == "/api/" + $scope.selected_api + "/") {
+            let out = [];
+            for (let x in $scope.api_functions) {
+                let item = $scope.api_functions[x];
+                if (group === "documentation") {
+                    if (item.path === "/api/" + $scope.selected_api + "/") {
                         out.push(item);
                     }
                 }
-                else if (item.path.indexOf("/api/" + $scope.selected_api + "/" + group + "/") == 0) {
+                else if (item.path.indexOf("/api/" + $scope.selected_api + "/" + group + "/") === 0) {
                     out.push(item);
                 }
             }
@@ -55,7 +55,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                         $scope.loading = false;
                     })
                     .error(function (data, status, headers, config) {
-                        if (data == "") {
+                        if (data === "" || data === null) {
                             return;
                         }
 
@@ -83,7 +83,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.loading = false;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 

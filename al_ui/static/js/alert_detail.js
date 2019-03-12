@@ -5,7 +5,7 @@
  * Main App Module
  */
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap', 'ngSanitize', 'ui.select'])
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap', 'ngSanitize', 'ui.select'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.user = null;
@@ -19,7 +19,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
         $scope.has_meta = function (alert) {
             if (alert != null && alert.hasOwnProperty('metadata')){
-                var size = Object.keys(alert).length;
+                let size = Object.keys(alert).length;
                 return size > 0;
             }
 
@@ -46,7 +46,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                 $("#related_ids_mdl").modal('show');
             }
             else {
-                var params = {
+                let params = {
                     q: $scope.filter,
                     tc: $scope.time_slice,
                     start: $scope.start_time,
@@ -69,7 +69,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $("#related_ids_mdl").modal('show');
                     })
                     .error(function (data) {
-                        $timeout(function () {
+                        return $timeout(function () {
                             swal({
                                 title: "Error while generating list of IDs.",
                                 text: data.api_error_message,
@@ -95,8 +95,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     closeOnConfirm: true
                 },
                 function () {
-                    var ctrl = $("#" + alert_idx + "_ownership");
-                    var disabled = ctrl.attr('disabled');
+                    let ctrl = $("#" + alert_idx + "_ownership");
+                    let disabled = ctrl.attr('disabled');
                     if (disabled === undefined && disabled === false) {
                         return;
                     }
@@ -123,8 +123,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         };
 
         $scope.count_similar = function (alert, alert_idx) {
-            var ctrl = $("#" + alert_idx + "_similar");
-            var disabled = ctrl.attr('disabled');
+            let ctrl = $("#" + alert_idx + "_similar");
+            let disabled = ctrl.attr('disabled');
             if (disabled === undefined && disabled === false) {
                 return;
             }
@@ -134,7 +134,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             ctrl.addClass("btn-default");
             ctrl.text("Counting alerts...");
 
-            var url = "/api/v4/search/alert/?query=file.md5:" + alert['file']['md5'] + "&rows=0";
+            let url = "/api/v4/search/alert/?query=file.md5:" + alert['file']['md5'] + "&rows=0";
             $http({method: 'GET', url: url})
                 .success(function (data) {
                     ctrl.removeClass("btn-default");
@@ -194,8 +194,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         if ($scope.alert['label'] === undefined) {
                             $scope.alert['label'] = []
                         }
-                        for (var i in action.label) {
-                            var label = action.label[i];
+                        for (let i in action.label) {
+                            let label = action.label[i];
                             if ($scope.alert['label'].indexOf(label) === -1) {
                                 $scope.alert['label'].push(label);
                             }

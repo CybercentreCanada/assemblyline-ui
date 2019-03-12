@@ -1,4 +1,4 @@
-var ngSearch = angular.module('search', []);
+let ngSearch = angular.module('search', []);
 
 ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     $scope.suggestions = ["OR", "AND", "NOT", "TO", "NOW", "DAY", "MONTH", "YEAR", "HOUR", "MINUTE"];
@@ -18,12 +18,12 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     $scope.load_global_favorites = false;
 
     $scope.isOwner = function (created_by) {
-        return created_by == $scope.user.uname;
+        return created_by === $scope.user.uname;
 
     };
 
     $scope.toggleFQ = function (filter_idx, isPersonal) {
-        var filter_list = null;
+        let filter_list = null;
 
         if (isPersonal) {
             filter_list = $scope.favorites;
@@ -32,9 +32,9 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
             filter_list = $scope.global_filters;
         }
 
-        var filter_query = filter_list[filter_idx].query;
-        var idx = $scope.$parent.filter_queries.indexOf(filter_query);
-        if (idx == -1) {
+        let filter_query = filter_list[filter_idx].query;
+        let idx = $scope.$parent.filter_queries.indexOf(filter_query);
+        if (idx === -1) {
             $scope.$parent.filter_queries.push(filter_query)
         }
         else {
@@ -54,9 +54,9 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     };
 
     $scope.inFavorites = function (query) {
-        for (var id in $scope.favorites) {
-            var temp_fav = $scope.favorites[id];
-            if (temp_fav.query == query) {
+        for (let id in $scope.favorites) {
+            let temp_fav = $scope.favorites[id];
+            if (temp_fav.query === query) {
                 return true;
             }
         }
@@ -64,9 +64,9 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     };
 
     $scope.nameOfQuery = function (query) {
-        for (var id in $scope.favorites) {
-            var temp_fav = $scope.favorites[id];
-            if (temp_fav.query == query) {
+        for (let id in $scope.favorites) {
+            let temp_fav = $scope.favorites[id];
+            if (temp_fav.query === query) {
                 return temp_fav.name;
             }
         }
@@ -74,17 +74,17 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     };
 
     $scope.idOfName = function (name, type) {
-        var filter_list;
-        if (type == "global") {
+        let filter_list;
+        if (type === "global") {
             filter_list = $scope.global_filters;
         }
         else {
             filter_list = $scope.favorites;
         }
 
-        for (var id in filter_list) {
-            var temp_fav = filter_list[id];
-            if (temp_fav.name == name) {
+        for (let id in filter_list) {
+            let temp_fav = filter_list[id];
+            if (temp_fav.name === name) {
                 return id;
             }
         }
@@ -96,15 +96,15 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     };
 
     $scope.getToday = function () {
-        var today = new Date();
-        var dd = today.getDate();
+        let today = new Date();
+        let dd = today.getDate();
         if (dd < 10) {
             dd = '0' + dd;
         }
         else {
             dd = '' + dd;
         }
-        var mm = today.getMonth() + 1;
+        let mm = today.getMonth() + 1;
         if (mm < 10) {
             mm = '0' + mm;
         }
@@ -145,14 +145,14 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
 
     $scope.addToFavorites = function () {
         if ($scope.page == null) return;
-        if ($scope.cur_favorite.name == '' || $scope.cur_favorite.name == null || $scope.cur_favorite.name === undefined) {
+        if ($scope.cur_favorite.name === '' || $scope.cur_favorite.name == null || $scope.cur_favorite.name === undefined) {
             $scope.last_error = "Your filter needs a name";
             return;
         }
 
-        var user = $scope.user.uname;
-        var data = $scope.cur_favorite;
-        var global = $scope.cur_favorite.type == 'global';
+        let user = $scope.user.uname;
+        let data = $scope.cur_favorite;
+        let global = $scope.cur_favorite.type === 'global';
 
         if (!$scope.edit_mode && $scope.idOfName($scope.cur_favorite.name, $scope.cur_favorite.type) != null) {
             $scope.last_error = "This filter name already exists";
@@ -165,13 +165,13 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         }
 
         if ($scope.cur_favorite.label) {
-            for (var i in $scope.cur_favorite.label) {
+            for (let i in $scope.cur_favorite.label) {
                 $scope.cur_favorite.label[i] = $scope.cur_favorite.label[i].toUpperCase();
             }
         }
 
-        for (var idx in $scope.cur_favorite) {
-            if ($scope.cur_favorite[idx] == null || $scope.cur_favorite[idx] == '') {
+        for (let idx in $scope.cur_favorite) {
+            if ($scope.cur_favorite[idx] == null || $scope.cur_favorite[idx] === '') {
                 delete $scope.cur_favorite[idx];
             }
         }
@@ -188,7 +188,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
             data: data
         })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -209,8 +209,8 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
     };
 
     $scope.do_remove = function (name, type) {
-        var user = $scope.user.uname;
-        if (type == 'global') {
+        let user = $scope.user.uname;
+        if (type === 'global') {
             user = '__global__';
         }
         $http({
@@ -219,7 +219,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
             data: name
         })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -230,8 +230,8 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
                     $scope.error = config.url + " (" + status + ")";
                 }
             });
-        var del_idx = null;
-        if (type == 'global') {
+        let del_idx = null;
+        if (type === 'global') {
             del_idx = $scope.idOfName(name, type);
             if (del_idx != null) $scope.global_filters.splice(del_idx, 1);
         }
@@ -259,7 +259,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
 
     $scope.load_suggestions = function () {
         if ($scope.disabled) return;
-        var bucket = "ALL";
+        let bucket = "ALL";
 
         if ($scope.bucket != null) {
             bucket = $scope.bucket;
@@ -270,11 +270,11 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
         })
             .success(function (data) {
                 if (bucket === "ALL") {
-                    for (var bucket_name in data.api_response) {
-                        var res_bucket = data.api_response[bucket_name];
-                        for (var field_name in res_bucket) {
-                            var field = res_bucket[field_name];
-                            var lookup_name = field_name + ":";
+                    for (let bucket_name in data.api_response) {
+                        let res_bucket = data.api_response[bucket_name];
+                        for (let field_name in res_bucket) {
+                            let field = res_bucket[field_name];
+                            let lookup_name = field_name + ":";
                             if (field.indexed && $scope.suggestions.indexOf(lookup_name) === -1) {
                                 $scope.suggestions.push(lookup_name);
                             }
@@ -282,9 +282,9 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
                     }
                 }
                 else{
-                   for (var n_field in data.api_response) {
-                        var f = data.api_response[n_field];
-                        var l_name = n_field + ":";
+                   for (let n_field in data.api_response) {
+                        let f = data.api_response[n_field];
+                        let l_name = n_field + ":";
                         if (f.indexed && $scope.suggestions.indexOf(l_name) === -1) {
                             $scope.suggestions.push(l_name);
                         }
@@ -292,7 +292,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
                 }
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -321,16 +321,16 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
                     else {
                         $scope.favorites = data.api_response[$scope.page];
                         if ($scope.$parent.filter_queries !== undefined) {
-                            var idx = 0;
-                            for (var fav_idx in $scope.favorites) {
-                                $scope.favorites_toggled[idx] = $scope.$parent.filter_queries.indexOf($scope.favorites[fav_idx].query) != -1;
+                            let idx = 0;
+                            for (let fav_idx in $scope.favorites) {
+                                $scope.favorites_toggled[idx] = $scope.$parent.filter_queries.indexOf($scope.favorites[fav_idx].query) !== -1;
                                 idx++;
                             }
                         }
                     }
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -355,16 +355,16 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
                     else {
                         $scope.global_filters = data.api_response[$scope.page];
                         if ($scope.$parent.filter_queries !== undefined) {
-                            var idx = 0;
-                            for (var fav_idx in $scope.global_filters) {
-                                $scope.global_toggled[idx] = $scope.$parent.filter_queries.indexOf($scope.global_filters[fav_idx].query) != -1;
+                            let idx = 0;
+                            for (let fav_idx in $scope.global_filters) {
+                                $scope.global_toggled[idx] = $scope.$parent.filter_queries.indexOf($scope.global_filters[fav_idx].query) !== -1;
                                 idx++;
                             }
                         }
                     }
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -394,12 +394,12 @@ ngSearch.controller('SearchControllerQuick', function ($scope, $http) {
         url: "/api/v4/search/fields/ALL/"
     })
         .success(function (data) {
-            for (var bucket_name in data.api_response) {
-                var bucket = data.api_response[bucket_name];
-                for (var field_name in bucket) {
-                    var field = bucket[field_name];
-                    var lookup_name = field_name + ":";
-                    if (field.indexed && $scope.quick_suggestions.indexOf(lookup_name) == -1) {
+            for (let bucket_name in data.api_response) {
+                let bucket = data.api_response[bucket_name];
+                for (let field_name in bucket) {
+                    let field = bucket[field_name];
+                    let lookup_name = field_name + ":";
+                    if (field.indexed && $scope.quick_suggestions.indexOf(lookup_name) === -1) {
                         $scope.quick_suggestions.push(lookup_name);
                     }
                 }

@@ -62,5 +62,5 @@ function ResetBaseCtrl($scope, $http, $timeout) {
     $scope.start = function () {};
 }
 
-var app = angular.module('app', []);
+let app = angular.module('app', []);
 app.controller('ALController', ResetBaseCtrl);

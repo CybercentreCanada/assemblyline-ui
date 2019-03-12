@@ -5,9 +5,9 @@
  * Main App Module
  */
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap', 'ng.jsoneditor'])
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap', 'ng.jsoneditor'])
     .controller('ALController', function ($scope, $http, $timeout) {
-        //Parameters vars
+        //Parameters lets
         $scope.user = null;
         $scope.options = null;
         $scope.loading = false;
@@ -28,11 +28,11 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.select_alternate = function (service, created) {
             $scope.loading_extra = true;
             $timeout(function () {
-                for (var key in $scope.current_file.alternates[service]) {
-                    var item = $scope.current_file.alternates[service][key];
-                    if (item.created == created) {
-                        for (var i in $scope.current_file.results) {
-                            if ($scope.current_file.results[i].response.service_name == service) {
+                for (let key in $scope.current_file.alternates[service]) {
+                    let item = $scope.current_file.alternates[service][key];
+                    if (item.created === created) {
+                        for (let i in $scope.current_file.results) {
+                            if ($scope.current_file.results[i].response.service_name === service) {
                                 if (item.id !== undefined) {
                                     $http({
                                         method: 'GET',
@@ -45,7 +45,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                                             $scope.loading_extra = false;
                                         })
                                         .error(function (data, status, headers, config) {
-                                            if (data == "") {
+                                            if (data === "" || data === null) {
                                                 return;
                                             }
 
@@ -75,7 +75,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         };
 
         //Filters
-        var tagTypes = [];
+        let tagTypes = [];
         $scope.tagTypeList = function (myTagList) {
             tagTypes = [];
             if (myTagList === undefined || myTagList == null) return [];
@@ -83,7 +83,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         };
 
         $scope.filterTagType = function (tag) {
-            var isNewType = tagTypes.indexOf(tag.type) == -1;
+            let isNewType = tagTypes.indexOf(tag.type) === -1;
             if (isNewType) {
                 tagTypes.push(tag.type);
             }
@@ -92,14 +92,14 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
         $scope.useless_results = function () {
             return function (item) {
-                return !(item.result.score == 0 && item.result.sections.length == 0 && item.result.tags.length == 0 && item.response.extracted.length == 0);
+                return !(item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0);
 
             }
         };
 
         $scope.good_results = function () {
             return function (item) {
-                return item.result.score == 0 && item.result.sections.length == 0 && item.result.tags.length == 0 && item.response.extracted.length == 0;
+                return item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0;
 
             }
         };
@@ -126,7 +126,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             return angular.toJson(obj, true);
         };
 
-        $scope.resubmit_dynamic_async = function (sha256, sid) {
+        $scope.resubmit_dynamic_async = function (sha256) {
             $scope.error = '';
             $scope.success = '';
             $scope.loading_extra = true;
@@ -144,7 +144,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -161,9 +161,9 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
         //Highlighter
         $scope.trigger_highlight = function (tag, value) {
-            var key = tag + $scope.splitter + value;
-            var idx = $scope.selected_highlight.indexOf(key);
-            if (idx == -1) {
+            let key = tag + $scope.splitter + value;
+            let idx = $scope.selected_highlight.indexOf(key);
+            if (idx === -1) {
                 $scope.selected_highlight.push(key);
             }
             else {
@@ -172,12 +172,12 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         };
 
         $scope.remove_highlight = function (key) {
-            var values = key.split($scope.splitter, 2);
+            let values = key.split($scope.splitter, 2);
             $scope.trigger_highlight(values[0], values[1])
         };
 
         $scope.isHighlighted = function (tag, value) {
-            return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) != -1
+            return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) !== -1
         };
 
         $scope.hasContext = function (tag) {
@@ -185,8 +185,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         };
 
         $scope.hasHighlightedTags = function (tags) {
-            for (var i in tags) {
-                var tag = tags[i];
+            for (let i in tags) {
+                let tag = tags[i];
                 if ($scope.isHighlighted(tag.type, tag.value)) {
                     return true;
                 }
@@ -210,8 +210,8 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             })
                 .success(function (data) {
                     $scope.current_file = data.api_response;
-                    for (var key in $scope.current_file.results) {
-                        var item = $scope.current_file.results[key];
+                    for (let key in $scope.current_file.results) {
+                        let item = $scope.current_file.results[key];
                         if (item.response.service_name in $scope.current_file.alternates) {
                             $scope.current_file.alternates[item.response.service_name].unshift(item);
                         }
@@ -222,7 +222,7 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     $scope.loading_extra = false;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 

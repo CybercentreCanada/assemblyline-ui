@@ -48,10 +48,10 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                 method: 'GET',
                 url: "/api/v4/u2f/remove/" + name + "/"
             })
-            .success(function (data) {
+            .success(function () {
                 $scope.loading_extra = false;
                 $scope.success = "U2F Security Token removed from your account.";
-                var idx = $scope.current_user['u2f_devices'].indexOf(name);
+                let idx = $scope.current_user['u2f_devices'].indexOf(name);
                 if (idx !== -1){
                     $scope.current_user['u2f_devices'].splice(idx, 1)
                 }
@@ -104,7 +104,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                         url: "/api/v4/u2f/bind/" + $scope.u2fkey_name + "/",
                         data: deviceResponse
                     })
-                    .success(function (data) {
+                    .success(function () {
                         $scope.loading_extra = false;
                         $scope.success = "U2F Security Token added to your account.";
                         $scope.current_user['u2f_devices'].push($scope.u2fkey_name);
@@ -177,7 +177,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
 
             if (data.api_error_message) {
                 $scope.apikey_error = data.api_error_message;
-                var key_input = $('#apikey_name');
+                let key_input = $('#apikey_name');
                 key_input.focus();
                 key_input.select();
 
@@ -203,7 +203,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                 method: 'DELETE',
                 url: "/api/v4/auth/apikey/" + key + "/"
             })
-            .success(function (data) {
+            .success(function () {
                 $scope.current_user.apikeys.splice($scope.current_user.apikeys.indexOf(key), 1);
             })
             .error(function (data, status, headers, config) {
@@ -253,7 +253,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             method: 'GET',
             url: "/api/v4/auth/validate_otp/" + $scope.temp_otp_token + "/"
         })
-        .success(function (data) {
+        .success(function () {
             $scope.success = "2-Factor Authentication enabled on your account.";
             $scope.current_user['2fa_enabled'] = true;
             $("#myModal").modal('hide');
@@ -268,7 +268,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
 
             if (data.api_error_message) {
                 $scope.otp_error = data.api_error_message;
-                var otp_input = $('#temp_otp_token');
+                let otp_input = $('#temp_otp_token');
                 otp_input.focus();
                 otp_input.select();
             }
@@ -296,7 +296,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                 method: 'GET',
                 url: "/api/v4/auth/disable_otp/"
             })
-            .success(function (data) {
+            .success(function () {
                 $scope.current_user['2fa_enabled'] = false;
             })
             .error(function (data, status, headers, config) {
@@ -331,7 +331,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -345,21 +345,21 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     };
 
     $scope.new_pass_valid = function () {
-        if ($scope.current_user == undefined) {
+        if ($scope.current_user === undefined) {
             return true;
         }
 
-        var new_pass = $scope.current_user.new_pass;
-        if (new_pass == undefined) {
+        let new_pass = $scope.current_user.new_pass;
+        if (new_pass === undefined) {
             new_pass = "";
         }
 
-        var new_pass_confirm = $scope.current_user.new_pass_confirm;
-        if (new_pass_confirm == undefined) {
+        let new_pass_confirm = $scope.current_user.new_pass_confirm;
+        if (new_pass_confirm === undefined) {
             new_pass_confirm = "";
         }
 
-        return new_pass == new_pass_confirm;
+        return new_pass === new_pass_confirm;
     };
 
     //Load current_user from datastore
@@ -377,7 +377,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                 }
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -393,5 +393,5 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     };
 }
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
 app.controller('ALController', AccountBaseCtrl);

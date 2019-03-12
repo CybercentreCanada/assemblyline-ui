@@ -4,15 +4,15 @@
 /**
  * Main App Module
  */
-var uuid = null;
+let uuid = null;
 
 function generateUUID(file) {
-    var relativePath = file.relativePath || file.webkitRelativePath || file.fileName || file.name;
+    let relativePath = file.relativePath || file.webkitRelativePath || file.fileName || file.name;
 
     if (uuid === null) {
-        var d = new Date().getTime();
+        let d = new Date().getTime();
         uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            var r = (d + Math.random() * 16) % 16 | 0;
+            let r = (d + Math.random() * 16) % 16 | 0;
             d = Math.floor(d / 16);
             return (c === 'x' ? r : (r & 0x7 | 0x8)).toString(16);
         });
@@ -34,14 +34,14 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.submit_url = function(url){
-        var urlParseRE = /^(((([^:\/#\?]+:)?(?:(\/\/)((?:(([^:@\/#\?]+)(?:\:([^:@\/#\?]+))?)@)?(([^:\/#\?\]\[]+|\[[^\/\]@#?]+\])(?:\:([0-9]+))?))?)?)?((\/?(?:[^\/\?#]+\/+)*)([^\?#]*)))?(\?[^#]+)?)(#.*)?/;
-        var matches = urlParseRE.exec(url);
+        let urlParseRE = /^(((([^:\/#?]+:)?(?:(\/\/)((?:(([^:@\/#?]+)(?::([^:@\/#?]+))?)@)?(([^:\/#?\]\[]+|\[[^\/\]@#?]+])(?::([0-9]+))?))?)?)?((\/?(?:[^\/?#]+\/+)*)([^?#]*)))?(\?[^#]+)?)(#.*)?/;
+        let matches = urlParseRE.exec(url);
 
         if (matches[15] === undefined || matches[15] === ''){
             matches[15] = "file";
         }
 
-        var data = {
+        let data = {
             name: matches[15],
             url: url,
             ui_params: $scope.params
@@ -105,9 +105,9 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
         if (url !== undefined){
             type = "url";
         }
-        var raise_warning = false;
-        for (var i = 0; i < $scope.params.services.length; i++) {
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+        let raise_warning = false;
+        for (let i = 0; i < $scope.params.services.length; i++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 if ($scope.params.services[i].services[x].is_external && $scope.params.services[i].services[x].selected) {
                     raise_warning = true;
                     break;
@@ -128,8 +128,8 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                     closeOnCancel: true
                 },
                 function () {
-                    for (var i = 0; i < $scope.params.services.length; i++) {
-                        for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+                    for (let i = 0; i < $scope.params.services.length; i++) {
+                        for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                             if ($scope.params.services[i].services[x].is_external && $scope.params.services[i].services[x].selected) {
                                 $scope.params.services[i].selected = false;
                                 $scope.params.services[i].services[x].selected = false;
@@ -169,13 +169,13 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
     $scope.user = null;
     $scope.obj = {};
 
-    //File transfer Variables/Functions
+    //File transfer letiables/Functions
     $scope.transfer_started = false;
 
     $scope.start_transfer = function () {
         $scope.transfer_started = true;
         $scope.obj.flow.on('complete', function () {
-            for (var x = 0; x < $scope.obj.flow.files.length; x++) {
+            for (let x = 0; x < $scope.obj.flow.files.length; x++) {
                 if ($scope.obj.flow.files[x].error) {
                     return;
                 }
@@ -229,9 +229,9 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
     $scope.serviceSelectionReset = function ($event) {
         $event.stopImmediatePropagation();
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             $scope.params.services[i].selected = $scope.params_bck.services[i].selected;
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 $scope.params.services[i].services[x].selected = $scope.params_bck.services[i].services[x].selected;
             }
         }
@@ -239,9 +239,9 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
     $scope.serviceSelectionNone = function ($event) {
         $event.stopImmediatePropagation();
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             $scope.params.services[i].selected = false;
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 $scope.params.services[i].services[x].selected = false;
             }
         }
@@ -249,19 +249,19 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
     $scope.serviceSelectionAll = function ($event) {
         $event.stopImmediatePropagation();
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             $scope.params.services[i].selected = true;
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 $scope.params.services[i].services[x].selected = true;
             }
         }
     };
 
     $scope.toggleCBService = function (group_name) {
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             if ($scope.params.services[i].name === group_name) {
                 $scope.params.services[i].selected = true;
-                for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+                for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                     if (!$scope.params.services[i].services[x].selected) {
                         $scope.params.services[i].selected = false;
                         break;
@@ -273,9 +273,9 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.toggleCBGroup = function (group_name, selected) {
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             if ($scope.params.services[i].name === group_name) {
-                for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+                for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                     $scope.params.services[i].services[x].selected = selected;
                 }
                 break;
@@ -292,8 +292,8 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
         })
             .success(function (data) {
                 $scope.loading = false;
-                var temp_param = jQuery.extend(true, {}, data.api_response);
-                var temp_param_bck = jQuery.extend(true, {}, data.api_response);
+                let temp_param = jQuery.extend(true, {}, data.api_response);
+                let temp_param_bck = jQuery.extend(true, {}, data.api_response);
 
                 $scope.params = temp_param;
                 $scope.params_bck = temp_param_bck;
@@ -332,6 +332,6 @@ function flowFactory(flowFactoryProvider) {
     });
 }
 
-var app = angular.module('app', ['search', 'flow', 'utils', 'ui.bootstrap']);
+let app = angular.module('app', ['search', 'flow', 'utils', 'ui.bootstrap']);
 app.config(flowFactory);
 app.controller('ALController', SubmitBaseCtrl);

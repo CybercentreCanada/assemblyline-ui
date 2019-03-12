@@ -7,11 +7,11 @@
 document.oncopy = alter_copy;
 
 function alter_copy() {
-    var body_element = document.getElementsByTagName('body')[0];
-    var selection = window.getSelection();
-    var sel_text = selection.toString().replace(/\u200b/gi, '');
+    let body_element = document.getElementsByTagName('body')[0];
+    let selection = window.getSelection();
+    let sel_text = selection.toString().replace(/\u200b/gi, '');
 
-    var newDiv = document.createElement('div');
+    let newDiv = document.createElement('div');
     newDiv.style.position = 'absolute';
     newDiv.style.left = '-99999px';
 

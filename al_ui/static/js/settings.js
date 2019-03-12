@@ -6,7 +6,7 @@
  */
 
 function SettingsBaseCtrl($scope, $http, $timeout) {
-    //Parameters vars
+    //Parameters lets
     $scope.params = null;
     $scope.params_bck = null;
     $scope.user = null;
@@ -26,9 +26,9 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
 
     $scope.serviceSelectionReset = function ($event) {
         $event.stopImmediatePropagation();
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             $scope.params.services[i].selected = $scope.params_bck.services[i].selected;
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 $scope.params.services[i].services[x].selected = $scope.params_bck.services[i].services[x].selected;
             }
         }
@@ -36,9 +36,9 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
 
     $scope.serviceSelectionNone = function ($event) {
         $event.stopImmediatePropagation();
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             $scope.params.services[i].selected = false;
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 $scope.params.services[i].services[x].selected = false;
             }
         }
@@ -46,19 +46,19 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
 
     $scope.serviceSelectionAll = function ($event) {
         $event.stopImmediatePropagation();
-        for (var i = 0; i < $scope.params.services.length; i++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
             $scope.params.services[i].selected = true;
-            for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+            for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                 $scope.params.services[i].services[x].selected = true;
             }
         }
     };
 
     $scope.toggleCBService = function (group_name) {
-        for (var i = 0; i < $scope.params.services.length; i++) {
-            if ($scope.params.services[i].name == group_name) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
+            if ($scope.params.services[i].name === group_name) {
                 $scope.params.services[i].selected = true;
-                for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+                for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                     if (!$scope.params.services[i].services[x].selected) {
                         $scope.params.services[i].selected = false;
                         break;
@@ -70,9 +70,9 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.toggleCBGroup = function (group_name, selected) {
-        for (var i = 0; i < $scope.params.services.length; i++) {
-            if ($scope.params.services[i].name == group_name) {
-                for (var x = 0; x < $scope.params.services[i].services.length; x++) {
+        for (let i = 0; i < $scope.params.services.length; i++) {
+            if ($scope.params.services[i].name === group_name) {
+                for (let x = 0; x < $scope.params.services[i].services.length; x++) {
                     $scope.params.services[i].services[x].selected = selected;
                 }
                 break;
@@ -97,7 +97,7 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -122,14 +122,14 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
         })
             .success(function (data) {
                 $scope.loading = false;
-                var temp_param = jQuery.extend(true, {}, data.api_response);
-                var temp_param_bck = jQuery.extend(true, {}, data.api_response);
+                let temp_param = jQuery.extend(true, {}, data.api_response);
+                let temp_param_bck = jQuery.extend(true, {}, data.api_response);
 
                 $scope.params = temp_param;
                 $scope.params_bck = temp_param_bck;
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -148,5 +148,5 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
     }
 }
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
 app.controller('ALController', SettingsBaseCtrl);

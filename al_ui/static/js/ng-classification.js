@@ -2,9 +2,10 @@
 'use strict';
 
 /*
- * Load classification definition from API into a global variable.
+ * Load classification definition from API into a global letiable.
  */
-var classification_definition = null;
+
+let classification_definition = null;
 $.getJSON("/api/v4/help/classification_definition/", function (data) {
     classification_definition = data.api_response;
 });
@@ -18,8 +19,8 @@ $.getJSON("/api/v4/help/classification_definition/", function (data) {
 function get_c12n_level_index(c12n) {
     if (classification_definition == null || c12n === undefined || c12n == null) return null;
     c12n = c12n.toUpperCase();
-    var split_idx = c12n.indexOf("//");
-    if (split_idx != -1) {
+    let split_idx = c12n.indexOf("//");
+    if (split_idx !== -1) {
         c12n = c12n.slice(0, split_idx)
     }
 
@@ -38,7 +39,7 @@ function get_c12n_level_index(c12n) {
 
 function get_c12n_level_text(lvl_idx, long_format) {
     if (long_format === undefined) long_format = true;
-    var text = null;
+    let text = null;
     if (lvl_idx === parseInt(lvl_idx, 10)) {
         lvl_idx = lvl_idx.toString();
     }
@@ -62,10 +63,10 @@ function get_c12n_required(c12n, long_format) {
     if (long_format === undefined) long_format = true;
     c12n = c12n.toUpperCase();
 
-    var return_set = [];
-    var part_set = c12n.split("/");
-    for (var i in part_set) {
-        var p = part_set[i];
+    let return_set = [];
+    let part_set = c12n.split("/");
+    for (let i in part_set) {
+        let p = part_set[i];
         if (p in classification_definition.access_req_map_lts) {
             return_set.push(classification_definition.access_req_map_lts[p]);
         }
@@ -73,17 +74,17 @@ function get_c12n_required(c12n, long_format) {
             return_set.push(p);
         }
         else if (p in classification_definition.access_req_aliases) {
-            for (var j in classification_definition.access_req_aliases[p]) {
-                var a = classification_definition.access_req_aliases[p][j];
+            for (let j in classification_definition.access_req_aliases[p]) {
+                let a = classification_definition.access_req_aliases[p][j];
                 return_set.push(a);
             }
         }
     }
 
     if (long_format) {
-        var out = [];
-        for (var k in return_set) {
-            var r = return_set[k];
+        let out = [];
+        for (let k in return_set) {
+            let r = return_set[k];
             out.push(classification_definition.access_req_map_stl[r]);
         }
 
@@ -98,22 +99,22 @@ function get_c12n_groups(c12n, long_format) {
     if (long_format === undefined) long_format = true;
     c12n = c12n.toUpperCase();
 
-    var g1 = [];
-    var g2 = [];
+    let g1 = [];
+    let g2 = [];
 
-    var parts = c12n.split("//");
-    var groups = [];
-    for (var p_idx in parts) {
-        var grp_part = parts[p_idx].replace("REL TO ", "");
-        var temp_group = grp_part.split(",");
-        for (var i in temp_group) {
-            var t = temp_group[i].trim();
+    let parts = c12n.split("//");
+    let groups = [];
+    for (let p_idx in parts) {
+        let grp_part = parts[p_idx].replace("REL TO ", "");
+        let temp_group = grp_part.split(",");
+        for (let i in temp_group) {
+            let t = temp_group[i].trim();
             groups = groups.concat(t.split('/'));
         }
     }
 
-    for (var j in groups) {
-        var g = groups[j];
+    for (let j in groups) {
+        let g = groups[j];
         if (g in classification_definition.groups_map_lts) {
             g1.push(classification_definition.groups_map_lts[g]);
         }
@@ -121,8 +122,8 @@ function get_c12n_groups(c12n, long_format) {
             g1.push(g);
         }
         else if (g in classification_definition.groups_aliases) {
-            for (var k in classification_definition.groups_aliases[g]) {
-                var a = classification_definition.groups_aliases[g][k];
+            for (let k in classification_definition.groups_aliases[g]) {
+                let a = classification_definition.groups_aliases[g][k];
                 g1.push(a);
             }
         }
@@ -133,23 +134,23 @@ function get_c12n_groups(c12n, long_format) {
             g2.push(g);
         }
         else if (g in classification_definition.subgroups_aliases) {
-            for (var l in classification_definition.subgroups_aliases[g]) {
-                var sa = classification_definition.subgroups_aliases[g][l];
+            for (let l in classification_definition.subgroups_aliases[g]) {
+                let sa = classification_definition.subgroups_aliases[g][l];
                 g2.push(sa);
             }
         }
     }
 
     if (long_format) {
-        var g1_out = [];
-        for (var m in g1) {
-            var gr = g1[m];
+        let g1_out = [];
+        for (let m in g1) {
+            let gr = g1[m];
             g1_out.push(classification_definition.groups_map_stl[gr]);
         }
 
-        var g2_out = [];
-        for (var n in g2) {
-            var sgr = g2[n];
+        let g2_out = [];
+        for (let n in g2) {
+            let sgr = g2[n];
             g2_out.push(classification_definition.subgroups_map_stl[sgr]);
         }
 
@@ -162,12 +163,12 @@ function get_c12n_groups(c12n, long_format) {
 function get_c12n_parts(c12n, long_format) {
     if (classification_definition == null || c12n === undefined || c12n == null) return {};
     if (long_format === undefined) long_format = true;
-    var out = {
+    let out = {
         'lvl_idx': get_c12n_level_index(c12n),
         'req': get_c12n_required(c12n, long_format)
     };
 
-    var grps = get_c12n_groups(c12n, long_format);
+    let grps = get_c12n_groups(c12n, long_format);
     out['groups'] = grps['groups'];
     out['subgroups'] = grps['subgroups'];
 
@@ -175,16 +176,16 @@ function get_c12n_parts(c12n, long_format) {
 }
 
 function get_c12n_text_from_parts(parts, long_format) {
-    var lvl_idx = parts['lvl_idx'];
-    var req = parts['req'];
-    var groups = parts['groups'];
-    var subgroups = parts['subgroups'];
+    let lvl_idx = parts['lvl_idx'];
+    let req = parts['req'];
+    let groups = parts['groups'];
+    let subgroups = parts['subgroups'];
 
-    var out = get_c12n_level_text(lvl_idx, long_format);
+    let out = get_c12n_level_text(lvl_idx, long_format);
 
-    var req_grp = [];
-    for (var i in req) {
-        var r = req[i];
+    let req_grp = [];
+    for (let i in req) {
+        let r = req[i];
         if (classification_definition.params_map[r] !== undefined) {
             if (classification_definition.params_map[r].is_required_group !== undefined) {
                 if (classification_definition.params_map[r].is_required_group) {
@@ -194,8 +195,8 @@ function get_c12n_text_from_parts(parts, long_format) {
         }
     }
 
-    for (var j in req_grp) {
-        var rg = req_grp[j];
+    for (let j in req_grp) {
+        let rg = req_grp[j];
         req.splice(req.indexOf(rg), 1);
     }
 
@@ -214,8 +215,8 @@ function get_c12n_text_from_parts(parts, long_format) {
             out += "//";
         }
 
-        if (groups.length == 1) {
-            var group = groups[0];
+        if (groups.length === 1) {
+            let group = groups[0];
             if (classification_definition.params_map[group] !== undefined) {
                 if (classification_definition.params_map[group].solitary_display_name !== undefined) {
                     out += classification_definition.params_map[group].solitary_display_name
@@ -231,10 +232,10 @@ function get_c12n_text_from_parts(parts, long_format) {
         }
         else {
             if (!long_format) {
-                for (var alias in classification_definition.groups_aliases) {
-                    var values = classification_definition.groups_aliases[alias];
+                for (let alias in classification_definition.groups_aliases) {
+                    let values = classification_definition.groups_aliases[alias];
                     if (values.length > 1) {
-                        if (JSON.stringify(values.sort()) == JSON.stringify(groups)) {
+                        if (JSON.stringify(values.sort()) === JSON.stringify(groups)) {
                             groups = [alias];
                         }
                     }
@@ -261,7 +262,7 @@ function get_c12n_text_from_parts(parts, long_format) {
 function get_c12n_text(c12n, long_format) {
     if (classification_definition == null || c12n === undefined || c12n == null) return c12n;
     if (long_format === undefined) long_format = true;
-    var parts = get_c12n_parts(c12n, long_format);
+    let parts = get_c12n_parts(c12n, long_format);
     return get_c12n_text_from_parts(parts, long_format);
 }
 
@@ -275,8 +276,8 @@ utils.controller('classificationCtrl', function ($scope) {
 
     $scope.level_list = function () {
         if (classification_definition == null) return [];
-        var out = [];
-        for (var i in classification_definition.levels_map) {
+        let out = [];
+        for (let i in classification_definition.levels_map) {
             if (!isNaN(parseInt(i))) {
                 out.push(classification_definition.levels_map[i]);
             }
@@ -285,10 +286,10 @@ utils.controller('classificationCtrl', function ($scope) {
     };
 
     $scope.apply_classification_rules = function () {
-        var require_lvl = {};
-        var limited_to_group = {};
-        var require_group = {};
-        var parts_to_check = ['req', 'group', 'subgroup'];
+        let require_lvl = {};
+        let limited_to_group = {};
+        let require_group = {};
+        let parts_to_check = ['req', 'group', 'subgroup'];
 
         $scope.disabled_list = {
             "level": {},
@@ -297,8 +298,8 @@ utils.controller('classificationCtrl', function ($scope) {
             "subgroup": {}
         };
 
-        for (var item in classification_definition.params_map) {
-            var data = classification_definition.params_map[item];
+        for (let item in classification_definition.params_map) {
+            let data = classification_definition.params_map[item];
             if ("require_lvl" in data) {
                 require_lvl[item] = data.require_lvl;
             }
@@ -310,11 +311,11 @@ utils.controller('classificationCtrl', function ($scope) {
             }
         }
 
-        for (var part_name in parts_to_check) {
-            var part = $scope.active_list[parts_to_check[part_name]];
-            for (var key in part) {
-                var value = part[key];
-                var trigger_auto_select = false;
+        for (let part_name in parts_to_check) {
+            let part = $scope.active_list[parts_to_check[part_name]];
+            for (let key in part) {
+                let value = part[key];
+                let trigger_auto_select = false;
                 if (value) {
                     if (key in require_lvl) {
                         if ($scope.active_list['level_idx'] < require_lvl[key]) {
@@ -322,33 +323,33 @@ utils.controller('classificationCtrl', function ($scope) {
                             $scope.active_list['level'] = {};
                             $scope.active_list['level'][get_c12n_level_text(require_lvl[key], false)] = true;
                         }
-                        var levels = $scope.level_list();
-                        for (var l_idx in levels) {
-                            var l = levels[l_idx];
+                        let levels = $scope.level_list();
+                        for (let l_idx in levels) {
+                            let l = levels[l_idx];
                             if ($scope.classification_definition.levels_map[l] < require_lvl[key]) {
                                 $scope.disabled_list['level'][l] = true;
                             }
                         }
                     }
                     if (key in require_group) {
-                        if ($scope.active_list['group'][require_group[key]] != true) {
+                        if ($scope.active_list['group'][require_group[key]] !== true) {
                             $scope.active_list['group'][require_group[key]] = true
                         }
                     }
                     if (key in limited_to_group) {
-                        for (var g in $scope.classification_definition.groups_map_stl) {
-                            if (g != limited_to_group[key]) {
+                        for (let g in $scope.classification_definition.groups_map_stl) {
+                            if (g !== limited_to_group[key]) {
                                 $scope.disabled_list['group'][g] = true;
                                 $scope.active_list['group'][g] = false;
                             }
                         }
                     }
-                    if (!$scope.maximum_classification && parts_to_check[part_name] == 'group') {
+                    if (!$scope.maximum_classification && parts_to_check[part_name] === 'group') {
                         trigger_auto_select = true;
                     }
                 }
                 if (trigger_auto_select) {
-                    for (var auto_idx in $scope.classification_definition.groups_auto_select) {
+                    for (let auto_idx in $scope.classification_definition.groups_auto_select) {
                         $scope.active_list['group'][$scope.classification_definition.groups_auto_select[auto_idx]] = true
                     }
                 }
@@ -357,8 +358,8 @@ utils.controller('classificationCtrl', function ($scope) {
     };
 
     $scope.$parent.setClassification = function (classification) {
-        if (classification == null || classification == "") classification = $scope.classification_definition.UNRESTRICTED;
-        var parts = get_c12n_parts(classification, false);
+        if (classification == null || classification === "") classification = $scope.classification_definition.UNRESTRICTED;
+        let parts = get_c12n_parts(classification, false);
 
         $scope.active_list = {
             "level_idx": 0,
@@ -371,34 +372,34 @@ utils.controller('classificationCtrl', function ($scope) {
 
         $scope.active_list["level_idx"] = parts['lvl_idx'];
         $scope.active_list["level"][get_c12n_level_text(parts['lvl_idx'], false)] = true;
-        for (var r in parts['req']) {
+        for (let r in parts['req']) {
             $scope.active_list["req"][parts['req'][r]] = true;
         }
-        for (var g in parts['groups']) {
+        for (let g in parts['groups']) {
             $scope.active_list["group"][parts['groups'][g]] = true;
         }
-        for (var s in parts['subgroups']) {
+        for (let s in parts['subgroups']) {
             $scope.active_list["subgroup"][parts['subgroups'][s]] = true;
         }
         $scope.apply_classification_rules();
     };
 
     $scope.toggle = function (item, type) {
-        var is_disabled = $scope.disabled_list[type][item];
+        let is_disabled = $scope.disabled_list[type][item];
         if (is_disabled !== undefined && is_disabled) {
             return;
         }
 
-        var current = $scope.active_list[type][item];
+        let current = $scope.active_list[type][item];
         if (current === undefined || !current) {
-            if (type == "level") {
+            if (type === "level") {
                 $scope.active_list[type] = {};
                 $scope.active_list['level_idx'] = $scope.classification_definition.levels_map[item];
             }
             $scope.active_list[type][item] = true;
         }
         else {
-            if (type != "level") {
+            if (type !== "level") {
                 $scope.active_list[type][item] = false;
             }
         }
@@ -408,26 +409,26 @@ utils.controller('classificationCtrl', function ($scope) {
     };
 
     $scope.showClassificationText = function () {
-        var parts = {
+        let parts = {
             'lvl_idx': $scope.active_list.level_idx,
             'req': [],
             'groups': [],
             'subgroups': []
         };
 
-        for (var r_key in $scope.active_list.req) {
+        for (let r_key in $scope.active_list.req) {
             if ($scope.active_list.req[r_key]) {
                 parts.req.push(r_key);
             }
         }
 
-        for (var g_key in $scope.active_list.group) {
+        for (let g_key in $scope.active_list.group) {
             if ($scope.active_list.group[g_key]) {
                 parts.groups.push(g_key);
             }
         }
 
-        for (var sg_key in $scope.active_list.subgroup) {
+        for (let sg_key in $scope.active_list.subgroup) {
             if ($scope.active_list.subgroup[sg_key]) {
                 parts.subgroups.push(sg_key);
             }
@@ -476,8 +477,8 @@ utils.filter('class_banner_color', function () {
         if (classification_definition == null) return "hidden";
         if (s === undefined || s == null) return "alert-success";
 
-        var split_idx = s.indexOf("//");
-        if (split_idx != -1) {
+        let split_idx = s.indexOf("//");
+        if (split_idx !== -1) {
             s = s.slice(0, split_idx)
         }
 
@@ -496,8 +497,8 @@ utils.filter('class_label_color', function () {
         if (classification_definition == null) return "hidden";
         if (s === undefined || s == null) return "label-default";
 
-        var split_idx = s.indexOf("//");
-        if (split_idx != -1) {
+        let split_idx = s.indexOf("//");
+        if (split_idx !== -1) {
             s = s.slice(0, split_idx)
         }
 
@@ -531,8 +532,8 @@ utils.filter('class_text_color', function () {
     return function (s) {
         if (classification_definition == null) return "hidden";
         if (s === undefined || s == null) return "text-muted";
-        var split_idx = s.indexOf("//");
-        if (split_idx != -1) {
+        let split_idx = s.indexOf("//");
+        if (split_idx !== -1) {
             s = s.slice(0, split_idx)
         }
 

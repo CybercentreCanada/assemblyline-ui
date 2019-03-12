@@ -27,5 +27,5 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     };
 }
 
-var app = angular.module('app', []);
+let app = angular.module('app', []);
 app.controller('ALController', LoginBaseCtrl);

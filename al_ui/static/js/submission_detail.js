@@ -86,7 +86,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.futile_errors = function (error_list) {
-            let out = {MAX_DEPTH_REACHED: [], MAX_FILES_REACHED: [], MAX_RETRY_REACHED: [], SERVICE_DOWN: []};
+            let out = {MAX_DEPTH_REACHED: [], MAX_FILES_REACHED: [], MAX_RETRY_REACHED: [], SERVICE_DOWN: [], SERVICE_BUSY: []};
             for (let idx in error_list) {
                 let key = error_list[idx];
                 let e_id = key.substr(65, key.length);
@@ -99,7 +99,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     e_id = e_id.substr(e_id.indexOf(".e") + 2, e_id.length);
                 }
 
-                if (e_id === "21") {
+                if (e_id === "20") {
+                    if (out["SERVICE_BUSY"].indexOf(srv) === -1) {
+                        out["SERVICE_BUSY"].push(srv);
+                    }
+                } if (e_id === "21") {
                     if (out["SERVICE_DOWN"].indexOf(srv) === -1) {
                         out["SERVICE_DOWN"].push(srv);
                     }
@@ -119,6 +123,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             }
 
+            out.SERVICE_BUSY.sort();
             out.SERVICE_DOWN.sort();
             out.MAX_DEPTH_REACHED.sort();
             out.MAX_FILES_REACHED.sort();
@@ -137,7 +142,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     e_id = e_id.substr(e_id.indexOf(".e") + 2, e_id.length);
                 }
 
-                if (e_id !== "21" && e_id !== "12" && e_id !== "10" && e_id !== "11") {
+                if (["20", "21", "12", "10", "11"].indexOf(e_id) === -1 ) {
                     out.push(key);
                 }
             }

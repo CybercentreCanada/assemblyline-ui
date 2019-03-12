@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.map = null;
@@ -34,7 +34,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.map = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 

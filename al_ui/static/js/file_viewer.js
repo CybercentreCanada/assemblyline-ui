@@ -5,7 +5,7 @@
  * Main App Module
  */
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap'])
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.user = null;
@@ -34,10 +34,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                     $scope.hex = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
-                    else if (status == 404) {
+                    else if (status === 404) {
                         $scope.on_server = false;
                         return
                     }
@@ -58,10 +58,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                     $scope.string = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
-                    else if (status == 404) {
+                    else if (status === 404) {
                         $scope.on_server = false;
                         return
                     }
@@ -82,10 +82,10 @@ var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                     $scope.ascii = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
-                    else if (status == 404) {
+                    else if (status === 404) {
                         $scope.on_server = false;
                         return
                     }

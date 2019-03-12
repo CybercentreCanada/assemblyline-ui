@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils'])
+let app = angular.module('app', ['search', 'utils'])
     .controller('ALController', function ($scope, $timeout) {
         $scope.user = null;
 
@@ -29,8 +29,8 @@ var app = angular.module('app', ['search', 'utils'])
         };
 
         $scope.level_list = function () {
-            var out = [];
-            for (var i in $scope.classification_definition.levels_map) {
+            let out = [];
+            for (let i in $scope.classification_definition.levels_map) {
                 if (!isNaN(parseInt(i))) {
                     out.push($scope.classification_definition.levels_map[i]);
                 }

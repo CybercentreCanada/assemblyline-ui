@@ -4,9 +4,9 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
-        //Parameters vars
+        //Parameters lets
         $scope.user = null;
         $scope.loading = false;
         $scope.loading_extra = false;
@@ -34,7 +34,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.searchText = "";
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-                if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+                if ($scope.searchText === "") {
                     $scope.filter = "";
                 }
                 else {
@@ -70,12 +70,12 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                         $scope.pages = $scope.pagerArray();
                         $scope.started = true;
 
-                        $scope.filtered = $scope.filter != "";
+                        $scope.filtered = $scope.filter !== "";
                     })
                     .error(function (data, status, headers, config) {
                         $scope.loading_extra = false;
 
-                        if (data == "" || status == 400) {
+                        if (data === "" || data === null || status === 400) {
                             $scope.submission_list = [];
                             $scope.total = 0;
                             $scope.filtered = true;
@@ -107,12 +107,12 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                         $scope.pages = $scope.pagerArray();
                         $scope.started = true;
 
-                        $scope.filtered = $scope.filter != "";
+                        $scope.filtered = $scope.filter !== "";
                     })
                     .error(function (data, status, headers, config) {
                         $scope.loading_extra = false;
 
-                        if (data == "" || status == 400) {
+                        if (data === "" || data === null || status === 400) {
                             $scope.submission_list = [];
                             $scope.total = 0;
                             $scope.filtered = true;

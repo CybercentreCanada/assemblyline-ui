@@ -64,7 +64,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.login = function () {
         $scope.error = '';
         $scope.loading = true;
-        var password = $scope.password;
+        let password = $scope.password;
 
         $http({
             method: 'POST',
@@ -135,5 +135,5 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.start = function () {};
 }
 
-var app = angular.module('app', []);
+let app = angular.module('app', []);
 app.controller('ALController', LoginBaseCtrl);

@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils'])
+let app = angular.module('app', ['search', 'utils'])
     .controller('ALController', function ($scope) {
         $scope.user = null;
 

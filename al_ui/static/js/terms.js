@@ -37,7 +37,7 @@ function SettingsBaseCtrl($scope, $http, $timeout, $window) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -55,5 +55,5 @@ function SettingsBaseCtrl($scope, $http, $timeout, $window) {
     };
 }
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
 app.controller('ALController', SettingsBaseCtrl);

@@ -5,7 +5,7 @@
  * Main App Module
  */
 function ServiceBaseCtrl($scope, $http, $timeout) {
-    //Parameters vars
+    //Parameters lets
     $scope.signature_list = null;
     $scope.user = null;
     $scope.loading = false;
@@ -37,7 +37,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.searchText = "";
     $scope.$watch('searchText', function () {
         if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-            if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+            if ($scope.searchText === "") {
                 $scope.filter = "*";
             }
             else {
@@ -72,7 +72,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         $("#myModal").modal('show');
     };
 
-    var myModal = $("#myModal");
+    let myModal = $("#myModal");
     myModal.on('shown.bs.modal', function () {
         $scope.$apply(function () {
             $scope.state_changed = false;
@@ -138,7 +138,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -170,7 +170,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -205,7 +205,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -223,7 +223,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 url: "/api/v4/tc_signature/" + $scope.current_id + "/",
                 data: $scope.current_signature
             })
-                .success(function (data) {
+                .success(function () {
                     $("#myModal").modal('hide');
                     $scope.success = "Signature '" + $scope.current_id + "' succesfully updated.";
 
@@ -233,7 +233,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -263,7 +263,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -302,12 +302,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.pages = $scope.pagerArray();
                 $scope.started = true;
 
-                $scope.filtered = $scope.filter != "*";
+                $scope.filtered = $scope.filter !== "*";
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
 
-                if (data == "" || status == 400) {
+                if (data === "" || data === null || status === 400) {
                     $scope.signature_list = [];
                     $scope.total = 0;
                     $scope.filtered = true;
@@ -328,6 +328,6 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     };
 }
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
 app.controller('ALController', ServiceBaseCtrl);
 

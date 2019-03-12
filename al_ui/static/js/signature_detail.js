@@ -5,7 +5,7 @@
  * Main App Module
  */
 function SignatureDetailBaseCtrl($scope, $http, $timeout) {
-    //Parameters vars
+    //Parameters lets
     $scope.user = null;
     $scope.options = null;
     $scope.loading = false;
@@ -60,7 +60,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
             return data;
         }
 
-        var out = String();
+        let out = String();
 
         if (data.field == null) {
             out += "Rule has a " + data.message.type + " on line " + data.message.line + ": [ " + data.message.error + " ]\n\n";
@@ -150,10 +150,10 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.extraKeys = function () {
-        var out = [];
+        let out = [];
 
         if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            for (var key in $scope.current_signature.meta_extra) {
+            for (let key in $scope.current_signature.meta_extra) {
                 if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
                     out.push(key);
                 }
@@ -165,10 +165,10 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.otherKeys = function () {
-        var out = [];
+        let out = [];
 
         if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            for (var key in $scope.current_signature.meta) {
+            for (let key in $scope.current_signature.meta) {
                 if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
                     out.push(key);
                 }
@@ -233,6 +233,6 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
 
 }
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
 app.controller('ALController', SignatureDetailBaseCtrl);
 

@@ -6,14 +6,14 @@
  */
 String.prototype.toProperCase = function () {
     return this.replace(/\w\S*/g, function (txt) {
-        var full_upper = ["ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid"];
-        var full_lower = ["to", "as", "use"];
+        let full_upper = ["ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid"];
+        let full_lower = ["to", "as", "use"];
 
-        if (full_upper.indexOf(txt.toLowerCase()) != -1) {
+        if (full_upper.indexOf(txt.toLowerCase()) !== -1) {
             return txt.toUpperCase();
         }
 
-        if (full_lower.indexOf(txt.toLowerCase()) != -1) {
+        if (full_lower.indexOf(txt.toLowerCase()) !== -1) {
             return txt.toLowerCase();
         }
 
@@ -31,7 +31,7 @@ function arrayBufferToUTF8String(arrayBuffer) {
     }
 }
 
-var entityMap = {
+let entityMap = {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -47,12 +47,12 @@ function escapeHTML(string) {
 }
 
 
-var timer = null;
+let timer = null;
 
 /***************************************************************************************************
  * Utils angular module [ng-utils]
  */
-var utils = angular.module('utils', []);
+let utils = angular.module('utils', []);
 
 /***************************************************************************************************
  * ng-utils Controllers
@@ -62,16 +62,16 @@ utils.controller('imageCtrl', function ($scope) {
 
     //User editing
     $scope.resizeAndCrop = function (dataUrl) {
-        var o_img = document.createElement("img");
-        var c = document.createElement('canvas');
-        var ctx = c.getContext("2d");
+        let o_img = document.createElement("img");
+        let c = document.createElement('canvas');
+        let ctx = c.getContext("2d");
 
         o_img.onload = function(){
-            var w = o_img.naturalWidth;
-            var h = o_img.naturalHeight;
-            var off_x = 0;
-            var off_y = 0;
-            var t_size = $scope.MAX_TARGET_SIZE;
+            let w = o_img.naturalWidth;
+            let h = o_img.naturalHeight;
+            let off_x = 0;
+            let off_y = 0;
+            let t_size = $scope.MAX_TARGET_SIZE;
 
             if (w > h) {
                 off_x = (w - h) / 2;
@@ -116,7 +116,7 @@ utils.controller('imageCtrl', function ($scope) {
             return;
         }
 
-        var reader = new FileReader();
+        let reader = new FileReader();
         reader.onload = function () {
             $scope.resizeAndCrop(reader.result);
         };
@@ -130,13 +130,13 @@ utils.controller('pagerCtrl', function ($scope) {
     $scope.tempSearchText = "";
 
     $scope.$watch('tempSearchText', function (val) {
-        if ($scope.$parent.searchText == val) return true;
+        if ($scope.$parent.searchText === val) return true;
         $scope.$parent.searchText = $scope.tempSearchText;
     });
 
     $scope.$watch('rows', function () {
         $scope.$parent.rows = $scope.rows;
-        if ($scope.offset == 0 && $scope.$parent.started) {
+        if ($scope.offset === 0 && $scope.$parent.started) {
             $scope.$parent.load_data();
         }
         else {
@@ -156,10 +156,10 @@ utils.controller('pagerCtrl', function ($scope) {
     };
 
     $scope.pagesToDisplay = function () {
-        var idx = ($scope.$parent.offset / $scope.$parent.rows);
-        var pages = [];
-        var pages_start = 0;
-        var pages_end = Math.min($scope.$parent.pages, 7);
+        let idx = ($scope.$parent.offset / $scope.$parent.rows);
+        let pages = [];
+        let pages_start = 0;
+        let pages_end = Math.min($scope.$parent.pages, 7);
 
         if (idx >= $scope.$parent.pages - 3) {
             pages_start = Math.max($scope.$parent.pages - 7, 0);
@@ -170,7 +170,7 @@ utils.controller('pagerCtrl', function ($scope) {
             pages_end = idx + 4;
         }
 
-        for (var i = pages_start; i <= pages_end; i++) {
+        for (let i = pages_start; i <= pages_end; i++) {
             pages.push(i + 1);
         }
 
@@ -178,13 +178,13 @@ utils.controller('pagerCtrl', function ($scope) {
     };
 
     $scope.$parent.first = function () {
-        if ($scope.$parent.offset != 0) {
+        if ($scope.$parent.offset !== 0) {
             $scope.offset = 0;
         }
     };
 
     $scope.$parent.prev = function () {
-        if ($scope.$parent.offset != 0) {
+        if ($scope.$parent.offset !== 0) {
             $scope.offset = $scope.$parent.offset - $scope.$parent.rows;
         }
     };
@@ -196,10 +196,10 @@ utils.controller('pagerCtrl', function ($scope) {
     };
 
     $scope.$parent.pagerArray = function () {
-        var out = 0;
+        let out = 0;
         if ($scope.$parent.total != null) {
             out = Math.floor($scope.$parent.total / $scope.$parent.rows);
-            if (out == Math.ceil($scope.$parent.total / $scope.$parent.rows)) {
+            if (out === Math.ceil($scope.$parent.total / $scope.$parent.rows)) {
                 out--;
             }
         }
@@ -277,21 +277,21 @@ utils.directive('graphSection', function ($window, $timeout) {
     return {
         template: "<svg width='100%' height='40'></svg>",
         link: function (scope, elem, attrs) {
-            var graph_obj = JSON.parse(attrs.graphData);
-            if (graph_obj.type == "colormap") {
-                var d3 = $window.d3;
-                var show_legend = graph_obj.data.show_legend;
+            let graph_obj = JSON.parse(attrs.graphData);
+            if (graph_obj.type === "colormap") {
+                let d3 = $window.d3;
+                let show_legend = graph_obj.data.show_legend;
                 if (show_legend === undefined) {
                     show_legend = true;
                 }
-                var rawSVG = elem.find("svg")[0];
-                var svg = d3.select(rawSVG);
-                var item_width = parseInt(svg.style("width")) / graph_obj.data.values.length;
-                var rect_offset = 0;
+                let rawSVG = elem.find("svg")[0];
+                let svg = d3.select(rawSVG);
+                let item_width = parseInt(svg.style("width")) / graph_obj.data.values.length;
+                let rect_offset = 0;
 
                 // Color scale
-                var color_range = ["#87c6fb", "#111920"];
-                var blue_scale = d3.scale.linear().domain(graph_obj.data.domain).range(color_range);
+                let color_range = ["#87c6fb", "#111920"];
+                let blue_scale = d3.scale.linear().domain(graph_obj.data.domain).range(color_range);
 
                 if (show_legend) {
                     svg.append("rect")
@@ -322,8 +322,8 @@ utils.directive('graphSection', function ($window, $timeout) {
                     svg.attr("height", 100);
                 }
 
-                for (var x in graph_obj.data.values) {
-                    var value = graph_obj.data.values[x];
+                for (let x in graph_obj.data.values) {
+                    let value = graph_obj.data.values[x];
                     svg.append("rect")
                         .attr("class", "chart_data")
                         .attr("y", rect_offset)
@@ -333,16 +333,16 @@ utils.directive('graphSection', function ($window, $timeout) {
                         .attr("fill", blue_scale(value));
                 }
 
-                var w = angular.element($window);
+                let w = angular.element($window);
 
-                var resizeObj = function () {
+                let resizeObj = function () {
                     $timeout(function () {
-                        var width = parseInt($window.getComputedStyle(elem[0]).width, 10);
+                        let width = parseInt($window.getComputedStyle(elem[0]).width, 10);
 
                         if (width) {
-                            var targetWidth = width / graph_obj.data.values.length;
+                            let targetWidth = width / graph_obj.data.values.length;
                             svg.selectAll(".chart_data").each(function (d, i) {
-                                var item = d3.select(this);
+                                let item = d3.select(this);
                                 item.attr("x", i * targetWidth);
                                 item.attr("width", targetWidth + 1)
                             });
@@ -370,7 +370,7 @@ utils.directive('imageDropzone', function () {
             drop: '='
         },
         link: function (scope, element) {
-            var el = element[0];
+            let el = element[0];
 
             el.addEventListener(
                 'dragenter',
@@ -410,8 +410,8 @@ utils.directive('imageDropzone', function () {
 
                     this.classList.remove('over');
 
-                    var dt = e.dataTransfer;
-                    var file = dt.files[0];
+                    let dt = e.dataTransfer;
+                    let file = dt.files[0];
 
                     scope.drop(file);
 
@@ -435,12 +435,12 @@ utils.directive('imageSelector', function () {
             select: '='
         },
         link: function (scope, element) {
-            var el = element[0];
+            let el = element[0];
 
             el.addEventListener(
                 'change',
                 function (e) {
-                    var file = e.target.files[0];
+                    let file = e.target.files[0];
                     scope.select(file);
                     return false;
                 },
@@ -469,7 +469,7 @@ utils.directive('pager', function () {
 });
 
 utils.directive('replaceTags', function ($compile) {
-    var inline_tag_template = '<span class="inline-tag" style="cursor: pointer;" ng-class="{\'highlight\': isHighlighted(-=TAG=-.type, -=TAG=-.value)}" ng-click="trigger_highlight(-=TAG=-.type, -=TAG=-.value);$event.stopPropagation();" >{{-=TAG=-.value}}</span>';
+    let inline_tag_template = '<span class="inline-tag" style="cursor: pointer;" ng-class="{\'highlight\': isHighlighted(-=TAG=-.type, -=TAG=-.value)}" ng-click="trigger_highlight(-=TAG=-.type, -=TAG=-.value);$event.stopPropagation();" >{{-=TAG=-.value}}</span>';
 
     function escapeRegExp(string) {
         return string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")
@@ -478,13 +478,13 @@ utils.directive('replaceTags', function ($compile) {
     return {
         scope: true,
         link: function (scope, elem, attr) {
-            var data = escapeHTML(scope.$eval(attr.data));
-            var tags = scope.$eval(attr.tags);
+            let data = escapeHTML(scope.$eval(attr.data));
+            let tags = scope.$eval(attr.tags);
 
-            for (var i in tags) {
-                var tag = tags[i];
+            for (let i in tags) {
+                let tag = tags[i];
                 if (tag.value.length > 6) {
-                    var re = new RegExp(escapeRegExp(escapeHTML(tag.value)), 'g');
+                    let re = new RegExp(escapeRegExp(escapeHTML(tag.value)), 'g');
                     data = data.replace(re, inline_tag_template.replace(/-=TAG=-/g, 'res.result.tags.' + i.toString()));
                 }
             }
@@ -519,8 +519,8 @@ utils.directive('jsonInput', function () {
         scope: true,
         require: 'ngModel',
         link: function (scope, elem, attr, ngModel) {
-            var update_ctrl = null;
-            var data = scope.$eval(attr.jsonInput);
+            let update_ctrl = null;
+            let data = scope.$eval(attr.jsonInput);
 
             if (data !== undefined && data.update_ctrl !== undefined) {
                 //noinspection JSUnusedAssignment
@@ -528,7 +528,7 @@ utils.directive('jsonInput', function () {
             }
 
             function getPath(path) {
-                var out = "scope.$parent";
+                let out = "scope.$parent";
                 path = path.split(".");
 
                 while (path.length && (out += "['" + path.shift() + "']")) {
@@ -560,23 +560,22 @@ utils.directive('smartInput', function () {
         scope: true,
         require: 'ngModel',
         link: function (scope, elem, attr, ngModel) {
-            var DEBUG = true;
-            var splitter = ",";
-            var data_type = "string";
-            var type_var = null;
-            var update_ctrl = null;
-            var data = scope.$eval(attr.smartInput);
+            let DEBUG = true;
+            let splitter = ",";
+            let data_type = "string";
+            let type_let = null;
+            let update_ctrl = null;
+            let data = scope.$eval(attr.smartInput);
             if (data !== undefined && data.splitter !== undefined) splitter = data.splitter;
             if (data !== undefined && data.type !== undefined) data_type = data.type;
-            if (data !== undefined && data.type_var !== undefined) type_var = data.type_var;
+            if (data !== undefined && data.type_let !== undefined) type_let = data.type_let;
             if (data !== undefined && data.update_ctrl !== undefined) update_ctrl = getPath(data.update_ctrl);
             function updatePath(value) {
                 if (DEBUG) {
-                    var start = update_ctrl;
-                    var stop = "";
+                    let stop = "";
                 }
 
-                var to_apply = update_ctrl;
+                let to_apply = update_ctrl;
                 if (typeof value == 'string') {
                     to_apply += "='" + value + "'";
                     if (DEBUG) stop = "'" + value + "'";
@@ -595,7 +594,7 @@ utils.directive('smartInput', function () {
             }
 
             function getPath(path) {
-                var out = "scope.$parent";
+                let out = "scope.$parent";
                 path = path.split(".");
 
                 while (path.length && (out += "['" + path.shift() + "']")) {
@@ -605,33 +604,33 @@ utils.directive('smartInput', function () {
             }
 
             function fromUser(text) {
-                var myval;
-                if (type_var != null) {
-                    var temp_dt = getPath(type_var);
+                let myval;
+                if (type_let != null) {
+                    let temp_dt = getPath(type_let);
                     eval("data_type = " + temp_dt);
                 }
 
-                if (data_type == 'list') {
+                if (data_type === 'list') {
                     myval = text.split(splitter);
-                    for (var idx in myval) {
-                        var int_val = parseInt(myval[idx]);
-                        if (String(int_val) == myval[idx]) {
+                    for (let idx in myval) {
+                        let int_val = parseInt(myval[idx]);
+                        if (String(int_val) === myval[idx]) {
                             myval[idx] = int_val;
                         }
                     }
                 }
-                else if (data_type == 'object') {
+                else if (data_type === 'object') {
                     try {
                         myval = JSON.parse(text);
                     } catch (e) {
                         myval = text;
                     }
                 }
-                else if (data_type == 'number' || data_type == 'int') {
+                else if (data_type === 'number' || data_type === 'int') {
                     myval = parseFloat(text);
                 }
-                else if (data_type == 'boolean' || data_type == 'bool') {
-                    myval = text == "true";
+                else if (data_type === 'boolean' || data_type === 'bool') {
+                    myval = text === "true";
                 }
                 else {
                     myval = text;
@@ -647,10 +646,10 @@ utils.directive('smartInput', function () {
                 if (array === undefined) {
                     return "";
                 }
-                else if (data_type == "list") {
+                else if (data_type === "list") {
                     return array.join(splitter);
                 }
-                else if (data_type == "object") {
+                else if (data_type === "object") {
                     return JSON.stringify(array);
                 }
                 else {
@@ -669,8 +668,8 @@ utils.directive('splitArray', function () {
         restrict: 'A',
         require: 'ngModel',
         link: function (scope, elem, attr, ngModel) {
-            var splitter = ",";
-            var data = scope.$eval(attr.splitArray);
+            let splitter = ",";
+            let data = scope.$eval(attr.splitArray);
             if (data !== undefined && data.splitter !== undefined) splitter = data.splitter;
 
             function fromUser(text) {
@@ -692,14 +691,14 @@ utils.directive('splitArray', function () {
 utils.directive('urlSection', function () {
     return {
         link: function (scope, elem, attrs) {
-            var url_body = JSON.parse(attrs.urlData);
+            let url_body = JSON.parse(attrs.urlData);
 
             if (Object.prototype.toString.call(url_body) === '[object Array]') {
-                for (var idx in url_body) {
-                    var div = document.createElement('div');
-                    var cur_url_body = url_body[idx];
+                for (let idx in url_body) {
+                    let div = document.createElement('div');
+                    let cur_url_body = url_body[idx];
 
-                    var a_array = document.createElement('a');
+                    let a_array = document.createElement('a');
                     a_array.href = cur_url_body.url;
                     if (cur_url_body.name !== undefined) {
                         a_array.text = cur_url_body.name;
@@ -712,7 +711,7 @@ utils.directive('urlSection', function () {
                 }
             }
             else {
-                var a = document.createElement('a');
+                let a = document.createElement('a');
                 a.href = url_body.url;
                 if (url_body.name !== undefined) {
                     a.text = url_body.name;
@@ -740,9 +739,9 @@ utils.directive('vmConfig', function () {
 utils.filter('breakableStr', function () {
     return function (data) {
         if (data === undefined || data == null) return "";
-        var outString = String();
+        let outString = String();
 
-        for (var i = 0; i < data.length; i += 4) {
+        for (let i = 0; i < data.length; i += 4) {
             outString += data.substr(i, 4);
             outString += "\u200b";
         }
@@ -753,20 +752,20 @@ utils.filter('breakableStr', function () {
 
 
 utils.filter('floatStr', function () {
-    return function (float_var) {
-        if (float_var === undefined || float_var == null) return "";
+    return function (float_let) {
+        if (float_let === undefined || float_let == null) return "";
         try {
-            return Math.round(float_var * 100) / 100;
+            return Math.round(float_let * 100) / 100;
         }
         catch (e) {
-            return float_var;
+            return float_let;
         }
     }
 });
 
 utils.filter('getErrorTypeFromKey', function () {
     return function (key) {
-        var e_id = key.substr(65, key.length);
+        let e_id = key.substr(65, key.length);
 
         if (e_id.indexOf(".e") !== -1) {
             e_id = e_id.substr(e_id.indexOf(".e") + 2, e_id.length);
@@ -806,9 +805,9 @@ utils.filter('getHashFromKey', function () {
 
 utils.filter('getServiceFromKey', function () {
     return function (key) {
-        var srv = key.substr(65, key.length);
+        let srv = key.substr(65, key.length);
 
-        if (srv.indexOf(".") != -1) {
+        if (srv.indexOf(".") !== -1) {
             srv = srv.substr(0, srv.indexOf("."));
         }
 
@@ -819,22 +818,22 @@ utils.filter('getServiceFromKey', function () {
 utils.filter('hexDump', function () {
     return function (arrayBuffer) {
         if (arrayBuffer === undefined || arrayBuffer == null) return "";
-        var outString = String();
-        var pad = "00000000";
-        var line = 0;
-        var count = 0;
-        var data = new Uint8Array(arrayBuffer);
+        let outString = String();
+        let pad = "00000000";
+        let line = 0;
+        let count = 0;
+        let data = new Uint8Array(arrayBuffer);
 
         outString += "00000000:  ";
 
-        for (var i = 0; i < data.length; i++) {
+        for (let i = 0; i < data.length; i++) {
             count++;
 
-            var n = data[i];
-            var byteHex = (n < 16) ? "0" + n.toString(16) : n.toString(16);
+            let n = data[i];
+            let byteHex = (n < 16) ? "0" + n.toString(16) : n.toString(16);
 
             outString += byteHex + " ";
-            if (count == 16 && i < (data.length - 2)) {
+            if (count === 16 && i < (data.length - 2)) {
                 count = 0;
                 line++;
                 outString += "\n" + pad.substr(0, 7 - line.toString(16).length) + line.toString(16) + "0:  ";
@@ -847,23 +846,23 @@ utils.filter('hexDump', function () {
 utils.filter('hexViewer', function () {
     return function (arrayBuffer) {
         if (arrayBuffer === undefined || arrayBuffer == null) return "";
-        var outString = String();
-        var pad = "00000000";
-        var pad_bytes = "                                                ";
-        var line = 0;
-        var count = 0;
-        var askey = String();
-        var data = new Uint8Array(arrayBuffer);
+        let outString = String();
+        let pad = "00000000";
+        let pad_bytes = "                                                ";
+        let line = 0;
+        let count = 0;
+        let askey = String();
+        let data = new Uint8Array(arrayBuffer);
 
         outString += "00000000: ";
         askey += " ";
 
-        for (var i = 0; i < data.length; i++) {
+        for (let i = 0; i < data.length; i++) {
             count++;
 
-            var n = data[i];
-            var byteHex = (n < 16) ? "0" + n.toString(16) : n.toString(16);
-            var character = String.fromCharCode(n);
+            let n = data[i];
+            let byteHex = (n < 16) ? "0" + n.toString(16) : n.toString(16);
+            let character = String.fromCharCode(n);
 
             if (n < 0x20 || n >= 0x7F) {
                 character = ".";
@@ -871,7 +870,7 @@ utils.filter('hexViewer', function () {
 
             askey += character;
             outString += byteHex + " ";
-            if (count == 16 && i < (data.length - 2)) {
+            if (count === 16 && i < (data.length - 2)) {
                 count = 0;
                 line++;
                 outString += askey + "\n" + pad.substr(0, 7 - line.toString(16).length) + line.toString(16) + "0: ";
@@ -879,7 +878,7 @@ utils.filter('hexViewer', function () {
             }
         }
 
-        if (askey != " ") {
+        if (askey !== " ") {
             outString += pad_bytes.substr(0, 48 - (count * 3)) + askey
         }
         return outString
@@ -919,7 +918,7 @@ utils.filter('maxLength', function () {
     return function (data, length) {
         if (data === undefined || data == null) return "";
 
-        var outString = String();
+        let outString = String();
 
         if (data.length > length - 3) {
             outString += data.substr(0, length - 3);
@@ -936,13 +935,13 @@ utils.filter('maxLength', function () {
 utils.filter("objectViewer", function () {
     return function (input) {
         if (input instanceof Object){
-            var out_list = [];
-            for (var key in input){
-                var val= input[key];
+            let out_list = [];
+            for (let key in input){
+                let val= input[key];
                 if (val instanceof Array) {
                     val = (val || []).join(" | ");
                 }
-                if (val == "(null)") {
+                if (val === "(null)") {
                     val = "";
                 }
                 out_list.push(key + " => "+ val);
@@ -959,19 +958,19 @@ utils.filter('orderByObjectInt', function () {
     return function (input, attr, l2_attr) {
         if (!angular.isObject(input)) return input;
 
-        var array = [];
-        for (var key in input) {
-            var item = input[key];
+        let array = [];
+        for (let key in input) {
+            let item = input[key];
             item.key = key;
             array.push(item);
         }
 
         array.sort(function (obj_a, obj_b) {
-            var a = obj_a[attr];
-            var b = obj_b[attr];
-            var val = b - a;
+            let a = obj_a[attr];
+            let b = obj_b[attr];
+            let val = b - a;
 
-            if (val == 0 && l2_attr !== undefined) {
+            if (val === 0 && l2_attr !== undefined) {
                 try {
                     a = obj_a[l2_attr].join();
                 } catch (e) {
@@ -1009,14 +1008,14 @@ utils.filter('quote', function () {
 utils.filter('rawViewer', function () {
     return function (arrayBuffer) {
         if (arrayBuffer === undefined || arrayBuffer == null) return "";
-        var data = arrayBufferToUTF8String(arrayBuffer);
+        let data = arrayBufferToUTF8String(arrayBuffer);
 
-        var outString = String();
-        for (var i = 0; i < data.length; i++) {
-            var character = data[i];
-            var c = data.charCodeAt(i);
+        let outString = String();
+        for (let i = 0; i < data.length; i++) {
+            let character = data[i];
+            let c = data.charCodeAt(i);
 
-            if (c != 0x9 && c != 0xa && c != 0xd && (c < 0x20 || c >= 0x7F)) {
+            if (c !== 0x9 && c !== 0xa && c !== 0xd && (c < 0x20 || c >= 0x7F)) {
                 character = ".";
             }
             outString += character;
@@ -1044,11 +1043,11 @@ utils.filter('score_color', function () {
 utils.filter('signature', function () {
     return function (s) {
         if (s === undefined || s == null) return "";
-        var malware_types = ['exploit', 'implant', 'info', 'technique', 'tool'];
-        var malware_important = ['classification', 'description', 'organisation', 'poc', 'rule_id', 'rule_version', 'yara_version'];
-        var keys = [];
+        let malware_types = ['exploit', 'implant', 'info', 'technique', 'tool'];
+        let malware_important = ['classification', 'description', 'organisation', 'poc', 'rule_id', 'rule_version', 'yara_version'];
+        let keys = [];
 
-        var type_index = malware_types.indexOf(s.meta.rule_group);
+        let type_index = malware_types.indexOf(s.meta.rule_group);
         if (type_index > -1) {
             malware_types.splice(type_index, 1);
         }
@@ -1057,37 +1056,37 @@ utils.filter('signature', function () {
             keys.push('classification')
         }
 
-        for (var key_meta_extra in s.meta_extra) {
+        for (let key_meta_extra in s.meta_extra) {
             keys.push(key_meta_extra);
         }
 
-        for (var key_meta in s.meta) {
-            if (key_meta != "rule_group" && key_meta != s.meta.rule_group) {
+        for (let key_meta in s.meta) {
+            if (key_meta !== "rule_group" && key_meta !== s.meta.rule_group) {
                 keys.push(key_meta);
             }
         }
         keys.sort();
 
-        var o = String();
+        let o = String();
 
         if (s.warning !== undefined && s.warning != null) {
             o += "// WARNING: " + s.warning + "\n";
         }
 
-        for (var m_id in s.modules) {
-            var module = s.modules[m_id];
+        for (let m_id in s.modules) {
+            let module = s.modules[m_id];
             o += "import \"" + module + "\"\n";
         }
 
         //Do header
         o += "\n" + s.type + " " + s.name;
-        if (s.tags !== undefined && s.tags != null && s.tags.length != 0) {
+        if (s.tags !== undefined && s.tags != null && s.tags.length !== 0) {
             o += ": " + s.tags.join(" ");
         }
         o += " {\n";
 
         //Do Comments
-        for (var i_comments in s.comments) {
+        for (let i_comments in s.comments) {
             o += "    //" + s.comments[i_comments] + "\n";
         }
 
@@ -1095,9 +1094,9 @@ utils.filter('signature', function () {
         o += "    meta:\n";
         o += "        rule_group = \"" + s.meta.rule_group + "\"\n";
         o += "        " + s.meta.rule_group + " = \"" + s.meta[s.meta.rule_group] + "\"\n";
-        for (var i_types in malware_types) {
-            var key_types = malware_types[i_types];
-            var idx_types = keys.indexOf(key_types);
+        for (let i_types in malware_types) {
+            let key_types = malware_types[i_types];
+            let idx_types = keys.indexOf(key_types);
             if (idx_types !== -1 && s.meta[key_types] !== null) {
                 o += "        " + key_types + " = \"" + s.meta[key_types] + "\"\n";
                 keys.splice(idx_types, 1);
@@ -1106,11 +1105,11 @@ utils.filter('signature', function () {
         o += "        \n";
 
         //Do meta required fields
-        var doSpace = false;
-        for (var i_imp in malware_important) {
-            var key_imp = malware_important[i_imp];
-            var idx = keys.indexOf(key_imp);
-            if (idx != -1) {
+        let doSpace = false;
+        for (let i_imp in malware_important) {
+            let key_imp = malware_important[i_imp];
+            let idx = keys.indexOf(key_imp);
+            if (idx !== -1) {
                 doSpace = true;
                 if (key_imp === 'classification'){
                     o += "        " + key_imp + " = \"" + s.classification + "\"\n";
@@ -1126,9 +1125,9 @@ utils.filter('signature', function () {
         }
 
         //Do meta rest
-        for (var i_meta in keys) {
-            var key = keys[i_meta];
-            var value = null;
+        for (let i_meta in keys) {
+            let key = keys[i_meta];
+            let value = null;
             if (key in s.meta){
                 value = s.meta[key];
             }
@@ -1142,18 +1141,18 @@ utils.filter('signature', function () {
         o += "    \n";
 
         //Do Strings
-        if (s.strings.length != 0) {
+        if (s.strings.length !== 0) {
             o += "    strings:\n";
-            for (var i_strings in s.strings) {
+            for (let i_strings in s.strings) {
                 o += "        " + s.strings[i_strings] + "\n";
             }
             o += "    \n";
         }
 
         //Do Condition
-        if (s.condition.length != 0) {
+        if (s.condition.length !== 0) {
             o += "    condition:\n";
-            for (var i in s.condition) {
+            for (let i in s.condition) {
                 o += "        " + s.condition[i] + "\n";
             }
             o += "    \n";
@@ -1173,7 +1172,7 @@ utils.filter('sortList', function () {
 
 utils.filter('split', function () {
     return function (data) {
-        var splitter = " | ";
+        let splitter = " | ";
         try {
             return data.join(splitter);
         }
@@ -1186,18 +1185,18 @@ utils.filter('split', function () {
 utils.filter('splitHex', function () {
     return function (data) {
         if (data === undefined || data == null) return "";
-        var outString = String();
-        var pad = "00000000";
-        var line = 0;
-        var count = 0;
+        let outString = String();
+        let pad = "00000000";
+        let line = 0;
+        let count = 0;
 
         outString += "00000000  ";
 
-        for (var i = 0; i < data.length; i += 2) {
+        for (let i = 0; i < data.length; i += 2) {
             count++;
-            var byteHex = data.substr(i, 2);
+            let byteHex = data.substr(i, 2);
             outString += byteHex + " ";
-            if (count == 16 && i < (data.length - 2)) {
+            if (count === 16 && i < (data.length - 2)) {
                 count = 0;
                 line++;
                 outString += "\n" + pad.substr(0, 7 - line.toString(16).length) + line.toString(16) + "0  ";
@@ -1210,8 +1209,8 @@ utils.filter('splitHex', function () {
 utils.filter('stringViewer', function () {
     return function (arrayBuffer) {
         if (arrayBuffer === undefined || arrayBuffer == null) return "";
-        var data = arrayBufferToUTF8String(arrayBuffer);
-        var res = data.match(/[\x1f-\x7e]{6,}/g);
+        let data = arrayBufferToUTF8String(arrayBuffer);
+        let res = data.match(/[\x1f-\x7e]{6,}/g);
 
         return res.join("\n")
     }
@@ -1219,7 +1218,7 @@ utils.filter('stringViewer', function () {
 
 utils.filter('stripNull', function () {
     return function (val) {
-        if (val == "(null)") {
+        if (val === "(null)") {
             return "";
         }
 
@@ -1230,7 +1229,7 @@ utils.filter('stripNull', function () {
 utils.filter('tc_signature', function () {
     return function (s) {
         if (s === undefined || s == null) return "";
-        var o = "";
+        let o = "";
 
         o += "** " + s.name + " **\n\n";
         if (s.comment !== null && s.comment !== undefined && s.comment !== ""){
@@ -1246,8 +1245,8 @@ utils.filter('tc_signature', function () {
             o += "Callback function: " + s.callback + "\n";
         }
         o += "Score: " + s.al_score + "\n\nPatterns:\n";
-        for (var i in s.values){
-            var regex = s.values[i];
+        for (let i in s.values){
+            let regex = s.values[i];
             o += regex + "\n"
         }
         return o;
@@ -1265,7 +1264,7 @@ utils.filter('unit', function () {
     return function (bytes, precision) {
         if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return "-";
         if (precision === undefined) precision = 1;
-        var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
+        let units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
             number = Math.floor(Math.log(bytes) / Math.log(1024));
         return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) + " " + units[number];
     }
@@ -1273,7 +1272,7 @@ utils.filter('unit', function () {
 
 utils.filter('utc_date', function () {
     return function (date) {
-        var cur_date = new Date(date);
+        let cur_date = new Date(date);
         return new Date(cur_date.getUTCFullYear(), cur_date.getUTCMonth(), cur_date.getUTCDate(), cur_date.getUTCHours(), cur_date.getUTCMinutes(), cur_date.getUTCSeconds());
     }
 });

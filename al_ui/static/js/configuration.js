@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.constants = null;
@@ -47,7 +47,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -69,7 +69,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.constants = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 

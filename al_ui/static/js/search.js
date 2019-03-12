@@ -6,7 +6,7 @@
  */
 
 function SearchBaseCtrl($scope, $http, $timeout) {
-    //Parameters vars
+    //Parameters lets
     $scope.user = null;
     $scope.loading = false;
     $scope.loading_extra = false;
@@ -76,7 +76,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
                 if (status === 400) {
                     $timeout(function () {
                         $("#search-term").addClass("has-error");
-                        var sb = $("#search-box");
+                        let sb = $("#search-box");
                         sb.select();
                         sb.focus();
                     }, 0);
@@ -96,8 +96,8 @@ function SearchBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.show_tab = function(tab){
-        for (var tab_id in $scope.buckets){
-            var current_tab = $scope.buckets[tab_id];
+        for (let tab_id in $scope.buckets){
+            let current_tab = $scope.buckets[tab_id];
             if (tab === current_tab){
                 $('#' + current_tab + '_tab').addClass("active");
                 $('#' + current_tab).addClass("active");
@@ -156,12 +156,12 @@ function SearchBaseCtrl($scope, $http, $timeout) {
         $scope.new_query = $scope.query;
 
         $timeout(function (){
-            var data = {};
+            let data = {};
             data['query'] = $scope.query;
             data['offset'] = $scope.offset;
             data['rows'] = $scope.rows;
 
-            for (var bucket in $scope.buckets) {
+            for (let bucket in $scope.buckets) {
                 $scope.search_bucket($scope.buckets[bucket], data, $scope.search_callback)
             }
 
@@ -174,7 +174,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
         }
 
         $scope.loading_extra = true;
-        var data = {};
+        let data = {};
         data['query'] = $scope.query;
         data['offset'] = $scope.offset;
         data['rows'] = $scope.rows;
@@ -226,5 +226,5 @@ function SearchBaseCtrl($scope, $http, $timeout) {
     };
 }
 
-var app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
+let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']);
 app.controller('ALController', SearchBaseCtrl);

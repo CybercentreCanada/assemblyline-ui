@@ -5,23 +5,23 @@ function init_modals() {
             return;
         }
 
-        $(this).on('hidden.bs.modal', function (event) {
+        $(this).on('hidden.bs.modal', function () {
             $(this).removeClass('fv-modal-stack');
             $(this).css('z-index', 1050);
-            var body_ctrl = $('body');
+            let body_ctrl = $('body');
             body_ctrl.data('fv_open_modals', body_ctrl.data('fv_open_modals') - 1);
             if (body_ctrl.data('fv_open_modals') > 0) {
-                $('body').addClass('fv-modal-open');
+                body_ctrl.addClass('fv-modal-open');
             }
             else {
-                $('body').removeClass('fv-modal-open');
+                body_ctrl.removeClass('fv-modal-open');
             }
         });
 
-        $(this).on('show.bs.modal', function (event) {
-            var body_ctrl = $('body');
+        $(this).on('show.bs.modal', function () {
+            let body_ctrl = $('body');
             if (typeof(body_ctrl.data('fv_open_modals')) == 'undefined') {
-                $('body').data('fv_open_modals', 0);
+                body_ctrl.data('fv_open_modals', 0);
             }
 
             if ($(this).hasClass('fv-modal-stack')) {
@@ -32,10 +32,10 @@ function init_modals() {
             body_ctrl.data('fv_open_modals', body_ctrl.data('fv_open_modals') + 1);
         });
 
-        $(this).on('shown.bs.modal', function (event) {
-            var body_ctrl = $('body');
+        $(this).on('shown.bs.modal', function () {
+            let body_ctrl = $('body');
             $(this).css('z-index', 1029 + (10 * body_ctrl.data('fv_open_modals')));
-            var modal_backdrop = $('.modal-backdrop');
+            let modal_backdrop = $('.modal-backdrop');
             modal_backdrop.not('.fv-modal-stack').css('z-index', 1028 + (10 * body_ctrl.data('fv_open_modals')));
             modal_backdrop.addClass('fv-modal-stack');
         });

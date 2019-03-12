@@ -63,7 +63,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
     $scope.searchText = "";
     $scope.$watch('searchText', function () {
         if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-            if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+            if ($scope.searchText === "") {
                 $scope.filter = "";
             }
             else {
@@ -84,12 +84,12 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
     });
 
     $scope.reveal_show = function () {
-        var ctrl = $("#pwd");
+        let ctrl = $("#pwd");
         ctrl.attr('type', 'text');
     };
 
     $scope.reveal_hide = function () {
-        var ctrl = $("#pwd");
+        let ctrl = $("#pwd");
         ctrl.attr('type', 'password');
     };
 
@@ -126,7 +126,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -168,7 +168,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 $("#myModal").modal('show');
             })
             .error(function (data, status, headers, config) {
-                if (data == "") {
+                if (data === "" || data === null) {
                     return;
                 }
 
@@ -204,30 +204,27 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
+                let ctrl;
                 $scope.loading_extra = false;
 
-                if (data == "") {
-                    return;
-                }
-
-                if (data == "" || status == 400) {
-                    var ctrl = $("#uname");
+                if (status === 400) {
+                    ctrl = $("#uname");
                     ctrl.addClass("has-error");
                     ctrl.find("input").select();
                     ctrl.find("error").text("* Username already exists");
                     return;
                 }
 
-                if (data == "" || status == 412) {
-                    var ctrl = $("#uname");
+                if (status === 412) {
+                    ctrl = $("#uname");
                     ctrl.addClass("has-error");
                     ctrl.find("input").select();
                     ctrl.find("error").text("* Invalid characters used in the User ID");
                     return;
                 }
 
-                if (data == "" || status == 469) {
-                    var pass_ctrl = $("#new_pass");
+                if (status === 469) {
+                    let pass_ctrl = $("#new_pass");
                     pass_ctrl.addClass("has-error");
                     pass_ctrl.find("input").select();
                     pass_ctrl.find('error').text("* " + data.api_error_message);
@@ -244,10 +241,10 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
     };
 
     $scope.reset_error_ctrls = function () {
-        var ctrl = $("#uname");
+        let ctrl = $("#uname");
         ctrl.removeClass("has-error");
         ctrl.find("error").text("");
-        var pass_ctrl = $("#new_pass");
+        let pass_ctrl = $("#new_pass");
         pass_ctrl.removeClass("has-error");
         pass_ctrl.find("error").text("");
     };
@@ -272,26 +269,27 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
+                let ctrl;
                 $scope.loading_extra = false;
 
-                if (data == "" || status == 400) {
-                    var ctrl = $("#uname");
+                if (status === 400) {
+                    ctrl = $("#uname");
                     ctrl.addClass("has-error");
                     ctrl.find("input").select();
                     ctrl.find("error").text("* Username already exists");
                     return;
                 }
 
-                if (data == "" || status == 412) {
-                    var ctrl = $("#uname");
+                if (status === 412) {
+                    ctrl = $("#uname");
                     ctrl.addClass("has-error");
                     ctrl.find("input").select();
                     ctrl.find("error").text("* Invalid characters used in the User ID");
                     return;
                 }
 
-                if (data == "" || status == 469) {
-                    var pass_ctrl = $("#new_pass");
+                if (status === 469) {
+                    let pass_ctrl = $("#new_pass");
                     pass_ctrl.addClass("has-error");
                     pass_ctrl.find("input").select();
                     pass_ctrl.find('error').text("* " + data.api_error_message);
@@ -329,12 +327,12 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 $scope.pages = $scope.pagerArray();
                 $scope.started = true;
 
-                $scope.filtered = $scope.filter != "";
+                $scope.filtered = $scope.filter !== "";
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
 
-                if (data == "" || status == 400) {
+                if (data === "" || data === null || status === 400) {
                     $scope.user_list = [];
                     $scope.total = 0;
                     $scope.filtered = true;

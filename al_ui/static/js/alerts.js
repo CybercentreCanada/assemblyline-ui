@@ -755,7 +755,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.overflows = function () {
             let skipped = 0;
             for (let stat_id in $scope.statistics) {
-                stat_id = $scope.safe_key(stat_id)
+                stat_id = $scope.safe_key(stat_id);
                 let target = $("#" + stat_id)[0];
                 if (target !== undefined){
                     if (target.scrollHeight === 0) {

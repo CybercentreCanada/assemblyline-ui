@@ -9,7 +9,7 @@ function add(a, b) {
 }
 
 //noinspection JSUnusedLocalSymbols
-var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'ui.bootstrap'])
+let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'ui.bootstrap'])
     .factory('mySocket', function (socketFactory) {
         var mySocket = socketFactory({namespace: '/status'});
         mySocket.forward('DispatcherHeartbeat');
@@ -155,7 +155,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         };
 
         $scope.$on('socket:ServiceHeartbeat', function (event, data) {
-            var cur_time = Math.floor(new Date().getTime() / 1000);
+            let cur_time = Math.floor(new Date().getTime() / 1000);
             try {
                 console.log('Socket-IO::ServiceHeartbeat message', data);
                 $scope.data.services.metrics[data.service_name] = data;
@@ -189,7 +189,7 @@ var app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         });
 
         $scope.has_errors = function (service) {
-            var in_error = false;
+            let in_error = false;
             if (service.queue>($scope.data.dispatcher.inflight.outstanding/2)){
                 return true;
             }

@@ -4,9 +4,9 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
-        //Parameters vars
+        //Parameters lets
         $scope.user = null;
         $scope.loading = false;
         $scope.loading_extra = false;
@@ -43,8 +43,8 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.filter = $scope.searchText;
                 }
 
-                var filtered = [];
-                for (var sig in $scope.stats_list) {
+                let filtered = [];
+                for (let sig in $scope.stats_list) {
                     if (JSON.stringify($scope.stats_list[sig]).toLowerCase().indexOf($scope.searchText) > -1) {
                         filtered.push($scope.stats_list[sig]);
                     }
@@ -77,7 +77,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $("#myModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -118,8 +118,8 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.sort_by = function (field, order) {
 
-            var field1 = field;
-            var field2 = "sid";
+            let field1 = field;
+            let field2 = "sid";
 
             if (order) {
                 order = 1;

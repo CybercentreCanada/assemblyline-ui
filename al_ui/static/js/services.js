@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.service_list = null;
@@ -47,7 +47,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "" || status == 400) {
+                    if (data === "" || data === null || status === 400) {
                         $scope.service_list = [];
                         $scope.started = true;
                         return;
