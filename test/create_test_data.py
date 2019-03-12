@@ -47,8 +47,6 @@ print("\nCreating services...")
 for svc in SERVICES:
     service_data = Service({
         "name": svc,
-        "realm": "bitbucket",
-        "repo": f"alsvc_{svc.lower()}",
         "enabled": True,
         "category": random.choice(config.services.categories),
         "stage": random.choice(config.services.stages),

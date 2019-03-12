@@ -5,12 +5,12 @@
 			<input type="text" class="form-control input-sm input" ng-model="current_service.name" ng-disabled="!new_service">
 		</div>
 		<div class="form-group">
-			<label class="control-label">Python path</label>
-			<input type="text" class="form-control input-sm input-medium" ng-model="current_service.classpath">
+			<label class="control-label">Accept files</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_service.accepts">
 		</div>
 		<div class="form-group">
-			<label class="control-label">Expected files</label>
-			<input type="text" class="form-control input-sm input-medium" ng-model="current_service.accepts">
+			<label class="control-label">Reject files</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_service.rejects">
 		</div>
 		<div class="form-group">
 			<label class="control-label">Timeout</label>
@@ -29,6 +29,10 @@
 	</div>
 	<div class="col-md-6">
 		<div class="form-group">
+			<label class="control-label">Version</label>
+			<input type="text" class="form-control input-sm input" ng-model="current_service.version" ng-disabled="!new_service">
+		</div>
+		<div class="form-group">
 			<label class="control-label">Stage</label>
 			<select class="form-control input-sm" ng-model="current_service.stage">
 				<option ng-repeat="cat in service_constants.stages">{{cat}}</option>
@@ -44,24 +48,22 @@
 			<label ng-class="{checked:current_service.enabled}">
 				<input type="checkbox" ng-model="current_service.enabled" value="enabled" ng-checked="current_service.enabled"> Enabled
 			</label>
-			
 		</div>
 		<div class="checkbox">
-			<label ng-class="{checked:current_service.install_by_default}">
-				<input type="checkbox" ng-model="current_service.install_by_default" value="enabled" ng-checked="current_service.install_by_default"> Install by default
+			<label ng-class="{checked:current_service.is_external}">
+				<input type="checkbox" ng-model="current_service.is_external" value="enabled" ng-checked="current_service.is_external"> External
 			</label>
-
 		</div>
 		<div class="form-group">
 			<label class="control-label">Runs on ...</label>
 			<span class="checkbox">
-				<label ng-class="{checked:current_service.supported_platforms.indexOf('Linux') > -1}">
-					<input type="checkbox" value="Linux" ng-checked="current_service.supported_platforms.indexOf('Linux') > -1" ng-click="toggleOS('Linux')"> Linux
+				<label ng-class="{checked:current_service.supported_platforms.indexOf('linux') > -1}">
+					<input type="checkbox" value="linux" ng-checked="current_service.supported_platforms.indexOf('linux') > -1" ng-click="toggleOS('linux')"> Linux
 				</label>
 			</span>
 			<span class="checkbox">
-				<label ng-class="{checked:current_service.supported_platforms.indexOf('Windows') > -1}">
-				    <input type="checkbox" value="Windows" ng-checked="current_service.supported_platforms.indexOf('Windows') > -1" ng-click="toggleOS('Windows')"> Windows
+				<label ng-class="{checked:current_service.supported_platforms.indexOf('windows') > -1}">
+				    <input type="checkbox" value="windows" ng-checked="current_service.supported_platforms.indexOf('windows') > -1" ng-click="toggleOS('windows')"> Windows
 				</label>
 			</span>
 		</div>

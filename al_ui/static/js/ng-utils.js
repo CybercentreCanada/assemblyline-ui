@@ -571,22 +571,21 @@ utils.directive('smartInput', function () {
             if (data !== undefined && data.type_let !== undefined) type_let = data.type_let;
             if (data !== undefined && data.update_ctrl !== undefined) update_ctrl = getPath(data.update_ctrl);
             function updatePath(value) {
-                if (DEBUG) {
-                    let stop = "";
-                }
+                let start = update_ctrl;
+                let stop = "";
 
                 let to_apply = update_ctrl;
                 if (typeof value == 'string') {
                     to_apply += "='" + value + "'";
-                    if (DEBUG) stop = "'" + value + "'";
+                    stop = "'" + value + "'";
                 }
                 else if (typeof value == "object") {
                     to_apply += "=" + JSON.stringify(value);
-                    if (DEBUG) stop = JSON.stringify(value);
+                    stop = JSON.stringify(value);
                 }
                 else {
                     to_apply += "=" + value;
-                    if (DEBUG) stop = value;
+                    stop = value;
                 }
 
                 if (DEBUG) eval("console.log(" + start + ", '=>', " + stop + ")");

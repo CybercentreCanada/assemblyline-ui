@@ -470,12 +470,12 @@ def admin_errors(**kwargs):
 #     return custom_render("admin_seed.html", **kwargs)
 #
 #
-# @views.route("/admin/services.html")
-# @protected_renderer(require_admin=True, audit=False, allow_readonly=False)
-# def admin_services(**kwargs):
-#     return custom_render("admin_service_configs.html", **kwargs)
-#
-#
+@views.route("/admin/services.html")
+@protected_renderer(require_admin=True, audit=False, allow_readonly=False)
+def admin_services(**kwargs):
+    return custom_render("admin_service_configs.html", **kwargs)
+
+
 @views.route("/admin/site_map.html")
 @protected_renderer(require_admin=True, audit=False)
 def admin_site_map(**kwargs):
