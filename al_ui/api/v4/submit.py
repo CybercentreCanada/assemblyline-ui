@@ -213,7 +213,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
                 "files": files,
                 "params": submission_params
             })
-        except ValueError as e:
+        except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
 
         try:
@@ -265,7 +265,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
             "files": submission["files"],
             "params": submission_params
         })
-    except ValueError as e:
+    except (ValueError, KeyError) as e:
         return make_api_response("", err=str(e), status_code=400)
 
     with forge.get_filestore() as f_transport:
@@ -456,7 +456,7 @@ def submit(**kwargs):
                     "metadata": data.get('metadata', {}),
                     "params": s_params
                 })
-            except ValueError as e:
+            except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
 
             try:

@@ -266,7 +266,7 @@ def ingest_single_file(**kwargs):
                     "metadata": metadata,
                     "params": s_params
                 })
-            except ValueError as e:
+            except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
 
             # Send submission object for processing

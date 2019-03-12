@@ -268,7 +268,7 @@ def start_ui_submission(ui_sid, **kwargs):
                     "files": [],
                     "params": ui_to_submission_params(ui_params)
                 })
-            except ValueError as e:
+            except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
 
             with forge.get_filestore() as f_transport:
