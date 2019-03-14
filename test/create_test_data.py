@@ -13,6 +13,7 @@ from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import User
+from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline.odm.randomizer import random_model_obj, SERVICES
 
 
@@ -36,11 +37,19 @@ fs = forge.get_filestore()
 config = forge.get_config()
 
 print("\nCreating user object...")
-user_data = User({"name": "Admin user", "password": get_password_hash("admin"), "uname": "admin", "is_admin": True})
+user_data = User({
+    "agrees_with_tos": "NOW",
+    "classification": "RESTRICTED",
+    "name": "Admin user",
+    "password": get_password_hash("admin"),
+    "uname": "admin",
+    "is_admin": True})
 ds.user.save('admin', user_data)
+ds.user_settings.save('admin', UserSettings())
 print(f"\tU:{user_data.uname}   P:{user_data.uname}")
 user_data = User({"name": "user", "password": get_password_hash("user"), "uname": "user"})
 ds.user.save('user', user_data)
+ds.user_settings.save('user', UserSettings())
 print(f"\tU:{user_data.uname}    P:{user_data.uname}")
 
 print("\nCreating services...")
