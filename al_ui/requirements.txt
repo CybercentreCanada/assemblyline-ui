@@ -2,7 +2,8 @@ werkzeug
 python-socketio<4
 flask
 flask-socketio
-eventlet
+gevent
+gevent-websocket
 python_u2flib_server
 pyqrcode
 markdown
