@@ -1,5 +1,5 @@
 werkzeug
-python-socketio
+python-socketio<4
 flask
 flask-socketio
 eventlet
