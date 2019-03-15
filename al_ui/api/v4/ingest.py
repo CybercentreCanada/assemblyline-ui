@@ -238,7 +238,7 @@ def ingest_single_file(**kwargs):
             sha256 = digests['sha256']
 
             if not f_transport.exists(sha256):
-                f_transport.put(out_file, sha256, location='far')
+                f_transport.upload(out_file, sha256, location='far')
 
             # Setup notification queue if needed
             if notification_queue:

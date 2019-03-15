@@ -1,5 +1,4 @@
 import sys
-import os
 import random
 
 from assemblyline.common import forge
@@ -78,15 +77,7 @@ if "full" in sys.argv:
         file_hashes.append(f.sha256)
         ds.file.save(f.sha256, f)
 
-        temp_file = f'/tmp/{f.sha256}'
-        # noinspection PyBroadException
-        try:
-            os.unlink(temp_file)
-        except Exception:
-            pass
-        with open(temp_file, 'wb') as fh:
-            fh.write(f.sha256.encode("utf-8"))
-        fs.put(temp_file, f.sha256)
+        fs.put(f.sha256, f.sha256)
 
         print(f"\t{f.sha256}")
 
