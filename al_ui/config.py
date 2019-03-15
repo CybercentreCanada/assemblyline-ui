@@ -1,8 +1,6 @@
 import logging
 import os
     
-from os import makedirs
-
 from assemblyline.common import version
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
@@ -23,7 +21,6 @@ AUDIT = config.ui.audit
 
 SECRET_KEY = config.ui.secret_key
 DEBUG = config.ui.debug
-PROFILE = config.ui.debug
 DOWNLOAD_ENCODING = config.ui.download_encoding
 MAX_CLASSIFICATION = CLASSIFICATION.UNRESTRICTED
 ORGANISATION = config.system.organisation
@@ -71,8 +68,9 @@ def get_signup_queue(key):
 #################################################################
 
 #################################################################
-# Audit log
-al_log.init_logging("ui")
+# Prepare loggers
+config.logging.log_to_console = config.logging.log_to_console or DEBUG
+al_log.init_logging("ui", config=config, log_level=logging.DEBUG if DEBUG else logging.INFO)
 AUDIT_KW_TARGET = ["sid",
                    "sha256",
                    "copy_sid",
@@ -99,32 +97,22 @@ AUDIT_KW_TARGET = ["sid",
                    "servicename",
                    "vm"]
 
-# noinspection PyBroadException
-try:
-    makedirs(config.logging.directory)
-except Exception:  # pylint:disable=W0702
-    pass
-
-
 AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 LOGGER = logging.getLogger('assemblyline.ui')
 
 if DEBUG:
-    AUDIT_LOG.setLevel(logging.DEBUG)
-    config.logging.log_to_console = True
+    if not os.path.exists(config.logging.log_directory):
+        os.makedirs(config.logging.log_directory)
+
     fh = logging.FileHandler(os.path.join(config.logging.log_directory, 'alui_audit.log'))
     fh.setLevel(logging.INFO)
     fh.setFormatter(logging.Formatter(AL_LOG_FORMAT))
     AUDIT_LOG.addHandler(fh)
-    LOGGER.setLevel(logging.DEBUG)
-else:
-    AUDIT_LOG.setLevel(logging.INFO)
-    LOGGER.setLevel(logging.INFO)
 
 AUDIT_LOG.debug('Audit logger ready!')
 LOGGER.debug('Logger ready!')
     
-# End of Audit Log
+# End of prepare logger
 #################################################################
 
 #################################################################

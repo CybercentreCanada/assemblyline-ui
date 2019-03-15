@@ -1,6 +1,7 @@
 import logging
 
 from flask import Flask
+from flask.logging import default_handler
 
 from al_ui.api.base import api
 from al_ui.api.v3 import apiv3
@@ -90,11 +91,17 @@ register_site_specific_routes(app)
 
 
 def main():
-    app.logger.setLevel(logging.INFO)
-    if config.PROFILE:
+    wlog = logging.getLogger('werkzeug')
+    wlog.setLevel(config.LOGGER.getEffectiveLevel())
+    app.logger.setLevel(config.LOGGER.getEffectiveLevel())
+    app.logger.removeHandler(default_handler)
+    for h in config.LOGGER.parent.handlers:
+        app.logger.addHandler(h)
+        wlog.addHandler(h)
+
+    if config.DEBUG:
         from werkzeug.contrib.profiler import ProfilerMiddleware
         app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
-    print(app.url_map)
     app.jinja_env.cache = {}
     app.run(host="0.0.0.0", debug=False)
 
