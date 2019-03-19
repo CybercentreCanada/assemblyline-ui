@@ -1,12 +1,12 @@
 
-from copy import deepcopy
+import concurrent.futures
+
 from flask import request
 
-from assemblyline.common import forge
-from assemblyline.common.heuristics import list_all_heuristics
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
-
+from assemblyline.common import forge
+from assemblyline.datastore import SearchException
 
 Classification = forge.get_classification()
 
@@ -14,7 +14,28 @@ SUB_API = 'heuristics'
 heuristics_api = make_subapi_blueprint(SUB_API)
 heuristics_api._doc = "View the different heuristics of the system"
 
-HEUR, HEUR_MAP = list_all_heuristics(STORAGE.list_all_services())
+
+def get_stat_for_heuristic(p_id, p_classification):
+    stats = STORAGE.result.stats("result.score",
+                                 query=f"result.tags.value:{p_id} AND result.tags.type:HEURISTIC")
+    if stats['count'] == 0:
+        return {
+            'id': p_id,
+            'classification': p_classification,
+            'count': stats['count'],
+            'min': 0,
+            'max': 0,
+            'avg': 0,
+        }
+    else:
+        return {
+            'id': p_id,
+            'classification': p_classification,
+            'count': stats['count'],
+            'min': int(stats['min']),
+            'max': int(stats['max']),
+            'avg': int(stats['avg']),
+        }
 
 
 @heuristics_api.route("/<heuristic_id>/", methods=["GET"])
@@ -40,27 +61,14 @@ def get_heuristic(heuristic_id, **kwargs):
     """
     user = kwargs['user']
 
-    h = deepcopy(HEUR_MAP.get(heuristic_id, None))
+    h = STORAGE.heuristic.get(heuristic_id, as_obj=False)
 
     if not h:
-        return make_api_response("", "Not found", 404)
+        return make_api_response("", "Heuristic not found", 404)
 
-    # Add counters
-    h["count"] = 0
-    h["min"] = 0
-    h["avg"] = 0
-    h["max"] = 0
-
-    heur_blob = STORAGE.get_blob("heuristics_stats")
-    if heur_blob:
-        data = heur_blob.get('stats', {}).get(heuristic_id, None)
-        if data:
-            h["count"] = data[0]
-            h["min"] = data[1]
-            h["avg"] = data[2]
-            h["max"] = data[3]
 
     if user and Classification.is_accessible(user['classification'], h['classification']):
+        h.update(get_stat_for_heuristic(h['heur_id'], h['classification']))
         return make_api_response(h)
     else:
         return make_api_response("", "You are not allowed to see this heuristic...", 403)
@@ -99,38 +107,20 @@ def list_heuritics(**kwargs):
     }
     """
     user = kwargs['user']
-        
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "*").lower()
-    
-    output = {"total": 0, "offset": offset, "rows": rows, "items": []}
+    query = request.args.get('query', "id:*") or "id:*"
 
-    if query == "*":
-        cleared = []
-        for item in HEUR:
-            if user and Classification.is_accessible(user['classification'], item['classification']):
-                cleared.append(item)
-        output["items"] = cleared[offset:offset + rows]
-        output["total"] = len(cleared)
-    elif query:
-        filtered = []
-        for item in HEUR:
-            for key in item:
-                if query in item[key].lower() and user \
-                        and Classification.is_accessible(user['classification'], item['classification']):
-                    filtered.append(deepcopy(item))
-                    break
-
-        output["items"] = filtered[offset:offset + rows]
-        output["total"] = len(filtered)
-    
-    return make_api_response(output)
+    try:
+        return make_api_response(STORAGE.heuristic.search(query, offset=offset, rows=rows,
+                                                          access_control=user['access_control'], as_obj=False))
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @heuristics_api.route("/stats/", methods=["GET"])
 @api_login(allow_readonly=False)
-def list_heuritics_stats(**kwargs):
+def heuritics_statistics(**kwargs):
     """
     Gather all heuristics stats in system
 
@@ -155,32 +145,15 @@ def list_heuritics_stats(**kwargs):
      },
      ...
     """
+
     user = kwargs['user']
-    output = {"total": 0, "items": [], "timestamp": None}
 
-    heur_blob = STORAGE.get_blob("heuristics_stats")
+    heur_list = sorted([(x['heur_id'], x['classification'])
+                       for x in STORAGE.heuristic.stream_search("heur_id:*", fl="heur_id,classification",
+                                                                access_control=user['access_control'], as_obj=False)])
 
-    if heur_blob:
-        cleared = []
-        try:
-            for k, v in heur_blob["stats"].iteritems():
-                heur_id = k
-                if heur_id in HEUR_MAP:
-                    if user and Classification.is_accessible(user['classification'],
-                                                             HEUR_MAP[heur_id]['classification']) and v[0] != 0:
-                        cleared.append({
-                            "id": heur_id,
-                            "count": v[0],
-                            "min": v[1],
-                            "avg": int(v[2]),
-                            "max": v[3],
-                            "classification": HEUR_MAP[heur_id]['classification']
-                        })
-        except AttributeError:
-            pass
+    with concurrent.futures.ThreadPoolExecutor(max(min(len(heur_list), 20), 1)) as executor:
+        res = [executor.submit(get_stat_for_heuristic(heur_id, classification))
+               for heur_id, classification in heur_list]
 
-        output["items"] = cleared
-        output["total"] = len(cleared)
-        output["timestamp"] = heur_blob["timestamp"]
-
-    return make_api_response(output)
+    return make_api_response(sorted([r.result() for r in res], key=lambda i: i['heur_id']))

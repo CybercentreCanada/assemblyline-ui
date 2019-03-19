@@ -164,19 +164,19 @@ def file_viewer(**kwargs):
     return custom_render("file_viewer.html", sha256=sha256, **kwargs)
 
 
-# # Site-Specific heuristics page
-# @views.route("/heuristics.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def heuristics(*_, **kwargs):
-#     return custom_render("heuristics.html", **kwargs)
-#
-#
-# @views.route("/heuristics_stats.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def heuristics_stats(*_, **kwargs):
-#     return custom_render("heuristics_stats.html", **kwargs)
-#
-#
+# Site-Specific heuristics page
+@views.route("/heuristics.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def heuristics(*_, **kwargs):
+    return custom_render("heuristics.html", **kwargs)
+
+
+@views.route("/heuristics_stats.html")
+@protected_renderer(audit=False, allow_readonly=False)
+def heuristics_stats(*_, **kwargs):
+    return custom_render("heuristics_stats.html", **kwargs)
+
+
 # @views.route("/kibana-dash.html")
 # @protected_renderer(audit=False, require_admin=True, allow_readonly=False)
 # def kibana_dashboard(**kwargs):
@@ -410,17 +410,17 @@ def admin_build_doc(**kwargs):
     def _list_files():
         fmap = OrderedDict()
         flist = []
-        scan_dir = os.path.realpath(os.path.join(__file__.replace("al_ui/views.py", ""), ".."))
-        for root, dirnames, filenames in os.walk(scan_dir):
+        scan_dir_p = os.path.realpath(os.path.join(__file__.replace("al_ui/views.py", ""), ".."))
+        for root, dirnames, filenames in os.walk(scan_dir_p):
             for filename in fnmatch.filter(filenames, '*.md'):
                 file_path = os.path.join(root, filename)
-                file_path = file_path.replace(scan_dir, "")
+                file_path = file_path.replace(scan_dir_p, "")
                 if file_path.startswith("/"):
                     file_path = file_path[1:]
 
                 flist.append(file_path)
 
-                pkg_root, fname = file_path.replace(scan_dir, "").split(os.sep, 1)
+                pkg_root, fname = file_path.replace(scan_dir_p, "").split(os.sep, 1)
 
                 if pkg_root not in fmap:
                     fmap[pkg_root] = []

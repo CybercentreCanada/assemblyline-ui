@@ -515,7 +515,7 @@ def list_signatures(**kwargs):
     user = kwargs['user']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*")
+    query = request.args.get('query', "id:*") or "id:*"
 
     try:
         return make_api_response(STORAGE.signature.search(query, offset=offset, rows=rows,
@@ -698,7 +698,7 @@ def signature_statistics(**kwargs):
                                                                 fl="name,meta.rule_id,meta.rule_version,classification",
                                                                 access_control=user['access_control'], as_obj=False)])
 
-    with concurrent.futures.ThreadPoolExecutor(min(len(sig_list), 20)) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max(min(len(sig_list), 20), 1)) as executor:
         res = [executor.submit(get_stat_for_signature, sid, rev, name, classification)
                for sid, rev, name, classification in sig_list]
 

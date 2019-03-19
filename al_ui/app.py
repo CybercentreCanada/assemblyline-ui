@@ -15,7 +15,7 @@ from al_ui.api.v4.error import error_api
 from al_ui.api.v4.file import file_api
 from al_ui.api.v4.hash_search import hash_search_api
 from al_ui.api.v4.help import help_api
-# from al_ui.api.v3.heuristics import heuristics_api
+from al_ui.api.v4.heuristics import heuristics_api
 # from al_ui.api.v3.host import host_api
 from al_ui.api.v4.ingest import ingest_api
 from al_ui.api.v4.live import live_api
@@ -66,7 +66,7 @@ app.register_blueprint(error_api)
 app.register_blueprint(file_api)
 app.register_blueprint(hash_search_api)
 app.register_blueprint(help_api)
-# app.register_blueprint(heuristics_api)
+app.register_blueprint(heuristics_api)
 # app.register_blueprint(host_api)
 app.register_blueprint(ingest_api)
 app.register_blueprint(live_api)
