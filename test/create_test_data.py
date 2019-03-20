@@ -53,16 +53,16 @@ ds.user_settings.save('user', UserSettings())
 print(f"\tU:{user_data.uname}    P:{user_data.uname}")
 
 print("\nCreating services...")
-for svc in SERVICES:
+for svc_name, svc in SERVICES.items():
     service_data = Service({
-        "name": svc,
+        "name": svc_name,
         "enabled": True,
-        "category": random.choice(config.services.categories),
-        "stage": random.choice(config.services.stages),
-        "version": "4.0.0"
+        "category": svc[0],
+        "stage": svc[1],
+        "version": "3.3.0"
     })
     ds.service.save(service_data.name, service_data)
-    print(f'\t{svc}')
+    print(f'\t{svc_name}')
 
 print("\nImporting test signatures...")
 yp = YaraImporter(logger=PrintLogger(indent="\t"))
@@ -71,7 +71,7 @@ yp.import_now([p['rule'] for p in parsed])
 signatures = [p['rule']['name'] for p in parsed]
 
 print("\nCreating random heuristics...")
-for _ in range(20):
+for _ in range(40):
     h = random_model_obj(Heuristic)
     h.name = get_random_word()
     ds.heuristic.save(h.heur_id, h)
