@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.user = null;
@@ -13,7 +13,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.heuristics_list = null;
         $scope.heuristics_filtered = null;
         $scope.heuristics_output = null;
-        $scope.sort = {"column": "id", "order": true};
+        $scope.sort = {"column": "heur_id", "order": true};
         $scope.started = false;
         $scope.filtered = false;
         $scope.filter = "*";
@@ -35,20 +35,20 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-                if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+                if ($scope.searchText === "") {
                     $scope.filter = "*";
                 }
                 else {
                     $scope.filter = $scope.searchText;
                 }
 
-                var filtered = [];
-                for (var heur in $scope.heuristics_list) {
+                let filtered = [];
+                for (let heur in $scope.heuristics_list) {
                     if (JSON.stringify($scope.heuristics_list[heur]).indexOf($scope.searchText) > -1) {
                         filtered.push($scope.heuristics_list[heur]);
                     }
                 }
-                if (filtered != []) {
+                if (filtered !== []) {
                     $scope.heuristics_filtered = filtered;
                 }
                 //$scope.started = false;
@@ -76,7 +76,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $("#myModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -96,7 +96,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.sort_stats = function (column) {
             if (column !== undefined) {
-                if ($scope.sort["column"] == column) {
+                if ($scope.sort["column"] === column) {
                     $scope.sort["order"] = !$scope.sort["order"];
                 }
                 else {
@@ -104,7 +104,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.sort["order"] = true;
                 }
             }
-            if ($scope.filter == "*") {
+            if ($scope.filter === "*") {
                 $scope.heuristics_list.sort($scope.sort_by($scope.sort["column"], $scope.sort["order"]));
             }
             else {
@@ -114,9 +114,8 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.sort_by = function (field, order) {
-
-            var field1 = field;
-            var field2 = "id";
+            let field1 = field;
+            let field2 = "heur_id";
 
             if (order) {
                 order = 1;
@@ -126,7 +125,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             }
 
             return function (a, b) {
-                if (a[field1] != b[field1]) {
+                if (a[field1] !== b[field1]) {
                     if (a[field1] > b[field1]) return 1 * order;
                     if (a[field1] < b[field1]) return -1 * order;
                     return 0;
@@ -140,7 +139,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
 
         $scope.load_data = function () {
-            if ($scope.filter == "*") {
+            if ($scope.filter === "*") {
                 $scope.total = $scope.heuristics_list.length;
                 $scope.heuristics_output = $scope.heuristics_list.slice($scope.offset, $scope.offset + $scope.rows);
                 $scope.filtered = false;
@@ -163,9 +162,9 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
-                    $scope.heuristics_list = data.api_response.items;
+                    $scope.heuristics_list = data.api_response;
                     $scope.timestamp = data.api_response.timestamp;
-                    $scope.total = data.api_response.total;
+                    $scope.total = $scope.heuristics_list.length;
                     $scope.started = true;
                     $scope.sort_stats();
                     $scope.load_data();
@@ -173,7 +172,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "" || data === null) return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;

@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $http) {
         //Parameters vars
         $scope.user = null;
@@ -32,7 +32,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
-                if ($scope.searchText == "" || $scope.searchText == null || $scope.searchText === undefined) {
+                if ($scope.searchText === "") {
                     $scope.filter = "*";
                 }
                 else {
@@ -61,8 +61,8 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.loading_extra = false;
                     $scope.current_heuristic = data.api_response;
 
-                    for (var i in $scope.heuristics_stats) {
-                        if ($scope.heuristics_stats[i]["id"] == $scope.current_heuristic["id"]) {
+                    for (let i in $scope.heuristics_stats) {
+                        if ($scope.heuristics_stats[i]["heur_id"] === $scope.current_heuristic["heur_id"]) {
                             $scope.current_heuristic["count"] = $scope.heuristics_stats[i]["count"];
                             $scope.current_heuristic["min"] = $scope.heuristics_stats[i]["min"];
                             $scope.current_heuristic["avg"] = $scope.heuristics_stats[i]["avg"];
@@ -74,7 +74,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $("#myModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
-                    if (data == "") {
+                    if (data === "" || data === null) {
                         return;
                     }
 
@@ -98,7 +98,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/heuristics/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
+                url: "/api/v3/heuristics/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -108,12 +108,12 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.pages = $scope.pagerArray();
                     $scope.started = true;
 
-                    $scope.filtered = $scope.filter != "*";
+                    $scope.filtered = $scope.filter !== "*";
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "" || data === null) return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
@@ -140,7 +140,7 @@ var app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
-                    if (data == "") return;
+                    if (data === "" || data === null) return;
 
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;

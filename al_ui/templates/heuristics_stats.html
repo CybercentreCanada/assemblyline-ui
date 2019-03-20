@@ -11,8 +11,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Heuristic Statistics</h1>
-			<h4 class="text-muted">:: {{total}} heuristic<span ng-show="total > 1">s where</span><span ng-show="total <= 1"> was</span> triggered<span ng-show="filtered"> (filtered)</span> ::</h4>
-            <h4 class="text-muted"><span ng-hide="timestamp == null"> Last update: {{timestamp}}</span></h4>
+			<h4 class="text-muted">:: {{total}} <span ng-show="!filtered">total </span>heuristic<span ng-show="total > 1">s </span><span ng-show="filtered"> (filtered)</span> ::</h4>
 		</div>
 		<div>
 			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='heuristic'" pager></div>
@@ -21,8 +20,8 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active" style="cursor: pointer;">
-						<th class="hover" ng-click="sort_stats('id')">ID
-                        <span ng-show="sort.column=='id' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span><span ng-show="sort.column=='id' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
+						<th class="hover" ng-click="sort_stats('heur_id')">ID
+                        <span ng-show="sort.column=='heur_id' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span><span ng-show="sort.column=='heur_id' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
                         </th>
                         <th ng-click="sort_stats('count')">Count
                         <span ng-show="sort.column=='count' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='count' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
@@ -44,8 +43,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-click="viewHeuristic(u.id)" ng-repeat="u in heuristics_output" style="cursor: pointer;">
-						<td>{{u.id}}</td>
+					<tr ng-click="viewHeuristic(u.heur_id)" ng-repeat="u in heuristics_output" style="cursor: pointer;">
+						<td>{{u.heur_id}}</td>
 						<td>{{u.count}}</td>
 						<td>{{u.min}}</td>
                         <td>{{u.avg}}</td>
@@ -82,9 +81,9 @@
 					<div class="modal-header">
 						<section class="row">
 							<div class="col-md-9">
-								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Heuristic Details:: {{current_heuristic.id}}</h4>
+								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Heuristic Details:: {{current_heuristic.heur_id}}</h4>
 							</div>
-                            <div ng-if="c12n_enforcing" class="col-md-3">
+                            <div ng-if="user.c12n_enforcing" class="col-md-3">
                                 <label class="control-label">
                                     Classification
                                 </label>

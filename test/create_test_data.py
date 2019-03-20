@@ -8,12 +8,13 @@ from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.emptyresult import EmptyResult
 from assemblyline.odm.models.error import Error
 from assemblyline.odm.models.file import File
+from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline.odm.randomizer import random_model_obj, SERVICES
+from assemblyline.odm.randomizer import random_model_obj, SERVICES, get_random_word
 
 
 class PrintLogger(object):
@@ -68,6 +69,13 @@ yp = YaraImporter(logger=PrintLogger(indent="\t"))
 parsed = yp.parse_file('al_yara_signatures.yar')
 yp.import_now([p['rule'] for p in parsed])
 signatures = [p['rule']['name'] for p in parsed]
+
+print("\nCreating random heuristics...")
+for _ in range(20):
+    h = random_model_obj(Heuristic)
+    h.name = get_random_word()
+    ds.heuristic.save(h.heur_id, h)
+    print(f'\t{h.heur_id}')
 
 if "full" in sys.argv:
     print("\nCreating 20 Files...")

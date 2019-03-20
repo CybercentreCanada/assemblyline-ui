@@ -20,7 +20,7 @@ def get_stat_for_heuristic(p_id, p_classification):
                                  query=f"result.tags.value:{p_id} AND result.tags.type:HEURISTIC")
     if stats['count'] == 0:
         return {
-            'id': p_id,
+            'heur_id': p_id,
             'classification': p_classification,
             'count': stats['count'],
             'min': 0,
@@ -29,7 +29,7 @@ def get_stat_for_heuristic(p_id, p_classification):
         }
     else:
         return {
-            'id': p_id,
+            'heur_id': p_id,
             'classification': p_classification,
             'count': stats['count'],
             'min': int(stats['min']),
@@ -97,7 +97,7 @@ def list_heuritics(**kwargs):
     Result example:
     {"total": 201,                # Total heuristics found
      "offset": 0,                 # Offset in the heuristics list
-     "count": 100,                # Number of heuristics returned
+     "rows": 100,                 # Number of heuristics returned
      "items": [{                  # List of heuristics
        "id": "AL_HEUR_001",               # Heuristics ID
        "filetype": ".*",                  # Target file type
@@ -134,16 +134,12 @@ def heuritics_statistics(**kwargs):
     None
 
     Result example:
-    {"total": 201,                # Total heuristics found
-     "timestamp":                 # Timestamp of last heuristics stats
-     "items":                     # List of heuristics
-     [{"id": "AL_HEUR_001",          # Heuristics ID
+    [{"id": "AL_HEUR_001",          # Heuristics ID
        "count": "100",               # Count of times heuristics seen
        "min": 0,                     # Lowest score found
        "avg": 172,                   # Average of all scores
        "max": 780,                   # Highest score found
-     },
-     ...
+     }, ... ]
     """
 
     user = kwargs['user']
@@ -153,7 +149,7 @@ def heuritics_statistics(**kwargs):
                                                                 access_control=user['access_control'], as_obj=False)])
 
     with concurrent.futures.ThreadPoolExecutor(max(min(len(heur_list), 20), 1)) as executor:
-        res = [executor.submit(get_stat_for_heuristic(heur_id, classification))
+        res = [executor.submit(get_stat_for_heuristic, heur_id, classification)
                for heur_id, classification in heur_list]
 
     return make_api_response(sorted([r.result() for r in res], key=lambda i: i['heur_id']))
