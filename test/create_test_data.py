@@ -14,7 +14,7 @@ from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline.odm.randomizer import random_model_obj, SERVICES, get_random_word
+from assemblyline.odm.randomizer import random_model_obj, SERVICES, get_random_phrase
 
 
 class PrintLogger(object):
@@ -73,7 +73,7 @@ signatures = [p['rule']['name'] for p in parsed]
 print("\nCreating random heuristics...")
 for _ in range(40):
     h = random_model_obj(Heuristic)
-    h.name = get_random_word()
+    h.name = get_random_phrase()
     ds.heuristic.save(h.heur_id, h)
     print(f'\t{h.heur_id}')
 
