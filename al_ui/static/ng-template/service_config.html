@@ -2,7 +2,7 @@
 	<div class="col-md-6">
 		<div class="form-group">
 			<label class="control-label">Service name</label>
-			<input type="text" class="form-control input-sm input" ng-model="current_service.name" ng-disabled="!new_service">
+			<input type="text" class="form-control input-sm input" ng-model="current_service.name" disabled>
 		</div>
 		<div class="form-group">
 			<label class="control-label">Accept files</label>
@@ -30,7 +30,10 @@
 	<div class="col-md-6">
 		<div class="form-group">
 			<label class="control-label">Version</label>
-			<input type="text" class="form-control input-sm input" ng-model="current_service.version" ng-disabled="!new_service">
+
+			<select class="form-control input-sm" ng-model="current_service.version">
+				<option ng-repeat="version in current_service_versions">{{version}}</option>
+			</select>
 		</div>
 		<div class="form-group">
 			<label class="control-label">Stage</label>

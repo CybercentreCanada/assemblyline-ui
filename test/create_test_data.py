@@ -61,7 +61,15 @@ for svc_name, svc in SERVICES.items():
         "stage": svc[1],
         "version": "3.3.0"
     })
-    ds.service.save(service_data.name, service_data)
+    # Save a v3 service
+    ds.service.save(f"{service_data.name}_{service_data.version}", service_data)
+
+    # Save the same service as v4
+    service_data.version = "4.0.0"
+    ds.service.save(f"{service_data.name}_{service_data.version}", service_data)
+
+    # Save the default delta entry
+    ds.service_delta.save(service_data.name, {"version": service_data.version})
     print(f'\t{svc_name}')
 
 print("\nImporting test signatures...")

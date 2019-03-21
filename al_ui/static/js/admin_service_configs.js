@@ -13,8 +13,6 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.loading_extra = false;
         $scope.current_service = null;
         $scope.started = false;
-        $scope.new_service = false;
-
         //DEBUG MODE
         $scope.debug = false;
         $scope.showParams = function () {
@@ -27,49 +25,6 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.typeOf = function (val) {
             return typeof val;
-        };
-
-        $scope.add_service_modal = function () {
-            $scope.new_service = true;
-            $scope.current_service = {
-                accepts: ".*",
-                category: "Static Analysis",
-                config: {},
-                cpu_cores: 1,
-                enabled: true,
-                install_by_default: false,
-                is_external: false,
-                licence_count: 0,
-                name: "",
-                ram_mb: 1024,
-                rejects: null,
-                stage: "CORE",
-                submission_params: [],
-                supported_platforms: ["linux", "windows"],
-                timeout: 60,
-                version: "4.0.0",
-            };
-            // Reset variables
-            $scope.spec_temp = {
-                type: "bool",
-                list: [],
-                default: false,
-                name: ""
-            };
-            $scope.spec_error = "";
-
-            $scope.conf_temp = {
-                type: "str",
-                key: "",
-                val: ""
-            };
-
-            $("#spec_default").val("false");
-            $("#conf_temp_val").val("");
-
-            $scope.error = '';
-            $scope.success = '';
-            $("#myModal").modal('show');
         };
 
         $scope.del = function () {
@@ -122,7 +77,6 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.editService = function (service) {
-            $scope.new_service = false;
             $scope.loading_extra = true;
             $scope.error = '';
             $scope.saved = '';
@@ -142,6 +96,26 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $("#spec_default").val("false");
             $("#conf_temp_val").val("");
+
+            $http({
+                method: 'GET',
+                url: "/api/v4/service/versions/" + service.name + "/"
+            })
+                .success(function (data) {
+                    $scope.current_service_versions = data.api_response;
+                })
+                .error(function (data, status, headers, config) {
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    }
+                    else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                });
 
             $http({
                 method: 'GET',
@@ -207,45 +181,6 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 });
         };
 
-        $scope.add = function () {
-            $scope.loading_extra = true;
-            $scope.error = '';
-            $scope.success = '';
-
-            for (let idx in $scope.current_service.submission_params) {
-                $scope.current_service.submission_params[idx].value = $scope.current_service.submission_params[idx].default;
-            }
-
-            $http({
-                method: 'PUT',
-                url: "/api/v4/service/" + $scope.current_service.name + "/",
-                data: $scope.current_service
-            })
-                .success(function () {
-                    $scope.loading_extra = false;
-                    $("#myModal").modal('hide');
-                    $scope.success = "Service " + $scope.current_service.name + " successfully added!";
-                    $timeout(function () {
-                        $scope.success = "";
-                        $scope.load_data();
-                    }, 2000);
-                })
-                .error(function (data, status, headers, config) {
-                    $scope.loading_extra = false;
-                    if (data === "" || data === null) {
-                        return;
-                    }
-
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                    scroll(0, 0);
-                });
-        };
-
         //Load params from datastore
         $scope.start = function () {
             $scope.load_data();
@@ -257,11 +192,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v4/service/list/"
+                url: "/api/v4/service/all/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
-                    $scope.service_list = data.api_response.items;
+                    $scope.service_list = data.api_response;
                     $scope.started = true;
                 })
                 .error(function (data, status, headers, config) {

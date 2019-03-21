@@ -11,10 +11,6 @@
 		<div class="header_title text-right">
 			<h1>Service Configuration Management</h1>
             <h4 ng-hide="service_list == null" class="text-muted">:: {{service_list.length}} Service<span ng-show="service_list.length > 1">s</span>  ::</h4>
-			<button ng-hide="service_list == null || service_list.length == 0" type="button" class="btn btn-success btn-sm" ng-click="add_service_modal()">
-                <span class="glyphicon glyphicon-plus"><span class="hidden-sm">&nbsp;</span></span>
-                <span class="hidden-sm ng-binding">Add Service</span>
-            </button>
 		</div>
 		<section class="table-responsive" ng-hide="service_list == null || service_list.length == 0">
 			<table class="table table-hover">
@@ -44,10 +40,6 @@
 				<h2 class="text-muted">
 					There are currently no services in the system.
 				</h2>
-                                <div style="margin-top: 20px">
-                                        <button class="btn btn-success" ng-click="pager_add();">Add a Service</button>
-                                </div>
-
 			</div>
 		</div>
 		
@@ -56,19 +48,17 @@
 			<div class="modal-dialog modal-resize">
 				<div class="modal-content">
 					<div class="modal-header">
-						<div ng-show="!new_service" class="pull-right" style="padding-top: 5px;">
+						<div class="pull-right" style="padding-top: 5px;">
 							<button type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
-						<h4 ng-if="!new_service" class="modal_title" id="myModalLabel">Service configuration :: {{current_service.name}}</h4>
-						<h4 ng-if="new_service" class="modal_title" id="myModalLabel">Adding Service</h4>
+						<h4 class="modal_title" id="myModalLabel">Service configuration :: {{current_service.name}}</h4>
 					</div>
 					<div class="modal-body">
 						<div service-config></div>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-						<button ng-if="!new_service" type="button" class="btn btn-primary" ng-click="save();">Save changes</button>
-						<button ng-if="new_service" type="button" class="btn btn-primary" ng-click="add();">Add service</button>
+						<button type="button" class="btn btn-primary" ng-click="save();">Save changes</button>
 					</div>
 				</div>
 			</div>
