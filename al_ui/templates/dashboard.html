@@ -41,11 +41,10 @@
     {%raw%}
         <div class="row" style="margin: 0;">
             <div class="col-lg-6 col-sm-12">
-                <div class="dashboard_card dashboard_card_big" ng-class="{disabled: data.ingester.count==0,ok: data.ingester.count!=0&&!ingester_in_error(data.ingester), error: data.ingester.count!=0&&ingester_in_error(data.ingester)}">
-                    <div class="row ">
-                        <div class="title col-sm-11 col-xs-10">Ingester :: x{{data.ingester.count}}</div>
-                        <div ng-show="data.ingester.count!=0&&ingester_in_error(data.ingester)" class="col-sm-1 col-xs-2 text-right"><span class="text-danger text-icon icon-erroralt"></span></div>
-                    </div>
+                <div class="dashboard_card dashboard_card_big" ng-class="{disabled: data.ingester.instances==0,ok: data.ingester.instances!=0&&!ingester_in_error(data.ingester), error: data.ingester.instances!=0&&ingester_in_error(data.ingester)}">
+                    <div ng-show="data.ingester.instances!=0&&ingester_in_error(data.ingester)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
+                    <div class="title">Ingester :: x{{data.ingester.instances}}</div>
+
                     <div class="row ">
                         <div class="col-sm-3 col-xs-12">
                             <div><label>Ingest:</label></div>
@@ -66,31 +65,35 @@
                             <div><label>Processing:</label></div>
                             <div>
                                 <span title="Inflight Submissions" class="text-muted text-icon icon-squarei"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.processing.inflight}}&nbsp;</span>
-                                <span title="Waiting for Submission" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.processing.waiting}}&nbsp;</span>
                             </div>
                         </div>
                     </div>
                     <div class="row ">
                         <div class="col-sm-3 col-xs-12">
+                            <div><label>Caching:</label></div>
+                            <div>
+                                <span title="Cache hit" class="text-muted text-icon icon-squareh"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.cache_hit + data.ingester.metrics.cache_hit_local}}&nbsp;</span>&nbsp;
+                                <span title="Cache miss" class="text-muted text-icon icon-squarem"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.cache_miss + data.ingester.metrics.cache_expired + data.ingester.metrics.cache_stale}}&nbsp;</span>&nbsp;
+                            </div>
                         </div>
                         <div class="col-sm-9 col-xs-12">
                             <div><label>Throughput: (for the last minute)</label></div>
                             <div>
-                                <span title="Completed files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.counters.files_completed | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Completed submissions" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.counters.submissions_completed | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Whitelisted files" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.counters.whitelisted | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Skipped files" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.counters.skipped | floatStr}}&nbsp;</span>&nbsp;
-                                <span title="Duplicate files" class="text-muted text-icon icon-squared"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.counters.duplicates | floatStr}}&nbsp;</span>
-                                <span ng-class="{'text-muted': data.ingester.count==0||data.ingester.counters.bytes_completed != 0, 'text-danger': data.ingester.count!=0&&data.ingester.counters.bytes_completed == 0}" class="text-icon icon-speed"></span><span ng-class="{'text-danger': data.ingester.count!=0&&data.ingester.counters.bytes_completed == 0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.counters.bytes_completed/((1024*1024*60)/8) | floatStr}} / {{data.ingester.counters.bytes_ingested/((1024*1024*60)/8) | floatStr}} Mbps</span>
+                                <span title="Completed files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.files_completed | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Completed submissions" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.submissions_completed | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Whitelisted files" class="text-muted text-icon icon-squarew"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.whitelisted | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Skipped files" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.skipped | floatStr}}&nbsp;</span>&nbsp;
+                                <span title="Duplicate files" class="text-muted text-icon icon-squared"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.duplicates | floatStr}}&nbsp;</span>&nbsp;
+                                <span ng-class="{'text-muted': data.ingester.instances==0||data.ingester.metrics.bytes_completed!=0||data.ingester.metrics.bytes_ingested==0, 'text-danger': data.ingester.instances!=0&&data.ingester.metrics.bytes_completed==0&&data.ingester.metrics.bytes_ingested!=0}" class="text-icon icon-speed"></span><span ng-class="{'text-danger': data.ingester.instances!=0&&data.ingester.metrics.bytes_completed==0&&data.ingester.metrics.bytes_ingested!=0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.ingester.metrics.bytes_completed/((1024*1024*60)/8) | floatStr}} / {{data.ingester.metrics.bytes_ingested/((1024*1024*60)/8) | floatStr}} Mbps</span>&nbsp;
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-6 col-sm-12 ">
-                <div class="dashboard_card dashboard_card_big" ng-class="{ok: !dispatcher_in_error(data.dispatcher), error: dispatcher_in_error(data.dispatcher), disabled: data.dispatcher.count==0}">
+                <div class="dashboard_card dashboard_card_big" ng-class="{ok: !dispatcher_in_error(data.dispatcher), error: dispatcher_in_error(data.dispatcher), disabled: data.dispatcher.instances==0}">
                     <div ng-show="dispatcher_in_error(data.dispatcher)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
-                    <div class="title">Dispatcher :: x{{data.dispatcher.count}}</div>
+                    <div class="title">Dispatcher :: x{{data.dispatcher.instances}}</div>
 
                     <div class="row">
                         <div class="col-xs-12">
@@ -100,18 +103,76 @@
                                 <span ng-show="data.services.up.length>0&&data.services.down.length>0"> :: </span><span class="text-muted">{{ data.services.down | split }}</span>
                             </div>
                         </div>
-                        <div class="col-sm-4 col-xs-12">
+                        <div class="col-sm-3 col-xs-12">
                             <div><label>Submissions:</label></div>
                             <div>
-                                {{data.dispatcher.inflight.outstanding}}&nbsp;/&nbsp;{{data.dispatcher.inflight.max}}
+                                <span title="Outstanding / Max" class="text-muted text-icon icon-squareo"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.inflight.outstanding}}&nbsp;/&nbsp;{{data.dispatcher.inflight.max}}&nbsp;</span>
                             </div>
                         </div>
+                        <div class="col-sm-3 col-xs-12">
+                            <div><label>Queues:</label></div>
+                            <div>
+                                <span title="Ingest Queue" ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.outstanding&&data.dispatcher.instances>0, 'text-muted': data.dispatcher.queues.ingest<data.dispatcher.inflight.outstanding||data.dispatcher.instances==0}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.outstanding&&data.dispatcher.instances>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.queues.ingest}}&nbsp;</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xs-12">
+                            <div><label>Throughput: (for the last minute)</label></div>
+                            <div>
+                                <span title="Files completed" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.metrics.files_completed}}&nbsp;</span>&nbsp;
+                                <span title="Submissions completed" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.metrics.submissions_completed}}&nbsp;</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 col-sm-12 ">
+                <div class="dashboard_card dashboard_card_big" ng-class="{ok: !alerter_in_error(data.alerter), error: alerter_in_error(data.alerter), disabled: data.alerter.instances==0}">
+                    <div ng-show="alerter_in_error(data.alerter)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
+                    <div class="title">Alerter :: x{{data.alerter.instances}}</div>
+
+                    <div class="row">
                         <div class="col-sm-4 col-xs-12">
                             <div><label>Queues:</label></div>
                             <div>
-                                <span title="Ingest Queue" ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.outstanding&&data.dispatcher.count>0, 'text-muted': data.dispatcher.queues.ingest<data.dispatcher.inflight.outstanding||data.dispatcher.count==0}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.outstanding&&data.dispatcher.count>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.queues.ingest}}&nbsp;</span>
-                                <span title="Response Queue" ng-class="{'text-danger': data.dispatcher.queues.response>=data.dispatcher.inflight.outstanding&&data.dispatcher.count>0, 'text-muted': data.dispatcher.queues.response<data.dispatcher.inflight.outstanding||data.dispatcher.count==0}" class="text-muted text-icon icon-squarer"></span><span ng-class="{'text-danger': data.dispatcher.queues.response>=data.dispatcher.inflight.outstanding&&data.dispatcher.count>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.queues.response}}&nbsp;</span>
-                                <span title="Control Queue" ng-class="{'text-danger': data.dispatcher.queues.control>0, 'text-muted': data.dispatcher.queues.control==0}" class="text-muted text-icon icon-squarec"></span><span ng-class="{'text-danger': data.dispatcher.queues.control>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.queues.control}}&nbsp;</span>
+                                <span title="Alert queue" class="text-muted text-icon icon-squarea"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.queues.alert}}&nbsp;</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-8 col-xs-12">
+                            <div><label>Throughput: (for the last minute)</label></div>
+                            <div>
+                                <span title="Created alerts" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.created}}&nbsp;</span>&nbsp;
+                                <span title="Errors" ng-class="{'text-danger': data.alerter.metrics.error>0&&data.alerter.instances>0, 'text-muted': data.alerter.metrics.error==0||data.alerter.instances==0}" class="text-icon icon-squaree"></span><span ng-class="{'text-danger': data.alerter.metrics.error>0&&data.alerter.instances>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.error}}&nbsp;</span>&nbsp;
+                                <span title="Received alert creation requests" class="text-muted text-icon icon-squarer"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.received}}&nbsp;</span>&nbsp;
+                                <span title="Updated alerts" class="text-muted text-icon icon-squareu"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.updated}}&nbsp;</span>&nbsp;
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 col-sm-12 ">
+                <div class="dashboard_card dashboard_card_big" ng-class="{ok: !expiry_in_error(data.expiry), error: expiry_in_error(data.expiry), disabled: data.expiry.instances==0}">
+                    <div ng-show="expiry_in_error(data.expiry)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
+                    <div class="title">Expiry :: x{{data.expiry.instances}}</div>
+
+                    <div class="row">
+                        <div class="col-sm-6 col-xs-12">
+                            <div><label>Queues:</label></div>
+                            <div>
+                                <span title="Alerts" class="text-muted text-icon icon-squarea"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.queues.alert}}&nbsp;</span>&nbsp;
+                                <span title="Errors" class="text-muted text-icon icon-squaree"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.queues.error}}&nbsp;</span>&nbsp;
+                                <span title="Files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.queues.file + data.expiry.queues.filescore + data.expiry.queues.cached_file}}&nbsp;</span>&nbsp;
+                                <span title="Results" class="text-muted text-icon icon-squarer"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.queues.emptyresult + data.expiry.queues.result}}&nbsp;</span>&nbsp;
+                                <span title="Submissions" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.queues.submission + data.expiry.queues.submission_tags + data.expiry.queues.submission_tree}}&nbsp;</span>&nbsp;
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-xs-12">
+                            <div><label>Throughput: (for the last minute)</label></div>
+                            <div>
+                                <span title="Alerts" class="text-muted text-icon icon-squarea"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.metrics.alert}}&nbsp;</span>&nbsp;
+                                <span title="Errors" class="text-muted text-icon icon-squaree"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.metrics.error}}&nbsp;</span>&nbsp;
+                                <span title="Files" class="text-muted text-icon icon-squaref"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.metrics.file + data.expiry.metrics.filescore + data.expiry.metrics.cached_file}}&nbsp;</span>&nbsp;
+                                <span title="Results" class="text-muted text-icon icon-squarer"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.metrics.emptyresult + data.expiry.metrics.result}}&nbsp;</span>&nbsp;
+                                <span title="Submissions" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.metrics.submission + data.expiry.metrics.submission_tags + data.expiry.metrics.submission_tree}}&nbsp;</span>&nbsp;
                             </div>
                         </div>
                     </div>
@@ -128,9 +189,9 @@
                             <div ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.outstanding/2)}" class="col-xs-12" title="Number of items in the service's queue"><span ng-class="{'text-muted': !service.queue>(data.dispatcher.inflight.outstanding/2)}" class="text-icon icon-squareq"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.queue}}</span></div>
                         </div>
                         <div class="row">
-                            <div class="col-xs-4" title="Number of processed items in the last minute"><span class="text-icon icon-squarep"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.counters.processed}}</span></div>
-                            <div class="col-xs-4" title="Number of cache hits in the last minute"><span class="text-icon icon-squarec"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.counters.cached}}</span></div>
-                            <div ng-class="{'text-danger': service.counters.failed>0}" class="col-xs-4" title="Number of failed items in the last minute"><span ng-class="{'text-muted': service.counters.failed==0}" class="text-icon icon-squaref"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.counters.failed}}</span></div>
+                            <div class="col-xs-4" title="Number of processed items in the last minute"><span class="text-icon icon-squarep"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.processed}}</span></div>
+                            <div class="col-xs-4" title="Number of cache hits in the last minute"><span class="text-icon icon-squarec"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.cached}}</span></div>
+                            <div ng-class="{'text-danger': service.metrics.failed>0}" class="col-xs-4" title="Number of failed items in the last minute"><span ng-class="{'text-muted': service.metrics.failed==0}" class="text-icon icon-squaref"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.failed}}</span></div>
                         </div>
                     </div>
                 </div>

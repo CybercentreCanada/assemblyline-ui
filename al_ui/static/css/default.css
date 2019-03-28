@@ -881,6 +881,10 @@ section.container{
 	overflow: hidden;
 }
 
+.dashboard_card .row{
+	margin-bottom: 5px;
+}
+
 .dashboard_card_big {
 	min-height: 170px;
 }

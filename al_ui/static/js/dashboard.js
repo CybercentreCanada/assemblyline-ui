@@ -13,6 +13,8 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
     .factory('mySocket', function (socketFactory) {
         var mySocket = socketFactory({namespace: '/status'});
         mySocket.forward('DispatcherHeartbeat');
+        mySocket.forward('AlerterHeartbeat');
+        mySocket.forward('ExpiryHeartbeat');
         mySocket.forward('IngestHeartbeat');
         mySocket.forward('ServiceHeartbeat');
         mySocket.forward('monitoring');
@@ -25,24 +27,71 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         $scope.user = null;
         $scope.socket_status = 'init';
         $scope.data = {
+            alerter: {
+                instances: 0,
+                queues: {
+                    alert: 0
+                },
+                metrics: {
+                    created: 0,
+                    error: 0,
+                    received: 0,
+                    updated: 0
+                }
+            },
             dispatcher: {
-                count: 0,
+                instances: 0,
                 inflight:{
                     outstanding: 0,
                     max: 0
                 },
                 queues: {
-                    ingest: 0,
-                    response: 0,
-                    control: 0,
+                    ingest: 0
+                },
+                metrics: {
+                    files_completed: 0,
+                    submissions_completed: 0
+                }
+            },
+            expiry: {
+                instances: 0,
+                queues: {
+                    alert: 0,
+                    cached_file: 0,
+                    emptyresult: 0,
+                    error: 0,
+                    file: 0,
+                    filescore: 0,
+                    result: 0,
+                    submission: 0,
+                    submission_tree: 0,
+                    submission_tags: 0
+                },
+                metrics: {
+                    alert: 0,
+                    cached_file: 0,
+                    emptyresult: 0,
+                    error: 0,
+                    file: 0,
+                    filescore: 0,
+                    result: 0,
+                    submission: 0,
+                    submission_tree: 0,
+                    submission_tags: 0
                 }
             },
             ingester: {
-                count: 0,
-                counters:{
+                instances: 0,
+                metrics:{
+                    cache_miss: 0,
+                    cache_expired: 0,
+                    cache_stale: 0,
+                    cache_hit_local: 0,
+                    cache_hit: 0,
                     bytes_completed: 0,
                     bytes_ingested: 0,
                     duplicates: 0,
+                    error: 0,
                     files_completed: 0,
                     skipped: 0,
                     submissions_completed: 0,
@@ -51,8 +100,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     whitelisted: 0,
                 },
                 processing: {
-                    inflight: 0,
-                    waiting: 0,
+                    inflight: 0
                 },
                 processing_chance: {
                     critical: 1,
@@ -78,7 +126,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         $scope.service_defaults = {
             last_hb: Math.floor(new Date().getTime() / 1000),
             queue: 0,
-            counters: {
+            metrics: {
                 cached: 0,
                 failed: 0,
                 processed: 0
@@ -117,7 +165,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 if (ingester.processing_chance.low !== 1) {
                     return true;
                 }
-                if (ingester.counters.bytes_completed === 0) {
+                if (ingester.metrics.bytes_completed === 0 && ingester.metrics.bytes_ingested !== 0) {
                     return true;
                 }
                 if (ingester.ingest > 100000) {
@@ -145,13 +193,41 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         });
 
         $scope.dispatcher_in_error = function (dispatcher) {
-            if (dispatcher.queues.ingest >= dispatcher.queues.max_inflight && dispatcher.enabled) {
-                return true;
+            return !!(dispatcher.queues.ingest >= dispatcher.queues.max_inflight);
+
+        };
+
+        $scope.$on('socket:AlerterHeartbeat', function (event, data) {
+            try {
+                console.log('Socket-IO::AlerterHeartbeat message', data);
+                $scope.data.alerter = data;
             }
-            else if (dispatcher.queues.response >= dispatcher.queues.max_inflight && dispatcher.enabled) {
-                return true;
+            catch (e) {
+                console.log('Socket-IO::AlerterHeartbeat [ERROR] Invalid message', data, e);
             }
+
+        });
+
+        $scope.alerter_in_error = function (alerter) {
+            return !!(alerter.metrics.error > 0);
+
+        };
+
+        $scope.$on('socket:ExpiryHeartbeat', function (event, data) {
+            try {
+                console.log('Socket-IO::ExpiryHeartbeat message', data);
+                $scope.data.expiry = data;
+            }
+            catch (e) {
+                console.log('Socket-IO::ExpiryHeartbeat [ERROR] Invalid message', data, e);
+            }
+
+        });
+
+        $scope.expiry_in_error = function (expiry) {
+            // TBD
             return false;
+
         };
 
         $scope.$on('socket:ServiceHeartbeat', function (event, data) {
@@ -193,7 +269,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             if (service.queue>($scope.data.dispatcher.inflight.outstanding/2)){
                 return true;
             }
-            else if (service.counters.failed > 0){
+            else if (service.metrics.failed > 0){
                 return true;
             }
             return in_error;
