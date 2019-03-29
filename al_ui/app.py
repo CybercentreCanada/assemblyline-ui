@@ -1,5 +1,6 @@
 import logging
 
+from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
 from flask.logging import default_handler
 
@@ -45,7 +46,7 @@ register_site_specific_routes = context.register_site_specific_routes
 
 ##########################
 # App settings
-app = Flask("alui")
+app = Flask("al_ui")
 app.logger.setLevel(60)  # This completely turns off the flask logger
 app.config.update(
     SESSION_COOKIE_SECURE=True,
@@ -103,6 +104,13 @@ def main():
         from werkzeug.contrib.profiler import ProfilerMiddleware
         app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
     app.jinja_env.cache = {}
+
+    if config.config.core.metrics.apm_server.server_url is not None:
+        apm = ElasticAPM(logging=True)
+        apm.init_app(app, server_url=config.config.core.metrics.apm_server.server_url,
+                         service_name="al_ui")
+        apm.capture_message("AL UI Connected!")
+
     app.run(host="0.0.0.0", debug=False)
 
 
