@@ -1,33 +1,5 @@
 {% extends base_template %}
 {% block title_page %}AL - Dashboard{% endblock %}
-{% block css_import %}
-    <style type="text/css">
-        .gauge {
-            width: 140px;
-            height: 75px;
-        }
-
-        .chart-filled-cpu {
-            fill: #357ebd;
-        }
-
-        .chart-filled-ram {
-            fill: #31708f;
-        }
-
-        .chart-empty {
-            fill: #b7b7b752;
-        }
-
-        .needle, .needle-center {
-            fill: #464A4F;
-        }
-
-        svg {
-            font: 10px sans-serif;
-        }
-    </style>
-{% endblock %}
 {% block js_import %}
 	<script src="/static/js/d3/d3.v3.min.js"></script>
 	<script src="/static/js/d3/d3_gauge.js"></script>
@@ -37,7 +9,7 @@
 {% endblock %}
 
 {% block section %}
-	<div class="table" style="padding-top: 80px;" style="width: 99%;">
+	<div class="table" style="padding-top: 80px; width: 99%;">
     {%raw%}
         <div class="row" style="margin: 0;">
             <div class="col-lg-6 col-sm-12">
@@ -103,6 +75,8 @@
                                 <span ng-show="data.services.up.length>0&&data.services.down.length>0"> :: </span><span class="text-muted">{{ data.services.down | split }}</span>
                             </div>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-sm-3 col-xs-12">
                             <div><label>Submissions:</label></div>
                             <div>
@@ -112,7 +86,7 @@
                         <div class="col-sm-3 col-xs-12">
                             <div><label>Queues:</label></div>
                             <div>
-                                <span title="Ingest Queue" ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.outstanding&&data.dispatcher.instances>0, 'text-muted': data.dispatcher.queues.ingest<data.dispatcher.inflight.outstanding||data.dispatcher.instances==0}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.outstanding&&data.dispatcher.instances>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.queues.ingest}}&nbsp;</span>
+                                <span title="Ingest Queue" ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.max&&data.dispatcher.instances>0, 'text-muted': data.dispatcher.queues.ingest<data.dispatcher.inflight.max||data.dispatcher.instances==0}" class="text-icon icon-squarei"></span><span ng-class="{'text-danger': data.dispatcher.queues.ingest>=data.dispatcher.inflight.max&&data.dispatcher.instances>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.dispatcher.queues.ingest}}&nbsp;</span>
                             </div>
                         </div>
                         <div class="col-sm-6 col-xs-12">
@@ -184,14 +158,14 @@
                 <div ng-if="data.services.up.indexOf(service_name) != -1" class="col-lg-2 col-md-3 col-sm-6 col-xs-12">
                     <div class="dashboard_card" ng-class="{error: has_errors(service), ok: !has_errors(service)}">
                         <div class="pull-right"><span ng-show="has_errors(service)" class="text-danger text-icon icon-erroralt">&nbsp;&nbsp;</span></div>
-                        <div class="title" style="padding-bottom: 10px">{{service_name}}</div>
+                        <div class="title" style="padding-bottom: 10px">{{service_name}} :: x{{service.instances}}</div>
                         <div class="row">
-                            <div ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.outstanding/2)}" class="col-xs-12" title="Number of items in the service's queue"><span ng-class="{'text-muted': !service.queue>(data.dispatcher.inflight.outstanding/2)}" class="text-icon icon-squareq"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.queue}}</span></div>
+                            <div ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.max/4)}" class="col-xs-6" title="Number of items in the service's queue"><span ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.max/4), 'text-muted': service.queue<=(data.dispatcher.inflight.max/4)}" class="text-icon icon-squareq"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.queue}}</span></div>
+                            <div class="col-xs-6" title="Duty cycle (percentage of time the service spends processing)"><span class="text-muted text-icon icon-squared"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.duty_cycle}}</span></div>
                         </div>
                         <div class="row">
-                            <div class="col-xs-4" title="Number of processed items in the last minute"><span class="text-icon icon-squarep"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.processed}}</span></div>
-                            <div class="col-xs-4" title="Number of cache hits in the last minute"><span class="text-icon icon-squarec"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.cached}}</span></div>
-                            <div ng-class="{'text-danger': service.metrics.failed>0}" class="col-xs-4" title="Number of failed items in the last minute"><span ng-class="{'text-muted': service.metrics.failed==0}" class="text-icon icon-squaref"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.failed}}</span></div>
+                            <div class="col-xs-6" title="Number of processed items in the last minute"><span class="text-muted text-icon icon-squarep"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.execute}}</span></div>
+                            <div ng-class="{'text-danger': service.metrics.fail_nonrecoverable>0}" class="col-xs-6" title="Number of failed items in the last minute"><span ng-class="{'text-danger': service.metrics.fail_nonrecoverable>0, 'text-muted': service.metrics.fail_nonrecoverable==0}" class="text-icon icon-squaref"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.fail_recoverable+service.metrics.fail_nonrecoverable}}</span></div>
                         </div>
                     </div>
                 </div>

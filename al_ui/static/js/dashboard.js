@@ -266,10 +266,10 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
 
         $scope.has_errors = function (service) {
             let in_error = false;
-            if (service.queue>($scope.data.dispatcher.inflight.outstanding/2)){
+            if (service.queue>($scope.data.dispatcher.inflight.max/4)){
                 return true;
             }
-            else if (service.metrics.failed > 0){
+            else if (service.metrics.fail_nonrecoverable > 0){
                 return true;
             }
             return in_error;
