@@ -126,6 +126,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
 
         $scope.service_defaults = {
             duty_cycle: 0,
+            instances: 0,
             last_hb: Math.floor(new Date().getTime() / 1000),
             metrics: {
                 cache_hit: 0,
@@ -273,6 +274,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     $scope.data.services.metrics[data.service_name] = $scope.service_defaults;
                 }
                 $scope.data.services.metrics[data.service_name].service_name = data.service_name;
+                $scope.data.services.metrics[data.service_name].instances = data.instances;
                 $scope.data.services.metrics[data.service_name].metrics = data.metrics;
                 $scope.data.services.metrics[data.service_name].queue = data.queue;
                 $scope.data.services.metrics[data.service_name].last_hb = cur_time;
