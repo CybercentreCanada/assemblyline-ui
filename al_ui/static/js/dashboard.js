@@ -17,6 +17,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         mySocket.forward('ExpiryHeartbeat');
         mySocket.forward('IngestHeartbeat');
         mySocket.forward('ServiceHeartbeat');
+        mySocket.forward('ServiceTimingHeartbeat');
         mySocket.forward('monitoring');
         mySocket.setConnectionCallback(function () {
             mySocket.emit("monitor", {'status': "start"});
@@ -124,12 +125,24 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         };
 
         $scope.service_defaults = {
+            duty_cycle: 0,
             last_hb: Math.floor(new Date().getTime() / 1000),
-            queue: 0,
             metrics: {
-                cached: 0,
-                failed: 0,
-                processed: 0
+                cache_hit: 0,
+                cache_miss: 0,
+                cache_skipped: 0,
+                execute: 0,
+                fail_recoverable: 0,
+                fail_nonrecoverable: 0,
+                scored: 0,
+                not_scored: 0
+            },
+            queue: 0,
+            timing: {
+                execution: 0,
+                execution_count: 0,
+                idle: 0,
+                idle_count: 0
             },
             service_name: null
         };
@@ -230,11 +243,39 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
 
         };
 
+        $scope.$on('socket:ServiceTimingHeartbeat', function (event, data) {
+            try {
+                console.log('Socket-IO::ServiceTimingHeartbeat message', data);
+                $scope.data.services.metrics[data.service_name]['timing'] = data.metrics;
+                if ((data.metrics.idle === 0 && data.metrics.execution === 0) || (data.metrics.idle !== 0 && data.metrics.execution === 0)){
+                    $scope.data.services.metrics[data.service_name].duty_cycle = 0;
+                }
+                else if (data.metrics.idle === 0 && data.metrics.execution !== 0){
+                    $scope.data.services.metrics[data.service_name].duty_cycle = 100;
+                }
+                else {
+                    let avg_idle = data.metrics.idle/data.metrics.idle_count;
+                    let avg_execution = data.metrics.execution/data.metrics.execution_count;
+                    let duty_cycle = Math.round(avg_execution/(avg_execution+avg_idle) * 100);
+                    $scope.data.services.metrics[data.service_name].duty_cycle = duty_cycle;
+                }
+            }
+            catch (e) {
+                console.log('Socket-IO::ServiceTimingHeartbeat [ERROR] Invalid message', data, e);
+            }
+
+        });
+
         $scope.$on('socket:ServiceHeartbeat', function (event, data) {
             let cur_time = Math.floor(new Date().getTime() / 1000);
             try {
                 console.log('Socket-IO::ServiceHeartbeat message', data);
-                $scope.data.services.metrics[data.service_name] = data;
+                if (!$scope.data.services.metrics.hasOwnProperty(data.service_name)){
+                    $scope.data.services.metrics[data.service_name] = $scope.service_defaults;
+                }
+                $scope.data.services.metrics[data.service_name].service_name = data.service_name;
+                $scope.data.services.metrics[data.service_name].metrics = data.metrics;
+                $scope.data.services.metrics[data.service_name].queue = data.queue;
                 $scope.data.services.metrics[data.service_name].last_hb = cur_time;
             }
             catch (e) {

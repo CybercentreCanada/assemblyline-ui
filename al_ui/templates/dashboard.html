@@ -161,7 +161,7 @@
                         <div class="title" style="padding-bottom: 10px">{{service_name}} :: x{{service.instances}}</div>
                         <div class="row">
                             <div ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.max/4)}" class="col-xs-6" title="Number of items in the service's queue"><span ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.max/4), 'text-muted': service.queue<=(data.dispatcher.inflight.max/4)}" class="text-icon icon-squareq"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.queue}}</span></div>
-                            <div class="col-xs-6" title="Duty cycle (percentage of time the service spends processing)"><span class="text-muted text-icon icon-squared"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.duty_cycle}}</span></div>
+                            <div class="col-xs-6" title="Duty cycle (percentage of time the servicespends processing)"><span class="text-muted text-icon icon-squared"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.duty_cycle}} %</span></div>
                         </div>
                         <div class="row">
                             <div class="col-xs-6" title="Number of processed items in the last minute"><span class="text-muted text-icon icon-squarep"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.metrics.execute}}</span></div>
