@@ -256,8 +256,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 else {
                     let avg_idle = data.metrics.idle/data.metrics.idle_count;
                     let avg_execution = data.metrics.execution/data.metrics.execution_count;
-                    let duty_cycle = Math.round(avg_execution/(avg_execution+avg_idle) * 100);
-                    $scope.data.services.metrics[data.service_name].duty_cycle = duty_cycle;
+                    $scope.data.services.metrics[data.service_name].duty_cycle = Math.round(avg_execution / (avg_execution + avg_idle) * 100);
                 }
             }
             catch (e) {
