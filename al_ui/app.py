@@ -106,10 +106,10 @@ def main():
     app.jinja_env.cache = {}
 
     if config.config.core.metrics.apm_server.server_url is not None:
-        apm = ElasticAPM(logging=True)
+        app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
+        apm = ElasticAPM(logging=logging.WARNING)
         apm.init_app(app, server_url=config.config.core.metrics.apm_server.server_url,
                          service_name="al_ui")
-        apm.capture_message("AL UI Connected!")
 
     app.run(host="0.0.0.0", debug=False)
 
