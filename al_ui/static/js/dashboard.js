@@ -11,7 +11,7 @@ function add(a, b) {
 //noinspection JSUnusedLocalSymbols
 let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'ui.bootstrap'])
     .factory('mySocket', function (socketFactory) {
-        var mySocket = socketFactory({namespace: '/status'});
+        let mySocket = socketFactory({namespace: '/status'});
         mySocket.forward('DispatcherHeartbeat');
         mySocket.forward('AlerterHeartbeat');
         mySocket.forward('ExpiryHeartbeat');
@@ -238,7 +238,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
 
         });
 
-        $scope.expiry_in_error = function (expiry) {
+        $scope.expiry_in_error = function () {
             // TBD
             return false;
 
@@ -271,7 +271,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             try {
                 console.log('Socket-IO::ServiceHeartbeat message', data);
                 if (!$scope.data.services.metrics.hasOwnProperty(data.service_name)){
-                    $scope.data.services.metrics[data.service_name] = $scope.service_defaults;
+                    $scope.data.services.metrics[data.service_name] = JSON.parse(JSON.stringify($scope.service_defaults));
                 }
                 $scope.data.services.metrics[data.service_name].service_name = data.service_name;
                 $scope.data.services.metrics[data.service_name].instances = data.instances;
