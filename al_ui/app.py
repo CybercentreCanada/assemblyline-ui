@@ -107,7 +107,7 @@ def main():
 
     if config.config.core.metrics.apm_server.server_url is not None:
         app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
-        apm = ElasticAPM(logging=logging.WARNING)
+        apm = ElasticAPM()
         apm.init_app(app, server_url=config.config.core.metrics.apm_server.server_url,
                          service_name="al_ui")
 
