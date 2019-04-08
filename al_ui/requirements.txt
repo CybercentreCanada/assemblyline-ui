@@ -7,6 +7,7 @@ gevent-websocket
 python_u2flib_server
 pyqrcode
 markdown
+contextvars
 elastic-apm[flask]
 assemblyline
 assemblyline-core
