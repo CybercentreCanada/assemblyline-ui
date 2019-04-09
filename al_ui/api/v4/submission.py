@@ -422,7 +422,7 @@ def get_summary(sid, **kwargs):
     
     if user and Classification.is_accessible(user['classification'], submission['classification']):
         output = {"map": {}, "tags": {}}
-        tags_cache = STORAGE.submission_tags.get(sid, as_obj=False)
+        tags_cache = STORAGE.submission_tags.get_if_exists(sid, as_obj=False)
 
         if not tags_cache:
             tags = STORAGE.get_tag_list_from_keys(submission["results"])
