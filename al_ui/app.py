@@ -1,3 +1,15 @@
+
+# ----------------------------------------------------------------------------------
+# Fix Kibana issues with slashes in the name using a monkey_patch
+def monkey_build_name_with_http_method_prefix(name, request):
+    name = name.strip("/").replace("/", ".")
+    return " ".join((request.method, name)) if name else "GET (default)"
+
+from elasticapm import utils
+utils.build_name_with_http_method_prefix = monkey_build_name_with_http_method_prefix
+# End of fix
+# ----------------------------------------------------------------------------------
+
 import logging
 
 from elasticapm.contrib.flask import ElasticAPM
@@ -107,8 +119,7 @@ def main():
 
     if config.config.core.metrics.apm_server.server_url is not None:
         app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
-        apm = ElasticAPM()
-        apm.init_app(app, server_url=config.config.core.metrics.apm_server.server_url, service_name="al_ui")
+        ElasticAPM(app, server_url=config.config.core.metrics.apm_server.server_url, service_name="al_ui")
 
     app.run(host="0.0.0.0", debug=False)
 
