@@ -1,4 +1,5 @@
 import base64
+import baseconv
 import binascii
 import os
 import uuid
@@ -90,7 +91,7 @@ def import_bundle(**_):
     """
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
 
-    current_bundle = os.path.join(WORKING_DIR, "%s.bundle" % str(uuid.uuid4()))
+    current_bundle = os.path.join(WORKING_DIR, f"{baseconv.base62.encode(uuid.uuid4().int)}.bundle")
 
     with open(current_bundle, 'wb') as fh:
         try:

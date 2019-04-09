@@ -1,3 +1,5 @@
+
+import baseconv
 import elasticapm
 import functools
 import uuid
@@ -126,7 +128,7 @@ class api_login(BaseSecurityRenderer):
 
             # Check current user quota
             quota_user = impersonator.get('uname', None) or user['uname']
-            quota_id = "%s [%s] => %s" % (quota_user, str(uuid.uuid4()), request.path)
+            quota_id = "%s [%s] => %s" % (quota_user, baseconv.base62.encode(uuid.uuid4().int), request.path)
             count = int(RATE_LIMITER.inc(quota_user, track_id=quota_id))
             RATE_LIMITER.inc("__global__", track_id=quota_id)
 

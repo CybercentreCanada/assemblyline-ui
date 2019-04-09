@@ -1,8 +1,9 @@
 import os
 import base64
+import baseconv
 import shutil
+import uuid
 
-from uuid import uuid4
 from flask import request
 
 from al_ui.helper.service import ui_to_submission_params
@@ -138,7 +139,7 @@ def ingest_single_file(**kwargs):
     { "success": true }
     """
     user = kwargs['user']
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, str(uuid4()))
+    out_dir = os.path.join(TEMP_SUBMIT_DIR, baseconv.base62.encode(uuid.uuid4().int))
     with forge.get_filestore() as f_transport:
         try:
             # Get data block
@@ -250,7 +251,7 @@ def ingest_single_file(**kwargs):
                 notification_params = {}
 
             # Load metadata and setup some default values if they are missing
-            ingest_id = str(uuid4())
+            ingest_id = baseconv.base62.encode(uuid.uuid4().int)
             metadata = data.get("metadata", {})
             metadata['ingest_id'] = ingest_id
             metadata['type'] = s_params['type']

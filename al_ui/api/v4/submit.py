@@ -1,5 +1,6 @@
 
 import base64
+import baseconv
 import os
 import shutil
 import uuid
@@ -381,7 +382,7 @@ def submit(**kwargs):
     user = kwargs['user']
     check_submission_quota(user)
         
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, str(uuid.uuid4()))
+    out_dir = os.path.join(TEMP_SUBMIT_DIR, baseconv.base62.encode(uuid.uuid4().int))
 
     with forge.get_filestore() as f_transport:
         try:

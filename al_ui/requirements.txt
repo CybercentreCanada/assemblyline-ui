@@ -1,3 +1,4 @@
+python-baseconv
 werkzeug
 python-socketio<4
 flask
