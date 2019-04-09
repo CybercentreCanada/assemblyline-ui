@@ -1,4 +1,4 @@
-
+import elasticapm
 import functools
 import json
 
@@ -72,6 +72,12 @@ class protected_renderer(BaseSecurityRenderer):
             # Dump Generic KWARGS
             kwargs['build'] = f"{BUILD_MASTER}.{BUILD_LOWER}.{BUILD_NO}"
             kwargs['user'] = user
+
+            if config.core.metrics.apm_server.server_url is not None:
+                elasticapm.set_user_context(username=user.get('name', None),
+                                            email=user.get('email', None),
+                                            user_id=user.get('uname', None))
+
             kwargs['user_js'] = json.dumps(user)
             kwargs['debug'] = str(DEBUG).lower()
             kwargs['menu'] = create_menu(user, path)

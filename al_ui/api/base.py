@@ -1,4 +1,4 @@
-
+import elasticapm
 import functools
 import uuid
 
@@ -118,6 +118,11 @@ class api_login(BaseSecurityRenderer):
 
             # Save user credential in user kwarg for future reference
             kwargs['user'] = user
+
+            if config.core.metrics.apm_server.server_url is not None:
+                elasticapm.set_user_context(username=user.get('name', None),
+                                            email=user.get('email', None),
+                                            user_id=user.get('uname', None))
 
             # Check current user quota
             quota_user = impersonator.get('uname', None) or user['uname']
