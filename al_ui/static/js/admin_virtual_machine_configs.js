@@ -286,12 +286,12 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v4/service/list/"
+                url: "/api/v4/service/all/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
 
-                    $scope.service_list = data.api_response.items;
+                    $scope.service_list = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
