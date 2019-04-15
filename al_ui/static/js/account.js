@@ -345,7 +345,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     };
 
     $scope.new_pass_valid = function () {
-        if ($scope.current_user === undefined) {
+        if ($scope.current_user === undefined || $scope.current_user === null) {
             return true;
         }
 

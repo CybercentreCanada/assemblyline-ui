@@ -3,7 +3,7 @@
 		<h1>File Details</h1>
 		<h4 ng-show="current_file.name" class="text-muted">:: {{current_file.name | split}} ::</h4>
 		<p ng-show="current_file" style="font-size: 120%;">
-			<a href="/search.html?query=files:{{current_file.file_info.sha256}} OR results:{{current_file.file_info.sha256}}" class="btn btn-default btn-sm" title="Related submissions"><span class="glyphicon glyphicon-tasks"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Related Submissions</span></a>
+			<a href="/search.html?query=files.sha256:{{current_file.file_info.sha256}} OR results:{{current_file.file_info.sha256}}*" class="btn btn-default btn-sm" title="Related submissions"><span class="glyphicon glyphicon-tasks"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Related Submissions</span></a>
 			<a href="/api/v4/file/download/{{current_file.file_info.sha256}}/?name={{current_file.name}}" class="btn btn-default btn-sm" title="Download file"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download File</span></a>
 			<a href="file_viewer.html?sha256={{current_file.file_info.sha256}}" class="btn btn-default btn-sm" title="File viewer"><span class="glyphicon glyphicon-info-sign"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">File Viewer</span></a>
 			<a ng-if="!user.read_only" class="btn btn-default btn-sm" title="Resubmit Dynamic" ng-click="resubmit_dynamic_async(current_file.file_info.sha256, sid, current_file.name)"><span class="glyphicon glyphicon-repeat"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Resubmit Dynamic</span></a>
