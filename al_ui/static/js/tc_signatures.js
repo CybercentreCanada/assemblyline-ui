@@ -18,7 +18,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.signature_changed = false;
     $scope.current_signature_state = "TESTING";
     $scope.filtered = false;
-    $scope.filter = "*";
+    $scope.filter = "id:*";
 
     //DEBUG MODE
     $scope.debug = false;
@@ -38,7 +38,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.$watch('searchText', function () {
         if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
             if ($scope.searchText === "") {
-                $scope.filter = "*";
+                $scope.filter = "id:*";
             }
             else {
                 $scope.filter = $scope.searchText;
@@ -291,7 +291,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v4/tc_signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&filter=" + encodeURIComponent($scope.filter)
+            url: "/api/v4/tc_signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;
@@ -302,7 +302,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.pages = $scope.pagerArray();
                 $scope.started = true;
 
-                $scope.filtered = $scope.filter !== "*";
+                $scope.filtered = $scope.filter !== "id:*";
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
