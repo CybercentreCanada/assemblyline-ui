@@ -73,7 +73,7 @@ def create_menu(user, path):
         {"class": "",
          "active": path.startswith("/search_help.html"),
          "link": "/search_help.html",
-         "title": "Search Query Syntax"}])
+         "title": "Search Help"}])
 
     if not config.ui.read_only:
         help_submenu.extend([

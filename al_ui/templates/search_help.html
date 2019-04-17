@@ -4,269 +4,330 @@
 {% block content %}
 <section id="appContent" class="container">
 	<div class="header_title text-right">
-		<h1>Riak Search</h1>
+		<h1>Search Help</h1>
 		<h4 class="text-muted">:: Query Syntax ::</h4>
 	</div>
 
 	<div class="row">
 		<div class="col-md-10">
 
-			<section id="overview" class="bs-docs-section">
+			<section id="query_string" class="bs-docs-section">
 				<h2 class="anchor-offset">Overview</h2>
 				<p>
-				    Riak uses Apache SOLR as its search engine which in turn uses 
-				    the Apache Lucene search syntax. This document describes how 
-				    you can leverage the power of the Apache SOLR/Lucene to search 
-				    through the Riak data store. 
+				    The query string “mini-language” is used by the Search API. Operators allow you to customize the search -- the available options are explained bellow:
 				</p>
 			</section>
         
-			<section id="terms" class="bs-docs-section">
-				<h2 class="anchor-offset">Terms</h2>
-				<p>A query is broken up into terms and operators. There are two types of terms: Single Terms and Phrases.</p>
-				<p>A Single Term is a single word such as "test" or "hello".</p>
-				<p>A Phrase is a group of words surrounded by double quotes such as "hello dolly".</p>
-				<p>Multiple terms can be combined together with Boolean operators to form a more complex query (see below).</p>
-				<p>Note: The analyzer used to create the index will be used on the terms and phrases in the query string.
-				        So it is important to choose an analyzer that will not interfere with the terms used in the query string.</p>
+			<section id="basic" class="bs-docs-section">
+				<h2 class="anchor-offset">Basic Search</h2>
+				<p>The query string is parsed into a series of terms and operators. A term can be a single word  like <b>quick</b>, <b>brown</b> or a phrase, surrounded by double quotes <b>"quick brown"</b> which searches for all the words in the phrase, in the same order.</p>
+				<p><b>Examples:</b></p>
+				<pre>"quick brown fox"</pre>
+				<pre>quick OR brown OR fox</pre>
 			</section>
-
 
 			<section id="fields" class="bs-docs-section">
-				<h2 class="anchor-offset">Fields</h2>
-				<p>Lucene supports fielded data. When performing a search you can either specify a field, or use the default field. The field names and default field is implementation specific.</p>
-				<p>You can search any field by typing the field name followed by a colon ":" and then the term you are looking for. </p>
-				<p>As an example, let's assume a Lucene index contains two fields, <b>description</b> and <b>text</b> and text is the <i>default</i> field.
-				        If you want to find the document with the description "The Right Way" which contains the text "don't go this way", you can enter: </p>
-				<pre class="code">description:"The Right Way" AND text:go</pre>
-				<p>or</p>
-				<pre class="code">description:"The Right Way" AND go</pre>
-				<p>Since text is the default field, the field indicator is not required.</p>
-				<p>Note: The field is only valid for the term that it directly precedes, so the query</p>
-				<pre class="code">description:The Wrong Way</pre>
-				<p>Will only find "The" in the description field. It will find "Wrong" and "Way" in the default field (in this case the text field). </p>
-				<section id="available_fields" class="bs-docs-section">
-					<h3 class="anchor-offset">Available Fields</h3>
-					<p>Our current Riak data store instance has the following field available for searches. Some field are copied over to a default search field that is used in the case where no fields are specified.
-                        Stored field will be returned by the index when issuing a query.
-                    </p>
+				<h2 class="anchor-offset">Field names</h2>
+				<p>By using basic search, only the <i>default field</i> is searched for the search terms, but it is possible to specify other fields in the query syntax:</p>
+				<p><b>Exemples:</b></p>
+				<ul>
+					<li>
+						where the status field contains active
+						<pre>status:active</pre>
+					</li>
+					<li>
+						where the title field contains quick or brown
+						<pre>title:(quick OR brown)</pre>
+					</li>
+					<li>
+						where the author field contains the exact phrase "john smith"
+						<pre>author:"John Smith"</pre>
+					</li>
+					<li>
+						where any of the fields book.title, book.content or book.date contains quick or brown (note how we need to escape the * with a backslash):
+						<pre>book.\*:(quick OR brown)</pre>
+					</li>
+					<li>
+						where the field title has any non-null value:
+						<pre>_exists_:title</pre>
+					</li>
+				</ul>
 
-					<section id="alert" class="bs-docs-section">
-						<h4 class="anchor-offset">Alert:</h4>
-<pre>
- Indexed and stored fields:
- {% for field, val in field_list['alert'] if val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
- Indexed fields:
- {% for field, val in field_list['alert'] if not val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
-</pre>
-					</section>
-					<section id="file" class="bs-docs-section">
-						<h4 class="anchor-offset">File:</h4>
-<pre>
- Indexed and stored fields:
- {% for field, val in field_list['file'] if val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
- Indexed fields:
- {% for field, val in field_list['file'] if not val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
-</pre>
-					</section>
-					<section id="result" class="bs-docs-section">
-						<h4 class="anchor-offset">Result:</h4>
-<pre>
- Indexed and stored fields:
- {% for field, val in field_list['result'] if val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
- Indexed fields:
- {% for field, val in field_list['result'] if not val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
-</pre>
-					</section>
-					<section id="signature" class="bs-docs-section">
-						<h4 class="anchor-offset">Signature:</h4>
-<pre>
- Indexed and stored fields:
- {% for field, val in field_list['signature'] if val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
- Indexed fields:
- {% for field, val in field_list['signature'] if not val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
-</pre>
-					</section>
-					<section id="submission" class="bs-docs-section">
-						<h4 class="anchor-offset">Submission:</h4>
-<pre>
- Indexed and stored fields:
- {% for field, val in field_list['submission'] if val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
- Indexed fields:
- {% for field, val in field_list['submission'] if not val['stored'] %}  {{ field }}   ::   {% if val.list %}[{% endif %}{{ lookup.get(val.type, val.type) }}{% if val.list %}, ...]{% endif %}
- {% endfor %}
-</pre>
-					</section>
-					<p><b>Important: </b> When using the search engine in the UI, your search query is performed on all these buckets at the same time.</p>
+				<p>The Assemblyline datastore is divided in multiple indexes. Each collection has the following field available for searches. Default fields are copied over to the default search field that is used in the case where you only use basic search. Stored field will be returned by the index when issuing a query.</p>
+				<p><b>Important: </b> When using the search engine in the UI, your search query is performed on all these buckets at the same time.</p>
+
+				{% for index, fields in field_list.items() %}
+				<section id="{{ index }}" class="bs-docs-section">
+					<h3 class="anchor-offset">{{ index.title() }} index:</h3>
+
+					<table class="table table-hover table-striped table-condensed">
+						<thead>
+							<tr class="active"><th>Field name</th><th>Type</th><th>Attributes</th></tr>
+						</thead>
+						<tbody>
+							{% for field, val in fields%}
+							<tr><td width="80%">{{ field }}</td><td width="20%">{{ val.type }}</td><td>{% if val.stored %}<span title="Stored" class="text-icon icon-squares text-info"></span>&nbsp;{% endif %}{% if val.default %}<span title="Default" class="text-icon icon-squared text-primary"></span>&nbsp;{% endif %}{% if val.list %}<span title="Multivalued" class="text-icon icon-squarem text-warning"></span>{% endif %}</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
 				</section>
+				{% endfor %}
+
 			</section>
 
-			<section id="term_modifiers" class="bs-docs-section">
-				<h2 class="anchor-offset">Term Modifiers</h2>
-				<p>Lucene supports modifying query terms to provide a wide range of searching options.</p>
-				<section id="wildcard_searches" class="bs-docs-section">
-					<h3 class="anchor-offset">Wildcard Searches</h3>
-					<p>Lucene supports single and multiple character wildcard searches within single terms
-					        (not within phrase queries).</p>
-					<p>To perform a single character wildcard search use the "?" symbol.</p>
-					<p>To perform a multiple character wildcard search use the "*" symbol.</p>
-					<p>The single character wildcard search looks for terms that match that with the single character replaced. For example, to search for "text" or "test" you can use the search:</p>
-					<pre class="code">te?t</pre>
-					<p>Multiple character wildcard searches looks for 0 or more characters. For example, to search for test, tests or tester, you can use the search: </p>
-					<pre class="code">test*</pre>
-					<p>You can also use the wildcard searches in the middle of a term.</p>
-					<pre class="code">te*t</pre>
-					<p>Note: You cannot use a * or ? symbol as the first character of a search.</p>
+			<section id="wildcards" class="bs-docs-section">
+				<h3 class="anchor-offset">Wildcards</h3>
+				<p>Wildcard searches can be run on individual terms, using <b>?</b> to replace a single character, and <b>*</b> to replace zero or more characters:</p>
+				<pre>qu?ck bro*</pre>
+				<p>Be aware that wildcard queries can use an enormous amount of memory and perform very badly — just think how many terms need to be queried to match the query string "a* b* c*".</p>
+				<p><b>Note:</b> Allowing a wildcard at the beginning of a word (eg "*ing") is particularly heavy, because all terms in the index need to be examined, just in case they match.</p>
+			</section>
+			<section id="regex" class="bs-docs-section">
+				<h3 class="anchor-offset">Regular Expressions</h3>
+				<p>Regular expression patterns can be embedded in the query string by wrapping them in forward-slashes ("/"):</p>
+				<pre>name:/joh?n(ath[oa]n)/</pre>
+				<p><b>Warning</b></p>
+				<p>Having a wildcard as the leading parameter does not have any control over regular expressions. A query string such as the following would force the datastore to visit every term in the index, <b>Use with caution!</b>:</p>
+				<pre>/.*n/</pre>
+				<p>The supported regular expression syntax is the following:</p>
+				<section id="regex_anchor" class="bs-docs-section">
+					<h4 class="anchor-offset">Anchoring</h4>
+					<p>Most regular expression engines allow you to match any part of a string. If you want the regexp pattern to start at the beginning of the string or finish at the end of the string, then you have to anchor it specifically, using ^ to indicate the beginning or $ to indicate the end.</p>
+					<p>Lucene’s patterns are always anchored. The pattern provided must match the entire string. For string "abcde":</p>
+					<pre>
+ab.*     # match
+abcd     # no match</pre>
 				</section>
-				<section id="fuzzy_searches" class="bs-docs-section">
-					<h3 class="anchor-offset">Fuzzy Searches</h3>
-					<p>Lucene supports fuzzy searches based on the Levenshtein Distance, or Edit Distance algorithm. To do a fuzzy search use the tilde, "~", symbol at the end of a Single word Term. For example to search for a term similar in spelling to "roam" use the fuzzy search: </p>
-					<pre class="code">roam~</pre>
-					<p>This search will find terms like foam and roams.</p>
-					<p>Starting with Lucene 1.9 an additional (optional) parameter can specify the required similarity. The value is between 0 and 1, with a value closer to 1 only terms with a higher similarity will be matched. For example:</p>
-					<pre class="code">roam~0.8</pre>
-					<p>The default that is used if the parameter is not given is 0.5.</p>
+				<section id="regex_allowed" class="bs-docs-section">
+					<h4 class="anchor-offset">Allowed characters</h4>
+					<p>Any Unicode characters may be used in the pattern, but certain characters are reserved and must be escaped. The standard reserved characters are:</p>
+					<pre>. ? + * | { } [ ] ( ) " \</pre>
+					<p>Any reserved character can be escaped with a backslash "\*" including a literal backslash character: "\\"</p>
+					<p>Additionally, any characters (except double quotes) are interpreted literally when surrounded by double quotes:</p>
+					<pre>john"@smith.com"</pre>
 				</section>
-				<section id="proximity_searches" class="bs-docs-section">
-					<h3 class="anchor-offset">Proximity Searches</h3>
-					<p>Lucene supports finding words are a within a specific distance away. To do a proximity search use the tilde, "~", symbol at the end of a Phrase. For example to search for a "apache" and "jakarta" within 10 words of each other in a document use the search: </p>
-					<pre class="code">"jakarta apache"~10</pre>
+				<section id="regex_match" class="bs-docs-section">
+					<h4 class="anchor-offset">Match any character</h4>
+					<p>The period "." can be used to represent any character. For string "abcde":</p>
+					<pre>
+ab...   # match
+a.c.e   # match</pre>
 				</section>
-				<section id="range_searches" class="bs-docs-section">
-					<h3 class="anchor-offset">Range Searches</h3>
-					<p>Range Queries allow one to match documents whose field(s) values
-					            are between the lower and upper bound specified by the Range Query.
-					            Range Queries can be inclusive or exclusive of the upper and lower bounds.
-					            Sorting is done lexicographically.</p>
-					<pre class="code">size:[1024 TO 2048]</pre>
-					<p>This will find documents whose size field has values between 1024 and 2048, inclusive.
-					            Note that Range Queries are not reserved for date fields.  You could also use range queries with non-date fields:</p>
-					<pre class="code">description:{Aida TO Carmen}</pre>
-					<p>This will find all documents whose descriptions are between Aida and Carmen, but not including Aida and Carmen.</p>
-					<p>Inclusive range queries are denoted by square brackets.  Exclusive range queries are denoted by
-					            curly brackets.</p>
+				<section id="regex_oneplus" class="bs-docs-section">
+					<h4 class="anchor-offset">One-or-more</h4>
+					<p>The plus sign "+" can be used to repeat the preceding shortest pattern once or more times. For string "aaabbb":</p>
+					<pre>
+a+b+        # match
+aa+bb+      # match
+a+.+        # match
+aa+bbb+     # match</pre>
+				</section>
+				<section id="regex_zeroplus" class="bs-docs-section">
+					<h4 class="anchor-offset">Zero-or-more</h4>
+						<p>The asterisk "*" can be used to match the preceding shortest pattern zero-or-more times. For string "aaabbb":</p>
+						<pre>
+a*b*        # match
+a*b*c*      # match
+.*bbb.*     # match
+aaa*bbb*    # match</pre>
+				</section>
+				<section id="regex_zeroone" class="bs-docs-section">
+					<h4 class="anchor-offset">Zero-or-one</h4>
+					<p>The question mark "?" makes the preceding shortest pattern optional. It matches zero or one times. For string "aaabbb":</p>
+					<pre>
+aaa?bbb?    # match
+aaaa?bbbb?  # match
+.....?.?    # match
+aa?bb?      # no match</pre>
+				</section>
+				<section id="regex_minmax" class="bs-docs-section">
+					<h4 class="anchor-offset">Min-to-max</h4>
+					<p>Curly brackets "{}" can be used to specify a minimum and (optionally) a maximum number of times the preceding shortest pattern can repeat. The allowed forms are:</p>
+					<pre>
+{5}     # repeat exactly 5 times
+{2,5}   # repeat at least twice and at most 5 times
+{2,}    # repeat at least twice</pre>
+					<p>For string "aaabbb":</p>
+					<pre>
+a{3}b{3}        # match
+a{2,4}b{2,4}    # match
+a{2,}b{2,}      # match
+.{3}.{3}        # match
+a{4}b{4}        # no match
+a{4,6}b{4,6}    # no match
+a{4,}b{4,}      # no match</pre>
+				</section>
+				<section id="regex_group" class="bs-docs-section">
+					<h4 class="anchor-offset">Grouping</h4>
+					<p>Parentheses "()" can be used to form sub-patterns. The quantity operators listed above operate on the shortest previous pattern, which can be a group. For string "ababab":</p>
+					<pre>
+(ab)+       # match
+ab(ab)+     # match
+(..)+       # match
+(...)+      # no match
+(ab)*       # match
+abab(ab)?   # match
+ab(ab)?     # no match
+(ab){3}     # match
+(ab){1,2}   # no match</pre>
+				</section>
+				<section id="regex_altern" class="bs-docs-section">
+					<h4 class="anchor-offset">Alternation</h4>
+					<p>The pipe symbol "|" acts as an OR operator. The match will succeed if the pattern on either the left-hand side OR the right-hand side matches. The alternation applies to the longest pattern, not the shortest. For string "aabb":</p>
+					<pre>
+aabb|bbaa   # match
+aacc|bb     # no match
+aa(cc|bb)   # match
+a+|b+       # no match
+a+b+|b+a+   # match
+a+(b|c)+    # match</pre>
+				</section>
+				<section id="regex_classes" class="bs-docs-section">
+					<h4 class="anchor-offset">Character classes</h4>
+					<p>Ranges of potential characters may be represented as character classes by enclosing them in square brackets "[]". A leading ^ negates the character class. The allowed forms are:</p>
+					<pre>
+[abc]   # 'a' or 'b' or 'c'
+[a-c]   # 'a' or 'b' or 'c'
+[-abc]  # '-' or 'a' or 'b' or 'c'
+[abc\-] # '-' or 'a' or 'b' or 'c'
+[^abc]  # any character except 'a' or 'b' or 'c'
+[^a-c]  # any character except 'a' or 'b' or 'c'
+[^-abc]  # any character except '-' or 'a' or 'b' or 'c'
+[^abc\-] # any character except '-' or 'a' or 'b' or 'c'</pre>
+					<p>Note that the dash "-" indicates a range of characters, unless it is the first character or if it is escaped with a backslash.</p>
+					<p>For string "abcd":</p>
+					<pre>
+ab[cd]+     # match
+[a-d]+      # match
+[^a-d]+     # no match</pre>
 				</section>
 			</section>
-
-
-   
-			<section id="boolean_operators" class="bs-docs-section">
-				<h2 class="anchor-offset">Boolean Operators</h2>
-				<p>Boolean operators allow terms to be combined through logic operators.
-				        Lucene supports AND, "+", OR, NOT and "-" as Boolean operators(Note: Boolean operators must be ALL CAPS).</p>
-				<section id="or" class="bs-docs-section">
-					<h4 class="anchor-offset">OR</h4>
-					<p>The OR operator is the default conjunction operator. This means that if there is no Boolean operator between two terms, the OR operator is used.
-					        The OR operator links two terms and finds a matching document if either of the terms exist in a document. This is equivalent to a union using sets.
-					        The symbol || can be used in place of the word OR.</p>
-					<p>To search for documents that contain either "jakarta apache" or just "jakarta" use the query:</p>
-					<pre class="code">"jakarta apache" jakarta</pre>
-					<p>or</p>
-					<pre class="code">"jakarta apache" OR jakarta</pre>
-				</section>
-				<section id="and" class="bs-docs-section">
-					<h4 class="anchor-offset">AND</h4>
-					<p>The AND operator matches documents where both terms exist anywhere in the text of a single document.
-					        This is equivalent to an intersection using sets. The symbol &amp;&amp; can be used in place of the word AND.</p>
-					<p>To search for documents that contain "jakarta apache" and "Apache Lucene" use the query: </p>
-					<pre class="code">"jakarta apache" AND "Apache Lucene"</pre>
-					</section>
-					<section id="plus" class="bs-docs-section">
-					<h4 class="anchor-offset">+</h4>
-					<p>The "+" or required operator requires that the term after the "+" symbol exist somewhere in a the field of a single document.</p>
-					<p>To search for documents that must contain "jakarta" and may contain "lucene" use the query:</p>
-					<pre class="code">+jakarta lucene</pre>
-				</section>
-				<section id="not" class="bs-docs-section">
-					<h4 class="anchor-offset">NOT</h4>
-					<p>The NOT operator excludes documents that contain the term after NOT.
-					        This is equivalent to a difference using sets. The symbol ! can be used in place of the word NOT.</p>
-					<p>To search for documents that contain "jakarta apache" but not "Apache Lucene" use the query: </p>
-					<pre class="code">"jakarta apache" NOT "Apache Lucene"</pre>
-					<p>Note: The NOT operator cannot be used with just one term. For example, the following search will return no results:</p>
-					<pre class="code">NOT "jakarta apache"</pre>
-					</section>
-					<section id="minus" class="bs-docs-section">
-					<h4 class="anchor-offset">-</h4>
-					<p>The "-" or prohibit operator excludes documents that contain the term after the "-" symbol.</p>
-					<p>To search for documents that contain "jakarta apache" but not "Apache Lucene" use the query: </p>
-					<pre class="code">"jakarta apache" -"Apache Lucene"</pre>
-				</section>
+			<section id="fuzzy_searches" class="bs-docs-section">
+				<h3 class="anchor-offset">Fuziness</h3>
+				<p>We can search for terms that are similar to, but not exactly like our search terms, using the “fuzzy” operator:</p>
+				<pre>quikc~ brwn~ foks~</pre>
+				<p>This uses the Damerau-Levenshtein distance to find all terms with a maximum of two changes, where a change is the insertion, deletion or substitution of a single character, or transposition of two adjacent characters.</p>
+				<p>The default edit distance is 2, but an edit distance of 1 should be sufficient to catch 80% of all human misspellings. It can be specified as:</p>
+				<pre>quikc~1</pre>
 			</section>
-        
-			<section id="grouping" class="bs-docs-section">
-				<h2 class="anchor-offset">Grouping</h2>
-				<p>Lucene supports using parentheses to group clauses to form sub queries. This can be very useful if you want to control the boolean logic for a query.</p>
-				<p>To search for either "jakarta" or "apache" and "website" use the query:</p>
-				<pre class="code">(jakarta OR apache) AND website</pre>
-				<p>This eliminates any confusion and makes sure you that website must exist and either term jakarta or apache may exist.</p>
+			<section id="proximity_searches" class="bs-docs-section">
+				<h3 class="anchor-offset">Proximity Searches</h3>
+				<p>While a phrase query (eg "john smith") expects all of the terms in exactly the same order, a proximity query allows the specified words to be further apart or in a different order. In the same way that fuzzy queries can specify a maximum edit distance for characters in a word, a proximity search allows us to specify a maximum edit distance of words in a phrase:</p>
+				<pre>"fox quick"~5</pre>
+				<p>The closer the text in a field is to the original order specified in the query string, the more relevant that document is considered to be. When compared to the above example query, the phrase "quick fox" would be considered more relevant than "quick brown fox".</p>
 			</section>
-        
-			<section id="field_grouping" class="bs-docs-section">
-				<h2 class="anchor-offset">Field Grouping</h2>
-				<p>Lucene supports using parentheses to group multiple clauses to a single field.</p>
-				<p>To search for a description that contains both the word "return" and the phrase "pink panther" use the query:</p>
-				<pre class="code">description:(+return +"pink panther")</pre>
-			</section>
-
-			<section id="date_range_searches" class="bs-docs-section">
-				<h2 class="anchor-offset">Date Range Searches</h2>
-				<p>Although not technically a Syntax difference, please note that if you use the Solr "<a>DateField</a>" type, any queries on those fields (typically range queries) should use either the Complete ISO 8601 Date syntax that field supports, or the <a href="#datemath_syntax">DateMath</a> Syntax to get relative dates.</p>
-				<p>Exemples:</p>
-<pre class="code">
-times.submitted:[*&nbsp;TO&nbsp;NOW]
-    
-times.submitted:[1976-03-06T23:59:59.999Z&nbsp;TO&nbsp;*]
-    
-times.submitted:[1995-12-31T23:59:59.999Z&nbsp;TO&nbsp;2007-03-06T00:00:00Z]
-    
-times.completed:[NOW-1YEAR/DAY&nbsp;TO&nbsp;NOW/DAY+1DAY]
-    
-times.completed:[1976-03-06T23:59:59.999Z&nbsp;TO&nbsp;1976-03-06T23:59:59.999Z+1YEAR]
-    
-times.completed:[1976-03-06T23:59:59.999Z/YEAR&nbsp;TO&nbsp;1976-03-06T23:59:59.999Z]
-</pre>
-
+			<section id="ranges" class="bs-docs-section">
+				<h3 class="anchor-offset">Ranges</h3>
+				<p>Ranges can be specified for date, numeric or string fields. Inclusive ranges are specified with square brackets [min TO max] and exclusive ranges with curly brackets {min TO max}.</p>
+				<ul>
+					<li>
+						All days in 2012:
+						<pre>date:[2012-01-01 TO 2012-12-31]</pre>
+					</li>
+					<li>
+						Everything this year: (Using <a href="#datemath_syntax">DateMath syntax</a>)
+						<pre>date:[now/y TO now/y+1y]</pre>
+					</li>
+					<li>
+						Everything since the year of specific date: (Using <a href="#datemath_syntax">DateMath syntax</a>)
+						<pre>date:[2012-06-08||/y TO now]</pre>
+					</li>
+					<li>
+						Numbers 1..5
+						<pre>count:[1 TO 5]</pre>
+					</li>
+					<li>
+						Tags between alpha and omega, excluding alpha and omega:
+						<pre>tag:{alpha TO omega}</pre>
+					</li>
+					<li>
+						Numbers from 10 upwards
+						<pre>count:[10 TO *]</pre>
+					</li>
+					<li>
+						Dates before 2012
+						<pre>date:{* TO 2012-01-01}</pre>
+					</li>
+				</ul>
+				<p>Curly and square brackets can be combined:</p>
+				<ul>
+					<li>
+						Numbers from 1 up to but not including 5
+						<pre>count:[1 TO 5}</pre>
+					</li>
+				</ul>
+				<p>Ranges with one side unbounded can use the following syntax:</p>
+				<pre>
+age:>10
+age:>=10
+age:<10
+age:<=10</pre>
+				<p>To combine an upper and lower bound with the simplified syntax, you would need to join two clauses with an AND operator:</p>
+				<pre>
+age:(>=10 AND <20)
+age:(+>=10 +<20)</pre>
 				<section id="datemath_syntax" class="bs-docs-section">
 					<h3 class="anchor-offset">DateMath Syntax</h3>
-					<p>A simple Utility class for parsing "math" like strings related to Dates.</p>
-					<p>The basic syntax supports addition, substraction and rounding at various levels of granularity. Commands can be chained together and are parsed for left to right. '+' and '-' denote addition and substraction, while '/' denotes "round". Round requires only a unit, while addition and substraction require an integer value and a unit. Command strings must not include white spaces.</p>
-<pre class="code">
-/HOUR
-    ... Round to the start of the current hour
-/DAY
-    ... Round to the start of the current day
-+2YEARS
-    ... Exactly 2 years in the future from now
--1DAY
-    ... Exactly 1 day prior to now
-/DAY+6MONTHS+3DAYS
-    ... 6 months and 3 days in the future from 
-        the start of the current day
-+6MONTHS+3DAYS/DAY
-    ... 6 months and 3 days in the future from
-        now rounded to the nearest day
-</pre>
+					<p>The expression starts with an anchor date, which can either be <b>now</b>, or a <b>date string ending with ||</b>. This anchor date can optionally be followed by one or more maths expressions:</p>
+					<ul>
+						<li>+1h: Add one hour</li>
+						<li>-1d: Subtract one day</li>
+						<li>/d: Round down to the nearest day</li>
+					</ul>
+					<p>The supported time units differ from those supported by time units for durations. The supported units are:</p>
+					<pre>
+y    =>    Years
+M    =>    Months
+w    =>    Weeks
+d    =>    Days
+h    =>    Hours
+H    =>    Hours
+m    =>    Minutes
+s    =>    Seconds</pre>
+					<p>Assuming now is <b>2001-01-01 12:00:00</b>, some examples are:</p>
+					<pre>
+now+1h             =>  now in milliseconds plus one hour. Resolves to: 2001-01-01 13:00:00
+now-1h             =>  now in milliseconds minus one hour. Resolves to: 2001-01-01 11:00:00
+now-1h/d           =>  now in milliseconds minus one hour, rounded by day. Resolves to: 2001-01-01 00:00:00
+2001.02.01||+1M/d  =>  2001-02-01 in milliseconds plus one month rounded by day. Resolves to: 2001-03-01 00:00:00</pre>
 				</section>
+
 			</section>
 
-        
-			<section id="escaping_special_characters" class="bs-docs-section">
-				<h2 class="anchor-offset">Escaping Special Characters</h2>
-				<p>Lucene supports escaping special characters that are part of the query syntax. The current list special characters are</p>
-				<p>+ - &amp;&amp; || ! ( ) { } [ ] ^ " ~ * ? : \</p>
-				<p>To escape these character use the \ before the character. For example to search for (1+1):2 use the query:</p>
-				<pre class="code">\(1\+1\)\:2</pre>
+		<section id="boolean_operators" class="bs-docs-section">
+			<h2 class="anchor-offset">Boolean Operators</h2>
+			<p>By default, all terms are optional, as long as one term matches. A search for foo bar baz will find any document that contains one or more of foo or bar or baz. We have already discussed the default_operator above which allows you to force all terms to be required, but there are also boolean operators which can be used in the query string itself to provide more control.</p>
+			<p>The preferred operators are + (this term must be present) and - (this term must not be present). All other terms are optional. For example, this query:</p>
+			<pre>quick brown +fox -news</pre>
+			<p>states that:</p>
+			<ul>
+				<li>fox must be present</li>
+				<li>news must not be present</li>
+				<li>quick and brown are optional — their presence increases the relevance</li>
+			</ul>
+			<p>The familiar boolean operators AND, OR and NOT (also written &&, || and !) are also supported but beware that they do not honor the usual precedence rules, so parentheses should be used whenever multiple operators are used together. For instance the previous query could be rewritten as:</p>
+			<pre>((quick AND fox) OR (brown AND fox) OR fox) AND NOT news</pre>
+			<p>This form now replicates the logic from the original query correctly, but the relevance scoring bears little resemblance to the original.</p>
+
+			<section id="grouping" class="bs-docs-section">
+				<h2 class="anchor-offset">Grouping</h2>
+				<p>Multiple terms or clauses can be grouped together with parentheses, to form sub-queries:</p>
+				<pre>(quick OR brown) AND fox</pre>
+				<p>Groups can also be used to target a particular field:</p>
+				<pre>status:(active OR pending) title:(+full -"text search")</pre>
 			</section>
+		</section>
+
+		<section id="reserved" class="bs-docs-section">
+			<h2 class="anchor-offset">Reserved Characters</h2>
+			<p>If you need to use any of the characters which function as operators in your query itself (and not as operators), then you should escape them with a leading backslash.</p>
+			<p> For instance, to search for <b>(1+1)=2</b>, you would need to write your query as:</p>
+			<pre>\(1\+1\)\=2</pre>
+			<p>The reserved characters are: </p>
+			<pre>+ - = && || > < ! ( ) { } [ ] ^ " ~ * ? : \ /</pre>
+			<p>Failing to escape these special characters correctly could lead to a syntax error which prevents your query from running.</p>
+			<p><b>Note:</b> <b><</b> and <b>></b> can’t be escaped at all. The only way to prevent them from attempting to create a range query is to remove them from the query string entirely.</p>
+		</section>
 		</div>
 
 		<!-- SIDENAV -->
@@ -274,89 +335,91 @@ times.completed:[1976-03-06T23:59:59.999Z/YEAR&nbsp;TO&nbsp;1976-03-06T23:59:59.
 			<div data-spy="affix" data-offset-top="100" class="bs-docs-sidebar hidden-print" role="complementary">
 			    <ul class="nav bs-docs-sidenav">
 			        <li>
-			            <a href="#overview">Overview</a>
+			            <a href="#query_string">Overview</a>
 			        </li>
 			        <li>
-			            <a href="#terms">Terms</a>
+			            <a href="#basic">Basic Search</a>
 			        </li>
 			        <li>
 			            <a href="#fields">Fields</a>
 			            <ul class="nav">
-			                <li>
-			                    <a href="#available_fields">Available Fields</a>
-			                    <ul class="nav">
-					                <li>
-					                    <a href="#alert">Alert</a>
-					                </li>
-					                <li>
-					                    <a href="#file">File</a>
-					                </li>
-					                <li>
-					                    <a href="#result">Result</a>
-					                </li>
-					                <li>
-					                    <a href="#signature">Signature</a>
-					                </li>
-					                <li>
-					                    <a href="#submission">Submission</a>
-					                </li>
-					            </ul>
-			                </li>
-			            </ul>
+							<li>
+								<a href="#alert">Alert index</a>
+							</li>
+							<li>
+								<a href="#file">File index</a>
+							</li>
+							<li>
+								<a href="#result">Result index</a>
+							</li>
+							<li>
+								<a href="#signature">Signature index</a>
+							</li>
+							<li>
+								<a href="#submission">Submission index</a>
+							</li>
+					    </ul>
 			        </li>
-			        <li>
-			        	<a href="#term_modifiers">Term Modifiers</a>
-			            <ul class="nav">
+					<li>
+						<a href="#wildcards">Wildcards</a>
+					</li>
+					<li>
+						<a href="#regex">Regular Expressions</a>
+						<ul class="nav">
+							<li>
+								<a href="#regex_anchor">Anchoring</a>
+							</li>
+							<li>
+								<a href="#regex_allowed">Allowed Characters</a>
+							</li>
+							<li>
+								<a href="#regex_match">Match Any</a>
+							</li>
+							<li>
+								<a href="#regex_oneplus">One or More</a>
+							</li>
+							<li>
+								<a href="#regex_zeroplus">Zero or More</a>
+							</li>
+							<li>
+								<a href="#regex_zeroone">Zero or one</a>
+							</li>
+							<li>
+								<a href="#regex_minmax">Min to Max</a>
+							</li>
+							<li>
+								<a href="#regex_group">Grouping</a>
+							</li>
+							<li>
+								<a href="#regex_altern">Alternation</a>
+							</li>
+							<li>
+								<a href="#regex_classes">Character Class</a>
+							</li>
+						</ul>
+					</li>
+					<li>
+						<a href="#fuzzy_searches">Fuzziness</a>
+					</li>
+					<li>
+						<a href="#proximity_searches">Proximity Searches</a>
+					</li>
+					<li>
+						<a href="#ranges">Ranges</a>
+						<ul class="nav">
 			                <li>
-			                    <a href="#wildcard_searches">Wildcard Searches</a>
-			                </li>
-			                <li>
-			                    <a href="#fuzzy_searches">Fuzzy Searches</a>
-			                </li>
-			                <li>
-			                    <a href="#proximity_searches">Proximity Searches</a>
-			                </li>
-			                <li>
-			                    <a href="#range_searches">Range Searches</a>
+			                    <a href="#datemath_syntax">DateMath Syntax</a>
 			                </li>
 			            </ul>
-			        </li>    
+					</li>
 			        <li>
 			        	<a href="#boolean_operators">Boolean Operators</a>
-			            <ul class="nav">
-			                <li>
-			                    <a href="#or">OR</a>
-			                </li>
-			                <li>
-			                    <a href="#and">AND</a>
-			                </li>
-			                <li>
-			                    <a href="#plus">+</a>
-			                </li>
-			                <li>
-			                    <a href="#not">NOT</a>
-			                </li>
-			                <li>
-			                    <a href="#minus">-</a>
-			                </li>
-			            </ul>
 			        </li>
 			        <li>
 			            <a href="#grouping">Grouping</a>
 			        </li>
 			        <li>
-			            <a href="#field_grouping">Field Grouping</a>
-			        </li>
-			        <li>
-			            <a href="#date_range_searches">Date Range Searches</a>
-			            <ul class="nav">
-			                <li>
-			                    <a href="#datemath_syntax">DateMath Syntax</a>
-			                </li>
-			            </ul>
-			        </li>
-			        <li>
-			            <a href="#escaping_special_characters">Escaping Special Characters</a>
+			            <a href="#reserved">Reserved Characters</a>
 			        </li>
 			    </ul>
 			    <a class="back-to-top" href="#top">Back to top</a>

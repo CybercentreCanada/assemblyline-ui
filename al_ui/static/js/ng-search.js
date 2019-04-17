@@ -1,7 +1,7 @@
 let ngSearch = angular.module('search', []);
 
 ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
-    $scope.suggestions = ["OR", "AND", "NOT", "TO", "NOW", "DAY", "MONTH", "YEAR", "HOUR", "MINUTE"];
+    $scope.suggestions = ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"];
     $scope.favorites = {};
     $scope.favorites_toggled = [];
     $scope.global_filters = {};
@@ -383,7 +383,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
 });
 
 ngSearch.controller('SearchControllerQuick', function ($scope, $http) {
-    $scope.quick_suggestions = ["OR", "AND", "NOT", "TO", "NOW", "DAY", "MONTH", "YEAR", "HOUR", "MINUTE"];
+    $scope.quick_suggestions = ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"];
     $scope.quick = "";
 
     $http({
