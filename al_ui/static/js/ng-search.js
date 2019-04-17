@@ -124,10 +124,7 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
             created_by: null,
             name: null,
             query: query,
-            label: [],
-            type: 'private',
-            priority: '',
-            status: ''
+            type: 'private'
         };
         $scope.edit_mode = false;
         $scope.last_error = "";
