@@ -39,7 +39,7 @@
                     <div class="col-sm-2"></div>
                     <div class="col-sm-10 small form-inline">
                         <a id="{{alert_idx}}_submission" ng-disabled="!alert.sid" class="btn btn-xs btn-default" href="/submission_detail.html?sid={{alert.sid}}" class="btn btn-xs btn-default">Submission</a>
-                        <a id="{{alert_idx}}_related" href="/search.html?query={{alert.file.md5}}" class="btn btn-xs btn-default">Search MD5</a>
+                        <a id="{{alert_idx}}_related" href="/search.html?query={{alert.file.sha256}}" class="btn btn-xs btn-default">Search SHA256</a>
                         <a id="{{alert_idx}}_similar" href="" class="btn btn-default btn-xs" ng-click="count_similar(alert, alert_idx);">Count similar</a>
                         <a id="{{alert_idx}}_related_alerts" href="" class="btn btn-default btn-xs" ng-click="list_related_alerts(alert, alert_idx);">Related IDs</a>
                         <a ng-if="!user.read_only" id="{{alert_idx}}_ownership" href="" ng-disabled="alert.owner" class="btn btn-xs btn-default" ng-click="take_ownership(alert, alert_idx);"><span ng-show="alert.owner">Has</span><span ng-show="!alert.owner">Take</span> ownership</a>

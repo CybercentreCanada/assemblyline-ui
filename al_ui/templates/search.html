@@ -306,14 +306,14 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Alert Time</th><th>Score</th><th>MD5</th><th>Status</th><th>Type</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
+									<th nowrap>Alert Time</th><th>Score</th><th>SHA256</th><th>Status</th><th>Type</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="alert in alert_list.items | orderBy:'reporting_ts':true">
 									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.reporting_ts | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
 									<td class="{{alert.al.score | score_color}}"><a href="/alert_detail.html?alert_key={{alert.id}}"><strong>{{alert.al.score}}</strong></a></td>
-									<td width="100%"><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.md5 | breakableStr}}</a></td>
+									<td width="100%"><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.sha256 | breakableStr}}</a></td>
 									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.status}}</a></td>
 									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.type}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/alert_detail.html?alert_key={{alert.id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>
