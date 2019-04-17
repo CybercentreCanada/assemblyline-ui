@@ -24,11 +24,11 @@
 				<div class="col-sm-6 col-md-8"></div>
 				<div class="col-sm-3 col-md-2">
                     <label>Time constraint</label>
-                    <select class="form-control" ng-model="time_slice" ng-click="filterData(filter)" ng-options="option.value as option.name for option in time_slice_array"></select>
+                    <select class="form-control" ng-model="time_slice" ng-change="filterData(filter)" ng-options="option.value as option.name for option in time_slice_array"></select>
             	</div>
                 <div class="col-sm-3 col-md-2">
                     <label>Group By</label>
-                    <select class="form-control" ng-model="group_by" ng-click="filterData(filter)" ng-options="grp for grp in possible_group_by"></select>
+                    <select class="form-control" ng-model="group_by" ng-change="filterData(filter)" ng-options="grp for grp in possible_group_by"></select>
             	</div>
 			</div>
 		</div>
