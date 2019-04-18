@@ -31,62 +31,78 @@ class PrintLogger(object):
         print(f"{self.indent}[E] {msg}")
 
 
-print("Loading datastore...")
-ds = forge.get_datastore()
-fs = forge.get_filestore()
-config = forge.get_config()
 
-print("\nCreating user object...")
-user_data = User({
-    "agrees_with_tos": "NOW",
-    "classification": "RESTRICTED",
-    "name": "Admin user",
-    "password": get_password_hash("admin"),
-    "uname": "admin",
-    "is_admin": True})
-ds.user.save('admin', user_data)
-ds.user_settings.save('admin', UserSettings())
-print(f"\tU:{user_data.uname}   P:{user_data.uname}")
-user_data = User({"name": "user", "password": get_password_hash("user"), "uname": "user"})
-ds.user.save('user', user_data)
-ds.user_settings.save('user', UserSettings())
-print(f"\tU:{user_data.uname}    P:{user_data.uname}")
+def create_basic_data(log, ds=None):
+    ds = ds or forge.get_datastore()
+    if ds.user.search("id:*", rows=0)['total'] == 0:
+        log.info("\nCreating user object...")
+        user_data = User({
+            "agrees_with_tos": "NOW",
+            "classification": "RESTRICTED",
+            "name": "Admin user",
+            "password": get_password_hash("admin"),
+            "uname": "admin",
+            "is_admin": True})
+        ds.user.save('admin', user_data)
+        ds.user_settings.save('admin', UserSettings())
+        log.info(f"\tU:{user_data.uname}   P:{user_data.uname}")
+        user_data = User({"name": "user", "password": get_password_hash("user"), "uname": "user"})
+        ds.user.save('user', user_data)
+        ds.user_settings.save('user', UserSettings())
+        log.info(f"\tU:{user_data.uname}    P:{user_data.uname}")
+    else:
+        log.info("\nUsers already exist, skipping...")
 
-print("\nCreating services...")
-for svc_name, svc in SERVICES.items():
-    service_data = Service({
-        "name": svc_name,
-        "enabled": True,
-        "category": svc[0],
-        "stage": svc[1],
-        "version": "3.3.0"
-    })
-    # Save a v3 service
-    ds.service.save(f"{service_data.name}_{service_data.version}", service_data)
+    if ds.service_delta.search("id:*", rows=0)['total'] == 0:
+        log.info("\nCreating services...")
+        for svc_name, svc in SERVICES.items():
+            service_data = Service({
+                "name": svc_name,
+                "enabled": True,
+                "category": svc[0],
+                "stage": svc[1],
+                "version": "3.3.0"
+            })
+            # Save a v3 service
+            ds.service.save(f"{service_data.name}_{service_data.version}", service_data)
 
-    # Save the same service as v4
-    service_data.version = "4.0.0"
-    ds.service.save(f"{service_data.name}_{service_data.version}", service_data)
+            # Save the same service as v4
+            service_data.version = "4.0.0"
+            ds.service.save(f"{service_data.name}_{service_data.version}", service_data)
 
-    # Save the default delta entry
-    ds.service_delta.save(service_data.name, {"version": service_data.version})
-    print(f'\t{svc_name}')
+            # Save the default delta entry
+            ds.service_delta.save(service_data.name, {"version": service_data.version})
+            log.info(f'\t{svc_name}')
+    else:
+        log.info("Services already exist, skipping...")
 
-print("\nImporting test signatures...")
-yp = YaraImporter(logger=PrintLogger(indent="\t"))
-parsed = yp.parse_file('al_yara_signatures.yar')
-yp.import_now([p['rule'] for p in parsed])
-signatures = [p['rule']['name'] for p in parsed]
+    if ds.signature.search("id:*", rows=0)['total'] == 0:
+        log.info("\nImporting test signatures...")
+        yp = YaraImporter(logger=PrintLogger(indent="\t"))
+        parsed = yp.parse_file('al_yara_signatures.yar')
+        yp.import_now([p['rule'] for p in parsed])
+        signatures = [p['rule']['name'] for p in parsed]
+    else:
+        log.info("Signatures already exist, skipping...")
+        signatures = list(ds.signature.keys())
 
-print("\nCreating random heuristics...")
-for _ in range(40):
-    h = random_model_obj(Heuristic)
-    h.name = get_random_phrase()
-    ds.heuristic.save(h.heur_id, h)
-    print(f'\t{h.heur_id}')
+    if ds.heuristic.search("id:*", rows=0)['total'] == 0:
+        log.info("\nCreating random heuristics...")
+        for _ in range(40):
+            h = random_model_obj(Heuristic)
+            h.name = get_random_phrase()
+            ds.heuristic.save(h.heur_id, h)
+            log.info(f'\t{h.heur_id}')
+    else:
+        log.info("Heuristics already exist, skipping...")
 
-if "full" in sys.argv:
-    print("\nCreating 20 Files...")
+    return signatures
+
+def create_extra_data(log, signatures, ds=None, fs=None):
+    ds = ds or forge.get_datastore()
+    fs = fs or forge.get_filestore()
+
+    log.info("\nCreating 20 Files...")
     file_hashes = []
     for x in range(20):
         f = random_model_obj(File)
@@ -95,9 +111,9 @@ if "full" in sys.argv:
 
         fs.put(f.sha256, f.sha256)
 
-        print(f"\t{f.sha256}")
+        log.info(f"\t{f.sha256}")
 
-    print("\nCreating 6 Results per file...")
+    log.info("\nCreating 6 Results per file...")
     result_keys = []
     for fh in file_hashes:
         other_files = list(set(file_hashes) - {fh})
@@ -124,12 +140,10 @@ if "full" in sys.argv:
             key = r.build_key()
             result_keys.append(key)
             ds.result.save(key, r)
-            print(f"\t{key}")
+            log.info(f"\t{key}")
 
-    print("\nCreating 4 EmptyResults per file...")
+    log.info("\nCreating 4 EmptyResults per file...")
     for fh in file_hashes:
-        other_files = list(set(file_hashes) - {fh})
-
         for x in range(4):
             # Get a random result key
             r = random_model_obj(Result)
@@ -139,9 +153,9 @@ if "full" in sys.argv:
 
             # Save an empty result using that key
             ds.emptyresult.save(key, random_model_obj(EmptyResult))
-            print(f"\t{key}")
+            log.info(f"\t{key}")
 
-    print("\nCreating 2 Errors per file...")
+    log.info("\nCreating 2 Errors per file...")
     error_keys = []
     for fh in file_hashes:
         for x in range(2):
@@ -150,9 +164,9 @@ if "full" in sys.argv:
             key = e.build_key()
             error_keys.append(key)
             ds.error.save(key, e)
-            print(f"\t{key}")
+            log.info(f"\t{key}")
 
-    print("\nCreating 10 Submissions...")
+    log.info("\nCreating 10 Submissions...")
     submissions = []
     for x in range(10):
         s = random_model_obj(Submission)
@@ -165,9 +179,9 @@ if "full" in sys.argv:
             f.sha256 = random.choice(s_file_hashes)
         ds.submission.save(s.sid, s)
         submissions.append({"sid": s.sid, "file": s.files[0].sha256})
-        print(f"\t{s.sid}")
+        log.info(f"\t{s.sid}")
 
-    print("\nCreating 50 Alerts...")
+    log.info("\nCreating 50 Alerts...")
     for x in range(50):
         submission = random.choice(submissions)
         a = random_model_obj(Alert)
@@ -175,6 +189,14 @@ if "full" in sys.argv:
         a.sid = submission['sid']
         a.owner = random.choice(['admin', 'user', 'other', None])
         ds.alert.save(a.alert_id, a)
-        print(f"\t{a.alert_id}")
+        log.info(f"\t{a.alert_id}")
 
-print("\nDone.")
+
+if __name__ == "__main__":
+    datastore = forge.get_datastore()
+    logger = PrintLogger()
+    sigs = create_basic_data(logger, ds=datastore)
+    if "full" in sys.argv:
+        create_extra_data(logger, sigs, ds=datastore)
+
+    logger.info("\nDone.")
