@@ -66,7 +66,7 @@
 						</thead>
 						<tbody>
 							{% for field, val in fields%}
-							<tr><td width="80%">{{ field }}</td><td width="20%">{{ val.type }}</td><td>{% if val.stored %}<span title="Stored" class="text-icon icon-squares text-info"></span>&nbsp;{% endif %}{% if val.default %}<span title="Default" class="text-icon icon-squared text-primary"></span>&nbsp;{% endif %}{% if val.list %}<span title="Multivalued" class="text-icon icon-squarem text-warning"></span>{% endif %}</td></tr>
+							<tr><td width="80%">{{ field }}</td><td width="20%">{{ val.type }}</td><td>{% if val.stored %}<span title="Stored" class="text-icon icon-squares text-info"></span>&nbsp;{% endif %}{% if val.default %}<span title="Default" class="text-icon icon-squared text-primary"></span>&nbsp;{% endif %}{% if val.list %}<span title="Multivalued" class="text-icon icon-squarem text-muted"></span>{% endif %}</td></tr>
 							{% endfor %}
 						</tbody>
 					</table>
