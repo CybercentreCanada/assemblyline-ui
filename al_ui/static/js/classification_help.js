@@ -4,7 +4,7 @@
 /**
  * Main App Module
  */
-let app = angular.module('app', ['search', 'utils'])
+let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
     .controller('ALController', function ($scope, $timeout) {
         $scope.user = null;
 
@@ -30,15 +30,20 @@ let app = angular.module('app', ['search', 'utils'])
 
         $scope.level_list = function () {
             let out = [];
-            for (let i in $scope.classification_definition.levels_map) {
-                if (!isNaN(parseInt(i))) {
-                    out.push($scope.classification_definition.levels_map[i]);
+            if ($scope.classification_definition !== null && $scope.classification_definition !== undefined){
+                for (let i in $scope.classification_definition.levels_map) {
+                    if (!isNaN(parseInt(i))) {
+                        out.push($scope.classification_definition.levels_map[i]);
+                    }
                 }
             }
             return out;
         };
 
         $scope.getLength = function (obj) {
+            if (obj === undefined || obj === null){
+                return 0;
+            }
             return Object.keys(obj).length;
         }
     });
