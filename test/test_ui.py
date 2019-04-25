@@ -1,7 +1,10 @@
+import json
+
 import pytest
 import requests
 import warnings
 
+from assemblyline.common import forge
 from assemblyline.common.security import get_password_hash, get_totp_token
 from assemblyline.common.yara import YaraImporter
 from assemblyline.odm.models.alert import Alert
@@ -36,27 +39,26 @@ class CrashLogger(object):
 
 
 HOST = "https://localhost:443"
+alert_id = None
+ds = forge.get_datastore()
 
 
 def purge_system():
-    from assemblyline.common import forge
-    ds = forge.get_datastore()
-    
-    ds.user.delete_matching("id:*")
-    ds.user_settings.delete_matching("id:*")
-    ds.service.delete_matching("id:*")
-    ds.service_delta.delete_matching("id:*")
-    ds.signature.delete_matching("id:*")
-    ds.heuristic.delete_matching("id:*")
-    ds.alert.delete_matching("id:*")
+    ds.user.wipe()
+    ds.user_settings.wipe()
+    ds.service.wipe()
+    ds.service_delta.wipe()
+    ds.signature.wipe()
+    ds.heuristic.wipe()
+    ds.alert.wipe()
 
 
 @pytest.fixture(scope="module")
-def data_for_test(request):
-    from assemblyline.common import forge
-    ds = forge.get_datastore()
+def datastore(request):
+    global alert_id
+    purge_system()
 
-    user_total  = ds.user.search("id:*", rows=0)['total']
+    user_total = ds.user.search("id:*", rows=0)['total']
     if user_total == 0:
         user_data = User({
             "agrees_with_tos": "NOW",
@@ -113,6 +115,8 @@ def data_for_test(request):
     if alert_total == 0:
         for _ in range(10):
             a = random_model_obj(Alert)
+            if alert_id is None:
+                alert_id = a.alert_id
             a.owner = None
             ds.alert.save(a.alert_id, a)
         ds.alert.commit()
@@ -121,6 +125,7 @@ def data_for_test(request):
 
     return ds
 
+
 @pytest.fixture(scope='function')
 def login_session():
     session = requests.Session()
@@ -128,18 +133,20 @@ def login_session():
     return data, session
 
 
-def get_api_data(session, url, params=None, body=None, method="GET"):
+def get_api_data(session, url, params=None, data=None, method="GET"):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
 
         if method == "GET":
             res = session.get(url, params=params, verify=False)
         elif method == "POST":
-            res = session.post(url, body=body, params=params, verify=False)
+            res = session.post(url, data=data, params=params, verify=False,
+                               headers={'content-type': 'application/json'})
         elif method == "DELETE":
             res = session.delete(url, params=params, verify=False)
         elif method == "PUT":
-            res = session.put(url, body=body, params=params, verify=False)
+            res = session.put(url, data=data, params=params, verify=False,
+                              headers={'content-type': 'application/json'})
         else:
             raise InvalidRequestMethod(method)
 
@@ -154,15 +161,16 @@ def get_api_data(session, url, params=None, body=None, method="GET"):
             raise APIError(res_data["api_error_message"])
 
 
-def test_data_validity(data_for_test):
-    assert data_for_test.user.search("id:*", rows=0)['total'] == 2
-    assert data_for_test.service_delta.search("id:*", rows=0)['total'] == 14
-    assert data_for_test.signature.search("id:*", rows=0)['total'] == 19
-    assert data_for_test.heuristic.search("id:*", rows=0)['total'] > 0
+def test_data_validity(datastore):
+    assert datastore.user.search("id:*", rows=0)['total'] == 2
+    assert datastore.service_delta.search("id:*", rows=0)['total'] == 14
+    assert datastore.signature.search("id:*", rows=0)['total'] == 19
+    assert datastore.heuristic.search("id:*", rows=0)['total'] > 0
+    assert datastore.alert.search("id:*", rows=0)['total'] == 10
 
 
 # noinspection PyUnusedLocal
-def test_login(data_for_test, login_session):
+def test_login(datastore, login_session):
     user_info, session = login_session
     assert user_info['username'] == "admin"
 
@@ -170,11 +178,11 @@ def test_login(data_for_test, login_session):
     assert isinstance(resp, list)
 
     resp = get_api_data(session, f"{HOST}/api/v4/auth/logout/")
-    assert resp.get('success', False) == True
+    assert resp.get('success', False) is True
 
 
 # noinspection PyUnusedLocal
-def test_api_keys(data_for_test, login_session):
+def test_api_keys(datastore, login_session):
     _, session = login_session
     key_name = get_random_hash(6)
 
@@ -217,19 +225,19 @@ def test_api_keys(data_for_test, login_session):
 
     # Delete the read key
     resp = get_api_data(session, f"{HOST}/api/v4/auth/apikey/{key_name}_r/", method="DELETE")
-    assert resp.get('success', False) == True
+    assert resp.get('success', False) is True
 
     # Delete the read/write key
     resp = get_api_data(session, f"{HOST}/api/v4/auth/apikey/{key_name}_rw/", method="DELETE")
-    assert resp.get('success', False) == True
+    assert resp.get('success', False) is True
 
     # Delete the write key
     resp = get_api_data(session, f"{HOST}/api/v4/auth/apikey/{key_name}_w/", method="DELETE")
-    assert resp.get('success', False) == True
+    assert resp.get('success', False) is True
 
 
 # noinspection PyUnusedLocal
-def test_otp(data_for_test, login_session):
+def test_otp(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/auth/setup_otp/")
@@ -237,14 +245,14 @@ def test_otp(data_for_test, login_session):
     assert secret_key is not None
 
     resp = get_api_data(session, f"{HOST}/api/v4/auth/validate_otp/{get_totp_token(secret_key)}/")
-    assert resp.get('success', False) == True
+    assert resp.get('success', False) is True
 
     resp = get_api_data(session, f"{HOST}/api/v4/auth/disable_otp/")
-    assert resp.get('success', False) == True
+    assert resp.get('success', False) is True
 
 
 # noinspection PyUnusedLocal
-def test_doc(data_for_test, login_session):
+def test_doc(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/")
@@ -252,7 +260,7 @@ def test_doc(data_for_test, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_help(data_for_test, login_session):
+def test_help(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/help/classification_definition/")
@@ -266,27 +274,48 @@ def test_help(data_for_test, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_alert(data_for_test, login_session):
+def test_alert_get_labels(datastore, login_session):
     _, session = login_session
-
-    alert_id = "123"
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/labels/")
     assert isinstance(resp, dict)
 
+
+# noinspection PyUnusedLocal
+def test_alert_get_priorities(datastore, login_session):
+    _, session = login_session
+
     resp = get_api_data(session, f"{HOST}/api/v4/alert/priorities/")
     assert "CRITICAL" in resp or "HIGH" in resp or "LOW" in resp or "MEDIUM" in resp
+
+
+# noinspection PyUnusedLocal
+def test_alert_get_statistics(datastore, login_session):
+    _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/statistics/")
     assert "file.md5" in resp
 
+
+# noinspection PyUnusedLocal
+def test_alert_get_statuses(datastore, login_session):
+    _, session = login_session
+
     resp = get_api_data(session, f"{HOST}/api/v4/alert/statuses/")
     assert "ASSESS" in resp or "MALICIOUS" in resp or "NON_MALICIOUS" in resp or "TRIAGE" in resp
+
+
+# noinspection PyUnusedLocal
+def test_alert_related(datastore, login_session):
+    _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/related/", params={'q': "id:*"})
     assert isinstance(resp, list)
 
-    alert_id = resp[0]
+
+# noinspection PyUnusedLocal
+def test_alert_get_alert_id(datastore, login_session):
+    _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/{alert_id}/")
     try:
@@ -295,135 +324,186 @@ def test_alert(data_for_test, login_session):
         pytest.fail("Invalid alert")
     assert isinstance(resp, Alert)
 
+
+# noinspection PyUnusedLocal
+def test_alert_list(datastore, login_session):
+    _, session = login_session
+
     resp = get_api_data(session, f"{HOST}/api/v4/alert/list/")
     assert 'items' in resp and 'total' in resp
+
+
+# noinspection PyUnusedLocal
+def test_alert_grouped_alert(datastore, login_session):
+    _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/grouped/file.sha256/")
     assert 'counted_total' in resp
 
+
+# noinspection PyUnusedLocal
+def test_alert_ownership(datastore, login_session):
+    _, session = login_session
+
     resp = get_api_data(session, f"{HOST}/api/v4/alert/ownership/{alert_id}/")
     assert resp.get('success', False)
+
+    datastore.alert.commit()
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/ownership/batch/", params={'q': "id:*"})
     assert resp.get('success', 0) > 0
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/label/{alert_id}/", method='POST')
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/label/batch/", params={'q': "id:*"}, method='POST')
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/priority/{alert_id}/", method='POST')
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/priority/batch/", params={'q': "id:*"}, method='POST')
+# noinspection PyUnusedLocal
+def test_alert_labeling(datastore, login_session):
+    _, session = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/status/{alert_id}/", method='POST')
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/status/batch/", params={'q': "id:*"}, method='POST')
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/label/{alert_id}/",
+                        data=json.dumps(['TEST1', 'TEST2']), method='POST')
+    assert resp.get('success', False)
+
+    datastore.alert.commit()
+
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/label/batch/", data=json.dumps(['BATCH1', 'BATCH2']),
+                        params={'q': "id:*"}, method='POST')
+    assert resp.get('success', 0) > 0
 
 
 # noinspection PyUnusedLocal
-def test_bundle(data_for_test, login_session):
+def test_alert_priorities(datastore, login_session):
+    _, session = login_session
+
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/priority/{alert_id}/", data=json.dumps("HIGH"), method='POST')
+    assert resp.get('success', False)
+
+    datastore.alert.commit()
+
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/priority/batch/", data=json.dumps("LOW"),
+                        params={'q': "id:*"}, method='POST')
+    assert resp.get('success', 0) > 0
+
+
+# noinspection PyUnusedLocal
+def test_alert_statuses(datastore, login_session):
+    _, session = login_session
+
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/status/{alert_id}/", data=json.dumps("ASSESS"), method='POST')
+    assert resp.get('success', False)
+
+    datastore.alert.commit()
+
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/status/batch/", data=json.dumps("MALICIOUS"),
+                        params={'q': "id:*"}, method='POST')
+    assert resp.get('success', 0) > 0
+
+
+# noinspection PyUnusedLocal
+def test_bundle(datastore, login_session):
     _, session = login_session
 
     # TODO: bundle tests
 
 
 # noinspection PyUnusedLocal
-def test_error(data_for_test, login_session):
+def test_error(datastore, login_session):
     _, session = login_session
 
     # TODO: Error tests
 
 
 # noinspection PyUnusedLocal
-def test_file(data_for_test, login_session):
+def test_file(datastore, login_session):
     _, session = login_session
 
     # TODO: File tests
 
 
 # noinspection PyUnusedLocal
-def test_hash_search(data_for_test, login_session):
+def test_hash_search(datastore, login_session):
     _, session = login_session
 
     # TODO: Hash_search tests
 
 
 # noinspection PyUnusedLocal
-def test_ingest(data_for_test, login_session):
+def test_ingest(datastore, login_session):
     _, session = login_session
 
     # TODO: ingest tests
 
 
 # noinspection PyUnusedLocal
-def test_live(data_for_test, login_session):
+def test_live(datastore, login_session):
     _, session = login_session
 
     # TODO: live tests
 
 
 # noinspection PyUnusedLocal
-def test_result(data_for_test, login_session):
+def test_result(datastore, login_session):
     _, session = login_session
 
     # TODO: Result tests
 
 
 # noinspection PyUnusedLocal
-def test_search(data_for_test, login_session):
+def test_search(datastore, login_session):
     _, session = login_session
 
     # TODO: Search tests
 
 
 # noinspection PyUnusedLocal
-def test_service(data_for_test, login_session):
+def test_service(datastore, login_session):
     _, session = login_session
 
     # TODO: Service tests
 
 
 # noinspection PyUnusedLocal
-def test_signature(data_for_test, login_session):
+def test_signature(datastore, login_session):
     _, session = login_session
 
     # TODO: Signature tests
 
 
 # noinspection PyUnusedLocal
-def test_submission(data_for_test, login_session):
+def test_submission(datastore, login_session):
     _, session = login_session
 
     # TODO: Submission tests
 
 
 # noinspection PyUnusedLocal
-def test_submit(data_for_test, login_session):
+def test_submit(datastore, login_session):
     _, session = login_session
 
     # TODO: Submit tests
 
 
 # noinspection PyUnusedLocal
-def test_tc_signature(data_for_test, login_session):
+def test_tc_signature(datastore, login_session):
     _, session = login_session
 
     # TODO: TC Signature tests
 
 
 # noinspection PyUnusedLocal
-def test_user(data_for_test, login_session):
+def test_user(datastore, login_session):
     _, session = login_session
 
     # TODO: User tests
 
 
 # noinspection PyUnusedLocal
-def test_vm(data_for_test, login_session):
+def test_vm(datastore, login_session):
     _, session = login_session
 
     # TODO: VM tests
 
 
 # noinspection PyUnusedLocal
-def test_workflow(data_for_test, login_session):
+def test_workflow(datastore, login_session):
     _, session = login_session
 
     # TODO: workflow tests
