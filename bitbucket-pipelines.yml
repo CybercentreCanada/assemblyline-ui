@@ -12,7 +12,7 @@ pipelines:
         script:
           - mkdir -p /etc/assemblyline/
           - mkdir -p /var/cache/assemblyline/
-          - cp test/config/config.yml /etc/assemblyline
+          - cp test/bitbucket/config.yml /etc/assemblyline
           - apt update
           - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
           - pip install -r al_ui/requirements.txt -r test/requirements.txt
