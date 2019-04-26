@@ -1,3 +1,5 @@
+assemblyline
+assemblyline-core
 python-baseconv
 werkzeug
 python-socketio<4
@@ -10,5 +12,3 @@ pyqrcode
 markdown
 contextvars
 elastic-apm[flask]
-assemblyline
-assemblyline-core
