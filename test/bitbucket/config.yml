@@ -23,6 +23,6 @@ filestore:
   storage: ["file:///tmp/storage/"]
 
 logging:
-  log_to_console: true
+  log_to_console: false
   log_to_file: false
   log_to_syslog: false
