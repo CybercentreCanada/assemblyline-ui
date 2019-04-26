@@ -29,7 +29,7 @@ definitions:
   services:
     elasticsearch:
       image: sgaroncse/elasticsearch:7.0.0
-      memory: 768
+      memory: 2048
       environment:
         ES_JAVA_OPTS: "-Xms512m -Xmx512m"
         DISCOVERY_TYPE: "single-node"
@@ -40,4 +40,4 @@ definitions:
 
     nginx:
       image: sgaroncse/nginx-ssl-bitbucket:1.15.10
-      memory: 256
+      memory: 5256
