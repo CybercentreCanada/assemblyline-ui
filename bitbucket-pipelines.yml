@@ -1,0 +1,67 @@
+
+image: python:3.6
+
+options:
+  max-time: 10
+
+pipelines:
+  default:
+    - step:
+        caches:
+          - pip
+        script:
+          - mkdir -p /etc/assemblyline/
+          - mkdir -p /var/cache/assemblyline/
+          - cp test/config/config.yml /etc/assemblyline
+          - apt update
+          - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
+          - pip install -r test/requirements.txt
+          - pip install pytest-error-for-skips  # Special for the pipeline where we know none should skip
+          - pytest -rsx -vv --error-for-skips
+        services:
+          - al_ui
+          - al_socketio
+          - elasticsearch
+          - redis
+          - nginx
+          -
+definitions:
+  services:
+    al_ui:
+      image: sgaroncse/assemblyline_base:4.0.0
+      memory: 256
+      volumes:
+        - test/config/:/etc/assemblyline/
+        - al_ui/:/opt/alv4/al_ui/
+        working_dir: /opt/alv4/al_ui/
+      command: python3 app.py
+
+    al_socketio:
+      image: sgaroncse/assemblyline_base:4.0.0
+      memory: 256
+      volumes:
+        - test/config/:/etc/assemblyline/
+        - al_ui/:/opt/alv4/al_ui/
+      working_dir: /opt/alv4/al_ui/
+      command: python3 socketsrv.py
+
+    elasticsearch:
+      image: sgaroncse/elasticsearch:7.0.0
+      memory: 768
+      environment:
+        ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        DISCOVERY_TYPE: "single-node"
+      ports:
+        - '9200:9200'
+
+    redis:
+      image: redis
+      memory: 256
+
+    nginx:
+      image: sgaroncse/nginx-ssl:1.15.10-2
+      memory: 256
+      ports:
+        - '443:443'
+        - '80:80'
+      command: /bin/bash -c "envsubst < /tmp/default.template > /etc/nginx/conf.d/default.conf && cat /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"

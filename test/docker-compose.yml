@@ -1,7 +1,6 @@
 version: '2.4'
 
 services:
-  # UI
   al_ui:
     image: sgaroncse/assemblyline_dev:4.0.4
     volumes:
@@ -14,10 +13,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_started
 
-  # SocketIO Server
   al_socketio:
     image: sgaroncse/assemblyline_dev:4.0.4
     volumes:
@@ -30,15 +26,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_started
-
-  minio:
-    image: minio/minio
-    environment:
-      MINIO_ACCESS_KEY: al_storage_key
-      MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
-    command: server /data
 
   elasticsearch:
     image: sgaroncse/elasticsearch:7.0.0
