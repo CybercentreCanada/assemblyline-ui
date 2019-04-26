@@ -40,4 +40,4 @@ definitions:
 
     nginx:
       image: sgaroncse/nginx-ssl-bitbucket:1.15.10
-      memory: 5256
+      memory: 256
