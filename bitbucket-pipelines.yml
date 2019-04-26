@@ -39,8 +39,5 @@ definitions:
       memory: 256
 
     nginx:
-      image: sgaroncse/nginx-ssl:1.15.10-3
+      image: sgaroncse/nginx-ssl:1.15.10-4
       memory: 256
-      environment:
-        UI_HOST: "localhost"
-        SOCKET_HOST: "localhost"
