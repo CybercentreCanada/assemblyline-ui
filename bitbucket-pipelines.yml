@@ -2,7 +2,7 @@
 image: python:3.6
 
 options:
-  max-time: 5
+  max-time: 2
 
 pipelines:
   default:
