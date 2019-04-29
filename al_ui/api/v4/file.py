@@ -105,12 +105,12 @@ def get_file_ascii(sha256, **kwargs):
     """
 
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj.classification):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         with forge.get_filestore() as f_transport:
             data = f_transport.get(sha256)
 
@@ -202,12 +202,12 @@ def get_file_hex(sha256, **kwargs):
     <THE FILE HEX REPRESENTATION>
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
     
-    if user and Classification.is_accessible(user['classification'], file_obj.classification):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         with forge.get_filestore() as f_transport:
             data = f_transport.get(sha256)
 
@@ -239,12 +239,12 @@ def get_file_strings(sha256, **kwargs):
     """
     user = kwargs['user']
     hlen = request.args.get('len', "6")
-    file_obj = STORAGE.file.get(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj.classification):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         with forge.get_filestore() as f_transport:
             data = f_transport.get(sha256)
 
@@ -288,11 +288,25 @@ def get_file_children(sha256, **kwargs):
     ]
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if file_obj:
-        if user and Classification.is_accessible(user['classification'], file_obj.classification):
-            return make_api_response(STORAGE.list_file_childrens(sha256, access_control=user['access_control']))
+        if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+            output = []
+            response = STORAGE.result.grouped_search("response.service_name",
+                                                     query=f"id:{sha256}* AND response.extracted:*", fl="id", rows=100,
+                                                     sort="created desc", access_control=user['access_control'],
+                                                     as_obj=False)
+            result_res = [x['id'] for y in response['items'] for x in y['items']]
+
+            processed_srl = []
+            for r in STORAGE.result.multiget(result_res, as_dictionary=False, as_obj=False):
+                for extracted in r['response']['extracted']:
+                    if extracted['sha256'] not in processed_srl:
+                        processed_srl.append(extracted['sha256'])
+                        output.append({'sha256': extracted['sha256'], 'name': extracted['name']})
+
+            return make_api_response(output)
         else:
             return make_api_response({}, "You are not allowed to view this file.", 403)
     else:
@@ -453,7 +467,7 @@ def get_file_results_for_service(sha256, service, **kwargs):
      "results": {}}              # Full result list for the service
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     args = [("fl", "_yz_rk"),
             ("sort", "created desc")]
@@ -466,12 +480,13 @@ def get_file_results_for_service(sha256, service, **kwargs):
         return make_api_response([], "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        res = STORAGE.direct_search("result", "_yz_rk:%s.%s*" % (sha256, service), args,
-                                    __access_control__=user["access_control"])['response']['docs']
-        keys = [k["_yz_rk"] for k in res]
+        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="id",
+                                    rows=100 if "all" in request.args else 1,
+                                    access_control=user["access_control"], as_obj=False)
+        keys = [k["id"] for k in res['items']]
 
         results = []
-        for r in STORAGE.get_results(keys):
+        for r in STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False):
             result = format_result(user['classification'], r, file_obj['classification'])
             if result:
                 results.append(result)
@@ -505,29 +520,21 @@ def get_file_score(sha256, **kwargs):
      "score": 0}                 # Latest score for the file
     """
     user = kwargs['user']
-    file_obj = STORAGE.get_file(sha256)
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)
 
-    args = [
-        ("group", "on"),
-        ("group.field", "response.service_name"),
-        ("group.format", "simple"),
-        ("fl", "result.score,_yz_rk"),
-        ("sort", "created desc"),
-        ("rows", "100")
-    ]
-
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         score = 0
         keys = []
-        res = STORAGE.direct_search("result", "_yz_rk:%s*" % sha256, args,
-                                    __access_control__=user["access_control"])
-        docs = res['grouped']['response.service_name']['doclist']['docs']
-        for d in docs:
-            score += d['result.score']
-            keys.append(d["_yz_rk"])
+        res = STORAGE.result.grouped_search("response.service_name", f"id:{sha256}*", fl="result.score,id",
+                                            sort="created desc", access_control=user["access_control"],
+                                            rows=100, as_obj=False)
+        for s in res['items']:
+            for d in s['items']:
+                score += d['result']['score']
+                keys.append(d["id"])
 
         return make_api_response({"file_info": file_obj, "score": score, "result_keys": keys})
     else:
