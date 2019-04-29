@@ -44,7 +44,7 @@ definitions:
       memory: 256
 
     minio:
-      image: minio/minio
+      image: sgaroncse/minio
       memory: 256
       environment:
         MINIO_ACCESS_KEY: al_storage_key
