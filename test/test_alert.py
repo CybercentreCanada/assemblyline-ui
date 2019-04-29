@@ -8,7 +8,8 @@ from assemblyline.odm.randomizer import random_model_obj
 # noinspection PyUnresolvedReferences
 from base import HOST, login_session, get_api_data, create_users, wipe_users
 
-alert_id = None
+NUM_ALERTS = 10
+test_alert = None
 ds = forge.get_datastore()
 
 
@@ -19,14 +20,14 @@ def purge_alert():
 
 @pytest.fixture(scope="module")
 def datastore(request):
-    global alert_id
+    global test_alert
 
     create_users(ds)
 
-    for _ in range(10):
+    for _ in range(NUM_ALERTS):
         a = random_model_obj(Alert)
-        if alert_id is None:
-            alert_id = a.alert_id
+        if test_alert is None:
+            test_alert = a
         a.owner = None
         ds.alert.save(a.alert_id, a)
     ds.alert.commit()
@@ -78,12 +79,9 @@ def test_related(datastore, login_session):
 def test_get_alert_id(datastore, login_session):
     _, session = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/{alert_id}/")
-    try:
-        resp = Alert(resp)
-    except (ValueError, TypeError):
-        pytest.fail("Invalid alert")
-    assert isinstance(resp, Alert)
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/{test_alert.alert_id}/")
+    alert = Alert(resp)
+    assert alert == test_alert
 
 
 # noinspection PyUnusedLocal
@@ -91,7 +89,7 @@ def test_list(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/alert/list/")
-    assert 'items' in resp and 'total' in resp
+    assert NUM_ALERTS >= resp['total'] > 0
 
 
 # noinspection PyUnusedLocal
@@ -106,7 +104,7 @@ def test_grouped_alert(datastore, login_session):
 def test_ownership(datastore, login_session):
     _, session = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/ownership/{alert_id}/")
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/ownership/{test_alert.alert_id}/")
     assert resp.get('success', False)
 
     datastore.alert.commit()
@@ -119,7 +117,7 @@ def test_ownership(datastore, login_session):
 def test_labeling(datastore, login_session):
     _, session = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/label/{alert_id}/",
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/label/{test_alert.alert_id}/",
                         data=json.dumps(['TEST1', 'TEST2']), method='POST')
     assert resp.get('success', False)
 
@@ -134,7 +132,8 @@ def test_labeling(datastore, login_session):
 def test_priorities(datastore, login_session):
     _, session = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/priority/{alert_id}/", data=json.dumps("HIGH"), method='POST')
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/priority/{test_alert.alert_id}/",
+                        data=json.dumps("HIGH"), method='POST')
     assert resp.get('success', False)
 
     datastore.alert.commit()
@@ -148,7 +147,8 @@ def test_priorities(datastore, login_session):
 def test_statuses(datastore, login_session):
     _, session = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/alert/status/{alert_id}/", data=json.dumps("ASSESS"), method='POST')
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/status/{test_alert.alert_id}/",
+                        data=json.dumps("ASSESS"), method='POST')
     assert resp.get('success', False)
 
     datastore.alert.commit()
