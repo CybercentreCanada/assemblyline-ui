@@ -2,7 +2,7 @@
 image: python:3.6
 
 options:
-  max-time: 2
+  max-time: 5
 
 pipelines:
   default:
@@ -24,6 +24,7 @@ pipelines:
           - elasticsearch
           - redis
           - nginx
+          - minio
 
 definitions:
   services:
@@ -44,6 +45,7 @@ definitions:
 
     minio:
       image: minio/minio
+      memory: 256
       environment:
         MINIO_ACCESS_KEY: al_storage_key
         MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
