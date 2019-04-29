@@ -74,7 +74,7 @@ def login_session():
     return data, session
 
 
-def get_api_data(session, url, params=None, data=None, method="GET"):
+def get_api_data(session, url, params=None, data=None, method="GET", raw=False):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
 
@@ -94,9 +94,12 @@ def get_api_data(session, url, params=None, data=None, method="GET"):
         if "XSRF-TOKEN" in res.cookies:
             session.headers.update({"X-XSRF-TOKEN": res.cookies['XSRF-TOKEN']})
 
-        res_data = res.json()
-
-        if res.ok:
-            return res_data['api_response']
+        if raw:
+            return res.content
         else:
-            raise APIError(res_data["api_error_message"])
+            res_data = res.json()
+
+            if res.ok:
+                return res_data['api_response']
+            else:
+                raise APIError(res_data["api_error_message"])

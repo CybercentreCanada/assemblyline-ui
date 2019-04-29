@@ -41,3 +41,9 @@ definitions:
     nginx:
       image: sgaroncse/nginx-ssl-bitbucket:1.15.10
       memory: 256
+
+    minio:
+      image: minio/minio
+      environment:
+        MINIO_ACCESS_KEY: al_storage_key
+        MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd

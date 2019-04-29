@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
 
   al_socketio:
     image: sgaroncse/assemblyline_dev:4.0.4
@@ -26,6 +28,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
 
   elasticsearch:
     image: sgaroncse/elasticsearch:7.0.0
@@ -59,4 +63,14 @@ services:
         condition: service_started
       al_socketio:
         condition: service_started
+
+  minio:
+    image: minio/minio
+    environment:
+      MINIO_ACCESS_KEY: al_storage_key
+      MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
+    ports:
+      - '9000:9000'
+    command: server /data
+
 
