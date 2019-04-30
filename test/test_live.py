@@ -26,8 +26,11 @@ def purge_live():
 def datastore(request):
     global test_submission
     create_users(ds)
+
     test_submission = random_model_obj(Submission)
     ds.submission.save(test_submission.sid, test_submission)
+    ds.submission.commit()
+
     request.addfinalizer(purge_live)
     return ds
 
