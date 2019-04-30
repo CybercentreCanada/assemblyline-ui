@@ -25,7 +25,7 @@ iq = NamedQueue("m-ingest", host=config.core.redis.persistent.host,
 file_hashes = []
 
 
-def purge_help():
+def purge_ingest():
     # Cleanup Elastic
     ds.file.wipe()
     wipe_services(ds)
@@ -53,7 +53,7 @@ def datastore(request):
 
     ds.file.commit()
 
-    request.addfinalizer(purge_help)
+    request.addfinalizer(purge_ingest)
     return ds
 
 
