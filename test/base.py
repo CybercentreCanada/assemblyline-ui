@@ -5,6 +5,7 @@ import warnings
 
 
 from assemblyline.common.security import get_password_hash
+from assemblyline.common.yara import YaraImporter
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
@@ -20,6 +21,22 @@ class InvalidRequestMethod(Exception):
 class APIError(Exception):
     pass
 
+class NullLogger(object):
+    def info(self, msg):
+        pass
+
+    def warn(self, msg):
+        pass
+
+    def error(self, msg):
+        pass
+
+    def exception(self, msg):
+        pass
+
+    def warning(self, msg):
+        pass
+
 
 def wipe_users(ds):
     ds.user.wipe()
@@ -30,6 +47,12 @@ def wipe_users(ds):
 def wipe_services(ds):
     ds.service.wipe()
     ds.service_delta.wipe()
+
+def create_signatures():
+    yp = YaraImporter(logger=NullLogger())
+    parsed = yp.parse_file('al_yara_signatures.yar')
+    yp.import_now([p['rule'] for p in parsed])
+    return [p['rule']['name'] for p in parsed]
 
 def create_users(ds):
     user_data = User({
