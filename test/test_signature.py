@@ -11,7 +11,8 @@ from assemblyline.common import forge
 from assemblyline.odm.models.signature import Signature
 from assemblyline.odm.randomizer import random_model_obj
 
-ds = forge.get_datastore()
+config = forge.get_config()
+ds = forge.get_datastore(config)
 
 
 def purge_signature():
@@ -33,7 +34,7 @@ def test_add_signature(datastore, login_session):
 
     data = random_model_obj(Signature).as_primitives()
     resp = get_api_data(session, f"{HOST}/api/v4/signature/add/", data=json.dumps(data), method="PUT")
-    assert resp == {'rev': 1, 'sid': 'CSE_000001', 'success': True}
+    assert resp == {'rev': 1, 'sid': f'{config.system.organisation}_000001', 'success': True}
 
 
 # noinspection PyUnusedLocal
