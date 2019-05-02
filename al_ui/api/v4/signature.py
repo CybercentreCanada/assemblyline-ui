@@ -422,7 +422,7 @@ def download_signatures(**kwargs):
             rule_file_bin = header + YaraParser().dump_rule_file(signature_list)
             rule_file_bin = rule_file_bin
 
-            signature_cache.save(query_hash, rule_file_bin, ttl=DEFAULT_CACHE_TTL)
+            signature_cache.save(query_hash, rule_file_bin.encode(encoding="UTF-8"), ttl=DEFAULT_CACHE_TTL)
 
             return make_file_response(
                 rule_file_bin, f"al_yara_signatures_{query_hash[:7]}.yar",
@@ -715,7 +715,7 @@ def update_available(**_):
     None
 
     Arguments:
-    last_update        => Epoch time of last update.
+    last_update        => ISO time of last update.
 
     Data Block:
     None
