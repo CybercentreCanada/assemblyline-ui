@@ -1,5 +1,3 @@
-import json
-import random
 
 import pytest
 
@@ -8,7 +6,6 @@ from base import HOST, login_session, get_api_data, create_users, wipe_users, cr
 
 from assemblyline.common import forge
 from assemblyline.odm.models.alert import Alert
-from assemblyline.odm.models.error import Error
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
@@ -70,54 +67,107 @@ def test_deep_search(datastore, login_session):
     _, session = login_session
 
     for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/deep/{collection}/", params={"q": "id:*"})
-        assert resp['length'] == TEST_SIZE
+        resp = get_api_data(session, f"{HOST}/api/v4/search/deep/{collection}/", params={"query": "id:*"})
+        assert resp['length'] >= TEST_SIZE
 
 
 # noinspection PyUnusedLocal
 def test_facet_search(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    for collection in collections:
+        resp = get_api_data(session, f"{HOST}/api/v4/search/facet/{collection}/id/")
+        assert len(resp) == TEST_SIZE
+        for v in resp.values():
+            assert isinstance(v, int)
 
 
 # noinspection PyUnusedLocal
 def test_grouped_search(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    for collection in collections:
+        resp = get_api_data(session, f"{HOST}/api/v4/search/grouped/{collection}/id/")
+        assert resp['total'] >= TEST_SIZE
+        for v in resp['items']:
+            assert v['total'] == 1 and 'value' in v
 
 
 # noinspection PyUnusedLocal
 def test_histogram_search(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    date_hist_map = {
+        'alert': 'ts',
+        'file': 'seen.first',
+        'signature': 'meta.creation_date',
+        'submission': 'times.submitted'
+    }
+
+    for collection in collections:
+        hist_field = date_hist_map.get(collection, 'expiry_ts')
+        resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
+        for k, v in resp.items():
+            assert k.startswith("2") and k.endswith("Z") and isinstance(v, int)
+
+    int_hist_map = {
+        'alert': 'al.score',
+        'file': 'seen.count',
+        'result': 'result.score',
+        'signature': 'meta.rule_version',
+        'submission': 'file_count'
+    }
+
+    for collection in collections:
+        hist_field = int_hist_map.get(collection, 'expiry_ts')
+        resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
+        for k, v in resp.items():
+            assert isinstance(int(k), int) and isinstance(v, int)
 
 
 # noinspection PyUnusedLocal
 def test_inspect_search(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    for collection in collections:
+        resp = get_api_data(session, f"{HOST}/api/v4/search/inspect/{collection}/", params={"query": "id:*"})
+        assert resp >= TEST_SIZE
 
 
 # noinspection PyUnusedLocal
 def test_get_fields(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    for collection in collections:
+        resp = get_api_data(session, f"{HOST}/api/v4/search/fields/{collection}/")
+        for v in resp.values():
+            assert list(v.keys()) == ['default', 'indexed', 'list', 'stored', 'type']
 
 
 # noinspection PyUnusedLocal
 def test_search(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    for collection in collections:
+        resp = get_api_data(session, f"{HOST}/api/v4/search/{collection}/", params={"query": "id:*"})
+        assert TEST_SIZE <= resp['total'] == len(resp['items'])
 
 
 # noinspection PyUnusedLocal
 def test_stats_search(datastore, login_session):
     _, session = login_session
 
-    assert 1 == 0
+    int_map = {
+        'alert': 'al.score',
+        'file': 'seen.count',
+        'result': 'result.score',
+        'signature': 'meta.rule_version',
+        'submission': 'file_count'
+    }
+
+    for collection in collections:
+        field = int_map.get(collection, 'expiry_ts')
+        resp = get_api_data(session, f"{HOST}/api/v4/search/stats/{collection}/{field}/")
+        assert list(resp.keys()) == ['avg', 'count', 'max', 'min', 'sum']
+        for v in resp.values():
+            assert isinstance(v, int) or isinstance(v, float)
