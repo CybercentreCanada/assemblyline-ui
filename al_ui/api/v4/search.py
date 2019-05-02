@@ -5,7 +5,6 @@ from al_ui.helper.search import BUCKET_MAP, list_all_fields
 from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
-from assemblyline.odm import Integer
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
