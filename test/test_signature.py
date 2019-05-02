@@ -27,7 +27,6 @@ def datastore(request):
     return ds
 
 
-
 # noinspection PyUnusedLocal
 def test_add_signature(datastore, login_session):
     _, session = login_session
@@ -86,7 +85,9 @@ def test_get_signature(datastore, login_session):
 def test_list_signature(datastore, login_session):
     _, session = login_session
 
+    ds.signature.commit()
     signature_count = ds.signature.search("id:*", rows=0)['total']
+
     resp = get_api_data(session, f"{HOST}/api/v4/signature/list/")
     assert resp['total'] == signature_count
     for sig in resp['items']:
@@ -122,7 +123,9 @@ def test_set_signature(datastore, login_session):
 def test_signature_stats(datastore, login_session):
     _, session = login_session
 
+    ds.signature.commit()
     signature_count = ds.signature.search("id:*", rows=0)['total']
+
     resp = get_api_data(session, f"{HOST}/api/v4/signature/stats/")
     assert len(resp) == signature_count
     for sig_stat in resp:
