@@ -34,6 +34,8 @@ def test_add_signature(datastore, login_session):
 
     data = random_model_obj(Signature).as_primitives()
     resp = get_api_data(session, f"{HOST}/api/v4/signature/add/", data=json.dumps(data), method="PUT")
+    ds.signature.commit()
+
     assert resp == {'rev': 1, 'sid': f'{config.system.organisation}_000001', 'success': True}
 
 
@@ -47,6 +49,8 @@ def test_change_status(datastore, login_session):
     status = "DISABLED"
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/change_status/{sid}/{rev}/{status}/")
+    ds.signature.commit()
+
     assert resp['success']
 
 
@@ -59,6 +63,7 @@ def test_delete_signature(datastore, login_session):
     rev = signature['meta']['rule_version']
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/", method="DELETE")
+    ds.signature.commit()
     assert resp['success']
 
 
@@ -86,7 +91,6 @@ def test_get_signature(datastore, login_session):
 def test_list_signature(datastore, login_session):
     _, session = login_session
 
-    ds.signature.commit()
     signature_count = ds.signature.search("id:*", rows=0)['total']
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/list/")
@@ -109,6 +113,8 @@ def test_set_signature(datastore, login_session):
     data['comments'].append("NO REVISION CHANGE")
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/", data=json.dumps(data), method="POST")
+    ds.signature.commit()
+
     assert resp == {'rev': rev, 'sid': sid, 'success': True}
 
     # Revision bumping changes
@@ -118,13 +124,14 @@ def test_set_signature(datastore, login_session):
     data['strings'].append('$added = "ADDING TRIGGER REVISION BUMP"')
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/", data=json.dumps(data), method="POST")
+    ds.signature.commit()
+
     assert resp == {'rev': rev+1, 'sid': sid, 'success': True}
 
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):
     _, session = login_session
 
-    ds.signature.commit()
     signature_count = ds.signature.search("id:*", rows=0)['total']
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/stats/")
