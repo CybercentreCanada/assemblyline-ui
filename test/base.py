@@ -1,4 +1,5 @@
 
+import os
 import pytest
 import requests
 import warnings
@@ -20,6 +21,7 @@ class InvalidRequestMethod(Exception):
 
 class APIError(Exception):
     pass
+
 
 class NullLogger(object):
     def info(self, msg):
@@ -44,15 +46,27 @@ def wipe_users(ds):
     ds.user_avatar.wipe()
     ds.user_favorites.wipe()
 
+
 def wipe_services(ds):
     ds.service.wipe()
     ds.service_delta.wipe()
 
+
+def get_sig_path():
+    for (d, _, filenames) in os.walk('.'):
+        for f in filenames:
+            if f == 'al_yara_signatures.yar':
+                return os.path.join(d, f)
+
+    raise Exception('Could not find test yara files...')
+
+
 def create_signatures():
     yp = YaraImporter(logger=NullLogger())
-    parsed = yp.parse_file('al_yara_signatures.yar')
+    parsed = yp.parse_file(get_sig_path())
     yp.import_now([p['rule'] for p in parsed])
     return [p['rule']['name'] for p in parsed]
+
 
 def create_users(ds):
     user_data = User({
@@ -68,6 +82,7 @@ def create_users(ds):
     ds.user.save('user', user_data)
     ds.user_settings.save('user', UserSettings())
     ds.user.commit()
+
 
 def create_services(ds):
     for svc_name, svc in SERVICES.items():
@@ -89,6 +104,7 @@ def create_services(ds):
         ds.service_delta.save(service_data.name, {"version": service_data.version})
     ds.service_delta.commit()
     ds.service.commit()
+
 
 @pytest.fixture(scope='function')
 def login_session():
