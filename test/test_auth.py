@@ -98,7 +98,9 @@ def test_otp(datastore, login_session):
     assert secret_key is not None
 
     resp = get_api_data(session, f"{HOST}/api/v4/auth/validate_otp/{get_totp_token(secret_key)}/")
-    assert resp.get('success', False) is True
+    if not resp.get('success', False):
+        resp = get_api_data(session, f"{HOST}/api/v4/auth/validate_otp/{get_totp_token(secret_key)}/")
+        assert resp.get('success', False) is True
 
     resp = get_api_data(session, f"{HOST}/api/v4/auth/disable_otp/")
     assert resp.get('success', False) is True
