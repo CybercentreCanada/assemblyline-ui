@@ -121,7 +121,7 @@ def test_result_for_service(datastore, login_session):
     service_name = rand_key.split('.')[1]
     resp = get_api_data(session, f"{HOST}/api/v4/file/result/{rand_hash}/{service_name}/")
     res_data = Result(resp['results'][0])
-    assert res_data.build_key() == rand_key
+    assert res_data.build_key() in file_res_list
 
 
 # noinspection PyUnusedLocal
