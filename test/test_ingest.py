@@ -62,6 +62,7 @@ def datastore(request):
 def test_ingest_hash(datastore, login_session):
     _, session = login_session
 
+    iq.delete()
     data = {
         'sha256': random.choice(file_hashes),
         'name': 'random_hash.txt',
@@ -79,6 +80,7 @@ def test_ingest_hash(datastore, login_session):
 def test_ingest_url(datastore, login_session):
     _, session = login_session
 
+    iq.delete()
     data = {
         'url': 'https://www.cyber.gc.ca/en/theme-gcwu-fegc/assets/wmms.svg',
         'name': 'wmms.svg',
@@ -96,6 +98,7 @@ def test_ingest_url(datastore, login_session):
 def test_ingest_binary(datastore, login_session):
     _, session = login_session
 
+    iq.delete()
     data = {
         'binary': base64.b64encode(get_random_phrase(wmin=15, wmax=30).encode()).decode(),
         'name': 'text.txt',
@@ -113,6 +116,7 @@ def test_ingest_binary(datastore, login_session):
 def test_get_message(datastore, login_session):
     _, session = login_session
 
+    nq.delete()
     test_message = random_model_obj(Submission).as_primitives()
     nq.push(test_message)
 
@@ -124,6 +128,7 @@ def test_get_message(datastore, login_session):
 def test_get_message_list(datastore, login_session):
     _, session = login_session
 
+    nq.delete()
     messages = []
     for x in range(NUM_FILES):
         test_message = random_model_obj(Submission).as_primitives()

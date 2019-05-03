@@ -40,6 +40,7 @@ def datastore(request):
 def test_resubmit(datastore, login_session):
     _, session = login_session
 
+    sq.delete()
     submission_files = [f.sha256 for f in submission.files]
     resp = get_api_data(session, f"{HOST}/api/v4/submit/resubmit/{submission.sid}/")
     assert resp['params']['description'].startswith('Resubmit')
@@ -55,6 +56,7 @@ def test_resubmit(datastore, login_session):
 def test_resubmit_dynamic(datastore, login_session):
     _, session = login_session
 
+    sq.delete()
     sha256 = random.choice(submission.results)[:64]
     resp = get_api_data(session, f"{HOST}/api/v4/submit/dynamic/{sha256}/")
     assert resp['params']['description'].startswith('Resubmit')
@@ -72,6 +74,7 @@ def test_resubmit_dynamic(datastore, login_session):
 def test_submit_hash(datastore, login_session):
     _, session = login_session
 
+    sq.delete()
     data = {
         'sha256': random.choice(submission.results)[:64],
         'name': 'random_hash.txt',
@@ -91,6 +94,7 @@ def test_submit_hash(datastore, login_session):
 def test_submit_url(datastore, login_session):
     _, session = login_session
 
+    sq.delete()
     data = {
         'url': 'https://www.cyber.gc.ca/en/theme-gcwu-fegc/assets/wmms.svg',
         'name': 'wmms.svg',
@@ -109,6 +113,7 @@ def test_submit_url(datastore, login_session):
 def test_submit_binary(datastore, login_session):
     _, session = login_session
 
+    sq.delete()
     byte_str = get_random_phrase(wmin=15, wmax=30).encode()
     sha256 = hashlib.sha256(byte_str).hexdigest()
     data = {
