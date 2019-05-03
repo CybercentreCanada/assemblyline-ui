@@ -6,25 +6,39 @@ options:
 
 pipelines:
   default:
-    - step:
-        caches:
-          - pip
-        script:
-          - mkdir -p /etc/assemblyline/
-          - mkdir -p /var/cache/assemblyline/
-          - cp test/bitbucket/config.yml /etc/assemblyline
-          - apt update
-          - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
-          - pip install -r al_ui/requirements.txt -r test/requirements.txt
-          - pip install pytest-error-for-skips  # Special for the pipeline where we know none should skip
-          - PYTHONPATH=. python3 al_ui/app.py &
-          - PYTHONPATH=. python3 al_ui/socketsrv.py &
-          - pytest -rsx -vv --error-for-skips
-        services:
-          - elasticsearch
-          - redis
-          - nginx
-          - minio
+    - parallel:
+      - step:
+          name: Build & Test 3.6
+          image: python:3.6
+          caches: &caches
+            - pip
+          script: &build_test
+            - mkdir -p /etc/assemblyline/
+            - mkdir -p /var/cache/assemblyline/
+            - cp test/bitbucket/config.yml /etc/assemblyline
+            - apt update
+            - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
+            - pip install -r al_ui/requirements.txt -r test/requirements.txt
+            - PYTHONPATH=. python3 al_ui/app.py &
+            - PYTHONPATH=. python3 al_ui/socketsrv.py &
+            - pytest -rsx -vv
+          services: &services
+            - elasticsearch
+            - redis
+            - nginx
+            - minio
+      - step:
+          name: Build & Test 3.7
+          image: python:3.7
+          caches: *caches
+          script: *build_test
+          services: *services
+      - step:
+          name: Build & Test 3.8
+          image: python:3.8-rc
+          caches: *caches
+          script: *build_test
+          services: *services
 
 definitions:
   services:
