@@ -1,5 +1,7 @@
 
 import os
+import random
+
 import pytest
 import requests
 import warnings
@@ -7,10 +9,14 @@ import warnings
 
 from assemblyline.common.security import get_password_hash
 from assemblyline.common.yara import YaraImporter
+from assemblyline.odm.models.error import Error
+from assemblyline.odm.models.file import File
+from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.service import Service
+from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline.odm.randomizer import SERVICES
+from assemblyline.odm.randomizer import SERVICES, random_model_obj
 
 HOST = "https://localhost:443"
 
@@ -50,6 +56,15 @@ def wipe_users(ds):
 def wipe_services(ds):
     ds.service.wipe()
     ds.service_delta.wipe()
+
+
+def wipe_submissions(ds):
+    ds.error.wipe()
+    ds.file.wipe()
+    ds.result.wipe()
+    ds.submission.wipe()
+    ds.submission_tags.wipe()
+    ds.submission_tree.wipe()
 
 
 def get_sig_path():
@@ -104,6 +119,103 @@ def create_services(ds):
         ds.service_delta.save(service_data.name, {"version": service_data.version})
     ds.service_delta.commit()
     ds.service.commit()
+
+
+def create_errors_for_file(ds, f, services_done):
+    e_list = []
+    for _ in range(random.randint(0, 1)):
+        e = random_model_obj(Error)
+
+        # Only one error per service per file
+        while e.response.service_name in services_done:
+            e.response.service_name = random.choice(list(SERVICES.keys()))
+        services_done.append(e.response.service_name)
+
+        # Set the sha256
+        e.sha256 = f
+
+        e_key = e.build_key()
+        e_list.append(e_key)
+        ds.error.save(e_key, e)
+
+    return e_list
+
+
+def create_results_for_file(ds, f, possible_childs=None):
+    r_list = []
+    services_done = []
+    for _ in range(random.randint(2, 5)):
+        r = random_model_obj(Result)
+
+        # Only one result per service per file
+        while r.response.service_name in services_done:
+            r.response.service_name = random.choice(list(SERVICES.keys()))
+        services_done.append(r.response.service_name)
+
+        # Set the sha256
+        r.sha256 = f
+
+        # Set random extracted files that are not top level
+        if not possible_childs:
+            r.response.extracted = []
+        else:
+            for e in r.response.extracted:
+                e.sha256 = random.choice(possible_childs)
+
+        # Set random supplementary files that are not top level
+        if not possible_childs:
+            r.response.supplementary = []
+        else:
+            for s in r.response.supplementary:
+                s.sha256 = random.choice(possible_childs)
+
+        r_key = r.build_key()
+        r_list.append(r_key)
+        ds.result.save(r_key, r)
+
+    return r_list
+
+
+def create_submission(ds):
+    f_list = []
+    r_list = []
+    e_list = []
+
+    first_level_files = []
+    for _ in range(random.randint(4, 8)):
+        f = random_model_obj(File)
+        ds.file.save(f.sha256, f)
+        f_list.append(f.sha256)
+
+    for _ in range(random.randint(1, 2)):
+        first_level_files.append(f_list.pop())
+
+    for f in first_level_files:
+        r_list.extend(create_results_for_file(ds, f, possible_childs=f_list))
+        e_list.extend(create_errors_for_file(ds, f, [x.split('.')[1] for x in r_list if x.startswith(f)]))
+
+    for f in f_list:
+        r_list.extend(create_results_for_file(ds, f))
+        e_list.extend(create_errors_for_file(ds, f, [x.split('.')[1] for x in r_list if x.startswith(f)]))
+
+    s = random_model_obj(Submission)
+
+    s.results = r_list
+    s.errors = e_list
+
+    s.error_count = len(e_list)
+    s.file_count = len({x[:64] for x in r_list})
+
+    s.files = s.files[:len(first_level_files)]
+
+    fid = 0
+    for f in s.files:
+        f.sha256 = first_level_files[fid]
+        fid += 1
+
+    ds.submission.save(s.sid, s)
+
+    return f_list + first_level_files
 
 
 @pytest.fixture(scope='function')
