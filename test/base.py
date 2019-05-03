@@ -1,4 +1,4 @@
-
+import hashlib
 import os
 import random
 
@@ -16,9 +16,10 @@ from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline.odm.randomizer import SERVICES, random_model_obj
+from assemblyline.odm.randomizer import SERVICES, random_model_obj, get_random_phrase
 
 HOST = "https://localhost:443"
+full_file_list = []
 
 
 class InvalidRequestMethod(Exception):
@@ -58,13 +59,16 @@ def wipe_services(ds):
     ds.service_delta.wipe()
 
 
-def wipe_submissions(ds):
+def wipe_submissions(ds, fs):
     ds.error.wipe()
     ds.file.wipe()
     ds.result.wipe()
     ds.submission.wipe()
     ds.submission_tags.wipe()
     ds.submission_tree.wipe()
+
+    for f in full_file_list:
+        fs.delete(f)
 
 
 def get_sig_path():
@@ -176,7 +180,7 @@ def create_results_for_file(ds, f, possible_childs=None):
     return r_list
 
 
-def create_submission(ds):
+def create_submission(ds, fs):
     f_list = []
     r_list = []
     e_list = []
@@ -184,8 +188,12 @@ def create_submission(ds):
     first_level_files = []
     for _ in range(random.randint(4, 8)):
         f = random_model_obj(File)
-        ds.file.save(f.sha256, f)
-        f_list.append(f.sha256)
+        byte_str = get_random_phrase(wmin=8, wmax=20).encode()
+        sha256 = hashlib.sha256(byte_str).hexdigest()
+        f.sha256 = sha256
+        ds.file.save(sha256, f)
+        fs.put(sha256, byte_str)
+        f_list.append(sha256)
 
     for _ in range(random.randint(1, 2)):
         first_level_files.append(f_list.pop())
@@ -215,7 +223,7 @@ def create_submission(ds):
 
     ds.submission.save(s.sid, s)
 
-    return f_list + first_level_files
+    return s
 
 
 @pytest.fixture(scope='function')

@@ -14,15 +14,11 @@ NUM_SUBMISSIONS = 10
 config = forge.get_config()
 ds = forge.get_datastore(config)
 fs = forge.get_filestore(config)
-complete_file_list = []
 
 
 def purge_submission():
     wipe_users(ds)
-    wipe_submissions(ds)
-
-    for f in complete_file_list:
-        fs.delete(f)
+    wipe_submissions(ds, fs)
 
 
 @pytest.fixture(scope="module")
@@ -30,10 +26,7 @@ def datastore(request):
     create_users(ds)
 
     for _ in range(NUM_SUBMISSIONS):
-        related_files = create_submission(ds)
-        complete_file_list.extend(related_files)
-        for f in related_files:
-            fs.put(f, f)
+        create_submission(ds, fs)
 
     ds.error.commit()
     ds.file.commit()
