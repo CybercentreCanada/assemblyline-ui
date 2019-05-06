@@ -8,7 +8,7 @@ from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
-    SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle
+    SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
 from al_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
 from al_ui.config import STORAGE
@@ -94,7 +94,7 @@ def import_bundle(**_):
     current_bundle = os.path.join(WORKING_DIR, f"{baseconv.base62.encode(uuid.uuid4().int)}.bundle")
 
     with open(current_bundle, 'wb') as fh:
-        if request.data[:3] == b'\x1f\x8b\x08':
+        if request.data[:3] == BUNDLE_MAGIC:
             fh.write(request.data)
         else:
             try:

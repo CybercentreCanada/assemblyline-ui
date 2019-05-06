@@ -7,8 +7,7 @@ from base import HOST, login_session, get_api_data, create_users, wipe_users, cr
     wipe_services, create_submission, wipe_submissions
 
 from assemblyline.common import forge
-from assemblyline.common.bundling import create_bundle
-
+from assemblyline.common.bundling import create_bundle, BUNDLE_MAGIC
 
 config = forge.get_config()
 ds = forge.get_datastore(config)
@@ -40,7 +39,7 @@ def test_create_bundle(datastore, login_session):
 
     sid = random.choice(ds.submission.search('id:*', rows=100, as_obj=False)['items'])['sid']
     resp = get_api_data(session, f"{HOST}/api/v4/bundle/{sid}/", raw=True)
-    assert resp[:3] == b"\x1f\x8b\x08"
+    assert resp[:3] == BUNDLE_MAGIC
 
 
 # noinspection PyUnusedLocal
