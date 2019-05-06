@@ -1,6 +1,7 @@
 import hashlib
 import os
 import random
+from json import JSONDecodeError
 
 import pytest
 import requests
@@ -233,20 +234,22 @@ def login_session():
     return data, session
 
 
-def get_api_data(session, url, params=None, data=None, method="GET", raw=False):
+def get_api_data(session, url, params=None, data=None, method="GET", raw=False, headers=None, files=None):
+
+    if headers is None:
+        headers = {'content-type': 'application/json'}
+
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
 
         if method == "GET":
             res = session.get(url, params=params, verify=False)
         elif method == "POST":
-            res = session.post(url, data=data, params=params, verify=False,
-                               headers={'content-type': 'application/json'})
+            res = session.post(url, data=data, params=params, verify=False, headers=headers, files=files)
         elif method == "DELETE":
             res = session.delete(url, params=params, verify=False)
         elif method == "PUT":
-            res = session.put(url, data=data, params=params, verify=False,
-                              headers={'content-type': 'application/json'})
+            res = session.put(url, data=data, params=params, verify=False, headers=headers, files=files)
         else:
             raise InvalidRequestMethod(method)
 
@@ -256,9 +259,13 @@ def get_api_data(session, url, params=None, data=None, method="GET", raw=False):
         if raw:
             return res.content
         else:
-            res_data = res.json()
-
             if res.ok:
+                res_data = res.json()
                 return res_data['api_response']
             else:
-                raise APIError(res_data["api_error_message"])
+                try:
+                    res_data = res.json()
+                    raise APIError(res_data["api_error_message"])
+                except JSONDecodeError:
+                    raise APIError(f'{res.status_code}: {res.content}')
+
