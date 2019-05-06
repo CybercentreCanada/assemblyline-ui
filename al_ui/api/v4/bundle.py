@@ -25,7 +25,7 @@ WORKING_DIR = "/tmp/al_ui"
 
 
 # noinspection PyBroadException
-@bundle_api.route("/create/<sid>/", methods=["GET"])
+@bundle_api.route("/<sid>/", methods=["GET"])
 @api_login(required_priv=['R'])
 def create_bundle(sid, **kwargs):
     """
@@ -71,7 +71,7 @@ def create_bundle(sid, **kwargs):
         return make_api_response("", "You are not allowed create a bundle for this submission...", 403)
 
 
-@bundle_api.route("/import/", methods=["POST"])
+@bundle_api.route("/", methods=["POST"])
 @api_login(required_priv=['W'], allow_readonly=False)
 def import_bundle(**_):
     """
@@ -94,10 +94,13 @@ def import_bundle(**_):
     current_bundle = os.path.join(WORKING_DIR, f"{baseconv.base62.encode(uuid.uuid4().int)}.bundle")
 
     with open(current_bundle, 'wb') as fh:
-        try:
-            fh.write(base64.b64decode(request.data))
-        except binascii.Error:
+        if request.data[:3] == b'\x1f\x8b\x08':
             fh.write(request.data)
+        else:
+            try:
+                fh.write(base64.b64decode(request.data))
+            except binascii.Error:
+                fh.write(request.data)
 
     try:
         bundle_import(current_bundle, working_dir=WORKING_DIR, min_classification=min_classification)
