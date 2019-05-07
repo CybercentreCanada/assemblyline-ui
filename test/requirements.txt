@@ -1,4 +1,3 @@
-assemblyline
 pytest
 pytest-cov
 cart

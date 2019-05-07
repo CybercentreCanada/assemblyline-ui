@@ -16,7 +16,7 @@ pipelines:
             - mkdir -p /etc/assemblyline/
             - mkdir -p /var/cache/assemblyline/
             - cp test/bitbucket/config.yml /etc/assemblyline
-            - pip install -r -r test/requirements.txt
+            - pip install -r test/requirements.txt
             - pip install -e .
             - python3 al_ui/app.py &
             - python3 al_ui/socketsrv.py &
