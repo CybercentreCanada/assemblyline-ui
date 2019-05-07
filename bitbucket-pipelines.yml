@@ -1,6 +1,4 @@
 
-image: python:3.6
-
 options:
   max-time: 6
 
@@ -13,14 +11,15 @@ pipelines:
           caches: &caches
             - pip
           script: &build_test
+            - apt update
+            - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
             - mkdir -p /etc/assemblyline/
             - mkdir -p /var/cache/assemblyline/
             - cp test/bitbucket/config.yml /etc/assemblyline
-            - apt update
-            - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
-            - pip install -r al_ui/requirements.txt -r test/requirements.txt
-            - PYTHONPATH=. python3 al_ui/app.py &
-            - PYTHONPATH=. python3 al_ui/socketsrv.py &
+            - pip install -r -r test/requirements.txt
+            - pip install -e .
+            - python3 al_ui/app.py &
+            - python3 al_ui/socketsrv.py &
             - pytest -rsx -vv
           services: &services
             - elasticsearch
@@ -39,6 +38,63 @@ pipelines:
           caches: *caches
           script: *build_test
           services: *services
+
+  tags:
+    v*:
+      - step:
+          name: Build Package
+          image: python:3.6
+          script:
+            - pip install wheel
+            - python setup.py bdist_wheel
+            - ls dist/
+          artifacts:
+            - dist/*
+      - parallel:
+        - step:
+            name: Test 3.6
+            image: python:3.6
+            services: *services
+            script: &deploy_test
+              - rm -rf al_core setup.py  # Make sure we are running on the package from the prior build
+              - apt update
+              - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
+              - pip install -f dist assemblyline-ui
+              - mkdir -p /etc/assemblyline/
+              - mkdir -p /var/cache/assemblyline/
+              - cp test/bitbucket/config.yml /etc/assemblyline
+              - pip install -r test/requirements.txt
+              - python3 al_ui/app.py &
+              - python3 al_ui/socketsrv.py &
+              - pytest -rsx -vv
+        - step:
+            name: Test 3.7
+            image: python:3.7
+            services: *services
+            script: *deploy_test
+        - step:
+            name: Test 3.8
+            image: python:3.8-rc
+            services: *services
+            script: *deploy_test
+      - step:
+          name: Deploy to Test PyPI
+          image: python:3.6
+          deployment: test
+          script:
+            - pip install twine
+            - ls dist
+            - twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
+      - step:
+          name: Deploy to PyPI
+          image: python:3.6
+          trigger: manual
+          deployment: production
+          script:
+            - pip install twine
+            - ls dist
+            - twine upload dist/*
+
 
 definitions:
   services:
