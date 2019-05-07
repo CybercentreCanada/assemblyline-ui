@@ -41,7 +41,7 @@ def add_virtual_machine(vm, **_):
     data = request.json
     
     if not STORAGE.vm.get(vm):
-        if STORAGE.service.get(vm):
+        if STORAGE.service_delta.get(vm):
             return make_api_response({"success": STORAGE.vm.save(vm, data)})
         else:
             return make_api_response({"success": False}, "You cannot add a vm which as no matching service name", 400)
