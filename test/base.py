@@ -247,7 +247,7 @@ def get_api_data(session, url, params=None, data=None, method="GET", raw=False, 
         elif method == "POST":
             res = session.post(url, data=data, params=params, verify=False, headers=headers, files=files)
         elif method == "DELETE":
-            res = session.delete(url, params=params, verify=False)
+            res = session.delete(url, data=data, params=params, verify=False)
         elif method == "PUT":
             res = session.put(url, data=data, params=params, verify=False, headers=headers, files=files)
         else:
