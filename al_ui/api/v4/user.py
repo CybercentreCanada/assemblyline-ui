@@ -115,7 +115,7 @@ def get_user_account(username, **kwargs):
         return make_api_response({}, "User %s does not exists" % username, 404)
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['apikeys'] = [x['name'] for x in user.get('apikeys', [])]
+    user['apikeys'] = list(user.get('apikeys', {}).keys())
     user['has_password'] = user.pop('password', "") != ""
     u2f_devices = user.get('u2f_devices', {})
     user['u2f_devices'] = list(u2f_devices.keys())

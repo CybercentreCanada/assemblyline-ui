@@ -119,7 +119,7 @@ def login(uname, path=None):
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_u2f'] = config.auth.allow_u2f
-    user['apikeys'] = [x['name'] for x in user['apikeys']]
+    user['apikeys'] = list(user.get('apikeys', {}).keys())
     user['c12n_enforcing'] = CLASSIFICATION.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled

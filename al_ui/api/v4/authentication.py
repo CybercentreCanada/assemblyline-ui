@@ -51,18 +51,18 @@ def add_apikey(name, priv, **kwargs):
     user = kwargs['user']
     user_data = STORAGE.user.get(user['uname'])
 
-    if name in [x.name for x in user_data.apikeys]:
-        return make_api_response("", err="APIKey {name} already exist", status_code=400)
+    if name in user_data.apikeys:
+        return make_api_response("", err=f"APIKey '{name}' already exist", status_code=400)
 
-    if priv not in API_PRIV_MAP.keys():
-        return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()} ",
+    if priv not in API_PRIV_MAP:
+        return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()}",
                                  status_code=400)
 
     random_pass = get_random_password(length=48)
-    user_data.apikeys.append({"name": name, "password": bcrypt.encrypt(random_pass), "acl": API_PRIV_MAP[priv]})
+    user_data.apikeys[name] = {"password": bcrypt.encrypt(random_pass), "acl": API_PRIV_MAP[priv]}
     STORAGE.user.save(user['uname'], user_data)
 
-    return make_api_response({"apikey": random_pass})
+    return make_api_response({"apikey": f"{name}:{random_pass}"})
 
 
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
@@ -87,7 +87,7 @@ def delete_apikey(name, **kwargs):
     """
     user = kwargs['user']
     user_data = STORAGE.user.get(user['uname'])
-    user_data.apikeys = [x for x in user_data.apikeys if x.name != name]
+    user_data.apikeys.pop(name)
     STORAGE.user.save(user['uname'], user_data)
 
     return make_api_response({"success": True})

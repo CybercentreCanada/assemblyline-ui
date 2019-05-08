@@ -251,8 +251,10 @@ def validate_apikey(username, apikey, storage):
     if config.auth.allow_apikeys and apikey:
         user_data = storage.user.get(username)
         if user_data:
-            for key in user_data.apikeys:
-                if verify_password(apikey, key.password):
+            name, apikey_password = apikey.split(":", 1)
+            key = user_data.apikeys.get(name, None)
+            if key is not None:
+                if verify_password(apikey_password, key.password):
                     return username, key.acl
 
         raise AuthenticationException("Invalid apikey")
