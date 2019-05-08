@@ -9,11 +9,12 @@ from sys import exc_info
 from traceback import format_tb
 
 from al_ui.security.authenticator import BaseSecurityRenderer
+from al_ui.site_specific import apikey_handler
 from assemblyline.common.str_utils import safe_str
 
-from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, LOGGER, RATE_LIMITER, CLASSIFICATION
+from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, LOGGER, RATE_LIMITER, CLASSIFICATION, STORAGE
 from al_ui.helper.user import login, add_access_control
-from al_ui.http_exceptions import AccessDeniedException, QuotaExceededException
+from al_ui.http_exceptions import AccessDeniedException, QuotaExceededException, AuthenticationException
 from al_ui.config import config, DN_PARSER
 from al_ui.logger import log_with_traceback
 
@@ -39,6 +40,29 @@ class api_login(BaseSecurityRenderer):
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
+
+    def auto_auth_check(self):
+        apikey = request.environ.get('HTTP_X_APIKEY', None)
+        uname = request.environ.get('HTTP_X_USER', None)
+
+        if apikey is not None and uname is not None:
+            with elasticapm.capture_span(name=f"@api_login:auto_auth_check()", span_type="authentication"):
+                try:
+                    # TODO: apikey_handler is slow to verify the password (bcrypt's fault)
+                    #       We could fix this by saving the hash of the combinaison of the
+                    #       APIkey and the username in an ExpiringSet and looking it up for
+                    #       sub-sequent calls...
+                    validated_user, priv = apikey_handler(uname, apikey, STORAGE)
+                except AuthenticationException:
+                    raise AccessDeniedException("Invalid user or APIKey")
+
+                if validated_user:
+                    if not set(self.required_priv).intersection(set(priv)):
+                        raise AccessDeniedException("The method you've used to login "
+                                                    "does not give you access to this API.")
+                    return validated_user
+
+        return None
 
     def extra_session_checks(self, session):
         if not set(self.required_priv).intersection(set(session.get("privileges", []))):

@@ -38,10 +38,17 @@ class BaseSecurityRenderer(object):
                                                       func.__name__,
                                                       ", ".join(params_list)))
 
+    def auto_auth_check(self):
+        return None
+
     def extra_session_checks(self, session):
         pass
 
     def get_logged_in_user(self):
+        auto_auth_uname = self.auto_auth_check()
+        if auto_auth_uname is not None:
+            return auto_auth_uname
+
         session_id = flsk_session.get("session_id", None)
 
         if not session_id:
