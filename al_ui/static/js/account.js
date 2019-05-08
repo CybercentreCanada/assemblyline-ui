@@ -10,8 +10,8 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.current_user = null;
     $scope.user = null;
     $scope.loading = false;
-    $scope.apikey_pattern = /^[A-Za-z0-9_]+$/;
-    $scope.u2fkey_pattern = /^[A-Za-z0-9_ ]+$/;
+    $scope.apikey_pattern = /^[a-z][a-z0-9_]*$/;
+    $scope.u2fkey_pattern = /^[a-z][a-z0-9_]*$/;
 
     //DEBUG MODE
     $scope.debug = false;

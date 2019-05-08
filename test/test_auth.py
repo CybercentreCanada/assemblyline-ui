@@ -37,7 +37,7 @@ def test_login(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_api_keys(datastore, login_session):
     _, session = login_session
-    key_name = get_random_hash(6)
+    key_name = f'apikey_{get_random_hash(6)}'
 
     # Added a read apikey
     resp = get_api_data(session, f"{HOST}/api/v4/auth/apikey/{key_name}_r/READ/")
