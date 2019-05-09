@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="assemblyline-ui",
-    version="4.0.0.dev1",
+    version="4.0.0.dev2",
     description="Assemblyline (v4) automated malware analysis framework - UI components.",
     long_description="This package provides the UI components of Assemblyline v4 malware analysis framework. "
                      "(UI, APIs and SocketIO Server)",
@@ -31,6 +31,8 @@ setup(
         'python-socketio<4',
         'flask',
         'flask-socketio',
+        'greenlet',
+        'gunicorn',
         'gevent',
         'gevent-websocket',
         'python_u2flib_server',
