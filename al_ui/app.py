@@ -91,24 +91,27 @@ app.register_blueprint(workflow_api)
 
 register_site_specific_routes(app)
 
+# Setup logging
+wlog = logging.getLogger('werkzeug')
+wlog.setLevel(config.LOGGER.getEffectiveLevel())
+app.logger.setLevel(config.LOGGER.getEffectiveLevel())
+app.logger.removeHandler(default_handler)
+for h in config.LOGGER.parent.handlers:
+    app.logger.addHandler(h)
+    wlog.addHandler(h)
+
+# Setup APMs
+if config.config.core.metrics.apm_server.server_url is not None:
+    app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
+    ElasticAPM(app, server_url=config.config.core.metrics.apm_server.server_url, service_name="al_ui")
+
 
 def main():
-    wlog = logging.getLogger('werkzeug')
-    wlog.setLevel(config.LOGGER.getEffectiveLevel())
-    app.logger.setLevel(config.LOGGER.getEffectiveLevel())
-    app.logger.removeHandler(default_handler)
-    for h in config.LOGGER.parent.handlers:
-        app.logger.addHandler(h)
-        wlog.addHandler(h)
-
+    # Debugging execute
     if config.DEBUG:
         from werkzeug.contrib.profiler import ProfilerMiddleware
         app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
     app.jinja_env.cache = {}
-
-    if config.config.core.metrics.apm_server.server_url is not None:
-        app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
-        ElasticAPM(app, server_url=config.config.core.metrics.apm_server.server_url, service_name="al_ui")
 
     app.run(host="0.0.0.0", debug=False)
 
