@@ -92,13 +92,10 @@ app.register_blueprint(workflow_api)
 register_site_specific_routes(app)
 
 # Setup logging
-wlog = logging.getLogger('werkzeug')
-wlog.setLevel(config.LOGGER.getEffectiveLevel())
 app.logger.setLevel(config.LOGGER.getEffectiveLevel())
 app.logger.removeHandler(default_handler)
-for h in config.LOGGER.parent.handlers:
-    app.logger.addHandler(h)
-    wlog.addHandler(h)
+for ph in config.LOGGER.parent.handlers:
+    app.logger.addHandler(ph)
 
 # Setup APMs
 if config.config.core.metrics.apm_server.server_url is not None:
@@ -107,6 +104,11 @@ if config.config.core.metrics.apm_server.server_url is not None:
 
 
 def main():
+    wlog = logging.getLogger('werkzeug')
+    wlog.setLevel(config.LOGGER.getEffectiveLevel())
+    for h in config.LOGGER.parent.handlers:
+        wlog.addHandler(h)
+
     # Debugging execute
     if config.DEBUG:
         from werkzeug.contrib.profiler import ProfilerMiddleware
