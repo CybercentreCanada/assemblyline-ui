@@ -11,7 +11,7 @@ from assemblyline.common.bundling import create_bundle as bundle_create, import_
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
 from al_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
-from al_ui.config import STORAGE
+from al_ui.config import STORAGE, BUNDLING_DIR
 
 
 SUB_API = 'bundle'
@@ -21,7 +21,6 @@ Classification = forge.get_classification()
 bundle_api = make_subapi_blueprint(SUB_API, api_version=4)
 bundle_api._doc = "Create and restore submission bundles"
 
-WORKING_DIR = "/tmp/al_ui"
 
 
 # noinspection PyBroadException
@@ -52,7 +51,7 @@ def create_bundle(sid, **kwargs):
     if user and submission and Classification.is_accessible(user['classification'], submission['classification']):
         temp_target_file = None
         try:
-            temp_target_file = bundle_create(sid, working_dir=WORKING_DIR)
+            temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR)
             f_size = os.path.getsize(temp_target_file)
             return stream_file_response(open(temp_target_file, 'rb'), "%s.al_bundle" % sid, f_size)
         except SubmissionNotFound as snf:
@@ -91,7 +90,7 @@ def import_bundle(**_):
     """
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
 
-    current_bundle = os.path.join(WORKING_DIR, f"{baseconv.base62.encode(uuid.uuid4().int)}.bundle")
+    current_bundle = os.path.join(BUNDLING_DIR, f"{baseconv.base62.encode(uuid.uuid4().int)}.bundle")
 
     with open(current_bundle, 'wb') as fh:
         if request.data[:3] == BUNDLE_MAGIC:
@@ -103,7 +102,7 @@ def import_bundle(**_):
                 fh.write(request.data)
 
     try:
-        bundle_import(current_bundle, working_dir=WORKING_DIR, min_classification=min_classification)
+        bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification)
         return make_api_response({'success': True})
     except InvalidClassification as ice:
         return make_api_response({'success': False}, err=str(ice), status_code=400)

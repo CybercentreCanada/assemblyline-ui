@@ -31,10 +31,13 @@ BUILD_MASTER = version.FRAMEWORK_VERSION
 BUILD_LOWER = version.SYSTEM_VERSION
 BUILD_NO = version.BUILD_MINOR
 
-TEMP_DIR_CHUNKED = "/tmp/al_ui/flowjs/chunked/"
-TEMP_DIR = "/tmp/al_ui/flowjs/full/"
+BUNDLING_DIR = "/var/lib/assemblyline/bundling"
+
 F_READ_CHUNK_SIZE = 1024 * 1024
-TEMP_SUBMIT_DIR = "/tmp/al_ui/submit/"
+
+TEMP_DIR_CHUNKED = "/var/lib/assemblyline/flowjs/chunked/"
+TEMP_DIR = "/var/lib/assemblyline/flowjs/full/"
+TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
 RATE_LIMITER = Counters(prefix="quota",
                         host=config.core.redis.nonpersistent.host,
