@@ -15,11 +15,12 @@ pipelines:
             - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
             - mkdir -p /etc/assemblyline/
             - mkdir -p /var/cache/assemblyline/
+            - mkdir -p /var/lib/assemblyline/
             - cp test/bitbucket/config.yml /etc/assemblyline
             - pip install -r test/requirements.txt
             - pip install -e .
-            - python3 al_ui/app.py &
-            - python3 al_ui/socketsrv.py &
+            - python3 -m al_ui.app &
+            - python3 -m al_ui.socketsrv &
             - pytest -rsx -vv
           services: &services
             - elasticsearch
@@ -62,10 +63,11 @@ pipelines:
               - pip install -f dist assemblyline-ui
               - mkdir -p /etc/assemblyline/
               - mkdir -p /var/cache/assemblyline/
+              - mkdir -p /var/lib/assemblyline/
               - cp test/bitbucket/config.yml /etc/assemblyline
               - pip install -r test/requirements.txt
-              - python3 al_ui/app.py &
-              - python3 al_ui/socketsrv.py &
+              - python3 -m al_ui.app &
+              - python3 -m al_ui.socketsrv &
               - pytest -rsx -vv
         - step:
             name: Test 3.7
