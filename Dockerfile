@@ -1,15 +1,13 @@
-FROM python:3.7-stretch
+FROM cccs/assemblyline:4.0.0.dev15
 
 ARG version
 
-RUN apt-get update
-RUN apt-get install -yy build-essential libffi-dev libfuzzy-dev
+# Switch to root to install dependancies
+USER root
 
-RUN pip3 install "urllib3<1.25,>=1.21.1"
+# Install assemblyline UI
 RUN pip3 install assemblyline-ui==$version
 
-RUN mkdir -p /etc/assemblyline
-RUN mkdir -p /var/cache/assemblyline
-RUN mkdir -p /var/log/assemblyline
-
+# Switch back to assemblyline and run the app
+USER assemblyline
 CMD ["gunicorn", "al_ui.app:app", "--config=/usr/local/lib/python3.7/site-packages/al_ui/gunicorn_config.py"]
