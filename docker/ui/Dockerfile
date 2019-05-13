@@ -1,4 +1,4 @@
-FROM cccs/assemblyline:4.0.0.dev15
+FROM cccs/assemblyline:latest
 
 ARG version
 
