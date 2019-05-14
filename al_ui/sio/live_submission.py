@@ -1,7 +1,7 @@
 
 from flask_socketio import join_room
 
-from al_ui.socketio.base import SecureNamespace, LOGGER, authenticated_only
+from al_ui.sio.base import SecureNamespace, LOGGER, authenticated_only
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 

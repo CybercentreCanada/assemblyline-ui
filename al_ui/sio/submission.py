@@ -3,7 +3,7 @@ import logging
 
 from flask_socketio import emit, join_room
 
-from al_ui.socketio.base import LOGGER, SecureNamespace, authenticated_only
+from al_ui.sio.base import LOGGER, SecureNamespace, authenticated_only
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 

@@ -9,10 +9,10 @@ import logging
 from flask import Flask
 from flask_socketio import SocketIO
 
-from al_ui.socketio.alert import AlertMonitoringNamespace
-from al_ui.socketio.live_submission import LiveSubmissionNamespace
-from al_ui.socketio.status import SystemStatusNamespace
-from al_ui.socketio.submission import SubmissionMonitoringNamespace
+from al_ui.sio.alert import AlertMonitoringNamespace
+from al_ui.sio.live_submission import LiveSubmissionNamespace
+from al_ui.sio.status import SystemStatusNamespace
+from al_ui.sio.submission import SubmissionMonitoringNamespace
 from assemblyline.common import forge, log as al_log
 
 config = forge.get_config()
