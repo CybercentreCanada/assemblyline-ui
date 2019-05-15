@@ -1,5 +1,6 @@
 import sys
 import random
+import os.path
 
 from assemblyline.common import forge
 from assemblyline.common.security import get_password_hash
@@ -79,7 +80,8 @@ def create_basic_data(log, ds=None):
     if ds.signature.search("id:*", rows=0)['total'] == 0:
         log.info("\nImporting test signatures...")
         yp = YaraImporter(logger=PrintLogger(indent="\t"))
-        parsed = yp.parse_file('al_yara_signatures.yar')
+        path = os.path.abspath(os.path.dirname(__file__))
+        parsed = yp.parse_file(os.path.join(path, 'al_yara_signatures.yar'))
         yp.import_now([p['rule'] for p in parsed])
         signatures = [p['rule']['name'] for p in parsed]
     else:
