@@ -1,4 +1,6 @@
 
+image: python:3.6
+
 options:
   max-time: 6
 
@@ -81,7 +83,6 @@ pipelines:
 #            script: *deploy_test
       - step:
           name: Deploy to Test PyPI
-          image: python:3.6
           deployment: test
           script:
             - pip install twine
@@ -89,15 +90,24 @@ pipelines:
             - twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
       - step:
           name: Deploy to PyPI
-          image: python:3.6
           trigger: manual
           deployment: production
           script:
             - pip install twine
             - ls dist
             - twine upload dist/*
-
-
+      - step:
+          name: Deploy to DockerHub
+          trigger: manual
+          services: [docker]
+          deployment: production
+          script:
+            - export TAG=${BITBUCKET_TAG#v}
+            - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
+            - docker build --build-arg version=$TAG -t cccs/assemblyline-ui:$TAG docker/ui
+            - docker build --build-arg version=$TAG -t cccs/assemblyline-socketio:$TAG docker/socketio
+            - docker push cccs/assemblyline-ui:$TAG
+            - docker push cccs/assemblyline-socketio:$TAG
 definitions:
   services:
     elasticsearch:
