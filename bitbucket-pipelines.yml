@@ -118,7 +118,7 @@ definitions:
       memory: 256
 
     nginx:
-      image: sgaroncse/nginx-ssl-bitbucket:1.15.10
+      image: sgaroncse/nginx-ssl-bitbucket:1.15.10-1
       memory: 256
 
     minio:

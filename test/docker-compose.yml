@@ -56,7 +56,7 @@ services:
       retries: 3
 
   nginx:
-    image: sgaroncse/nginx-ssl:1.15.10-2
+    image: sgaroncse/nginx-ssl:1.15.10-3
     ports:
       - '443:443'
       - '80:80'
