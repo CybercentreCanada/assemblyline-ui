@@ -215,8 +215,6 @@ def login(**_):
         }
 
         try:
-            for name, value in request.headers.items():
-                print(name, value)
             logged_in_uname, priv = default_authenticator(auth, request, flsk_session, STORAGE)
             session_duration = config.ui.session_duration
             cur_time = now()
