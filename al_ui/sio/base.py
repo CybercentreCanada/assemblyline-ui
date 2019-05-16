@@ -80,12 +80,12 @@ def get_request_id(request_p):
 
 
 def get_user_info(request_p, session_p):
-    src_ip = request_p.headers.get("X-Forward-For", request_p.remote_addr)
+    src_ip = request_p.headers.get("X-Forwarded-For", request_p.remote_addr)
     sid = get_request_id(request_p)
     uname = None
     current_session = KV_SESSION.get(session_p.get("session_id", None))
     if current_session:
-        if request_p.headers.get("X-Forward-For", None) == current_session.get('ip', None) and \
+        if request_p.headers.get("X-Forwarded-For", None) == current_session.get('ip', None) and \
                 request_p.headers.get("User-Agent", None) == current_session.get('user_agent', None):
             uname = current_session['username']
 
