@@ -89,7 +89,7 @@ pipelines:
             - ls dist
             - twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
       - step:
-          name: Deploy to PyPI
+          name: Deploy to PyPI & Docker Hub
           trigger: manual
           services: [docker]
           deployment: production
