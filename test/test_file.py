@@ -131,7 +131,10 @@ def test_score(datastore, login_session):
     rand_key = random.choice(file_res_list)
     rand_hash = rand_key[:64]
     resp = get_api_data(session, f"{HOST}/api/v4/file/score/{rand_hash}/")
-    assert resp['score'] > 0 and rand_key in resp['result_keys']
+    assert resp['score'] > 0
+    assert rand_hash in resp['file_info']['sha256']
+    for k in resp['result_keys']:
+        assert k.startswith(rand_hash)
 
 
 # noinspection PyUnusedLocal
