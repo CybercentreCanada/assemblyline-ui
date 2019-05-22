@@ -1,9 +1,7 @@
 
 import base64
-import baseconv
 import os
 import shutil
-import uuid
 
 from flask import request
 
@@ -14,6 +12,7 @@ from al_ui.helper.submission import safe_download, FileTooBigException, InvalidU
 from al_ui.helper.user import check_submission_quota, get_default_user_settings
 from al_ui.helper.service import ui_to_submission_params
 from assemblyline.common import forge
+from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 
 Classification = forge.get_classification()
@@ -382,7 +381,7 @@ def submit(**kwargs):
     user = kwargs['user']
     check_submission_quota(user)
         
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, baseconv.base62.encode(uuid.uuid4().int))
+    out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
     with forge.get_filestore() as f_transport:
         try:

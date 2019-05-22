@@ -1,8 +1,6 @@
 
-import baseconv
 import elasticapm
 import functools
-import uuid
 
 from flask import current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response
 from sys import exc_info
@@ -10,13 +8,13 @@ from traceback import format_tb
 
 from al_ui.security.authenticator import BaseSecurityRenderer
 from al_ui.site_specific import apikey_handler
-from assemblyline.common.str_utils import safe_str
-
 from al_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, LOGGER, RATE_LIMITER, CLASSIFICATION, STORAGE
 from al_ui.helper.user import login, add_access_control
 from al_ui.http_exceptions import AccessDeniedException, QuotaExceededException, AuthenticationException
 from al_ui.config import config, DN_PARSER
 from al_ui.logger import log_with_traceback
+from assemblyline.common.str_utils import safe_str
+from assemblyline.common.uid import get_random_id
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -152,7 +150,7 @@ class api_login(BaseSecurityRenderer):
 
             # Check current user quota
             quota_user = impersonator.get('uname', None) or user['uname']
-            quota_id = "%s [%s] => %s" % (quota_user, baseconv.base62.encode(uuid.uuid4().int), request.path)
+            quota_id = "%s [%s] => %s" % (quota_user, get_random_id(), request.path)
             count = int(RATE_LIMITER.inc(quota_user, track_id=quota_id))
             RATE_LIMITER.inc("__global__", track_id=quota_id)
 

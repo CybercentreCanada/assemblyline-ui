@@ -1,20 +1,19 @@
 import os
 import base64
-import baseconv
 import shutil
-import uuid
 
 from flask import request
 
-from al_ui.helper.service import ui_to_submission_params
-from assemblyline.common import forge, identify
-from assemblyline.common.isotime import now_as_iso
-from assemblyline.odm.messages.submission import Submission
-from assemblyline.remote.datatypes.queues.named import NamedQueue
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
+from al_ui.helper.service import ui_to_submission_params
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import get_default_user_settings
+from assemblyline.common import forge, identify
+from assemblyline.common.isotime import now_as_iso
+from assemblyline.common.uid import get_random_id
+from assemblyline.odm.messages.submission import Submission
+from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -139,7 +138,7 @@ def ingest_single_file(**kwargs):
     { "success": true }
     """
     user = kwargs['user']
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, baseconv.base62.encode(uuid.uuid4().int))
+    out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
     with forge.get_filestore() as f_transport:
         try:
             # Get data block
@@ -251,7 +250,7 @@ def ingest_single_file(**kwargs):
                 notification_params = {}
 
             # Load metadata and setup some default values if they are missing
-            ingest_id = baseconv.base62.encode(uuid.uuid4().int)
+            ingest_id = get_random_id()
             metadata = data.get("metadata", {})
             metadata['ingest_id'] = ingest_id
             metadata['type'] = s_params['type']

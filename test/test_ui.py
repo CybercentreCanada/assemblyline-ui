@@ -1,9 +1,7 @@
-import baseconv
 import hashlib
 import json
 import pytest
 import random
-import uuid
 
 from io import BytesIO
 
@@ -11,6 +9,7 @@ from io import BytesIO
 from base import APIError, HOST, login_session, get_api_data, create_users, wipe_users, create_services, wipe_services
 
 from assemblyline.common import forge
+from assemblyline.common.uid import get_random_id
 from assemblyline.odm.randomizer import get_random_phrase
 
 ds = forge.get_datastore()
@@ -41,7 +40,7 @@ def test_ui_submission(datastore, login_session):
         data = data[:-(len(data) % total_chunk)]
 
     chunk_size = int(len(data)/total_chunk)
-    ui_id = baseconv.base62.encode(uuid.uuid4().int)
+    ui_id = get_random_id()
 
     counter = 0
     while True:

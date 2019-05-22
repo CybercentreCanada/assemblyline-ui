@@ -1,8 +1,6 @@
 import base64
-import baseconv
 import binascii
 import os
-import uuid
 
 from flask import request
 
@@ -10,6 +8,7 @@ from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
+from assemblyline.common.uid import get_random_id
 from al_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
 from al_ui.config import STORAGE, BUNDLING_DIR
 
@@ -90,7 +89,7 @@ def import_bundle(**_):
     """
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
 
-    current_bundle = os.path.join(BUNDLING_DIR, f"{baseconv.base62.encode(uuid.uuid4().int)}.bundle")
+    current_bundle = os.path.join(BUNDLING_DIR, f"{get_random_id()}.bundle")
 
     with open(current_bundle, 'wb') as fh:
         if request.data[:3] == BUNDLE_MAGIC:
