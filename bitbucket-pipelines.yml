@@ -88,28 +88,27 @@ pipelines:
             - pip install twine
             - ls dist
             - twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
-      - parallel:
-        - step:
-            name: Deploy to PyPI
-            trigger: manual
-            deployment: pypi
-            script:
-              - pip install twine
-              - ls dist
-              - twine upload dist/*
-        - step:
-            name: Deploy to Docker Hub
-            trigger: manual
-            services: [docker]
-            deployment: container
-            script:
-              - export TAG=${BITBUCKET_TAG#v}
-              - until pip install assemblyline-ui== 2>&1 | grep -q $TAG; do sleep 2; done
-              - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
-              - docker build --build-arg version=$TAG -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
-              - docker build --build-arg version=$TAG -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
-              - docker push cccs/assemblyline-ui
-              - docker push cccs/assemblyline-socketio
+      - step:
+          name: Deploy to PyPI
+          trigger: manual
+          deployment: pypi
+          script:
+            - pip install twine
+            - ls dist
+            - twine upload --skip-existing dist/*
+      - step:
+          name: Deploy to Docker Hub
+          trigger: manual
+          services: [docker]
+          deployment: container
+          script:
+            - export TAG=${BITBUCKET_TAG#v}
+            - until pip install assemblyline-ui== 2>&1 | grep -q $TAG; do sleep 2; done
+            - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
+            - docker build --build-arg version=$TAG -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
+            - docker build --build-arg version=$TAG -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
+            - docker push cccs/assemblyline-ui
+            - docker push cccs/assemblyline-socketio
 definitions:
   services:
     elasticsearch:
