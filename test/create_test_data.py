@@ -32,7 +32,6 @@ class PrintLogger(object):
         print(f"{self.indent}[E] {msg}")
 
 
-
 def create_basic_data(log, ds=None):
     ds = ds or forge.get_datastore()
     if ds.user.search("id:*", rows=0)['total'] == 0:
@@ -100,6 +99,7 @@ def create_basic_data(log, ds=None):
 
     return signatures
 
+
 def create_extra_data(log, signatures, ds=None, fs=None):
     ds = ds or forge.get_datastore()
     fs = fs or forge.get_filestore()
@@ -135,7 +135,7 @@ def create_extra_data(log, signatures, ds=None, fs=None):
                     raise Exception("Invalid supplementary file")
 
             for tag in r.result.tags:
-                if random.randint(0,3) == 1:
+                if random.randint(0, 3) == 1:
                     tag.value = random.choice(signatures)
                     tag.type = "FILE_YARA_RULE"
 
