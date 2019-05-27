@@ -36,4 +36,4 @@ socketio.on_namespace(SystemStatusNamespace('/status'))
 
 if __name__ == '__main__':
     # Run debug mode
-    socketio.run(app, host="0.0.0.0", port=5002, debug=config.ui.debug)
+    socketio.run(app, host="0.0.0.0", port=5002, debug=False)
