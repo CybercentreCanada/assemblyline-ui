@@ -44,7 +44,7 @@ class SubmissionMonitoringNamespace(SecureNamespace):
             LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - Connection to client was terminated")
 
     @authenticated_only
-    def on_submission(self, data, user_info):
+    def on_monitor(self, data, user_info):
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring submissions...")
 
         join_room(user_info['sid'])
