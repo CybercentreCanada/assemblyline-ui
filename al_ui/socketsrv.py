@@ -23,7 +23,7 @@ LOGGER = logging.getLogger('assemblyline.ui.socketio')
 LOGGER.info("SocketIO server ready to receive connections...")
 
 # Prepare the app
-app = Flask(__name__)
+app = Flask('socketio')
 app.config['SECRET_KEY'] = config.ui.secret_key
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
 socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "threading")
@@ -35,5 +35,8 @@ socketio.on_namespace(SubmissionMonitoringNamespace('/submissions'))
 socketio.on_namespace(SystemStatusNamespace('/status'))
 
 if __name__ == '__main__':
+    app.logger.setLevel(60)
+    wlog = logging.getLogger('werkzeug')
+    wlog.setLevel(60)
     # Run debug mode
     socketio.run(app, host="0.0.0.0", port=5002, debug=False)
