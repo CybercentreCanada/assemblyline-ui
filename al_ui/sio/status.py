@@ -17,25 +17,21 @@ AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 
 class SystemStatusNamespace(SecureNamespace):
     def __init__(self, namespace=None):
-        self.background_task_started = False
+        self.background_task = None
+        self.stop = False
         super().__init__(namespace=namespace)
 
     def _extra_cleanup(self, sid):
         if len(self.connections) == 0:
             with self.connections_lock:
-                self.background_task_started = False
+                self.stop = True
 
     # noinspection PyBroadException
     def monitor_system_status(self):
-        with self.connections_lock:
-            if self.background_task_started:
-                return
-            self.background_task_started = True
-
         q = CommsQueue('status', private=True)
         try:
             for msg in q.listen():
-                if not self.background_task_started:
+                if self.stop:
                     break
 
                 message = msg['msg']
@@ -47,10 +43,16 @@ class SystemStatusNamespace(SecureNamespace):
             LOGGER.exception(f"SocketIO:{self.namespace}")
         finally:
             LOGGER.info(f"SocketIO:{self.namespace} - No more users connected to status monitoring, exiting thread...")
+            with self.connections_lock:
+                self.background_task = None
 
     @authenticated_only
     def on_monitor(self, data, user_info):
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring system status...")
 
-        self.socketio.start_background_task(target=self.monitor_system_status)
+        with self.connections_lock:
+            self.stop = False
+            if self.background_task is None:
+                self.background_task = self.socketio.start_background_task(target=self.monitor_system_status)
+
         emit('monitoring', data)

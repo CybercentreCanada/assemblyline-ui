@@ -45,10 +45,9 @@ class AlertMonitoringNamespace(SecureNamespace):
 
     @authenticated_only
     def on_alert(self, data, user_info):
-
-        LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
-                    f"User as started monitoring alerts...")
+        LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring alerts...")
 
         join_room(user_info['sid'])
         self.socketio.start_background_task(target=self.monitor_alerts, user_info=user_info)
+
         emit('monitoring', data, room=user_info['sid'], namespace=self.namespace)

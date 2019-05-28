@@ -16,10 +16,6 @@ AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 
 
 class SubmissionMonitoringNamespace(SecureNamespace):
-    def __init__(self, namespace=None):
-        self.background_task_started = False
-        super().__init__(namespace=namespace)
-
     # noinspection PyBroadException
     def monitor_submissions(self, user_info):
         sid = user_info['sid']
@@ -49,10 +45,9 @@ class SubmissionMonitoringNamespace(SecureNamespace):
 
     @authenticated_only
     def on_submission(self, data, user_info):
-
-        LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
-                    f"User as started monitoring submissions...")
+        LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring submissions...")
 
         join_room(user_info['sid'])
         self.socketio.start_background_task(target=self.monitor_submissions, user_info=user_info)
+
         emit('monitoring', data, room=user_info['sid'], namespace=self.namespace)
