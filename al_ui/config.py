@@ -73,7 +73,8 @@ def get_signup_queue(key):
 #################################################################
 # Prepare loggers
 config.logging.log_to_console = config.logging.log_to_console or DEBUG
-al_log.init_logging("ui", config=config, log_level=logging.DEBUG if DEBUG else logging.INFO)
+al_log.init_logging("ui", config=config)
+
 AUDIT_KW_TARGET = ["sid",
                    "sha256",
                    "copy_sid",
