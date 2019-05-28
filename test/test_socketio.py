@@ -7,22 +7,28 @@ import time
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.alert import AlertMessage
+from assemblyline.odm.messages.alerter_heartbeat import AlerterMessage
+from assemblyline.odm.messages.dispatcher_heartbeat import DispatcherMessage
+from assemblyline.odm.messages.expiry_heartbeat import ExpiryMessage
+from assemblyline.odm.messages.ingest_heartbeat import IngestMessage
+from assemblyline.odm.messages.service_heartbeat import ServiceMessage
+from assemblyline.odm.messages.service_timing_heartbeat import ServiceTimingMessage
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 
 # noinspection PyUnresolvedReferences
-from base import get_api_data
+from base import get_api_data, create_users, wipe_users
 
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
 ds = forge.get_datastore()
-alert_queue = CommsQueue('alerts', private=True, host=config.core.redis.persistent.host,
-                         port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
+alert_queue = CommsQueue('alerts', private=True)
+status_queue = CommsQueue('status', private=True)
 
 
 def purge_socket():
-    pass
+    wipe_users(ds)
 
 @pytest.fixture(scope='function')
 def login_session():
@@ -33,6 +39,7 @@ def login_session():
 
 @pytest.fixture(scope="module")
 def datastore(request):
+    create_users(ds)
     request.addfinalizer(purge_socket)
     return ds
 
@@ -86,32 +93,32 @@ def test_alert_namespace(datastore, sio):
         else:
             test_res_array.append(('on_alert_updated', False))
 
+    try:
+        sio.emit('alert', test_id, namespace='/alerts')
+        sio.sleep(1)
 
-    sio.emit('alert', test_id, namespace='/alerts')
-    sio.sleep(1)
+        alert_queue.publish(created.as_primitives())
+        alert_queue.publish(updated.as_primitives())
 
-    alert_queue.publish(created.as_primitives())
-    alert_queue.publish(updated.as_primitives())
+        start_time = time.time()
 
-    start_time = time.time()
+        while len(test_res_array) < 3 or time.time() - start_time < 5:
+            sio.sleep(0.1)
 
-    while len(test_res_array) < 3 or time.time() - start_time < 5:
-        sio.sleep(0.1)
+        assert len(test_res_array) == 3
 
-    assert len(test_res_array) == 3
+        for test, result in test_res_array:
+            if not result:
+                pytest.fail(f"{test} failed.")
 
-    for test, result in test_res_array:
-        if not result:
-            pytest.fail(f"{test} failed.")
-
-    sio.disconnect()
+    finally:
+        sio.disconnect()
 
 
 # noinspection PyUnusedLocal
 def test_live_namespace(datastore, sio):
     wq_data = {'wq_id': get_random_id()}
-    wq = NamedQueue(wq_data['wq_id'], private=True, host=config.core.redis.persistent.host,
-                    port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
+    wq = NamedQueue(wq_data['wq_id'], private=True)
 
     start_msg = {'status_code': 200, 'msg': "Start listening..."}
     stop_msg = {'status_code': 200, 'msg': "All messages received, closing queue..."}
@@ -122,7 +129,6 @@ def test_live_namespace(datastore, sio):
 
     @sio.on('start', namespace='/live_submission')
     def on_start(data):
-        # Confirmation that we are waiting for alerts
         if data == start_msg:
             test_res_array.append(('on_start', True))
         else:
@@ -130,7 +136,6 @@ def test_live_namespace(datastore, sio):
 
     @sio.on('stop', namespace='/live_submission')
     def on_stop(data):
-        # Confirmation that we are waiting for alerts
         if data == stop_msg:
             test_res_array.append(('on_stop', True))
         else:
@@ -138,7 +143,6 @@ def test_live_namespace(datastore, sio):
 
     @sio.on('cachekey', namespace='/live_submission')
     def on_cachekey(data):
-        # Confirmation that we are waiting for alerts
         if data == cachekey_msg:
             test_res_array.append(('on_cachekey', True))
         else:
@@ -146,30 +150,118 @@ def test_live_namespace(datastore, sio):
 
     @sio.on('cachekeyerr', namespace='/live_submission')
     def on_stop(data):
-        # Confirmation that we are waiting for alerts
         if data == cachekeyerr_msg:
             test_res_array.append(('on_cachekeyerr', True))
         else:
             test_res_array.append(('on_cachekeyerr', False))
 
+    try:
+        sio.emit('listen', wq_data, namespace='/live_submission')
+        sio.sleep(1)
 
-    sio.emit('listen', wq_data, namespace='/live_submission')
-    sio.sleep(1)
+        wq.push({"status": "START"})
+        wq.push({"status": "OK", "cache_key": cachekey_msg['msg']})
+        wq.push({"status": "FAIL", "cache_key": cachekeyerr_msg['msg']})
+        wq.push({"status": "STOP"})
 
-    wq.push({"status": "START"})
-    wq.push({"status": "OK", "cache_key": cachekey_msg['msg']})
-    wq.push({"status": "FAIL", "cache_key": cachekeyerr_msg['msg']})
-    wq.push({"status": "STOP"})
+        start_time = time.time()
 
-    start_time = time.time()
+        while len(test_res_array) < 4 and time.time() - start_time < 5:
+            sio.sleep(0.1)
 
-    while len(test_res_array) < 4 and time.time() - start_time < 5:
-        sio.sleep(0.1)
+        assert len(test_res_array) == 4
 
-    assert len(test_res_array) == 4
+        for test, result in test_res_array:
+            if not result:
+                pytest.fail(f"{test} failed.")
 
-    for test, result in test_res_array:
-        if not result:
-            pytest.fail(f"{test} failed.")
+    finally:
+        sio.disconnect()
 
-    sio.disconnect()
+
+# noinspection PyUnusedLocal
+def test_status(datastore, sio):
+    monitoring = get_random_id()
+
+    alerter_hb_msg = random_model_obj(AlerterMessage).as_primitives()
+    dispatcher_hb_msg = random_model_obj(DispatcherMessage).as_primitives()
+    expiry_hb_msg = random_model_obj(ExpiryMessage).as_primitives()
+    ingest_hb_msg = random_model_obj(IngestMessage).as_primitives()
+    service_hb_msg = random_model_obj(ServiceMessage).as_primitives()
+    service_timing_msg = random_model_obj(ServiceTimingMessage).as_primitives()
+
+    test_res_array = []
+
+    @sio.on('monitoring', namespace='/status')
+    def on_monitoring(data):
+        # Confirmation that we are waiting for status messages
+        if data == monitoring:
+            test_res_array.append(('on_monitoring', True))
+        else:
+            test_res_array.append(('on_monitoring', False))
+
+    @sio.on('AlerterHeartbeat', namespace='/status')
+    def on_alerter_heartbeat(data):
+        if data == alerter_hb_msg['msg']:
+            test_res_array.append(('on_alerter_heartbeat', True))
+        else:
+            test_res_array.append(('on_alerter_heartbeat', False))
+
+    @sio.on('DispatcherHeartbeat', namespace='/status')
+    def on_dispatcher_heartbeat(data):
+        if data == dispatcher_hb_msg['msg']:
+            test_res_array.append(('on_dispatcher_heartbeat', True))
+        else:
+            test_res_array.append(('on_dispatcher_heartbeat', False))
+
+    @sio.on('ExpiryHeartbeat', namespace='/status')
+    def on_expiry_heartbeat(data):
+        if data == expiry_hb_msg['msg']:
+            test_res_array.append(('on_expiry_heartbeat', True))
+        else:
+            test_res_array.append(('on_expiry_heartbeat', False))
+
+    @sio.on('IngestHeartbeat', namespace='/status')
+    def on_ingest_heartbeat(data):
+        if data == ingest_hb_msg['msg']:
+            test_res_array.append(('on_ingest_heartbeat', True))
+        else:
+            test_res_array.append(('on_ingest_heartbeat', False))
+
+    @sio.on('ServiceHeartbeat', namespace='/status')
+    def on_service_heartbeat(data):
+        if data == service_hb_msg['msg']:
+            test_res_array.append(('on_service_heartbeat', True))
+        else:
+            test_res_array.append(('on_service_heartbeat', False))
+
+    @sio.on('ServiceTimingHeartbeat', namespace='/status')
+    def on_service_timing_heartbeat(data):
+        if data == service_timing_msg['msg']:
+            test_res_array.append(('on_service_timing_heartbeat', True))
+        else:
+            test_res_array.append(('on_service_timing_heartbeat', False))
+
+    try:
+        sio.emit('monitor', monitoring, namespace='/status')
+        sio.sleep(1)
+
+        status_queue.publish(alerter_hb_msg)
+        status_queue.publish(dispatcher_hb_msg)
+        status_queue.publish(expiry_hb_msg)
+        status_queue.publish(ingest_hb_msg)
+        status_queue.publish(service_hb_msg)
+        status_queue.publish(service_timing_msg)
+
+        start_time = time.time()
+
+        while len(test_res_array) < 7 and time.time() - start_time < 5:
+            sio.sleep(0.1)
+
+        assert len(test_res_array) == 7
+
+        for test, result in test_res_array:
+            if not result:
+                pytest.fail(f"{test} failed.")
+    finally:
+        sio.disconnect()
