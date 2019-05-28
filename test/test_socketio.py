@@ -13,6 +13,7 @@ from assemblyline.odm.messages.expiry_heartbeat import ExpiryMessage
 from assemblyline.odm.messages.ingest_heartbeat import IngestMessage
 from assemblyline.odm.messages.service_heartbeat import ServiceMessage
 from assemblyline.odm.messages.service_timing_heartbeat import ServiceTimingMessage
+from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 
@@ -23,8 +24,6 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
 ds = forge.get_datastore()
-alert_queue = CommsQueue('alerts', private=True)
-status_queue = CommsQueue('status', private=True)
 
 
 def purge_socket():
@@ -61,6 +60,7 @@ def sio(login_session):
 
 # noinspection PyUnusedLocal
 def test_alert_namespace(datastore, sio):
+    alert_queue = CommsQueue('alerts', private=True)
     test_id = get_random_id()
 
     created = random_model_obj(AlertMessage)
@@ -160,6 +160,7 @@ def test_live_namespace(datastore, sio):
 
 # noinspection PyUnusedLocal
 def test_status(datastore, sio):
+    status_queue = CommsQueue('status', private=True)
     monitoring = get_random_id()
 
     alerter_hb_msg = random_model_obj(AlerterMessage).as_primitives()
@@ -217,6 +218,66 @@ def test_status(datastore, sio):
             sio.sleep(0.1)
 
         assert len(test_res_array) == 7
+
+        for test, result in test_res_array:
+            if not result:
+                pytest.fail(f"{test} failed.")
+    finally:
+        sio.disconnect()
+
+
+# noinspection PyUnusedLocal
+def test_submission(datastore, sio):
+    submission_queue = CommsQueue('submissions', private=True)
+    monitoring = get_random_id()
+
+    ingested = random_model_obj(SubmissionMessage).as_primitives()
+    ingested['msg_type'] = "SubmissionIngested"
+    received = random_model_obj(SubmissionMessage).as_primitives()
+    received['msg_type'] = "SubmissionReceived"
+    queued = random_model_obj(SubmissionMessage).as_primitives()
+    queued['msg_type'] = "SubmissionQueued"
+    started = random_model_obj(SubmissionMessage).as_primitives()
+    started['msg_type'] = "SubmissionStarted"
+
+    test_res_array = []
+
+    @sio.on('monitoring', namespace='/submissions')
+    def on_monitoring(data):
+        # Confirmation that we are waiting for status messages
+        test_res_array.append(('on_monitoring', data == monitoring))
+
+    @sio.on('SubmissionIngested', namespace='/submissions')
+    def on_submission_ingested(data):
+        test_res_array.append(('on_submission_ingested', data == ingested['msg']))
+
+    @sio.on('SubmissionReceived', namespace='/submissions')
+    def on_submission_received(data):
+        test_res_array.append(('on_submission_received', data == received['msg']))
+
+    @sio.on('SubmissionQueued', namespace='/submissions')
+    def on_submission_queued(data):
+        test_res_array.append(('on_submission_queued', data == queued['msg']))
+
+    @sio.on('SubmissionStarted', namespace='/submissions')
+    def on_submission_started(data):
+        test_res_array.append(('on_submission_started', data == started['msg']))
+
+    try:
+        sio.emit('monitor', monitoring, namespace='/submissions')
+        sio.sleep(1)
+
+        submission_queue.publish(ingested)
+        submission_queue.publish(received)
+        submission_queue.publish(queued)
+        submission_queue.publish(started)
+
+        start_time = time.time()
+
+        while len(test_res_array) < 5 and time.time() - start_time < 5:
+            sio.sleep(0.1)
+
+        assert len(test_res_array) == 5
 
         for test, result in test_res_array:
             if not result:
