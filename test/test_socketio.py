@@ -74,24 +74,15 @@ def test_alert_namespace(datastore, sio):
     @sio.on('monitoring', namespace='/alerts')
     def on_monitoring(data):
         # Confirmation that we are waiting for alerts
-        if data == test_id:
-            test_res_array.append(('on_monitoring', True))
-        else:
-            test_res_array.append(('on_monitoring', False))
+        test_res_array.append(('on_monitoring', data == test_id))
 
     @sio.on('AlertCreated', namespace='/alerts')
     def on_alert_created(data):
-        if data == created.as_primitives()['msg']:
-            test_res_array.append(('on_alert_created', True))
-        else:
-            test_res_array.append(('on_alert_created', False))
+        test_res_array.append(('on_alert_created', data == created.as_primitives()['msg']))
 
     @sio.on('AlertUpdated', namespace='/alerts')
     def on_alert_updated(data):
-        if data == updated.as_primitives()['msg']:
-            test_res_array.append(('on_alert_updated', True))
-        else:
-            test_res_array.append(('on_alert_updated', False))
+        test_res_array.append(('on_alert_updated', data == updated.as_primitives()['msg']))
 
     try:
         sio.emit('alert', test_id, namespace='/alerts')
@@ -129,31 +120,19 @@ def test_live_namespace(datastore, sio):
 
     @sio.on('start', namespace='/live_submission')
     def on_start(data):
-        if data == start_msg:
-            test_res_array.append(('on_start', True))
-        else:
-            test_res_array.append(('on_start', False))
+        test_res_array.append(('on_start', data == start_msg))
 
     @sio.on('stop', namespace='/live_submission')
     def on_stop(data):
-        if data == stop_msg:
-            test_res_array.append(('on_stop', True))
-        else:
-            test_res_array.append(('on_stop', False))
+        test_res_array.append(('on_stop', data == stop_msg))
 
     @sio.on('cachekey', namespace='/live_submission')
     def on_cachekey(data):
-        if data == cachekey_msg:
-            test_res_array.append(('on_cachekey', True))
-        else:
-            test_res_array.append(('on_cachekey', False))
+        test_res_array.append(('on_cachekey', data == cachekey_msg))
 
     @sio.on('cachekeyerr', namespace='/live_submission')
     def on_stop(data):
-        if data == cachekeyerr_msg:
-            test_res_array.append(('on_cachekeyerr', True))
-        else:
-            test_res_array.append(('on_cachekeyerr', False))
+        test_res_array.append(('on_cachekeyerr', data == cachekeyerr_msg))
 
     try:
         sio.emit('listen', wq_data, namespace='/live_submission')
@@ -195,52 +174,31 @@ def test_status(datastore, sio):
     @sio.on('monitoring', namespace='/status')
     def on_monitoring(data):
         # Confirmation that we are waiting for status messages
-        if data == monitoring:
-            test_res_array.append(('on_monitoring', True))
-        else:
-            test_res_array.append(('on_monitoring', False))
+        test_res_array.append(('on_monitoring', data == monitoring))
 
     @sio.on('AlerterHeartbeat', namespace='/status')
     def on_alerter_heartbeat(data):
-        if data == alerter_hb_msg['msg']:
-            test_res_array.append(('on_alerter_heartbeat', True))
-        else:
-            test_res_array.append(('on_alerter_heartbeat', False))
+        test_res_array.append(('on_alerter_heartbeat', data == alerter_hb_msg['msg']))
 
     @sio.on('DispatcherHeartbeat', namespace='/status')
     def on_dispatcher_heartbeat(data):
-        if data == dispatcher_hb_msg['msg']:
-            test_res_array.append(('on_dispatcher_heartbeat', True))
-        else:
-            test_res_array.append(('on_dispatcher_heartbeat', False))
+        test_res_array.append(('on_dispatcher_heartbeat', data == dispatcher_hb_msg['msg']))
 
     @sio.on('ExpiryHeartbeat', namespace='/status')
     def on_expiry_heartbeat(data):
-        if data == expiry_hb_msg['msg']:
-            test_res_array.append(('on_expiry_heartbeat', True))
-        else:
-            test_res_array.append(('on_expiry_heartbeat', False))
+        test_res_array.append(('on_expiry_heartbeat', data == expiry_hb_msg['msg']))
 
     @sio.on('IngestHeartbeat', namespace='/status')
     def on_ingest_heartbeat(data):
-        if data == ingest_hb_msg['msg']:
-            test_res_array.append(('on_ingest_heartbeat', True))
-        else:
-            test_res_array.append(('on_ingest_heartbeat', False))
+        test_res_array.append(('on_ingest_heartbeat', data == ingest_hb_msg['msg']))
 
     @sio.on('ServiceHeartbeat', namespace='/status')
     def on_service_heartbeat(data):
-        if data == service_hb_msg['msg']:
-            test_res_array.append(('on_service_heartbeat', True))
-        else:
-            test_res_array.append(('on_service_heartbeat', False))
+        test_res_array.append(('on_service_heartbeat', data == service_hb_msg['msg']))
 
     @sio.on('ServiceTimingHeartbeat', namespace='/status')
     def on_service_timing_heartbeat(data):
-        if data == service_timing_msg['msg']:
-            test_res_array.append(('on_service_timing_heartbeat', True))
-        else:
-            test_res_array.append(('on_service_timing_heartbeat', False))
+        test_res_array.append(('on_service_timing_heartbeat', data == service_timing_msg['msg']))
 
     try:
         sio.emit('monitor', monitoring, namespace='/status')
