@@ -1,12 +1,12 @@
 import pytest
 
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()

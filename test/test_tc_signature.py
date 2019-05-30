@@ -5,11 +5,12 @@ import random
 import pytest
 
 # noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_signatures
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.tc_signature import TCSignature
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users, create_tc_signatures, wipe_tc_signatures
 
 
 TEST_SIZE = 20
@@ -18,19 +19,15 @@ ds = forge.get_datastore(config)
 
 
 def purge_tc_signature():
+    wipe_tc_signatures()
     wipe_users(ds)
-    ds.tc_signature.wipe()
 
 
 @pytest.fixture(scope="module")
 def datastore(request):
+    create_tc_signatures(ds)
     create_users(ds)
 
-    for x in range(TEST_SIZE):
-        tc_id = f"TC_0000{x+1:#02d}"
-        ds.tc_signature.save(tc_id, random_model_obj(TCSignature))
-
-    ds.tc_signature.commit()
     request.addfinalizer(purge_tc_signature)
     return ds
 

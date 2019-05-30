@@ -15,12 +15,11 @@ from assemblyline.odm.messages.service_heartbeat import ServiceMessage
 from assemblyline.odm.messages.service_timing_heartbeat import ServiceTimingMessage
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
-
-# noinspection PyUnresolvedReferences
-from base import get_api_data, create_users, wipe_users
-
 from assemblyline.remote.datatypes.queues.named import NamedQueue
+
+from base import get_api_data
 
 config = forge.get_config()
 ds = forge.get_datastore()

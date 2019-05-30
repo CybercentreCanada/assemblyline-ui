@@ -4,12 +4,12 @@ import random
 
 import pytest
 
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_signatures
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.signature import Signature
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users, create_signatures, wipe_signatures
 
 config = forge.get_config()
 ds = forge.get_datastore(config)
@@ -17,13 +17,13 @@ ds = forge.get_datastore(config)
 
 def purge_signature():
     wipe_users(ds)
-    ds.signature.wipe()
+    wipe_signatures(ds)
 
 
 @pytest.fixture(scope="module")
 def datastore(request):
     create_users(ds)
-    create_signatures()
+    create_signatures(ds)
     request.addfinalizer(purge_signature)
     return ds
 

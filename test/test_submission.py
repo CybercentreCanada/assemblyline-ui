@@ -2,12 +2,11 @@
 import pytest
 import random
 
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_services, \
-    wipe_services, create_submission, wipe_submissions
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.randomizer import get_random_user, get_random_groups
+from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 
 
 NUM_SUBMISSIONS = 10
@@ -27,11 +26,6 @@ def datastore(request):
 
     for _ in range(NUM_SUBMISSIONS):
         create_submission(ds, fs)
-
-    ds.error.commit()
-    ds.file.commit()
-    ds.result.commit()
-    ds.submission.commit()
 
     request.addfinalizer(purge_submission)
     return ds

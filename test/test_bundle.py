@@ -1,13 +1,11 @@
+import pytest
 import random
 
-import pytest
-
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_services, \
-    wipe_services, create_submission, wipe_submissions
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle, BUNDLE_MAGIC
+from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 
 config = forge.get_config()
 ds = forge.get_datastore(config)
@@ -23,12 +21,6 @@ def purge_bundle():
 def datastore(request):
     create_users(ds)
     create_submission(ds, fs)
-
-    ds.error.commit()
-    ds.file.commit()
-    ds.result.commit()
-    ds.submission.commit()
-
     request.addfinalizer(purge_bundle)
     return ds
 

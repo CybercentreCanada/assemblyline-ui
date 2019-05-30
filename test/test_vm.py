@@ -2,12 +2,12 @@ import json
 import pytest
 import random
 
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_services, wipe_services
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.vm import VM
 from assemblyline.odm.randomizer import random_model_obj, SERVICES
+from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 
 
 NUM_VMS = 10

@@ -1,8 +1,7 @@
 
 import pytest
 
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_signatures
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.alert import Alert
@@ -10,6 +9,7 @@ from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
 collections = ['alert', 'file', 'result', 'signature', 'submission']

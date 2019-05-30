@@ -2,13 +2,13 @@ import json
 import pytest
 import random
 
-# noinspection PyUnresolvedReferences
-from base import APIError, HOST, login_session, get_api_data, create_users, wipe_users, create_services, wipe_services
+from base import APIError, HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.odm.models.workflow import Workflow
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 
 
 NUM_WORKFLOWS = 10

@@ -4,13 +4,13 @@ import random
 
 import pytest
 
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users, create_services, wipe_services
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.file import File
 from assemblyline.odm.randomizer import random_model_obj, get_random_phrase
+from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 NUM_FILES = 4

@@ -6,8 +6,9 @@ from assemblyline.common import forge
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.randomizer import random_model_obj
-# noinspection PyUnresolvedReferences
-from base import HOST, login_session, get_api_data, create_users, wipe_users
+from assemblyline.odm.random_data import create_users, wipe_users
+
+from base import HOST, login_session, get_api_data
 from cart import unpack_stream
 from io import BytesIO
 

@@ -3,14 +3,14 @@ import random
 
 import pytest
 
-# noinspection PyUnresolvedReferences
-from base import APIError, HOST, login_session, get_api_data, create_users, wipe_users, create_services, wipe_services
+from base import APIError, HOST, login_session, get_api_data
 
 from al_ui.helper.user import load_user_settings
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.random_data import create_users, wipe_users
 
 ds = forge.get_datastore()
 AVATAR = "AVATAR!"

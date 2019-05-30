@@ -6,8 +6,9 @@ import random
 from io import BytesIO
 
 # noinspection PyUnresolvedReferences
-from base import APIError, HOST, login_session, get_api_data, create_users, wipe_users, create_services, wipe_services
+from base import APIError, HOST, login_session, get_api_data
 
+from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.randomizer import get_random_phrase
