@@ -19,7 +19,7 @@ ds = forge.get_datastore(config)
 
 
 def purge_tc_signature():
-    wipe_tc_signatures()
+    wipe_tc_signatures(ds)
     wipe_users(ds)
 
 
