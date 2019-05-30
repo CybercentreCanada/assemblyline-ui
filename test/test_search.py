@@ -30,7 +30,7 @@ def purge_result():
 @pytest.fixture(scope="module")
 def datastore(request):
     create_users(ds)
-    signatures.extend(create_signatures())
+    signatures.extend(create_signatures(ds))
     ds.signature.commit()
 
     for x in range(TEST_SIZE):
