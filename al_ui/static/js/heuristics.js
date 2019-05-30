@@ -13,7 +13,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.heuristic_list = null;
         $scope.started = false;
         $scope.filtered = false;
-        $scope.filter = "*";
+        $scope.filter = "id:*";
 
         $scope.total = 0;
         $scope.offset = 0;
@@ -33,7 +33,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
                 if ($scope.searchText === "") {
-                    $scope.filter = "*";
+                    $scope.filter = "id:*";
                 }
                 else {
                     $scope.filter = $scope.searchText;
@@ -98,7 +98,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v4/heuristics/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
+                url: "/api/v4/search/heuristic/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -108,7 +108,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.pages = $scope.pagerArray();
                     $scope.started = true;
 
-                    $scope.filtered = $scope.filter !== "*";
+                    $scope.filtered = $scope.filter !== "id:*";
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;

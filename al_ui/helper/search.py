@@ -3,6 +3,7 @@ from al_ui.config import STORAGE
 BUCKET_MAP = {
     'alert': STORAGE.alert,
     'file': STORAGE.file,
+    'heuristic': STORAGE.heuristic,
     'result': STORAGE.result,
     'signature': STORAGE.signature,
     'submission': STORAGE.submission

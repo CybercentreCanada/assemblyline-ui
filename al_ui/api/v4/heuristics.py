@@ -74,50 +74,6 @@ def get_heuristic(heuristic_id, **kwargs):
         return make_api_response("", "You are not allowed to see this heuristic...", 403)
 
 
-@heuristics_api.route("/list/", methods=["GET"])
-@api_login(allow_readonly=False, required_priv=["R"])
-def list_heuritics(**kwargs):
-    """
-    List all heuristics in the system
-    
-    Variables:
-    offset     =>  Offset to start returning results
-    rows       =>  Number of results to return
-    query      =>  Query to use to filter the results
-    
-    Arguments: 
-    None
-    
-    Data Block:
-    None
-
-    API call example:
-    /api/v3/heuristics/SW_HEUR_001/
-    
-    Result example:
-    {"total": 201,                # Total heuristics found
-     "offset": 0,                 # Offset in the heuristics list
-     "rows": 100,                 # Number of heuristics returned
-     "items": [{                  # List of heuristics
-       "id": "AL_HEUR_001",               # Heuristics ID
-       "filetype": ".*",                  # Target file type
-       "name": "HEURISTICS_NAME",         # Heuristics name
-       "description": ""                  # Heuristics description
-     }, ... ]
-    }
-    """
-    user = kwargs['user']
-    offset = int(request.args.get('offset', 0))
-    rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*") or "id:*"
-
-    try:
-        return make_api_response(STORAGE.heuristic.search(query, offset=offset, rows=rows,
-                                                          access_control=user['access_control'], as_obj=False))
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
-
-
 @heuristics_api.route("/stats/", methods=["GET"])
 @api_login(allow_readonly=False)
 def heuritics_statistics(**kwargs):
