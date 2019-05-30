@@ -11,7 +11,7 @@ from assemblyline.datastore import SearchException
 Classification = forge.get_classification()
 
 SUB_API = 'heuristics'
-heuristics_api = make_subapi_blueprint(SUB_API)
+heuristics_api = make_subapi_blueprint(SUB_API, api_version=4)
 heuristics_api._doc = "View the different heuristics of the system"
 
 

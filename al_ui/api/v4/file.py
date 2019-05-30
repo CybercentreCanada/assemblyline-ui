@@ -133,9 +133,9 @@ def download_file(sha256, **kwargs):
     sha256       => A resource locator for the file (sha256)
     
     Arguments: 
-    name      => Name of the file to download
-    format    => Format to encode the file in
-    
+    encoding    => Format to encode the file in
+    name        => Name of the file to download
+
     Data Block:
     None
 
@@ -158,8 +158,8 @@ def download_file(sha256, **kwargs):
         name = os.path.basename(name)
         name = safe_str(name)
 
-        file_format = request.args.get('format', params['download_encoding'])
-        if file_format == "raw" and not ALLOW_RAW_DOWNLOADS:
+        encoding = request.args.get('encoding', params['download_encoding'])
+        if encoding == "raw" and not ALLOW_RAW_DOWNLOADS:
             return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
 
         with forge.get_filestore() as f_transport:
@@ -168,12 +168,12 @@ def download_file(sha256, **kwargs):
         if not data:
             return make_api_response({}, "The file was not found in the system.", 404)
 
-        data, error, already_encoded = encode_file(data, file_format, name)
+        data, error, already_encoded = encode_file(data, encoding, name)
         if error:
             return make_api_response({}, error['text'], error['code'])
 
-        if file_format != "raw" and not already_encoded:
-            name = "%s.%s" % (name, file_format)
+        if encoding != "raw" and not already_encoded:
+            name = "%s.%s" % (name, encoding)
     
         return make_file_response(data, name, len(data))
     else:

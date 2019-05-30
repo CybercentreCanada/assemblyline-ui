@@ -55,7 +55,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/heuristics/" + heuristic + "/"
+                url: "/api/v4/heuristics/" + heuristic + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -98,7 +98,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/heuristics/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
+                url: "/api/v4/heuristics/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
@@ -131,7 +131,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v3/heuristics/stats/"
+                url: "/api/v4/heuristics/stats/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;
