@@ -1,6 +1,7 @@
 FROM cccs/assemblyline:latest
 
 ARG version
+ENV PYTHONUNBUFFERED TRUE
 
 # Switch to root to install dependancies
 USER root
@@ -10,4 +11,4 @@ RUN pip3 install assemblyline-ui==$version
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "-b", ":5002", "-w", "1", "-k", "gevent", "al_ui.socketsrv:app"]
+CMD ["gunicorn", "-b", ":5002", "-w", "1", "-k", "gevent", "al_ui.socketsrv:app", "--enable-stdio-inheritance", "--capture-output", "--access-logfile", "-", "--error-logfile", "-"]
