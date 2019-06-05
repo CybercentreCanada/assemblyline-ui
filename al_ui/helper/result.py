@@ -62,8 +62,6 @@ def format_result(user_classification, r, min_classification):
 
     # Set result classification to at least min but no more then viewable result classification
     r['classification'] = CLASSIFICATION.max_classification(max_classification, min_classification)
-    parts = CLASSIFICATION.get_access_control_parts(r['classification'])
-    r.update(parts)
 
     if len(r['result']['sections']) == 0 and len(r['result']['tags']) == 0:
         r['result']['score'] = 0
