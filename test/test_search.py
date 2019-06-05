@@ -66,9 +66,20 @@ def datastore(request):
 def test_deep_search(datastore, login_session):
     _, session = login_session
 
+    params = {
+        "query": "id:*",
+        "rows": 5
+    }
     for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/deep/{collection}/", params={"query": "id:*"})
-        assert resp['length'] >= TEST_SIZE
+        params['deep_paging_id'] = "*"
+        res = []
+        while True:
+            resp = get_api_data(session, f"{HOST}/api/v4/search/{collection}/", params=params)
+            params['deep_paging_id'] = resp['next_deep_paging_id']
+            if len(resp['items']) == 0:
+                break
+            res.extend(resp['items'])
+        assert len(res) >= TEST_SIZE
 
 
 # noinspection PyUnusedLocal
@@ -123,15 +134,6 @@ def test_histogram_search(datastore, login_session):
         resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
         for k, v in resp.items():
             assert isinstance(int(k), int) and isinstance(v, int)
-
-
-# noinspection PyUnusedLocal
-def test_inspect_search(datastore, login_session):
-    _, session = login_session
-
-    for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/inspect/{collection}/", params={"query": "id:*"})
-        assert resp >= TEST_SIZE
 
 
 # noinspection PyUnusedLocal

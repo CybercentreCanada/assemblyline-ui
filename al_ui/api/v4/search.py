@@ -25,12 +25,13 @@ def search(bucket, **kwargs):
     query   =>   Query to search for
 
     Optional Arguments:
-    filters =>   List of additional filter queries limit the data
-    offset  =>   Offset in the results
-    rows    =>   Max number of results
-    sort    =>   How to sort the results
-    fl      =>   List of fields to return
-    timeout =>   Maximum execution time (ms)
+    deep_paging_id =>   ID of the next page or * to start deep paging
+    filters        =>   List of additional filter queries limit the data
+    offset         =>   Offset in the results
+    rows           =>   Number of results per page
+    sort           =>   How to sort the results (not available in deep paging)
+    fl             =>   List of fields to return
+    timeout        =>   Maximum execution time (ms)
 
     Data Block (POST ONLY):
     {"query": "query",     # Query to search for
@@ -43,16 +44,17 @@ def search(bucket, **kwargs):
 
 
     Result example:
-    {"total": 201,       # Total results found
-     "offset": 0,        # Offset in the result list
-     "rows": 100,        # Number of results returned
-     "items": []}        # List of results
+    {"total": 201,                          # Total results found
+     "offset": 0,                           # Offset in the result list
+     "rows": 100,                           # Number of results returned
+     "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
+     "items": []}                           # List of results
     """
     if bucket not in BUCKET_MAP:
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
     user = kwargs['user']
-    fields = ["offset", "rows", "sort", "fl", "timeout"]
+    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id"]
     multi_fields = ['filters']
 
     if request.method == "POST":
@@ -141,122 +143,6 @@ def group_search(bucket, group_field, **kwargs):
 
     try:
         return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params))
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
-
-
-@search_api.route("/deep/<bucket>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
-def deep_search(bucket, **kwargs):
-    """
-    Deep Search through given bucket. This will return all items matching
-    the query.
-    Uses lucene search syntax.
-    
-    Variables:
-    bucket     =>  Buckets to be used to stream the search query from
-    
-    Arguments: 
-    query      => query to search for
-
-    Optional Arguments:
-    limit      => Stop gathering result after this many items returned
-    fl         => Field list to return
-    filters    => Filter queries to be applied after the query
-    
-    Data Block (POST ONLY):
-    {"query": "id:*",
-     "limit": "10",
-     "fl": "id,score",
-     "filters": ['fq']}
-     
-    Result example:
-    { "items": [],      # List of results
-      "length": 0 }     # Number of items returned       
-    """
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-
-    user = kwargs['user']
-    fields = ["fl"]
-    multi_fields = ['filters']
-
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
-        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
-    else:
-        req_data = request.args
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
-        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
-
-    query = req_data.get('query', None) or req_data.get('q', None)
-    limit = req_data.get('limit', None)
-    if limit:
-        limit = int(limit)
-
-    params.update({'access_control': user['access_control'], 'as_obj': False})
-
-    if not query:
-        return make_api_response("", "No query was specified.", 400)
-
-    out = []
-    try:
-        for item in BUCKET_MAP[bucket].stream_search(query, **params):
-            out.append(item)
-            if limit and len(out) == limit:
-                break
-
-        return make_api_response({"length": len(out), "items": out})
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
-
-
-@search_api.route("/inspect/<bucket>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
-def inspect_search(bucket, **kwargs):
-    """
-    Inspect a search query to find out how much result items are
-    going to be returned.
-    Uses lucene search syntax.
-    
-    Variables:
-    bucket    =>  Buckets to be used to stream the search query from
-    
-    Arguments: 
-    query     => Query to search for
-
-    Optional Arguments:
-    filters   => Filter queries to be applied after the query
-    
-    Data Block (POST ONLY):
-    {"query": "id:*",
-     "filters": ['fq']}
-     
-    Result example:
-    0         # number of items return by the query
-    """
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-
-    user = kwargs['user']
-    multi_fields = ['filters']
-
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-    else:
-        req_data = request.args
-        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-
-    query = req_data.get('query', None) or req_data.get('q', None)
-    params.update({'access_control': user['access_control'], 'as_obj': False, 'rows': 0, "fl": "id"})
-
-    if not query:
-        return make_api_response("", "No query was specified.", 400)
-
-    try:
-        return make_api_response(BUCKET_MAP[bucket].search(query, **params)['total'])
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
