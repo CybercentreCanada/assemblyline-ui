@@ -425,7 +425,7 @@ def add_labels(alert_id, **kwargs):
 
 
 @alert_api.route("/label/batch/", methods=["POST"])
-@api_login(allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False)
 def add_labels_by_batch(**kwargs):
     """
     Apply labels to all alerts matching the given filters
@@ -522,7 +522,7 @@ def change_priority(alert_id, **kwargs):
 
 
 @alert_api.route("/priority/batch/", methods=["POST"])
-@api_login(allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False)
 def change_priority_by_batch(**kwargs):
     """
     Apply priority to all alerts matching the given filters
@@ -622,7 +622,7 @@ def change_status(alert_id, **kwargs):
 
 
 @alert_api.route("/status/batch/", methods=["POST"])
-@api_login(allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False)
 def change_status_by_batch(**kwargs):
     """
     Apply status to all alerts matching the given filters
@@ -716,7 +716,7 @@ def take_ownership(alert_id, **kwargs):
 
 
 @alert_api.route("/ownership/batch/", methods=["GET"])
-@api_login(allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False)
 def take_ownership_by_batch(**kwargs):
     """
     Take ownership of all alerts matching the given filters

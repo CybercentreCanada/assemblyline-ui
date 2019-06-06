@@ -21,7 +21,7 @@ submission_api._doc = "Perform operations on system submissions"
 
 
 @submission_api.route("/<sid>/", methods=["DELETE"])
-@api_login(allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False)
 def delete_submission(sid, **kwargs):
     """
     INCOMPLETE
