@@ -170,52 +170,6 @@ def get_signature(tc_id, **kwargs):
         return make_api_response("", f"Signature not found. ({tc_id})", 404)
 
 
-@tc_sigs_api.route("/list/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
-def list_signatures(**kwargs):
-    """
-    List all the tagcheck signatures in the system.
-    
-    Variables:
-    None 
-    
-    Arguments: 
-    offset       => Offset at which we start giving signatures
-    query        => Query to apply on the signature list
-    rows         => Numbers of signatures to return
-
-    Data Block:
-    None
-    
-    Result example:
-    {"total": 201,                # Total signatures found
-     "offset": 0,                 # Offset in the signature list
-     "count": 100,                # Number of signatures returned
-     "items": [{                  # List of Tagcheck signature blocks
-       "name": "SIG_ID_NAME",        # Signature name
-       "callback": None,             # Callback function when the signature fires
-       "classification": None ,      # Classification of the signature
-       "comment": "",                # Comments about the signature
-       "implant_family": "",         # Implant family
-       "score": 'HIGH',              # Score assigned to the signature
-       "status": "DEPLOYED",         # Status of the signature (DEPLOYED, DISABLED)
-       "threat_actor": "",           # Threat actor assigned to the signature
-       "values": [""],               # Rule regexes
-       }, ... ]
-    }
-    """
-    user = kwargs['user']
-    offset = int(request.args.get('offset', 0))
-    rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*")
-
-    try:
-        return make_api_response(STORAGE.tc_signature.search(query, offset=offset, rows=rows,
-                                                             access_control=user['access_control'], as_obj=False))
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
-
-
 # noinspection PyPep8Naming
 @tc_sigs_api.route("/<tc_id>/", methods=["DELETE"])
 @api_login(required_priv=['W'], allow_readonly=False, require_admin=True)

@@ -6,7 +6,8 @@ BUCKET_MAP = {
     'heuristic': STORAGE.heuristic,
     'result': STORAGE.result,
     'signature': STORAGE.signature,
-    'submission': STORAGE.submission
+    'submission': STORAGE.submission,
+    'tc_signature': STORAGE.tc_signature
 }
 
 def list_all_fields():

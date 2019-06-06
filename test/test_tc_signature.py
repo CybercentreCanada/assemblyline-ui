@@ -83,18 +83,6 @@ def test_get_tc_signature(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_list_tc_signature(datastore, login_session):
-    _, session = login_session
-
-    tc_signature_count = ds.tc_signature.search("id:*", rows=0)['total']
-
-    resp = get_api_data(session, f"{HOST}/api/v4/tc_signature/list/")
-    assert resp['total'] == tc_signature_count
-    for sig in resp['items']:
-        assert {'classification', 'id', 'values', 'name'}.issubset(sig.keys())
-
-
-# noinspection PyUnusedLocal
 def test_set_tc_signature(datastore, login_session):
     _, session = login_session
 

@@ -479,51 +479,6 @@ def get_signature(sid, rev, **kwargs):
         return make_api_response("", "Signature not found. (%s r.%s)" % (sid, rev), 404)
 
 
-@signature_api.route("/list/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
-def list_signatures(**kwargs):
-    """
-    List all the signatures in the system. 
-    
-    Variables:
-    None 
-    
-    Arguments: 
-    offset       => Offset at which we start giving signatures
-    rows         => Numbers of signatures to return
-    query        => Filter to apply on the signature list
-    
-    Data Block:
-    None
-    
-    Result example:
-    {"total": 201,                # Total signatures found
-     "offset": 0,                 # Offset in the signature list
-     "rows": 100,                # Number of signatures returned
-     "items": [{                  # List of Signatures:
-       "name": "sig_name",          # Signature name    
-       "tags": ["PECheck"],         # Signature tags
-       "comments": [""],            # Signature comments lines
-       "meta": {                    # Meta fields ( **kwargs )
-         "id": "SID",                 # Mandatory ID field
-         "rule_version": 1 },         # Mandatory Revision field
-       "type": "rule",              # Rule type (rule, private rule ...)
-       "strings": ['$ = "a"'],      # Rule string section (LIST)
-       "condition": ["1 of them"]   # Rule condition section (LIST)
-       }, ... ]}
-    """
-    user = kwargs['user']
-    offset = int(request.args.get('offset', 0))
-    rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*") or "id:*"
-
-    try:
-        return make_api_response(STORAGE.signature.search(query, offset=offset, rows=rows,
-                                                          access_control=user['access_control'], as_obj=False))
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
-
-
 @signature_api.route("/<sid>/<rev>/", methods=["POST"])
 @api_login(required_priv=['W'], allow_readonly=False)
 def set_signature(sid, rev, **kwargs):

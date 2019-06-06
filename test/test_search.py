@@ -1,6 +1,8 @@
 
 import pytest
 
+from assemblyline.odm.models.heuristic import Heuristic
+from assemblyline.odm.models.tc_signature import TCSignature
 from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
@@ -12,7 +14,7 @@ from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
-collections = ['alert', 'file', 'result', 'signature', 'submission']
+collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'tc_signature']
 
 ds = forge.get_datastore()
 file_list = []
@@ -24,6 +26,8 @@ def purge_result():
     ds.result.wipe()
     ds.signature.wipe()
     ds.submission.wipe()
+    ds.heuristic.wipe()
+    ds.tc_signature.wipe()
     wipe_users(ds)
 
 
@@ -57,6 +61,16 @@ def datastore(request):
             f.sha256 = file_list[x]
         ds.submission.save(s.sid, s)
     ds.submission.commit()
+
+    for x in range(TEST_SIZE):
+        tc_id = f"TC_0000{x + 1:#02d}"
+        ds.tc_signature.save(tc_id, random_model_obj(TCSignature))
+    ds.tc_signature.commit()
+
+    for x in range(TEST_SIZE):
+        h = random_model_obj(Heuristic)
+        ds.heuristic.save(h.heur_id, h)
+    ds.heuristic.commit()
 
     request.addfinalizer(purge_result)
     return ds
@@ -111,12 +125,17 @@ def test_histogram_search(datastore, login_session):
     date_hist_map = {
         'alert': 'ts',
         'file': 'seen.first',
+        'heuristic': False,
         'signature': 'meta.creation_date',
-        'submission': 'times.submitted'
+        'submission': 'times.submitted',
+        'tc_signature': 'last_modified'
     }
 
     for collection in collections:
         hist_field = date_hist_map.get(collection, 'expiry_ts')
+        if not hist_field:
+            continue
+
         resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
         for k, v in resp.items():
             assert k.startswith("2") and k.endswith("Z") and isinstance(v, int)
@@ -126,11 +145,16 @@ def test_histogram_search(datastore, login_session):
         'file': 'seen.count',
         'result': 'result.score',
         'signature': 'meta.rule_version',
-        'submission': 'file_count'
+        'submission': 'file_count',
+        'heuristic': False,
+        'tc_signature': False
     }
 
     for collection in collections:
         hist_field = int_hist_map.get(collection, 'expiry_ts')
+        if not hist_field:
+            continue
+
         resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
         for k, v in resp.items():
             assert isinstance(int(k), int) and isinstance(v, int)
@@ -164,11 +188,16 @@ def test_stats_search(datastore, login_session):
         'file': 'seen.count',
         'result': 'result.score',
         'signature': 'meta.rule_version',
-        'submission': 'file_count'
+        'submission': 'file_count',
+        'heuristic': False,
+        'tc_signature': False
     }
 
     for collection in collections:
-        field = int_map.get(collection, 'expiry_ts')
+        field = int_map.get(collection, False)
+        if not field:
+            continue
+
         resp = get_api_data(session, f"{HOST}/api/v4/search/stats/{collection}/{field}/")
         assert list(resp.keys()) == ['avg', 'count', 'max', 'min', 'sum']
         for v in resp.values():

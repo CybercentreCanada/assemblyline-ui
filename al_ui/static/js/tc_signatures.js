@@ -291,7 +291,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v4/tc_signature/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
+            url: "/api/v4/search/tc_signature/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
         })
             .success(function (data) {
                 $scope.loading_extra = false;

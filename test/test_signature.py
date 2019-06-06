@@ -88,18 +88,6 @@ def test_get_signature(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_list_signature(datastore, login_session):
-    _, session = login_session
-
-    signature_count = ds.signature.search("id:*", rows=0)['total']
-
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/list/")
-    assert resp['total'] == signature_count
-    for sig in resp['items']:
-        assert sorted(list(sig.keys())) == ['classification', 'id', 'meta', 'name']
-
-
-# noinspection PyUnusedLocal
 def test_set_signature(datastore, login_session):
     _, session = login_session
 
@@ -127,6 +115,7 @@ def test_set_signature(datastore, login_session):
     ds.signature.commit()
 
     assert resp == {'rev': rev+1, 'sid': sid, 'success': True}
+
 
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):
