@@ -2,7 +2,6 @@
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, CLASSIFICATION
 from assemblyline.odm.models.workflow import Workflow
@@ -198,50 +197,6 @@ def list_workflow_labels(**kwargs):
     """
     access_control = kwargs['user']['access_control']
     return make_api_response(list(STORAGE.workflow.facet("labels", access_control=access_control).keys()))
-
-
-@workflow_api.route("/list/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False)
-def list_workflows(**kwargs):
-    """
-    List all workflows of the system.
-    
-    Variables:
-    None
-    
-    Arguments: 
-    offset        =>  Offset in the workflow bucket
-    query         =>  Filter to apply to the workflow list
-    rows          =>  Max number of workflow returned
-
-    Data Block:
-    None
-    
-    Result example:
-    {
-     "count": 100,               # Max number of workflows
-     "items": [{                 # List of workflows
-       "name": "Workflow name",    # Name of the workflow
-       "classification": "",       # Max classification for workflow
-       "label": ['label1'],        # Labels for the workflow
-       "priority": "LOW",          # Priority of the workflow
-       "status": "MALICIOUS",      # Status of the workflow
-       "query": "*:*"              # Query to match the data
-     } , ...],
-     "total": 10,                # Total number of workflows
-     "offset": 0                 # Offset in the workflow bucket
-    }
-    """
-    user = kwargs['user']
-    offset = int(request.args.get('offset', 0))
-    rows = int(request.args.get('rows', 100))
-    query = request.args.get('query', "id:*") or "id:*"
-    
-    try:
-        return make_api_response(STORAGE.workflow.search(query, offset=offset, rows=rows,
-                                                         access_control=user['access_control'], as_obj=False))
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @workflow_api.route("/<workflow_id>/", methods=["DELETE"])

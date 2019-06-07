@@ -295,7 +295,7 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
 
             $http({
                 method: 'GET',
-                url: "/api/v4/workflow/list/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
+                url: "/api/v4/search/workflow/?offset=" + $scope.offset + "&rows=" + $scope.rows + "&query=" + encodeURIComponent($scope.filter)
             })
                 .success(function (data) {
                     $scope.loading_extra = false;

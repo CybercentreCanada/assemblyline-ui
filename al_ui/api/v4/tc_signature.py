@@ -2,7 +2,6 @@ from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch
-from assemblyline.datastore import SearchException
 from assemblyline.odm.models.tc_signature import DRAFT_STATUSES, DEPLOYED_STATUSES
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
@@ -31,6 +30,7 @@ def test_status(data, user, sig=None):
             raise AccessDeniedException("Only admins are allowed to change a signature already in "
                                         "deployed or disabled status")
 
+
 def get_next_tc_id():
     res = STORAGE.tc_signature.search("id:*", fl="id", sort="id desc", rows=1, as_obj=False)
     if res['total'] > 0:
@@ -38,9 +38,10 @@ def get_next_tc_id():
     else:
         return "TC_000001"
 
+
 def get_signature_last_modified():
     res = STORAGE.tc_signature.search("id:*", fl="last_modified",
-                                   sort="last_modified desc", rows=1, as_obj=False)
+                                      sort="last_modified desc", rows=1, as_obj=False)
     if res['total'] > 0:
         return res['items'][0]['last_modified']
     return '1970-01-01T00:00:00.000000Z'
@@ -48,7 +49,7 @@ def get_signature_last_modified():
 
 @tc_sigs_api.route("/", methods=["PUT"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-def add_signature( **kwargs):
+def add_signature(**kwargs):
     """
     Add a tagcheck signature to the system
        

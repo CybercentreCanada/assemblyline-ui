@@ -1,12 +1,10 @@
 
 import concurrent.futures
 
-from flask import request
 
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 from assemblyline.common import forge
-from assemblyline.datastore import SearchException
 
 Classification = forge.get_classification()
 
@@ -65,7 +63,6 @@ def get_heuristic(heuristic_id, **kwargs):
 
     if not h:
         return make_api_response("", "Heuristic not found", 404)
-
 
     if user and Classification.is_accessible(user['classification'], h['classification']):
         h.update(get_stat_for_heuristic(h['heur_id'], h['classification']))

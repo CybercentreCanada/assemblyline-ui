@@ -73,16 +73,6 @@ def test_get_workflow(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_list_workflows(datastore, login_session):
-    _, session = login_session
-
-    resp = get_api_data(session, f"{HOST}/api/v4/workflow/list/")
-    assert resp['total'] == len(workflow_list)
-    for workflow in resp['items']:
-        assert workflow['workflow_id'] in workflow_list
-
-
-# noinspection PyUnusedLocal
 def test_list_workflows_labels(datastore, login_session):
     _, session = login_session
 

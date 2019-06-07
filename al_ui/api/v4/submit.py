@@ -275,7 +275,6 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         except SubmissionException as e:
             return make_api_response("", err=str(e), status_code=400)
 
-
     return make_api_response(submit_result.as_primitives())
 
 

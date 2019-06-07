@@ -185,7 +185,6 @@ def list_bucket_fields(bucket, **kwargs):
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
 
-
 @search_api.route("/facet/<bucket>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
 def facet(bucket, field, **kwargs):
@@ -362,7 +361,7 @@ def stats(bucket, int_field, **kwargs):
 
     field_info = collection.fields().get(int_field, None)
     if field_info is None:
-       return make_api_response("", f"Field '{int_field}' is not a valid field in bucket: {bucket}", 400)
+        return make_api_response("", f"Field '{int_field}' is not a valid field in bucket: {bucket}", 400)
 
     if field_info['type'] not in ["integer", "float"]:
         return make_api_response("", f"Field '{int_field}' is not a numeric field.", 400)

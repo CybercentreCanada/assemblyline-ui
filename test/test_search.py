@@ -14,11 +14,12 @@ from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
-collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'tc_signature']
+collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'tc_signature', 'workflow']
 
 ds = forge.get_datastore()
 file_list = []
 signatures = []
+
 
 def purge_result():
     ds.alert.wipe()
@@ -128,7 +129,8 @@ def test_histogram_search(datastore, login_session):
         'heuristic': False,
         'signature': 'meta.creation_date',
         'submission': 'times.submitted',
-        'tc_signature': 'last_modified'
+        'tc_signature': 'last_modified',
+        'workflow': 'last_edit'
     }
 
     for collection in collections:
@@ -147,7 +149,8 @@ def test_histogram_search(datastore, login_session):
         'signature': 'meta.rule_version',
         'submission': 'file_count',
         'heuristic': False,
-        'tc_signature': False
+        'tc_signature': False,
+        'workflow': 'hitcount'
     }
 
     for collection in collections:
@@ -190,7 +193,8 @@ def test_stats_search(datastore, login_session):
         'signature': 'meta.rule_version',
         'submission': 'file_count',
         'heuristic': False,
-        'tc_signature': False
+        'tc_signature': False,
+        'workflow': 'hitcount'
     }
 
     for collection in collections:

@@ -21,7 +21,6 @@ bundle_api = make_subapi_blueprint(SUB_API, api_version=4)
 bundle_api._doc = "Create and restore submission bundles"
 
 
-
 # noinspection PyBroadException
 @bundle_api.route("/<sid>/", methods=["GET"])
 @api_login(required_priv=['R'])
