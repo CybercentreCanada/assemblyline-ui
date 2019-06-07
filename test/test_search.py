@@ -1,6 +1,7 @@
 
 import pytest
 
+from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.tc_signature import TCSignature
 from base import HOST, login_session, get_api_data
@@ -10,6 +11,7 @@ from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
+from assemblyline.odm.models.workflow import Workflow
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
@@ -29,6 +31,7 @@ def purge_result():
     ds.submission.wipe()
     ds.heuristic.wipe()
     ds.tc_signature.wipe()
+    ds.workflow.wipe()
     wipe_users(ds)
 
 
@@ -72,6 +75,12 @@ def datastore(request):
         h = random_model_obj(Heuristic)
         ds.heuristic.save(h.heur_id, h)
     ds.heuristic.commit()
+
+    for x in range(TEST_SIZE):
+        w_id = get_random_id()
+        w = random_model_obj(Workflow)
+        ds.workflow.save(w_id, w)
+    ds.workflow.commit()
 
     request.addfinalizer(purge_result)
     return ds
