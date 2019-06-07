@@ -150,7 +150,7 @@ def test_histogram_search(datastore, login_session):
         'submission': 'file_count',
         'heuristic': False,
         'tc_signature': False,
-        'workflow': 'hitcount'
+        'workflow': 'hit_count'
     }
 
     for collection in collections:
@@ -194,7 +194,7 @@ def test_stats_search(datastore, login_session):
         'submission': 'file_count',
         'heuristic': False,
         'tc_signature': False,
-        'workflow': 'hitcount'
+        'workflow': 'hit_count'
     }
 
     for collection in collections:
