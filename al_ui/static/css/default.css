@@ -325,8 +325,31 @@ section.container{
 	color: #325DA8;
 }
 
-.indent {
+.indent_0 {}
+
+.indent,
+.indent_1 {
 	padding-left: 2.5em;
+}
+
+.indent_2 {
+	padding-left: 5em;
+}
+
+.indent_3 {
+	padding-left: 7.5em;
+}
+
+.indent_4 {
+	padding-left: 10em;
+}
+
+.indent_5 {
+	padding-left: 12.5em;
+}
+
+.indent_6 {
+	padding-left: 15em;
 }
 
 .float {
