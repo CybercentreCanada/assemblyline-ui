@@ -106,7 +106,7 @@
                         </h4>
                         <h4 ng-if="!current_alert">The workflow action will be applied to all {{ total }} alerts in the current view matching to following filters:</h4>
                         <div ng-if="!current_alert || current_alert.group_count" class="pad">
-                            <div ng-if="current_alert&&group_by"><b>Grouping focus:</b> {{ group_by }}:{{ current_alert[group_by] }}</div>
+                            <div ng-if="current_alert&&group_by"><b>Grouping focus:</b> {{ group_by }}:{{ current_alert.group_by }}</div>
                             <div ng-if="filter_queries.length > 0"><b>Post filters:</b> {{ filter_queries | split }}</div>
                             <div ng-if="filter"><b>Current query:</b> {{ filter }}</div>
                             <div ng-if="time_slice&&start_time"><b>Time restriction:</b> reporting_ts:[{{ start_time }}-{{ time_slice }} TO {{ start_time }}]</div>

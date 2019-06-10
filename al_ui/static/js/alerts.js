@@ -247,6 +247,9 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.prompt_workflow_action = function (alert, alert_idx) {
             $scope.current_alert_idx = alert_idx;
             $scope.current_alert = alert;
+            if (alert !== undefined) {
+                $scope.current_alert.group_by = $scope.get_object_value(alert, $scope.group_by);
+            }
             $scope.user_input = {
                 label: [],
                 priority: '',
