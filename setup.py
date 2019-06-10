@@ -36,7 +36,7 @@ setup(
         'assemblyline',
         'assemblyline-core',
         'werkzeug',
-        'python-socketio<4',
+        'python-socketio',
         'flask',
         'flask-socketio',
         'greenlet',

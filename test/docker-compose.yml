@@ -3,6 +3,8 @@ version: '2.4'
 services:
   al_ui:
     image: sgaroncse/assemblyline_dev:4.0.5
+    ports:
+      - '5000:5000'
     volumes:
       - /opt/alv4/alv4_ui/test/config/:/etc/assemblyline/
       - /opt/alv4/:/opt/alv4/
@@ -18,6 +20,8 @@ services:
 
   al_socketio:
     image: sgaroncse/assemblyline_dev:4.0.5
+    ports:
+      - '5002:5002'
     volumes:
       - /opt/alv4/alv4_ui/test/config/:/etc/assemblyline/
       - /opt/alv4/:/opt/alv4/
