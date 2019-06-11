@@ -158,7 +158,7 @@ def get_systems_constants(**_):
         "file_types": [[t,
                         sorted([x for x in accepts_map.keys()
                                 if re.match(accepts_map[x], t) and not re.match(rejects_map[x], t)])]
-                       for t in sorted(constants.RECOGNIZED_TAGS.keys())],
+                       for t in sorted(constants.RECOGNIZED_TYPES.keys())],
         "tag_types": sorted([x[0] for x in constants.STANDARD_TAG_TYPES]),
         "tag_contexts": sorted([x[0] for x in constants.STANDARD_TAG_CONTEXTS])
     }
