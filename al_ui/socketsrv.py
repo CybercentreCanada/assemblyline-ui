@@ -5,6 +5,7 @@ except ImportError:
     patch_all = None
 
 import logging
+import os
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -25,6 +26,10 @@ LOGGER.info("SocketIO server ready to receive connections...")
 # Prepare the app
 app = Flask('socketio')
 app.config['SECRET_KEY'] = config.ui.secret_key
+# If the environment says we should prefix our app by something, do so
+if 'APPLICATION_ROOT' in os.environ:
+    app.config['APPLICATION_ROOT'] = os.environ['APPLICATION_ROOT']
+
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
 socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "threading")
 
