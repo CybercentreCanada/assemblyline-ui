@@ -26,9 +26,12 @@ LOGGER.info("SocketIO server ready to receive connections...")
 # Prepare the app
 app = Flask('socketio')
 app.config['SECRET_KEY'] = config.ui.secret_key
+
 # If the environment says we should prefix our app by something, do so
 if 'APPLICATION_ROOT' in os.environ:
+    LOGGER.info(f"Flask application root changing: {os.environ['APPLICATION_ROOT']}")
     app.config['APPLICATION_ROOT'] = os.environ['APPLICATION_ROOT']
+    app.config['SESSION_COOKIE_PATH'] = '/'
 
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
 socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "threading")
