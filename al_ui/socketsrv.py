@@ -42,9 +42,10 @@ socketio.on_namespace(LiveSubmissionNamespace('/live_submission'))
 socketio.on_namespace(SubmissionMonitoringNamespace('/submissions'))
 socketio.on_namespace(SystemStatusNamespace('/status'))
 
+
 if __name__ == '__main__':
-    app.logger.setLevel(60)
+    app.logger.setLevel(config.logging.log_level if config.ui.debug else 60)
     wlog = logging.getLogger('werkzeug')
-    wlog.setLevel(60)
+    wlog.setLevel(config.logging.log_level if config.ui.debug else 60)
     # Run debug mode
-    socketio.run(app, host="0.0.0.0", port=5002, debug=False)
+    socketio.run(app, host="0.0.0.0", port=5002, debug=config.ui.debug)
