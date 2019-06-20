@@ -8,8 +8,16 @@
 			<div url-section ng-if="sec.body_format=='URL'" class="result_body" ng-show="sec.body" url-data="{{sec.body}}"></div>
             <div json-section ng-if="sec.body_format=='JSON'" class="result_body"><div ng-jsoneditor ng-model="sec.body" options="{'mode': 'view'}" style="width: 100%; height: 300px;"></div></div>
 
-			<div class="indent">
-				<ng-include src="'/static/ng-template/result_section.html'" ng-init="sections=sec.subsections;parent=''+parent+$index;tags=tags"></ng-include>
+			<div class="row part" ng-show="sec.tags">
+				<div class="col-xs-12 clickable" data-toggle="collapse" data-target="#{{res.response.service_name}}_tags"><h4>Generated tags</h4></div>
+				<div class="col-xs-12 collapse in" id="{{res.response.service_name}}_tags">
+					<div class="row" ng-repeat="tagType in tagTypeList(res.result.tags) | filter:filterTagType | orderBy:'type'">
+						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tagType.type}}</strong></div>
+						<div class="col-xs-6 col-sm-8 col-md-9">
+							<span title="{{tag.context}}" id="{{tag.value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="tag in res.result.tags | filter:{type: tagType.type} | orderBy:'value'" ng-class="{'label-context': !isHighlighted(tag.type, tag.value)&&hasContext(tag), 'label-nolight': !isHighlighted(tag.type, tag.value)&&!hasContext(tag), 'label-highlight': isHighlighted(tag.type, tag.value)}" ng-click="trigger_highlight(tag.type, tag.value);" >{{tag.value | breakableStr }}<a href='/search.html?query=result.tags.type:{{uri_encode(tag.type)}} AND result.tags.value:"{{uri_encode(tag.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</section>

@@ -92,14 +92,14 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
 
         $scope.useless_results = function () {
             return function (item) {
-                return !(item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0);
+                return !(item.result.score === 0 && item.result.sections.length === 0 && item.response.extracted.length === 0);
 
             }
         };
 
         $scope.good_results = function () {
             return function (item) {
-                return item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0;
+                return item.result.score === 0 && item.result.sections.length === 0 && item.response.extracted.length === 0;
 
             }
         };
