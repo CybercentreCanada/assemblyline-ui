@@ -1,23 +1,15 @@
 <div class="part" ng-show="sections">
 	<section ng-repeat="sec in sections">
-		<div class="result_title indent_{{sec.depth}}" data-toggle="collapse" data-target="#{{''+parent+$index}}"><span class="text-info"><strong><span class="{{sec.classification | class_text_color }}" ng-if="sec.classification">({{sec.classification | class_sm}})</span>&nbsp;<span class="{{sec.score | score_color}}">{{sec.score}}</span></strong></span><span class="text-muted">::&nbsp;</span><span replace-tags  data="sec.title_text" tags="tags"></span></div>
+		<div class="result_title indent_{{sec.depth}}" data-toggle="collapse" data-target="#{{''+parent+$index}}"><span class="text-info"><strong><span class="{{sec.classification | class_text_color }}" ng-if="sec.classification">({{sec.classification | class_sm}})</span>&nbsp;<span class="{{sec.heuristic.score | score_color}}">{{sec.heuristic.score}}</span></strong></span><span class="text-muted">::&nbsp;</span><span replace-tags  data="sec.title_text" tags="tagTypeList(sec.tags)"></span>&nbsp;&nbsp;<a ng-show="sec.heuristic" href='/search.html?query=result.sections.heuristic.heur_id:"{{sec.heuristic.heur_id}}"' class="text-muted clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></div>
 		<div id="{{parent+$index}}" class="indent_{{sec.depth}} collapse in">
-			<div ng-if="sec.body_format=='TEXT'||sec.body_format==null" class="result_body" ng-show="sec.body"><div replace-tags data="sec.body" tags="tags"></div></div>
+			<div ng-if="sec.body_format=='TEXT'" class="result_body" ng-show="sec.body"><div replace-tags data="sec.body" tags="tagTypeList(sec.tags)"></div></div>
 			<pre ng-if="sec.body_format=='MEMORY_DUMP'" class="result_body" ng-show="sec.body">{{sec.body}}</pre>
 			<div graph-section ng-if="sec.body_format=='GRAPH_DATA'" class="result_body" ng-show="sec.body" graph-data="{{sec.body}}"></div>
 			<div url-section ng-if="sec.body_format=='URL'" class="result_body" ng-show="sec.body" url-data="{{sec.body}}"></div>
             <div json-section ng-if="sec.body_format=='JSON'" class="result_body"><div ng-jsoneditor ng-model="sec.body" options="{'mode': 'view'}" style="width: 100%; height: 300px;"></div></div>
 
-			<div class="row part" ng-show="sec.tags">
-				<div class="col-xs-12 clickable" data-toggle="collapse" data-target="#{{res.response.service_name}}_tags"><h4>Generated tags</h4></div>
-				<div class="col-xs-12 collapse in" id="{{res.response.service_name}}_tags">
-					<div class="row" ng-repeat="tagType in tagTypeList(res.result.tags) | filter:filterTagType | orderBy:'type'">
-						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tagType.type}}</strong></div>
-						<div class="col-xs-6 col-sm-8 col-md-9">
-							<span title="{{tag.context}}" id="{{tag.value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="tag in res.result.tags | filter:{type: tagType.type} | orderBy:'value'" ng-class="{'label-context': !isHighlighted(tag.type, tag.value)&&hasContext(tag), 'label-nolight': !isHighlighted(tag.type, tag.value)&&!hasContext(tag), 'label-highlight': isHighlighted(tag.type, tag.value)}" ng-click="trigger_highlight(tag.type, tag.value);" >{{tag.value | breakableStr }}<a href='/search.html?query=result.tags.type:{{uri_encode(tag.type)}} AND result.tags.value:"{{uri_encode(tag.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
-						</div>
-					</div>
-				</div>
+			<div style="margin-left: 4em; margin-bottom: 1em;" ng-show="sec.tags">
+				<span title="{{tag.type}}: {{tag.value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="tag in sec.tags | orderBy:'type'" ng-class="{'label-context': !isHighlighted(tag.type, tag.value)&&hasContext(tag), 'label-nolight': !isHighlighted(tag.type, tag.value)&&!hasContext(tag), 'label-highlight': isHighlighted(tag.type, tag.value)}" ng-click="trigger_highlight(tag.type, tag.value);" >[{{tag.short_type.toUpperCase()}}] {{tag.value | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag.type}}:"{{uri_encode(tag.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 			</div>
 		</div>
 	</section>

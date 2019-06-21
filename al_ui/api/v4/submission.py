@@ -130,13 +130,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
         # Generate tag list
         temp = {}
         for res in output['results']:
-            try:
-                if 'result' in res:
-                    if 'tags' in res['result']:
-                        temp.update({"__".join([v["type"], v['value']]): v for v in res['result']['tags']})
-            except Exception:
-                pass
-        
+            for sec in res.get('result', {}).get('sections', []):
+                temp.update({f"{v['type']}__{v['value']}": v for v in sec['tags']})
+
         output["tags"] = list(temp.values())
         
         return make_api_response(output)
@@ -433,8 +429,7 @@ def get_summary(sid, **kwargs):
             tags = json.loads(tags_cache['tags'])
 
         for t in tags:
-            if t["type"] not in config.submission.summary_tag_types or t['value'] == "" \
-                    or not Classification.is_accessible(user['classification'], t['classification']):
+            if t["type"] not in config.submission.summary_tag_types or t['value'] == "":
                 continue
 
             sha256 = t["key"][:64]
@@ -456,27 +451,10 @@ def get_summary(sid, **kwargs):
 
             # Tags
             if t['type'] not in output['tags']:
-                output['tags'][t['type']] = {t['value']: {'classification': t['classification'],
-                                                          'context': t['context']}}
+                output['tags'][t['type']] = [t['value']]
             else:
                 if t['value'] not in output['tags'][t['type']]:
-                    output['tags'][t['type']][t['value']] = {'classification': t['classification'],
-                                                             'context': t['context']}
-
-        for t_type in output['tags']:
-            new_tag_list = []
-            for k, v in output['tags'][t_type].items():
-                try:
-                    new_tag_list.append(
-                        {'value': k, 'classification': Classification.max_classification(v['classification'],
-                                                                                         submission[
-                                                                                             'classification']),
-                         'context': v['context']}
-                    )
-                except InvalidClassification:
-                    continue
-
-            output['tags'][t_type] = new_tag_list
+                    output['tags'][t['type']].append(t['value'])
 
         return make_api_response(output)
     else:

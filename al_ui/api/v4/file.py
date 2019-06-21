@@ -428,16 +428,14 @@ def get_file_results(sha256, **kwargs):
         
         output['errors'] = [] 
         output['file_viewer_only'] = True
-        
+
+        temp = {}
         for res in output['results']:
-            # noinspection PyBroadException
-            try:
-                if "result" in res:
-                    if 'tags' in res['result']:
-                        output['tags'].extend(res['result']['tags'])
-            except Exception:
-                pass
-        
+            for sec in res.get('result', {}).get('sections', []):
+                temp.update({f"{v['type']}__{v['value']}": v for v in sec['tags']})
+
+        output['tags'] = list(temp.values())
+
         return make_api_response(output)
     else:
         return make_api_response({}, "You are not allowed to view this file", 403)

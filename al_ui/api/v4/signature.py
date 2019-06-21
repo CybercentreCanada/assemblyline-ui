@@ -623,7 +623,7 @@ def signature_statistics(**kwargs):
 
     def get_stat_for_signature(p_sid, p_rev, p_name, p_classification):
         stats = STORAGE.result.stats("result.score",
-                                     query=f"result.tags.value:{p_name} AND result.tags.type:FILE_YARA_RULE")
+                                     query=f"result.sections.tags.file.rule.yara:*")
         if stats['count'] == 0:
             return {
                 'sid': p_sid,
