@@ -1,7 +1,7 @@
 from assemblyline.common.classification import InvalidClassification
 
 from al_ui.config import CLASSIFICATION
-from assemblyline.common.dict_utils import flatten
+from assemblyline.common.tagging import tag_dict_to_list
 
 
 def filter_sections(sections, user_classification, min_classification):
@@ -17,14 +17,7 @@ def filter_sections(sections, user_classification, min_classification):
         except InvalidClassification:
             continue
 
-        section['tags'] = [
-            {'type': k,
-             'value': t,
-             'short_type': k.rsplit(".", 1)[-1]}
-            for k, v in flatten(section['tags']).items()
-            if v is not None
-            for t in v
-        ]
+        section['tags'] = tag_dict_to_list(section['tags'])
 
         final_sections.append(section)
     return max_classification, final_sections
