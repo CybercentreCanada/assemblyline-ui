@@ -15,7 +15,7 @@ heuristics_api._doc = "View the different heuristics of the system"
 
 def get_stat_for_heuristic(p_id, p_classification):
     stats = STORAGE.result.stats("result.score",
-                                 query=f"result.sections.heuristic.heur_id:*")
+                                 query=f"result.sections.heuristic.heur_id:{p_id}")
     if stats['count'] == 0:
         return {
             'heur_id': p_id,
