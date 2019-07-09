@@ -485,7 +485,7 @@ utils.directive('replaceTags', function ($compile) {
                 let tag = tags[i];
                 if (tag.value.length > 6) {
                     let re = new RegExp(escapeRegExp(escapeHTML(tag.value)), 'g');
-                    data = data.replace(re, inline_tag_template.replace(/-=TAG=-/g, 'res.result.tags.' + i.toString()));
+                    data = data.replace(re, inline_tag_template.replace(/-=TAG=-/g, 'sec.tags.' + i.toString()));
                 }
             }
             elem.html(data);
@@ -739,6 +739,9 @@ utils.filter('breakableStr', function () {
     return function (data) {
         if (data === undefined || data == null) return "";
         let outString = String();
+        if (typeof(data) !== "string"){
+            data = data.toString();
+        }
 
         for (let i = 0; i < data.length; i += 4) {
             outString += data.substr(i, 4);

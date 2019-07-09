@@ -3,6 +3,8 @@ import random
 import pytest
 
 from assemblyline.common import forge
+from assemblyline.common.dict_utils import unflatten
+from assemblyline.common.tagging import tag_list_to_dict
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.randomizer import random_model_obj
@@ -121,7 +123,10 @@ def test_result_for_service(datastore, login_session):
     rand_hash = rand_key[:64]
     service_name = rand_key.split('.')[1]
     resp = get_api_data(session, f"{HOST}/api/v4/file/result/{rand_hash}/{service_name}/")
-    res_data = Result(resp['results'][0])
+    result_dict = resp['results'][0]
+    for s in result_dict['result']['sections']:
+        s['tags'] = unflatten(tag_list_to_dict(s['tags']))
+    res_data = Result(result_dict)
     assert res_data.build_key() in file_res_list
 
 

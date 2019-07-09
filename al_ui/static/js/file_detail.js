@@ -90,16 +90,24 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             return isNewType;
         };
 
+        $scope.concatTags = function (res){
+            let tag_list = [];
+            res.result.sections.forEach(function(section){
+                tag_list = tag_list.concat(section.tags)
+            });
+            return tag_list;
+        };
+
         $scope.useless_results = function () {
             return function (item) {
-                return !(item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0);
+                return !(item.result.score === 0 && item.result.sections.length === 0 && item.response.extracted.length === 0);
 
             }
         };
 
         $scope.good_results = function () {
             return function (item) {
-                return item.result.score === 0 && item.result.sections.length === 0 && item.result.tags.length === 0 && item.response.extracted.length === 0;
+                return item.result.score === 0 && item.result.sections.length === 0 && item.response.extracted.length === 0;
 
             }
         };
@@ -119,7 +127,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         };
 
         $scope.search_tag = function (tag, value) {
-            window.location = "/search.html?query=result.tags.type:" + encodeURIComponent(tag) + " AND result.tags.value:" + encodeURIComponent(value)
+            window.location = '/search.html?query=result.sections.tags.' + tag + ':"' + encodeURIComponent(value) + '"'
         };
 
         $scope.dump = function (obj) {

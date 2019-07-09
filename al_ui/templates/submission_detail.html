@@ -223,10 +223,10 @@
 						</div>
 						
 						<div ng-show="obj_len(summary) != 0">
-							<div class="row" ng-repeat="(tag, val) in summary | orderBy:tag">
+							<div class="row" ng-repeat="(tag, values) in summary | orderBy:tag">
 								<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
 								<div class="col-xs-6 col-sm-8 col-md-9">
-									<span title="{{detail.context}}" id="{{tag}}" class="label label-tag" style="cursor: pointer;" ng-repeat="detail in val" ng-class="{'label-context': !isHighlighted(tag, detail.value)&&hasContext(detail), 'label-nolight': !isHighlighted(tag, detail.value)&&!hasContext(detail), 'label-highlight': isHighlighted(tag, detail.value)}" ng-click="trigger_highlight(tag, detail.value);" >{{detail.value | breakableStr }}<a href='/search.html?query=result.tags.type:{{uri_encode(tag)}} AND result.tags.value:"{{uri_encode(detail.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+									<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-context': !isHighlighted(tag, val)&&hasContext(val), 'label-nolight': !isHighlighted(tag, val)&&!hasContext(val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 								</div>
 							</div>
 						

@@ -19,6 +19,19 @@ pipelines:
             - mkdir -p /var/cache/assemblyline/
             - mkdir -p /var/lib/assemblyline/
             - cp test/bitbucket/config.yml /etc/assemblyline
+            # Install al common from source
+            - git clone git@bitbucket.org:cse-assemblyline/alv4.git ~/alv4
+            - cd ~/alv4 && pwd
+            # Try to checkout the matching branch, if the command fails, don't care.
+            - git checkout -b $BITBUCKET_BRANCH -t origin/$BITBUCKET_BRANCH || true
+            - pip install -e .
+            # Install al core from source
+            - git clone git@bitbucket.org:cse-assemblyline/alv4_core.git ~/alv4_core
+            - cd ~/alv4_core && pwd
+            # Try to checkout the matching branch, if the command fails, don't care.
+            - git checkout -b $BITBUCKET_BRANCH -t origin/$BITBUCKET_BRANCH || true
+            - pip install -e .
+            - cd $BITBUCKET_CLONE_DIR && pwd
             - pip install -r test/requirements.txt
             - pip install -e .
             - python3 -m al_ui.app &
