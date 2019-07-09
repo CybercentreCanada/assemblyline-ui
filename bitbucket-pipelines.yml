@@ -31,7 +31,7 @@ pipelines:
             # Try to checkout the matching branch, if the command fails, don't care.
             - git checkout -b $BITBUCKET_BRANCH -t origin/$BITBUCKET_BRANCH || true
             - pip install -e .
-            - cd ~ && pwd
+            - cd $BITBUCKET_CLONE_DIR && pwd
             - pip install -r test/requirements.txt
             - pip install -e .
             - python3 -m al_ui.app &
