@@ -47,7 +47,10 @@ def test_get_service(datastore, login_session):
         "enabled": True,
         "category": SERVICES[service][0],
         "stage": SERVICES[service][1],
-        "version": "4.0.0"
+        "version": "4.0.0",
+        "docker_config": {
+            "image": f"cccs/alsvc_{service.lower()}:latest",
+        },
     })
     assert resp == service_data.as_primitives()
 
@@ -112,7 +115,10 @@ def test_edit_service(datastore, login_session):
         "enabled": True,
         "category": SERVICES[service][0],
         "stage": SERVICES[service][1],
-        "version": "3.3.0"
+        "version": "3.3.0",
+        "docker_config": {
+            "image": f"cccs/alsvc_{service.lower()}:latest",
+        },
     }).as_primitives()
     resp = get_api_data(session, f"{HOST}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
     assert resp['success']
