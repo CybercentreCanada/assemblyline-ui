@@ -91,17 +91,19 @@ def login(uname, path=None):
             #                                   "link": "/kibana-dash.html?dash=%s" % x,
             #                                   "title": "%s" % x.replace("-", " ")}
             #                                  for x in config.logging.logserver.kibana.dashboards if x != ""]
-            user["admin_menu"] = [{"icon": None, "active": path.startswith("/admin/seed.html"),
-                                   "link": "/admin/seed.html", "title": "Configuration"},
-                                  {"icon": None, "active": path.startswith("/admin/documentation.html"),
-                                   "link": "/admin/documentation.html", "title": "Documentation"},
-                                  {"icon": None, "active": path.startswith("/admin/errors.html"),
-                                   "link": "/admin/errors.html", "title": "Errors viewer"}]
+            user["admin_menu"] = [
+            #    {"icon": None, "active": path.startswith("/admin/seed.html"),
+            #     "link": "/admin/seed.html", "title": "Configuration"},
+                {"icon": None, "active": path.startswith("/admin/documentation.html"),
+                 "link": "/admin/documentation.html", "title": "Documentation"},
+                {"icon": None, "active": path.startswith("/admin/errors.html"),
+                 "link": "/admin/errors.html", "title": "Errors viewer"}]
             if not config.ui.read_only:
-                user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/hosts.html"),
-                                            "link": "/admin/hosts.html", "title": "Hosts"},
-                                           {"icon": None, "active": path.startswith("/admin/services.html"),
-                                            "link": "/admin/services.html", "title": "Services"}])
+                user["admin_menu"].extend([
+            #        {"icon": None, "active": path.startswith("/admin/hosts.html"),
+            #         "link": "/admin/hosts.html", "title": "Hosts"},
+                    {"icon": None, "active": path.startswith("/admin/services.html"),
+                     "link": "/admin/services.html", "title": "Services"}])
             user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/site_map.html"),
                                         "link": "/admin/site_map.html", "title": "Site Map"},
                                        {"icon": None, "active": path.startswith("/admin/users.html"),
