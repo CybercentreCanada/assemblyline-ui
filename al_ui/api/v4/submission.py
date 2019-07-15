@@ -3,7 +3,6 @@ import time
 
 import json
 
-from assemblyline.common.classification import InvalidClassification
 from flask import request
 
 from assemblyline.common import forge
@@ -383,7 +382,7 @@ def get_submission(sid, **kwargs):
 def get_summary(sid, **kwargs):
     """
     Retrieve the executive summary of a given submission ID. This
-    is a MAP of tags to sha256 combined with a list of generated Tags.
+    is a MAP of tags to sha256 combined with a list of generated Tags by summary type.
     
     Variables:
     sid         => Submission ID to get the summary for
@@ -402,13 +401,17 @@ def get_summary(sid, **kwargs):
        "sha256": [                # sha256
          "TYPE__VAL"             # List of related type/value
          ...], ... } 
-     "tags": {               # Dictionary of tags        
-       "TYPE": {               # Type of tag
-         "VALUE": {              # Value of the tag
-           "usage": "",            # Usage
-           "classification": ""    # Classification
+     "tags": {               # Dictionary of tags
+       "attribution": {        # attribution tags
+         "TYPE": {               # Type of tag
+           "VALUE": {              # Value of the tag
+             "usage": "",            # Usage
+             "classification": ""    # Classification
+             }, ...
            }, ...
          }, ...
+       "behavior": {},         # behavior tags
+       "ioc"" {}               # IOC tags
     }
     """
     user = kwargs['user']
@@ -417,7 +420,7 @@ def get_summary(sid, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
     if user and Classification.is_accessible(user['classification'], submission['classification']):
-        output = {"map": {}, "tags": {}}
+        output = {"map": {}, "tags": {'behavior': {}, 'attribution': {}, 'ioc': {}}}
         tags_cache = STORAGE.submission_tags.get_if_exists(sid, as_obj=False)
 
         if not tags_cache:
@@ -429,11 +432,20 @@ def get_summary(sid, **kwargs):
             tags = json.loads(tags_cache['tags'])
 
         for t in tags:
-            if t["type"] not in config.submission.summary_tag_types or t['value'] == "":
+            summary_type = None
+
+            if t["type"] in config.submission.tag_types.behavior:
+                summary_type = 'behavior'
+            elif t["type"] in config.submission.tag_types.attribution:
+                summary_type = 'attribution'
+            elif t["type"] in config.submission.tag_types.ioc:
+                summary_type = 'ioc'
+
+            if  t['value'] == ""  or summary_type is None:
                 continue
 
             sha256 = t["key"][:64]
-            tag_key = t['type'] + "__" + t['value']
+            tag_key = f"{t['type']}__{t['value']}"
 
             # File map
             if tag_key not in output['map']:
@@ -450,11 +462,55 @@ def get_summary(sid, **kwargs):
                 output['map'][sha256].append(tag_key)
 
             # Tags
-            if t['type'] not in output['tags']:
-                output['tags'][t['type']] = [t['value']]
+            if t['type'] not in output['tags'][summary_type]:
+                output['tags'][summary_type][t['type']] = [t['value']]
             else:
-                if t['value'] not in output['tags'][t['type']]:
-                    output['tags'][t['type']].append(t['value'])
+                if t['value'] not in output['tags'][summary_type][t['type']]:
+                    output['tags'][summary_type][t['type']].append(t['value'])
+
+        return make_api_response(output)
+    else:
+        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+
+
+@submission_api.route("/attack/<sid>/", methods=["GET"])
+@api_login(required_priv=['R'])
+def get_attack_matrix(sid, **kwargs):
+    """
+    Retrieve the attack matrix for the current submission
+
+    Variables:
+    sid         => Submission ID to get the summary for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+
+    """
+    user = kwargs['user']
+    submission = STORAGE.submission.get(sid, as_obj=False)
+    if submission is None:
+        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+
+    if user and Classification.is_accessible(user['classification'], submission['classification']):
+        output = {"map": {}, "attack_matrix": {}}
+        attack_matrix_cache = STORAGE.submission_attack.get_if_exists(sid, as_obj=False)
+
+        if not attack_matrix_cache:
+            attack_matrix = STORAGE.get_attack_matrix_from_keys(submission["results"])
+            attack_matrix_cache = {"attack_matrix": json.dumps(attack_matrix),
+                                   "expiry_ts": submission['expiry_ts']}
+            STORAGE.submission_attack.save(sid, attack_matrix_cache)
+        else:
+            attack_matrix = json.loads(attack_matrix_cache['attack_matrix'])
+
+        for item in attack_matrix:
+            # TODO: Build the matrix here
+            pass
 
         return make_api_response(output)
     else:

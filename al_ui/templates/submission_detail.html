@@ -207,47 +207,37 @@
                         </div>
                     </div>
 				</section>
-				
-				<section class="header_title" id="section_summary" ng-show="data">
-					<div class="menuheader" data-toggle="collapse" data-target="#summary">
-						<span class="text-big">Executive Summary</span>
+
+				<div ng-show="!summary" class="jumbotron">
+					<div class="pad">
+						Generating summary...
+					</div>
+				</div>
+				<section class="header_title" ng-show="obj_len(summary[summary_type]) != 0" ng-repeat="(summary_type, summary_values) in summary | orderBy:summary_type" data-toggle="collapse">
+					<div class="menuheader" data-toggle="collapse" data-target="#{{summary_type}}">
+						<span class="text-big">{{summary_type | titleCase }}s</span>
 						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
-						<div ng-show="!summary" class="throbber pull-right"></div>
 					</div>
-					<div id="summary" class="collapse in">
-						
-						<div ng-show="!summary" class="jumbotron">
-							<div class="pad">
-								Generating summary...
-							</div>
-						</div>
-						
-						<div ng-show="obj_len(summary) != 0">
-							<div class="row" ng-repeat="(tag, values) in summary | orderBy:tag">
-								<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
-								<div class="col-xs-6 col-sm-8 col-md-9">
-									<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-context': !isHighlighted(tag, val)&&hasContext(val), 'label-nolight': !isHighlighted(tag, val)&&!hasContext(val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
-								</div>
-							</div>
-						
-						</div>
-						
-						<div ng-show="summary && (obj_len(summary) == 0)" >
-							<div class="pad text-muted">
-								Nothing to report.
+
+					<div id="{{summary_type}}" class="collapse in">
+						<div class="row" ng-repeat="(tag, values) in summary_values | orderBy:tag">
+							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
+							<div class="col-xs-6 col-sm-8 col-md-9">
+								<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-context': !isHighlighted(tag, val)&&hasContext(val), 'label-nolight': !isHighlighted(tag, val)&&!hasContext(val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
-                            <div id="summary_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(summary)}}</pre>
-                            </div>
-                        </div>
-                    </div>
+
 				</section>
-				
+				<div ng-if="!settings.hide_raw_results">
+					<div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
+						<div id="summary_raw" class="collapse">
+							<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
+							<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(summary)}}</pre>
+						</div>
+					</div>
+				</div>
+
 				<section class="header_title" ng-show="data && data.errors && data.errors.length != 0">
 					<div class="menuheader" data-toggle="collapse" data-target="#error_summary">
 						<span class="text-big">Errors</span>
