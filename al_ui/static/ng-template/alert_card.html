@@ -27,14 +27,14 @@
                 <div ng-if="has_meta(alert)" style="padding-top: 10px; padding-bottom: 10px;">
                     <div ng-repeat="(k,v) in alert.metadata" class="row"><div ng-if="v" class="col-sm-2">{{ k | titleCase }}:</div><div ng-if="v" class="col-sm-10">{{ v | joinBy }}</div></div>
                 </div>
-                <div class="row" ng-if="alert.summary"><div class="col-sm-2">Summary:</div><div class="col-sm-10 small"><span class="text-info">{{alert.summary | split}}</span></div></div>
+                <div class="row" ng-if="alert.al.behavior"><div class="col-sm-2">Behaviors:</div><div class="col-sm-10 small"><span class="text-info">{{alert.al.behavior | split}}</span></div></div>
                 <div class="row" ng-if="alert.al.attrib"><div class="col-sm-2">Attribution:</div><div class="col-sm-10"><b class="text-danger">{{alert.al.attrib | split}}</b></div></div>
                 <div class="row" ng-if="alert.al.av"><div class="col-sm-2">AV Hits:</div><div class="col-sm-10"><b class="text-warning">{{alert.al.av | split}}</b></div></div>
                 <div class="row" ng-if="has_items(alert.al.ip)&&!has_items(alert.al.ip_static)&&!has_items(alert.al.ip_dynamic)"><div class="col-sm-2">IPs:</div><div class="col-sm-10 small"><span class="text-success">{{alert.al.ip | split}}</span></div></div>
                 <div class="row" ng-if="has_items(alert.al.ip_static)||has_items(alert.al.ip_dynamic)"><div class="col-sm-2">IPs:</div><div class="col-sm-10 small"><span class="text-success"><b>{{alert.al.ip_dynamic | split}}</b></span><span ng-if="has_items(alert.al.ip_dynamic)&&has_items(alert.al.ip_static)"> | </span><span class="text-success">{{alert.al.ip_static | split}}</span></div></div>
                 <div class="row" ng-if="has_items(alert.al.domain)&&!has_items(alert.al.domain_static)&&!has_items(alert.al.domain_dynamic)"><div class="col-sm-2">Domains:</div><div class="col-sm-10 small"><span class="text-success">{{alert.al.domain | split}}</span></div></div>
                 <div class="row" ng-if="has_items(alert.al.domain_static)||has_items(alert.al.domain_dynamic)"><div class="col-sm-2">Domains:</div><div class="col-sm-10 small"><span class="text-success"><b>{{alert.al.domain_dynamic | split}}</b></span><span ng-if="has_items(alert.al.domain_dynamic)&&has_items(alert.al.domain_static)"> | </span><span class="text-success">{{alert.al.domain_static | split}}</span></div></div>
-                <div class="row" ng-if="alert.yara"><div class="col-sm-2">Yara hits:</div><div class="col-sm-10 small">{{alert.yara | split}}</div></div>
+                <div class="row" ng-if="alert.al.yara"><div class="col-sm-2">Yara hits:</div><div class="col-sm-10 small">{{alert.al.yara | split}}</div></div>
                 <div class="row" style="padding-top: 5px">
                     <div class="col-sm-2"></div>
                     <div class="col-sm-10 small form-inline">
