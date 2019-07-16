@@ -755,6 +755,18 @@ section.container{
 	color: #FFF;
 }
 
+.muted_button:hover{
+	cursor: pointer;
+	color: #666;
+}
+
+.muted_button {
+	vertical-align: middle;
+	color: #EEE;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+
 .clickable_color:hover {
 	cursor: pointer;
 	color: #000;

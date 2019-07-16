@@ -54,6 +54,9 @@
 		<section id="appContent" class="container">
 			<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
 			<div class="bigpad pull-left" ng-show="started && !data.times.completed"><div class="throbber"></div></div>
+			<div class="bigpad pull-left" ng-show="data.times.completed">
+				<span style="display: inline" class="pad text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span> <span class="muted_button glyphicon glyphicon-thumbs-up text-big"></span> <span class="muted_button glyphicon glyphicon-thumbs-down text-big"></span>
+			</div>
 			<div class="header_title text-right">
 				<h1>Submission Details</h1>
 				<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
