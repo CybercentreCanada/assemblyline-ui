@@ -5,6 +5,7 @@ import re
 from flask import request
 
 from assemblyline.common import forge
+from assemblyline.common.attack_map import attack_map
 from assemblyline.common.hexdump import hexdump
 from assemblyline.common.str_utils import safe_str
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
@@ -398,7 +399,7 @@ def get_file_results(sha256, **kwargs):
         return make_api_response({}, "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        output = {"file_info": {}, "results": [], "tags": []}
+        output = {"file_info": {}, "results": [], "tags": {}, "attack_matrix": {}}
         with concurrent.futures.ThreadPoolExecutor(4) as executor:
             res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
             res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
@@ -429,12 +430,26 @@ def get_file_results(sha256, **kwargs):
         output['errors'] = [] 
         output['file_viewer_only'] = True
 
-        temp = {}
         for res in output['results']:
             for sec in res.get('result', {}).get('sections', []):
-                temp.update({f"{v['type']}__{v['value']}": v for v in sec['tags']})
+                # Process Attack matrix
+                attack_id = sec.get('heuristic', {}).get('attack_id', None)
+                if attack_id:
+                    attack_pattern_def = attack_map.get(attack_id, {})
+                    if attack_pattern_def:
+                        for cat in attack_pattern_def['categories']:
+                            output['attack_matrix'].setdefault(cat, [])
+                            if attack_pattern_def['name'] not in output['attack_matrix'][cat]:
+                                output['attack_matrix'][cat].append((attack_id, attack_pattern_def['name']))
+                    else:
+                        # TODO: I need a logger because I need to report this.
+                        pass
 
-        output['tags'] = list(temp.values())
+                # Process tags
+                for t in sec['tags']:
+                    output["tags"].setdefault(t['type'], [])
+                    if t['value'] not in output["tags"][t['type']]:
+                        output["tags"][t['type']].append(t['value'])
 
         return make_api_response(output)
     else:

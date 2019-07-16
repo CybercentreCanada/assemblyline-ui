@@ -210,9 +210,34 @@
 
 				<div ng-show="!summary" class="jumbotron">
 					<div class="pad">
-						Generating summary...
+						<div  class="throbber pull-right"></div>
+						Generating executive summary...
 					</div>
 				</div>
+
+				<section ng-show="attack_matrix" class="header_title">
+					<div class="menuheader" data-toggle="collapse" data-target="#attack_matrix">
+						<span class="text-big">Att&ck Matrix</span>
+						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
+
+					</div>
+
+					<div id="attack_matrix" class="collapse in">
+						<div ng-show="attack_matrix && (obj_len(attack_matrix) == 0)">
+							<div class="pad text-muted">
+								Nothing to report.
+							</div>
+						</div>
+
+						<div class="row" ng-repeat="(category, attack_patterns) in attack_matrix | orderBy:category">
+							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
+							<div class="col-xs-6 col-sm-8 col-md-9">
+								<span id="{{item[0]}}_{{item[1]}}" class="label label-tag" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-nolight': !isHighlighted('attack_pattern', item[0]), 'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.attack_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+							</div>
+						</div>
+					</div>
+				</section>
+
 				<section class="header_title" ng-show="obj_len(summary[summary_type]) != 0" ng-repeat="(summary_type, summary_values) in summary | orderBy:summary_type" data-toggle="collapse">
 					<div class="menuheader" data-toggle="collapse" data-target="#{{summary_type}}">
 						<span class="text-big">{{summary_type | titleCase }}s</span>
@@ -223,7 +248,7 @@
 						<div class="row" ng-repeat="(tag, values) in summary_values | orderBy:tag">
 							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
 							<div class="col-xs-6 col-sm-8 col-md-9">
-								<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-context': !isHighlighted(tag, val)&&hasContext(val), 'label-nolight': !isHighlighted(tag, val)&&!hasContext(val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+								<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-nolight': !isHighlighted(tag, val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 							</div>
 						</div>
 					</div>

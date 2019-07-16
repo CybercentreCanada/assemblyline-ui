@@ -188,10 +188,6 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) !== -1
         };
 
-        $scope.hasContext = function (tag) {
-            return tag.context != null;
-        };
-
         $scope.hasHighlightedTags = function (tags) {
             for (let i in tags) {
                 let tag = tags[i];

@@ -25,6 +25,8 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.sid = null;
         $scope.wq = null;
         $scope.summary = null;
+        $scope.attack_matrix = null;
+        $scope.attack_map = null;
         $scope.file_tree = null;
         $scope.tag_map = null;
         $scope.messages = [];
@@ -74,7 +76,13 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.concatTags = function (res){
             let tag_list = [];
             res.result.sections.forEach(function(section){
-                tag_list = tag_list.concat(section.tags)
+                tag_list = tag_list.concat(section.tags);
+
+                if (section.heuristic !== undefined && section.heuristic !== null){
+                    if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
+                        tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                    }
+                }
             });
             return tag_list;
         };
@@ -444,10 +452,6 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) !== -1
         };
 
-        $scope.hasContext = function (tag) {
-            return tag.context != null;
-        };
-
         $scope.hasHighlightedTags = function (tags) {
             for (let i in tags) {
                 let tag = tags[i];
@@ -743,6 +747,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 url: "/api/v4/submission/summary/" + $scope.sid + "/"
             })
                 .success(function (data) {
+                    $scope.attack_matrix = data.api_response.attack_matrix;
                     $scope.summary = data.api_response.tags;
                     $scope.tag_map = data.api_response.map;
                 })
