@@ -1076,7 +1076,7 @@ utils.filter('verdict', function () {
             return "Malicious";
         }
         else if (score >= 500) {
-            return "Very Suspicious";
+            return "Highly Suspicious";
         }
         else if (score >= 100) {
             return "Suspicious";
