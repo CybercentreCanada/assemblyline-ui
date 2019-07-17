@@ -24,8 +24,7 @@ submission_api._doc = "Perform operations on system submissions"
 @api_login(required_priv=['W'], allow_readonly=False)
 def delete_submission(sid, **kwargs):
     """
-    INCOMPLETE
-    Delete a submission as well as all related 
+    Delete a submission as well as all related
     files, results and errors
     
     Variables:

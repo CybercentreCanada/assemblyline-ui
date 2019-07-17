@@ -14,7 +14,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         mySocket.forward('cachekeyerr');
         return mySocket;
     })
-    .controller('ALController', function ($scope, $http, $window, $location, $timeout, mySocket) {
+    .controller('ALController', function ($scope, $http, $window, $location, $timeout, $filter, mySocket) {
         //Parameters vars
         $scope.user = null;
         $scope.options = null;
@@ -50,6 +50,8 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.num_files = 0;
         $scope.temp_keys = {error: [], result: []};
         $scope.outstanding = null;
+        $scope.verdict = null;
+        $scope.current_verdict= null;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -193,6 +195,80 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         $scope.dump = function (obj) {
             return angular.toJson(obj, true);
+        };
+
+        $scope.agree = function (collection, collection_id){
+            $scope.send_verdict(collection, collection_id, $filter('verdict')($scope.data.max_score));
+        };
+
+        $scope.disagree = function (collection, collection_id){
+            swal({
+                    title: "Disagree with verdict?",
+                    text: "Upon further analysis, do you think the submission is malicious or not?",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d9534f",
+                    confirmButtonText: "Malicious",
+                    cancelButtonText: "Non-Malicious",
+                    closeOnConfirm: false,
+                    closeOnCancel: false,
+                },
+                function () {
+                    // Malicious
+                    $scope.send_verdict(collection, collection_id, 'malicious');
+
+                },
+                function () {
+                    // Non-malicious (cancel)
+                    $scope.send_verdict(collection, collection_id, 'no threat detected');
+                });
+        };
+
+        $scope.send_verdict = function (collection, collection_id, verdict) {
+            $http({
+                method: 'PUT',
+                url: "/api/v4/verdict/" + collection + "/" + collection_id + "/" + verdict + "/"
+            })
+                .success(function () {
+                    swal("Thank you!", "Your feedback to the system was successfully submitted.", "success");
+                    $scope.verdict = verdict.toLowerCase();
+                    $scope.current_verdict = $filter('verdict')($scope.data.max_score).toLowerCase();
+                })
+                .error(function (data, status, headers, config) {
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    $scope.loading_extra = false;
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    } else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                });
+        };
+
+        $scope.get_verdict = function (collection, collection_id) {
+            $http({
+                method: 'GET',
+                url: "/api/v4/verdict/" + collection + "/" + collection_id + "/"
+            })
+                .success(function (data) {
+                    $scope.verdict = data.api_response.verdict;
+                    $scope.current_verdict = $filter('verdict')($scope.data.max_score).toLowerCase();
+                })
+                .error(function (data, status, headers, config) {
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    $scope.loading_extra = false;
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    } else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                });
         };
 
         $scope.delete_submission = function () {
@@ -664,6 +740,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         aggregated: $scope.futile_errors($scope.data.errors)
                     };
                     if ($scope.data.state === "completed") {
+                        $scope.get_verdict('submission', $scope.sid);
                         $scope.get_summary();
                         $scope.get_file_tree();
                         $scope.temp_data = null;

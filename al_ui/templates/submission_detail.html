@@ -54,8 +54,14 @@
 		<section id="appContent" class="container">
 			<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
 			<div class="bigpad pull-left" ng-show="started && !data.times.completed"><div class="throbber"></div></div>
-			<div class="bigpad pull-left" ng-show="data.times.completed">
-				<span style="display: inline" class="pad text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span> <span class="muted_button glyphicon glyphicon-thumbs-up text-big"></span> <span class="muted_button glyphicon glyphicon-thumbs-down text-big"></span>
+			<div style="margin-top: 20px" class="bigpad pull-left" ng-show="data.times.completed">
+				<span class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span>
+				<span title="I agree with the verdict" class="muted_button glyphicon glyphicon-thumbs-up text-big" ng-click="agree('submission', data.sid)"></span>
+				<span title="I disagree with the verdict" class="muted_button glyphicon glyphicon-thumbs-down text-big" ng-click="disagree('submission', data.sid)"></span>
+				<div ng-if="verdict" style="display: block" class="pad">
+					<span style="color: #00520080" ng-if="current_verdict==verdict"><span class="glyphicon glyphicon-check"></span>&nbsp;&nbsp;You agreed with the verdict</span>
+					<span style="color: #52000080" ng-if="current_verdict!=verdict"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;You think the verdict should be: {{verdict.toUpperCase()}}</span>
+				</div>
 			</div>
 			<div class="header_title text-right">
 				<h1>Submission Details</h1>

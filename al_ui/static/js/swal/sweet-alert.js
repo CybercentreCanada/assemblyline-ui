@@ -195,6 +195,7 @@
       allowOutsideClick: false,
       showCancelButton: false,
       closeOnConfirm: true,
+      closeOnCancel: true,
       confirmButtonText: 'OK',
       confirmButtonColor: '#AEDEF4',
       cancelButtonText: 'Cancel',
@@ -229,6 +230,7 @@
         params.allowOutsideClick  = arguments[0].allowOutsideClick || params.allowOutsideClick;
         params.showCancelButton   = arguments[0].showCancelButton !== undefined ? arguments[0].showCancelButton : params.showCancelButton;
         params.closeOnConfirm     = arguments[0].closeOnConfirm !== undefined ? arguments[0].closeOnConfirm : params.closeOnConfirm;
+        params.closeOnCancel      = arguments[0].closeOnCancel !== undefined ? arguments[0].closeOnCancel : params.closeOnCancel;
 
         // Show "Confirm" instead of "OK" if cancel button is visible
         params.confirmButtonText  = (params.showCancelButton) ? 'Confirm' : params.confirmButtonText;
@@ -309,7 +311,9 @@
           }
           else if (!targetedConfirm && cancelFunctionExists && modalIsVisible) {
             params.cancelFunction();
-            closeModal();
+            if(params.closeOnCancel) {
+              closeModal();
+            }
           } else {
             closeModal();
           }
