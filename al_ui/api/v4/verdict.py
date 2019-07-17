@@ -23,7 +23,7 @@ def set_verdict(collection, collection_id, verdict, **kwargs):
     collection      ->   collection you want to give a verdict for (either 'submission', 'alert', 'result')
     collection_id   ->   ID of the document in the collection to give a verdict to
     verdict         ->   verdict that the document should have been instead of the one reported
-                         One of (malicious, highly suspicious, suspicious, no threat detected, safe)
+                         One of (malicious, very suspicious, suspicious, non-malicious, safe)
 
     Arguments:
     None

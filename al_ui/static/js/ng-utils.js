@@ -1071,12 +1071,12 @@ utils.filter('verdict_color', function () {
 
 utils.filter('verdict', function () {
     return function (score) {
-        if (score === undefined || score == null) return "No Threat Detected";
+        if (score === undefined || score == null) return "Non-Malicious";
         if (score >= 2000) {
             return "Malicious";
         }
         else if (score >= 500) {
-            return "Highly Suspicious";
+            return "Very Suspicious";
         }
         else if (score >= 100) {
             return "Suspicious";
@@ -1085,7 +1085,7 @@ utils.filter('verdict', function () {
             return "Safe";
         }
         else {
-            return "No Threat Detected";
+            return "Non-Malicious";
         }
     }
 });

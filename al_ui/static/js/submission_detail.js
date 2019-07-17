@@ -220,7 +220,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 },
                 function () {
                     // Non-malicious (cancel)
-                    $scope.send_verdict(collection, collection_id, 'no threat detected');
+                    $scope.send_verdict(collection, collection_id, 'non-malicious');
                 });
         };
 
