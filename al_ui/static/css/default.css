@@ -416,6 +416,12 @@ section.container{
 	vertical-align: middle;
 }
 
+.navbar-toggle-proper {
+	float: left;
+	border: 0px;
+	margin-left: 5px;
+}
+
 .navbar-nav > li > .avatar {
 	vertical-align: middle;
 	padding-top: 5px;
@@ -1387,6 +1393,26 @@ figure.front{
 
 .navbar-dev .navbar-brand {
     color: #EEE;
+}
+
+.navbar-nav .dropdown-header {
+	color: #777;
+}
+.navbar-dev .dropdown-header {
+	color: #AAA;
+}
+
+.navbar-inverse.navbar-dev  .navbar-nav .open .dropdown-menu>li>a,
+.navbar-inverse.navbar-dev  .navbar-nav .open .dropdown-menu>li>a:hover,
+.navbar-inverse.navbar-dev  .navbar-nav .open .dropdown-menu>li>a:focus {
+	color: #e3e3e3;
+}
+
+.navbar-inverse.navbar-dev .navbar-nav .open .dropdown-menu>.active>a,
+.navbar-inverse.navbar-dev .navbar-nav .open .dropdown-menu>.active>a:hover,
+.navbar-inverse.navbar-dev .navbar-nav .open .dropdown-menu>.active>a:focus {
+	background-color: #0f1c2e;
+
 }
 
 .navbar-dev .navbar-nav>.active>a,
