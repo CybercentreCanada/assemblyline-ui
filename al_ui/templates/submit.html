@@ -17,7 +17,7 @@
 {% block body_param %}flow-prevent-drop{% endblock %}
 {% block loading_menu %}ng-hide="!loading"{% endblock %}
 {% block content %}
-    <section {% if not is_readonly %}flow-init flow-name="obj.flow" {% endif %}id="appContent" class="container container-with-overflow">
+    <section {% if not is_readonly %}flow-init flow-name="obj.flow" {% endif %}id="appContent" class="container">
 		<div class="pad">
 			<div class="banner">
 				{% block banner %}<img class="banner_img" src="/static/images/banner.svg">{% endblock %}

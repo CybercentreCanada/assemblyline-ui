@@ -40,45 +40,6 @@ a:hover {
 	}
 }
 
-.container-with-overflow{
-    padding: 30px 30px 30px 60px ;
-}
-
-@media (min-width: 768px){
-	.container-with-overflow{
-        padding-left: 60px;
-        padding-right: 60px;
-	}
-}
-
-@media (min-width: 828px){
-	.container-with-overflow{
-        padding-left: 30px;
-        padding-right: 30px;
-	}
-}
-
-@media (min-width: 992px){
-	.container-with-overflow{
-        padding-left: 60px;
-        padding-right: 60px;
-	}
-}
-
-@media (min-width: 1052px){
-	.container-with-overflow{
-        padding-left: 30px;
-        padding-right: 30px;
-	}
-}
-
-@media (min-width: 1450px){
-	.container-with-overflow{
-        padding-left: 30px;
-        padding-right: 30px;
-	}
-}
-
 section.container{
 	padding-top: 5px;
 	padding-bottom: 30px;

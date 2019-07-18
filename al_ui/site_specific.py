@@ -119,7 +119,7 @@ def create_menu(user, path):
         {"class": "",
          "active": path.startswith("/alerts.html"),
          "link": "/alerts.html",
-         "title": "Alerts",
+         "title": "View Alerts",
          "has_submenu": False},
         {"class": "",
          "active": path.startswith("/workflows.html"),
@@ -142,7 +142,7 @@ def create_menu(user, path):
             {"class": "",
              "active": path.startswith("/alerts.html") or path.startswith("/workflows.html"),
              "link": "#",
-             "title": "Alerting",
+             "title": "Alerts",
              "has_submenu": True,
              "submenu": alerting_submenu}]
 
