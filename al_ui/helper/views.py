@@ -8,7 +8,7 @@ from functools import update_wrapper
 
 from al_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline.common.forge import get_ui_context, get_config
-from al_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, BUILD_NO, SYSTEM_NAME, get_template_prefix
+from al_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, BUILD_NO, SYSTEM_TYPE, get_template_prefix
 from al_ui.helper.user import login
 
 config = get_config()
@@ -82,7 +82,7 @@ class protected_renderer(BaseSecurityRenderer):
             kwargs['debug'] = str(DEBUG).lower()
             kwargs['menu'] = create_menu(user, path)
             kwargs['avatar'] = STORAGE.user_avatar.get(user['uname'])
-            kwargs['is_prod'] = SYSTEM_NAME == "production"
+            kwargs['is_prod'] = SYSTEM_TYPE == "production"
             kwargs['is_readonly'] = config.ui.read_only
             settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
             if not request.path == "/terms.html":
