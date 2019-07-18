@@ -213,19 +213,8 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
     };
 
     //Sliding menu
-    $scope.showmenu = false;
     $scope.params = null;
     $scope.params_bck = null;
-
-    $scope.toggleMenu = function () {
-        $scope.showmenu = (!$scope.showmenu);
-    };
-
-    $scope.forceOpenMenu = function () {
-        if ($scope.showmenu === false) {
-            $scope.showmenu = true;
-        }
-    };
 
     $scope.serviceSelectionReset = function ($event) {
         $event.stopImmediatePropagation();

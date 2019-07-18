@@ -39,16 +39,6 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.related_ids = null;
         $scope.last_params = null;
 
-        $scope.showmenu = false;
-        $scope.toggleMenu = function () {
-            $scope.showmenu = (!$scope.showmenu);
-        };
-        $scope.forceOpenMenu = function () {
-            if ($scope.showmenu === false) {
-                $scope.showmenu = true;
-            }
-        };
-
         $scope.getKeys = function (o) {
             try {
                 return Object.keys(o);
