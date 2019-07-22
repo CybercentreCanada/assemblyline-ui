@@ -325,8 +325,13 @@ def list_grouped_alerts(field, **kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
-    if not tc_start and "no_delay" not in request.args and config.core.alerter.delay != 0:
-        tc_start = now_as_iso(config.core.alerter.delay * -1)
+
+    if not tc_start:
+        if "no_delay" not in request.args and config.core.alerter.delay != 0:
+            tc_start = now_as_iso(config.core.alerter.delay * -1)
+        else:
+            tc_start = now_as_iso()
+
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset

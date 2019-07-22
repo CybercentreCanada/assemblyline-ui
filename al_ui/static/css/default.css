@@ -199,11 +199,11 @@ section.container{
 }
 #searchMenu {
 	background: #f6f6f6;
-	border-radius: 4px;
+	border-radius: 0px 0px 4px 4px;
 	border-color: #CCC;
-    border-width: 1px;
+    border-width: 0px 1px 1px 1px;
     border-style: solid;
-    margin-top: -5px;
+    margin-top: -1px;
 }
 
 #searchMenu .menudata {
