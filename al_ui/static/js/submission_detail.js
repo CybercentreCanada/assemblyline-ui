@@ -14,7 +14,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         mySocket.forward('cachekeyerr');
         return mySocket;
     })
-    .controller('ALController', function ($scope, $http, $window, $location, $timeout, mySocket) {
+    .controller('ALController', function ($scope, $http, $window, $location, $timeout, $filter, mySocket) {
         //Parameters vars
         $scope.user = null;
         $scope.options = null;
@@ -25,6 +25,8 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.sid = null;
         $scope.wq = null;
         $scope.summary = null;
+        $scope.attack_matrix = null;
+        $scope.attack_map = null;
         $scope.file_tree = null;
         $scope.tag_map = null;
         $scope.messages = [];
@@ -48,6 +50,8 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.num_files = 0;
         $scope.temp_keys = {error: [], result: []};
         $scope.outstanding = null;
+        $scope.verdict = null;
+        $scope.current_verdict= null;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -74,7 +78,13 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.concatTags = function (res){
             let tag_list = [];
             res.result.sections.forEach(function(section){
-                tag_list = tag_list.concat(section.tags)
+                tag_list = tag_list.concat(section.tags);
+
+                if (section.heuristic !== undefined && section.heuristic !== null){
+                    if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
+                        tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                    }
+                }
             });
             return tag_list;
         };
@@ -185,6 +195,80 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         $scope.dump = function (obj) {
             return angular.toJson(obj, true);
+        };
+
+        $scope.agree = function (collection, collection_id){
+            $scope.send_verdict(collection, collection_id, $filter('verdict')($scope.data.max_score));
+        };
+
+        $scope.disagree = function (collection, collection_id){
+            swal({
+                    title: "Disagree with verdict?",
+                    text: "Upon further analysis, do you think the submission is malicious or not?",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d9534f",
+                    confirmButtonText: "Malicious",
+                    cancelButtonText: "Non-Malicious",
+                    closeOnConfirm: false,
+                    closeOnCancel: false,
+                },
+                function () {
+                    // Malicious
+                    $scope.send_verdict(collection, collection_id, 'malicious');
+
+                },
+                function () {
+                    // Non-malicious (cancel)
+                    $scope.send_verdict(collection, collection_id, 'non-malicious');
+                });
+        };
+
+        $scope.send_verdict = function (collection, collection_id, verdict) {
+            $http({
+                method: 'PUT',
+                url: "/api/v4/verdict/" + collection + "/" + collection_id + "/" + verdict + "/"
+            })
+                .success(function () {
+                    swal("Thank you!", "Your feedback to the system was successfully submitted.", "success");
+                    $scope.verdict = verdict.toLowerCase();
+                    $scope.current_verdict = $filter('verdict')($scope.data.max_score).toLowerCase();
+                })
+                .error(function (data, status, headers, config) {
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    $scope.loading_extra = false;
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    } else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                });
+        };
+
+        $scope.get_verdict = function (collection, collection_id) {
+            $http({
+                method: 'GET',
+                url: "/api/v4/verdict/" + collection + "/" + collection_id + "/"
+            })
+                .success(function (data) {
+                    $scope.verdict = data.api_response.verdict;
+                    $scope.current_verdict = $filter('verdict')($scope.data.max_score).toLowerCase();
+                })
+                .error(function (data, status, headers, config) {
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    $scope.loading_extra = false;
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    } else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                });
         };
 
         $scope.delete_submission = function () {
@@ -444,10 +528,6 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             return $scope.selected_highlight.indexOf(tag + $scope.splitter + value) !== -1
         };
 
-        $scope.hasContext = function (tag) {
-            return tag.context != null;
-        };
-
         $scope.hasHighlightedTags = function (tags) {
             for (let i in tags) {
                 let tag = tags[i];
@@ -660,6 +740,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         aggregated: $scope.futile_errors($scope.data.errors)
                     };
                     if ($scope.data.state === "completed") {
+                        $scope.get_verdict('submission', $scope.sid);
                         $scope.get_summary();
                         $scope.get_file_tree();
                         $scope.temp_data = null;
@@ -743,6 +824,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 url: "/api/v4/submission/summary/" + $scope.sid + "/"
             })
                 .success(function (data) {
+                    $scope.attack_matrix = data.api_response.attack_matrix;
                     $scope.summary = data.api_response.tags;
                     $scope.tag_map = data.api_response.map;
                 })

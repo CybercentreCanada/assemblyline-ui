@@ -69,7 +69,7 @@
                     </div>
                     <div class="modal-body">
                         <div class="text-danger text-center text-large">{{ last_error }}</div>
-                        <div style="margin-bottom: 10px; padding: 6px; font-size: 110%" class="label classification {{cur_workflow.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(cur_workflow.classification)">{{cur_workflow.classification | class_long}}</div>
+                        <div ng-if="user.c12n_enforcing" style="margin-bottom: 10px; padding: 6px; font-size: 110%" class="label classification {{cur_workflow.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(cur_workflow.classification)">{{cur_workflow.classification | class_long}}</div>
                         <div id="name" class="form-group">
                             <label id="name_lbl" class="control-label">Name (required)</label>
                             <input type="text" class="form-control" ng-model="cur_workflow.name">

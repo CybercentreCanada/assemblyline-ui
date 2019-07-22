@@ -54,6 +54,15 @@
 		<section id="appContent" class="container">
 			<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
 			<div class="bigpad pull-left" ng-show="started && !data.times.completed"><div class="throbber"></div></div>
+			<div style="margin-top: 20px" class="bigpad pull-left" ng-show="data.times.completed">
+				<span class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span>
+				<span title="I agree with the verdict" class="muted_button glyphicon glyphicon-thumbs-up text-big" ng-click="agree('submission', data.sid)"></span>
+				<span title="I disagree with the verdict" class="muted_button glyphicon glyphicon-thumbs-down text-big" ng-click="disagree('submission', data.sid)"></span>
+				<div ng-if="verdict" style="display: block" class="pad">
+					<span style="color: #00520080" ng-if="current_verdict==verdict"><span class="glyphicon glyphicon-check"></span>&nbsp;&nbsp;You agreed with the verdict</span>
+					<span style="color: #52000080" ng-if="current_verdict!=verdict"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;You think the verdict should be: {{verdict.toUpperCase()}}</span>
+				</div>
+			</div>
 			<div class="header_title text-right">
 				<h1>Submission Details</h1>
 				<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
@@ -207,47 +216,62 @@
                         </div>
                     </div>
 				</section>
-				
-				<section class="header_title" id="section_summary" ng-show="data">
-					<div class="menuheader" data-toggle="collapse" data-target="#summary">
-						<span class="text-big">Executive Summary</span>
-						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
-						<div ng-show="!summary" class="throbber pull-right"></div>
+
+				<div ng-show="!summary" class="jumbotron">
+					<div class="pad">
+						<div  class="throbber pull-right"></div>
+						Generating executive summary...
 					</div>
-					<div id="summary" class="collapse in">
-						
-						<div ng-show="!summary" class="jumbotron">
-							<div class="pad">
-								Generating summary...
-							</div>
-						</div>
-						
-						<div ng-show="obj_len(summary) != 0">
-							<div class="row" ng-repeat="(tag, values) in summary | orderBy:tag">
-								<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
-								<div class="col-xs-6 col-sm-8 col-md-9">
-									<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-context': !isHighlighted(tag, val)&&hasContext(val), 'label-nolight': !isHighlighted(tag, val)&&!hasContext(val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
-								</div>
-							</div>
-						
-						</div>
-						
-						<div ng-show="summary && (obj_len(summary) == 0)" >
+				</div>
+
+				<section ng-show="attack_matrix" class="header_title">
+					<div class="menuheader" data-toggle="collapse" data-target="#attack_matrix">
+						<span class="text-big">Att&ck Matrix</span>
+						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
+
+					</div>
+
+					<div id="attack_matrix" class="collapse in">
+						<div ng-show="attack_matrix && (obj_len(attack_matrix) == 0)">
 							<div class="pad text-muted">
 								Nothing to report.
 							</div>
 						</div>
+
+						<div class="row" ng-repeat="(category, attack_patterns) in attack_matrix | orderBy:category">
+							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
+							<div class="col-xs-6 col-sm-8 col-md-9">
+								<span id="{{item[0]}}_{{item[1]}}" class="label label-tag" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-nolight': !isHighlighted('attack_pattern', item[0]), 'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.attack_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+							</div>
+						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
-                            <div id="summary_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(summary)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
-				
+
+				<section class="header_title" ng-show="obj_len(summary[summary_type]) != 0" ng-repeat="(summary_type, summary_values) in summary | orderBy:summary_type" data-toggle="collapse">
+					<div class="menuheader" data-toggle="collapse" data-target="#{{summary_type}}">
+						<span class="text-big">{{summary_type | titleCase }}s</span>
+						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
+					</div>
+
+					<div id="{{summary_type}}" class="collapse in">
+						<div class="row" ng-repeat="(tag, values) in summary_values | orderBy:tag">
+							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
+							<div class="col-xs-6 col-sm-8 col-md-9">
+								<span id="{{tag}}_{{val}}" class="label label-tag" style="cursor: pointer;" ng-repeat="val in values" ng-class="{'label-nolight': !isHighlighted(tag, val), 'label-highlight': isHighlighted(tag, val)}" ng-click="trigger_highlight(tag, val);" >{{val | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag}}:"{{uri_encode(val)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+							</div>
+						</div>
+					</div>
+
+				</section>
+				<div ng-if="!settings.hide_raw_results">
+					<div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
+						<div id="summary_raw" class="collapse">
+							<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
+							<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(summary)}}</pre>
+						</div>
+					</div>
+				</div>
+
 				<section class="header_title" ng-show="data && data.errors && data.errors.length != 0">
 					<div class="menuheader" data-toggle="collapse" data-target="#error_summary">
 						<span class="text-big">Errors</span>

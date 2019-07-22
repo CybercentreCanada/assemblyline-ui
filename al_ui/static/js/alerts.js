@@ -39,16 +39,6 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.related_ids = null;
         $scope.last_params = null;
 
-        $scope.showmenu = false;
-        $scope.toggleMenu = function () {
-            $scope.showmenu = (!$scope.showmenu);
-        };
-        $scope.forceOpenMenu = function () {
-            if ($scope.showmenu === false) {
-                $scope.showmenu = true;
-            }
-        };
-
         $scope.getKeys = function (o) {
             try {
                 return Object.keys(o);
@@ -471,9 +461,6 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         //Load params from datastore
         $scope.start = function () {
             $scope.offset -= $scope.rows;
-            for (let key in $scope.filter_queries) {
-                $scope.filter_queries[key] = $scope.filter_queries[key];
-            }
             $scope.gen_forced_filter(true);
             $scope.possible_group_by = $scope.filtering_group_by.concat($scope.non_filtering_group_by).sort();
         };

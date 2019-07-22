@@ -5,6 +5,7 @@ from assemblyline.common import forge
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
+from assemblyline.odm.models.tagging import Tagging
 
 SUB_API = 'help'
 constants = forge.get_constants()
@@ -159,8 +160,7 @@ def get_systems_constants(**_):
                         sorted([x for x in accepts_map.keys()
                                 if re.match(accepts_map[x], t) and not re.match(rejects_map[x], t)])]
                        for t in sorted(constants.RECOGNIZED_TYPES.keys())],
-        "tag_types": sorted([x[0] for x in constants.STANDARD_TAG_TYPES]),
-        "tag_contexts": sorted([x[0] for x in constants.STANDARD_TAG_CONTEXTS])
+        "tag_types": sorted(list(Tagging.flat_fields().keys()))
     }
     out['file_types'].insert(0, ["*", default_list])
 

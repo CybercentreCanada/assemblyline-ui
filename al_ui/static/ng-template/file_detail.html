@@ -141,23 +141,46 @@
 				</div>
 			</div>
 		</section>
-		
+
+		<section class="header_title">
+			<div class="menuheader" data-toggle="collapse" data-target="#file_attack_matrix">
+				<span class="text-big">Att&ck Matrix</span>
+				<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
+
+			</div>
+
+			<div id="file_attack_matrix" class="collapse in">
+				<div ng-show="obj_len(current_file.attack_matrix) == 0">
+					<span class="text-muted">No attack patterns found</span>
+				</div>
+
+				<div ng-if="obj_len(current_file.attack_matrix) != 0">
+					<div class="row" ng-repeat="(category, attack_patterns) in current_file.attack_matrix | orderBy:category">
+						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
+						<div class="col-xs-6 col-sm-8 col-md-9">
+							<span id="file_{{item[0]}}_{{item[1]}}" class="label label-tag" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-nolight': !isHighlighted('attack_pattern', item[0]), 'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.attack_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
 		<section class="header_title">
 			<div class="menuheader " data-toggle="collapse" data-target="#file_tags">
 				<span class="text-big">Generated Tags</span>
 				<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
 			</div>
 			<div id="file_tags" class="collapse in">
-				<div ng-if="current_file.tags.length != 0">
-					<div class="row" ng-repeat="tagType in tagTypeList(current_file.tags) | filter:filterTagType | orderBy:'type'">
-						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tagType.type}}</strong></div>
+				<div ng-if="obj_len(current_file.tags) != 0">
+					<div class="row" ng-repeat="(tagType, values) in current_file.tags | orderBy:tagType">
+						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tagType}}</strong></div>
 						<div class="col-xs-6 col-sm-8 col-md-9">
-							<span title="{{tag.context}}" id="{{tag.value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="tag in current_file.tags | filter:{type: tagType.type} | orderBy:'value'" ng-class="{'label-context': !isHighlighted(tag.type, tag.value)&&hasContext(tag), 'label-nolight': !isHighlighted(tag.type, tag.value)&&!hasContext(tag), 'label-highlight': isHighlighted(tag.type, tag.value)}" ng-click="trigger_highlight(tag.type, tag.value);" >{{tag.value | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag.type}}:"{{uri_encode(tag.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+							<span id="file_{{tagType}}__{{value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="value in values | orderBy:value" ng-class="{'label-nolight': !isHighlighted(tagType, value), 'label-highlight': isHighlighted(tagType, value)}" ng-click="trigger_highlight(tagType, value);" >{{value | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tagType}}:"{{uri_encode(value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 						</div>
 					</div>
 				</div>
 				
-				<div ng-if="current_file.tags.length == 0">
+				<div ng-if="obj_len(current_file.tags) == 0">
 					<span class="text-muted">No tags generated</span>
 				</div>
 			</div>

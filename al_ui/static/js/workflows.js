@@ -14,7 +14,7 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
         $scope.cur_workflow = null;
         $scope.started = false;
         $scope.filtered = false;
-        $scope.filter = "";
+        $scope.filter = "*:*";
 
         $scope.label_suggestions = ['PHISHING', 'COMPROMISE', 'CRIME', 'ATTRIBUTED', 'WHITELISTED',
             'FALSE_POSITIVE', 'REPORTED', 'MITIGATED', 'PENDING'];
@@ -51,7 +51,7 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
         $scope.$watch('searchText', function () {
             if ($scope.started && $scope.searchText !== undefined && $scope.searchText != null) {
                 if ($scope.searchText === "") {
-                    $scope.filter = "";
+                    $scope.filter = "*:*";
                 } else {
                     $scope.filter = $scope.searchText;
                 }
@@ -306,7 +306,7 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     $scope.pages = $scope.pagerArray();
                     $scope.started = true;
 
-                    $scope.filtered = $scope.filter !== "";
+                    $scope.filtered = $scope.filter !== "*:*";
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
@@ -314,7 +314,7 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     if (data === "" || status === 400) {
                         $scope.workflow_list = [];
                         $scope.total = 0;
-                        $scope.filtered = true;
+                        $scope.filtered = $scope.filter !== "*:*";
                         $scope.pages = $scope.pagerArray();
                         $scope.started = true;
                         return;

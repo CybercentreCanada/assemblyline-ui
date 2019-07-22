@@ -66,7 +66,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     result: 0,
                     submission: 0,
                     submission_tree: 0,
-                    submission_tags: 0
+                    submission_summary: 0,
                 },
                 metrics: {
                     alert: 0,
@@ -78,7 +78,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     result: 0,
                     submission: 0,
                     submission_tree: 0,
-                    submission_tags: 0
+                    submission_summary: 0,
                 }
             },
             ingester: {

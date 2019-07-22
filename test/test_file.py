@@ -125,6 +125,7 @@ def test_result_for_service(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/file/result/{rand_hash}/{service_name}/")
     result_dict = resp['results'][0]
     for s in result_dict['result']['sections']:
+        s['heuristic'].pop('attack_pattern', None)
         s['tags'] = unflatten(tag_list_to_dict(s['tags']))
     res_data = Result(result_dict)
     assert res_data.build_key() in file_res_list

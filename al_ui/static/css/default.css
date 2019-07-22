@@ -40,45 +40,6 @@ a:hover {
 	}
 }
 
-.container-with-overflow{
-    padding: 30px 30px 30px 60px ;
-}
-
-@media (min-width: 768px){
-	.container-with-overflow{
-        padding-left: 60px;
-        padding-right: 60px;
-	}
-}
-
-@media (min-width: 828px){
-	.container-with-overflow{
-        padding-left: 30px;
-        padding-right: 30px;
-	}
-}
-
-@media (min-width: 992px){
-	.container-with-overflow{
-        padding-left: 60px;
-        padding-right: 60px;
-	}
-}
-
-@media (min-width: 1052px){
-	.container-with-overflow{
-        padding-left: 30px;
-        padding-right: 30px;
-	}
-}
-
-@media (min-width: 1450px){
-	.container-with-overflow{
-        padding-left: 30px;
-        padding-right: 30px;
-	}
-}
-
 section.container{
 	padding-top: 5px;
 	padding-bottom: 30px;
@@ -236,77 +197,34 @@ section.container{
 #appContent > .container {
 	min-width: 300px;
 }
-#appMenu {
-	position: fixed;
-	left: -300px;
-	top: 0;
-	width: 330px;
-	height: auto;
-	min-height: 100%;
-	background: rgba(60,60,60,1);
-	padding: 60px 0em 0.5em;
-	color: #999;
-	text-shadow: 0 -1px 0 rgba(0,0,0,.25);
-	overflow: none;
-	z-index: 998;
-	box-shadow: rgba(0, 0, 0, 0.4) 0px 3px 10px 4px;
-}
-#appMenu .menu-data{
-	width: 300px;
-	float: left;
-	padding: 0em 0.5em;
-	position: absolute;
-	overflow-y: auto;
-	max-height: 90%;
-	max-height: calc(100% - 65px);
+#searchMenu {
+	background: #f6f6f6;
+	border-radius: 0px 0px 4px 4px;
+	border-color: #CCC;
+    border-width: 0px 1px 1px 1px;
+    border-style: solid;
+    margin-top: -1px;
 }
 
-#appMenu .menu-anchor{
-	margin-left: 300px;
-	width: 30px;
-	border-radius: 2px;
-	padding: 15px 5px;
-	cursor: pointer;
+#searchMenu .menudata {
+	padding: 5px 10px;
 }
 
-#appMenu .menu-anchor i:hover,
-#appContent #appMenu .menu-anchor i:hover {
-	color: #EEE;
+#searchMenu .checked,
+#appContent #searchMenu .checked {
+	font-weight: 800;
 }
 
-#appMenu.menushow {
-	left:0;
+#searchMenu .checked:hover,
+#appContent #searchMenu .checked:hover {
+	color: #333;
 }
 
-#appContent.menuhide {
-	padding-left: 315px;
-}
-
-#appMenu .checked,
-#appContent #appMenu .checked {
-	color: #99ABCC;
-}
-
-.menuhide,.menushow,.menuslide {
-	-webkit-transition: all 0.4s ease;
-	-moz-transition: all 0.4s ease;
-	-ms-transition: all 0.4s ease;
-	-o-transition: all 0.4s ease;
-	transition: all 0.4s ease;
-}
-
-#appMenu .menuheader {
-	color: #BBB;
+#appContent #searchMenu .menuheader {
 	padding-bottom: 5px;
   	margin: 5px 0px 15px;
-  	border-bottom: 1px solid #666;
+  	border-bottom: 1px solid #CCC;
   	cursor: pointer;
-}
-
-#appMenu .menuheader:hover,
-#appContent #appMenu .menuheader:hover {
-	color: #EEE;
-  	border-bottom: 1px solid #999;
 }
 
 #appContent .menuheader {
@@ -316,6 +234,8 @@ section.container{
   	cursor: pointer;
 }
 
+#searchMenu .menuheader:hover,
+#appContent #searchMenu .menuheader:hover,
 #appContent .menuheader:hover {
 	color: #2d6ca2;
 	border-bottom: 1px solid #A1B4D5;
@@ -455,6 +375,12 @@ section.container{
 	z-index: 10000;
 	text-align: center;
 	vertical-align: middle;
+}
+
+.navbar-toggle-proper {
+	float: left;
+	border: 0px;
+	margin-left: 5px;
 }
 
 .navbar-nav > li > .avatar {
@@ -687,12 +613,20 @@ section.container{
 	}
 }
 
+.filter-item {
+	border-radius: 2px;
+	padding: 4px 10px 4px 25px;
+}
+
+.filter-item:hover {
+	background: #EEE;
+}
+
 .filter-bar {
 	margin-left: -15px;
     margin-right: -15px;
     padding-left: 15px;
     padding-right: 15px;
-    height: 70px;
 }
 
 .filter-bar.affix {
@@ -717,7 +651,6 @@ section.container{
 	    padding-bottom: 5px;
 	    padding-top: 80px;
 
-        height: 150px;
         background-color: white;
         z-index: 99;
         box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 6px 0px;
@@ -755,6 +688,18 @@ section.container{
 	color: #FFF;
 }
 
+.muted_button:hover{
+	cursor: pointer;
+	color: #666;
+}
+
+.muted_button {
+	vertical-align: middle;
+	color: #EEE;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+
 .clickable_color:hover {
 	cursor: pointer;
 	color: #000;
@@ -763,11 +708,6 @@ section.container{
 .clickable:hover{
 	cursor: pointer;
 	color: rgb(66, 139, 202);
-}
-
-#appMenu .clickable:hover{
-	cursor: pointer;
-	color: #EEE;
 }
 
 #slider {
@@ -1414,6 +1354,26 @@ figure.front{
 
 .navbar-dev .navbar-brand {
     color: #EEE;
+}
+
+.navbar-nav .dropdown-header {
+	color: #777;
+}
+.navbar-dev .dropdown-header {
+	color: #AAA;
+}
+
+.navbar-inverse.navbar-dev  .navbar-nav .open .dropdown-menu>li>a,
+.navbar-inverse.navbar-dev  .navbar-nav .open .dropdown-menu>li>a:hover,
+.navbar-inverse.navbar-dev  .navbar-nav .open .dropdown-menu>li>a:focus {
+	color: #e3e3e3;
+}
+
+.navbar-inverse.navbar-dev .navbar-nav .open .dropdown-menu>.active>a,
+.navbar-inverse.navbar-dev .navbar-nav .open .dropdown-menu>.active>a:hover,
+.navbar-inverse.navbar-dev .navbar-nav .open .dropdown-menu>.active>a:focus {
+	background-color: #0f1c2e;
+
 }
 
 .navbar-dev .navbar-nav>.active>a,

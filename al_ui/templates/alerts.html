@@ -152,78 +152,6 @@
 
         <div ng-controller="SearchController" ng-init="page='alert';bucket='alert';query=filter;load_favorites=view_type!='list';load_global_favorites=view_type!='list'">
             <div ng-controller="classificationCtrl" classification-picker></div>
-            <div ng-if="view_type!='list'" id="appMenu" ng-class="{menushow:showmenu,menuslide:!showmenu,clickable:!showmenu}" ng-click="forceOpenMenu()">
-                <div class="menu-data" style="overflow-x: hidden">
-                    <section id="section_global_filters">
-                        {% endraw %}
-                        {% if not is_readonly %}
-                        <div id="workflow_filters" style="margin-bottom: 12px">
-                            <a style="font-weight: 400" class="clickable text-muted text-large" href="workflows.html">Manage workflow filters&nbsp;&nbsp;<span class="glyphicon glyphicon-link"></span></a>
-                        </div>
-                        {% endif %}
-                        {% raw %}
-
-                        <div class="menuheader" data-toggle="collapse" data-target="#statuses">
-                            <span class="text-big">Status</span>
-                        </div>
-                        <div id="statuses" class="collapse in">
-                            <div ng-hide="current_statuses.length"><i>No statuses matching this query</i></div>
-                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=status:&quot;{{status | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(status, count) in current_statuses">{{count}}x {{status}}</a>
-                        </div>
-
-                        <div class="menuheader" data-toggle="collapse" data-target="#priorities">
-                            <span class="text-big">Priority</span>
-                        </div>
-                        <div id="statuses" class="collapse in">
-                            <div ng-hide="current_priorities.length"><i>No priorities matching this query</i></div>
-                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=priority:&quot;{{priority | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(priority, count) in current_priorities">{{count}}x {{priority}}</a>
-                        </div>
-
-                        <div class="menuheader" data-toggle="collapse" data-target="#labels">
-                            <span class="text-big">Labels</span>
-                        </div>
-                        <div id="labels" class="collapse in">
-                            <div ng-hide="current_labels.length"><i>No labels matching this query</i></div>
-                            <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=label:&quot;{{label | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(label, count) in current_labels">{{count}}x {{label}}</a>
-                        </div>
-
-                        <div class="menuheader" data-toggle="collapse" data-target="#global_filters">
-                            <span class="text-big">Global filters</span>
-                        </div>
-                        <div id="global_filters" class="collapse in">
-                            <div ng-hide="global_filters.length"><i>No global filters</i></div>
-                            <div ng-repeat="glob_f in global_filters" class="checkbox">
-                                <div class="row">
-                                    <div class="col-xs-10">
-                                        <label class="clickable" title="{{glob_f.query}}" ng-class="{checked:global_toggled[$index]}">
-                                            <input type="checkbox" ng-model="global_toggled[$index]" ng-click="toggleFQ($index, false)"> {{glob_f.name}} by {{glob_f.created_by}}
-                                        </label>
-                                    </div>
-                                    <div class="col-xs-2 clickable" ng_show="isOwner(glob_f.created_by)" ng-click="removeFromFavorites(glob_f.name, 'global')"><span class="glyphicon glyphicon-trash"></span></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="menuheader" data-toggle="collapse" data-target="#personal_filters">
-                            <span class="text-big">Personal filters</span>
-                        </div>
-                        <div id="personal_filters" class="collapse in">
-                            <div ng-hide="favorites.length"><i>No personal filters</i></div>
-                            <div ng-repeat="fav in favorites" class="checkbox">
-                                <div class="row">
-                                    <div class="col-xs-10">
-                                        <label class="clickable" title="{{query}}" ng-class="{checked:favorites_toggled[$index]}">
-                                        <input type="checkbox" ng-model="favorites_toggled[$index]" ng-click="toggleFQ($index, true)"> {{fav.name}}
-                                    </label>
-                                    </div>
-                                    <div class="col-xs-2 clickable" ng-click="removeFromFavorites(fav.name, 'private')"><span class="glyphicon glyphicon-trash"></span></div>
-                                </div>
-                            </div>
-                        </div>
-                   </section>
-                </div>
-                <div class="menu-anchor" ng-click="toggleMenu();$event.stopPropagation();"><i class="text-icon" ng-class="{'icon-fastleft':showmenu,'icon-fastright':!showmenu}"></i></div>
-            </div>
             <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-resize">
                     <div class="modal-content">
@@ -259,8 +187,8 @@
                     </div>
                 </div>
             </div>
-            <div class="filter-bar" data-spy="affix" data-offset-top="150">
-                <form id="search-term" class="input-group" method="get" role="search" ng-submit="filterData(query)">
+            <div class="filter-bar" data-spy="affix" data-offset-top="150" >
+                <form style="z-index: 1" id="search-term" class="input-group" method="get" role="search" ng-submit="filterData(query)">
                     <div class="inner-addon right-addon">
                         <span ng-show="view_type!='list'&&query&&!inFavorites(query)" ng-click="promptAddFavorites(query)" class="text-muted glyphicon glyphicon-star-empty" title="Add to favorites"></span>
                         <span ng-show="view_type!='list'&&inFavorites(query)" ng-click="removeFromFavorites(nameOfQuery(query), false)" class="text-info glyphicon glyphicon-star" title="Remove from favorites"></span>
@@ -269,17 +197,78 @@
                     <span class="input-group-btn">
                         <a href="/alerts.html?filter={{query}}&time_slice={{time_slice}}&view_type={{view_type}}&group_by={{group_by}}{{forced_filter}}" class="btn btn-primary" >Filter</a>
                         <div ng-disabled="total == 0" class="btn btn-primary" ng-click="show_statistics()"><span class="glyphicon glyphicon-stats" title="Show alerts statistics"></span></div>
-                        <button ng-if="view_type!='list'" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                        <span ng-if="view_type!='list'" class="btn btn-primary" data-toggle="collapse" data-target="#searchMenu">
                             <span class="caret"></span>
-                        </button>
-                        <ul ng-if="view_type!='list'"  class="dropdown-menu dropdown-menu-right" role="menu">
-                            <li ng-hide="favorites.length"><a><i>No favorites</i></a></li>
-                            <li ng-repeat="fav in favorites"><a href="/alerts.html?filter={{fav.query}}&time_slice={{time_slice}}&view_type={{view_type}}&group_by={{group_by}}{{forced_filter}}">{{fav.name}}</a></li>
-                        </ul>
-
+                        </span>
                     </span>
-
                 </form>
+
+                <div ng-if="view_type!='list'" id="searchMenu" class="collapse">
+                    <section id="section_global_filters" class="row menudata">
+                        <div class="col-sm-6 pad">
+                            <div class="menuheader" data-toggle="collapse" data-target="#statuses">
+                                <span class="text-big">Status</span>
+                            </div>
+                            <div id="statuses" class="collapse in">
+                                <div ng-hide="current_statuses.length != 0"><i>No statuses matching this query</i></div>
+                                <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=status:&quot;{{status | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(status, count) in current_statuses">{{count}}x {{status}}</a>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 pad">
+                            <div class="menuheader" data-toggle="collapse" data-target="#priorities">
+                                <span class="text-big">Priority</span>
+                            </div>
+                            <div id="priorities" class="collapse in">
+                                <div ng-hide="current_priorities.length != 0"><i>No priorities matching this query</i></div>
+                                <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=priority:&quot;{{priority | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(priority, count) in current_priorities">{{count}}x {{priority}}</a>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-12 pad">
+                            <div class="menuheader" data-toggle="collapse" data-target="#labels">
+                                <span class="text-big">Labels</span>
+                            </div>
+                            <div id="labels" class="collapse in">
+                                <div ng-hide="current_labels.length != 0"><i>No labels matching this query</i></div>
+                                <a href="/alerts.html?filter={{filter}}&time_slice={{time_slice}}&fq=label:&quot;{{label | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(label, count) in current_labels">{{count}}x {{label}}</a>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 pad">
+                            <div class="menuheader" data-toggle="collapse" data-target="#personal_filters">
+                                <span class="text-big">Personal filters</span>
+                            </div>
+                            <div id="personal_filters" class="collapse in">
+                                <div ng-hide="favorites.length"><i>No personal filters</i></div>
+                                <div ng-repeat="fav in favorites" class="checkbox filter-item">
+                                    <label class="clickable" title="{{query}}" ng-class="{checked:favorites_toggled[$index]}">
+                                        <input type="checkbox" ng-model="favorites_toggled[$index]" ng-click="toggleFQ($index, true)"> {{fav.name}}
+                                    </label>
+                                    <div class="pull-right clickable" ng-click="removeFromFavorites(fav.name, 'private')"><span class="glyphicon glyphicon-trash"></span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 pad">
+                            <div class="menuheader" data-toggle="collapse" data-target="#global_filters">
+                                <span class="text-big">Global filters</span>
+                            </div>
+                            <div id="global_filters" class="collapse in">
+                                <div ng-hide="global_filters.length"><i>No global filters</i></div>
+                                <div ng-repeat="glob_f in global_filters" class="checkbox filter-item">
+                                    <label class="clickable" title="{{glob_f.query}}" ng-class="{checked:global_toggled[$index]}">
+                                        <input type="checkbox" ng-model="global_toggled[$index]" ng-click="toggleFQ($index, false)"> {{glob_f.name}} by {{glob_f.created_by}}
+                                    </label>
+                                    <div class="pull-right clickable" ng_show="isOwner(glob_f.created_by)" ng-click="removeFromFavorites(glob_f.name, 'global')"><span class="glyphicon glyphicon-trash"></span></div>
+
+                                </div>
+                            </div>
+                        </div>
+                   </section>
+                </div>
+
+
                 <div class="pull-right">
                     <a class="btn btn-link" href="/search_help.html"><span class="glyphicon glyphicon-question-sign">&nbsp;</span>Filter&nbsp;Syntax</a>
                 </div>

@@ -115,6 +115,19 @@ def create_menu(user, path):
              "title": "Signature Statistics"}
         ])
 
+    alerting_submenu = [
+        {"class": "",
+         "active": path.startswith("/alerts.html"),
+         "link": "/alerts.html",
+         "title": "View Alerts",
+         "has_submenu": False},
+        {"class": "",
+         "active": path.startswith("/workflows.html"),
+         "link": "/workflows.html",
+         "title": "Workflow filters",
+         "has_submenu": False}
+    ]
+
     menu = [{"class": "",
              "active": path.split("?")[0] == "/" or path.startswith("/submit.html"),
              "link": "/submit.html",
@@ -127,10 +140,13 @@ def create_menu(user, path):
              "has_submenu": True, 
              "submenu": submission_submenu},
             {"class": "",
-             "active": path.startswith("/alerts.html"),
-             "link": "/alerts.html",
+             "active": path.startswith("/alerts.html") or path.startswith("/workflows.html"),
+             "link": "#",
              "title": "Alerts",
-             "has_submenu": False}]
+             "has_submenu": True,
+             "submenu": alerting_submenu}]
+
+
 
     if not config.ui.read_only:
         signature_submenu = [

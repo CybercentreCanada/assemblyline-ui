@@ -6,7 +6,7 @@
  */
 String.prototype.toProperCase = function () {
     return this.replace(/\w\S*/g, function (txt) {
-        let full_upper = ["ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid"];
+        let full_upper = ["ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid", 'ioc'];
         let full_lower = ["to", "as", "use"];
 
         if (full_upper.indexOf(txt.toLowerCase()) !== -1) {
@@ -1029,15 +1029,63 @@ utils.filter('rawViewer', function () {
 
 utils.filter('score_color', function () {
     return function (score) {
-        if (score === undefined || score == null) return "text-info";
-        if (score >= 500) {
+        if (score === undefined || score == null) return "text-muted";
+        if (score >= 2000) {
             return "text-danger";
+        }
+        else if (score >= 500) {
+            return "text-warning";
+        }
+        else if (score >= 100) {
+            return "text-info";
         }
         else if (score < 0) {
             return "text-success";
         }
         else {
-            return "text-info";
+            return "text-muted";
+        }
+    }
+});
+
+utils.filter('verdict_color', function () {
+    return function (score) {
+        if (score === undefined || score == null) return "label-default";
+        if (score >= 2000) {
+            return "label-danger";
+        }
+        else if (score >= 500) {
+            return "label-warning";
+        }
+        else if (score >= 100) {
+            return "label-info";
+        }
+        else if (score < 0) {
+            return "label-success";
+        }
+        else {
+            return "label-default";
+        }
+    }
+});
+
+utils.filter('verdict', function () {
+    return function (score) {
+        if (score === undefined || score == null) return "Non-Malicious";
+        if (score >= 2000) {
+            return "Malicious";
+        }
+        else if (score >= 500) {
+            return "Highly Suspicious";
+        }
+        else if (score >= 100) {
+            return "Suspicious";
+        }
+        else if (score < 0) {
+            return "Safe";
+        }
+        else {
+            return "Non-Malicious";
         }
     }
 });
