@@ -58,12 +58,12 @@
 					<div class="text-center bigpad" ng-show="transfers.length != 0">
                         {% raw %}
 						<div class="file-selected">
-							<div ng-repeat="file in transfers" class="pad">
+							<div ng-repeat="file in transfers">
 								<div class="text-center">
 									<scan class="huge-icon icon-searchdocument"></scan>
 								</div>
 								<div>
-									<span class="text-big">{{ file.relativePath }}</span> ({{ file.size }} bytes)
+									<span class="text-big">{{ file.relativePath }}</span> ({{ file.size | fileSize}})
 								</div>
 								<div class="pad">
 									<span class="btn btn-danger" ng-click="file.retry()" ng-show="file.error">Upload failed. Retry?</span>
