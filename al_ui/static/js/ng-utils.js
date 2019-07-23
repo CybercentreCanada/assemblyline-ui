@@ -507,13 +507,6 @@ utils.directive('signatureDetail', function () {
     };
 });
 
-utils.directive('tcSignatureDetail', function () {
-    return {
-        templateUrl: '/static/ng-template/tc_signature_detail.html',
-        replace: true
-    };
-});
-
 utils.directive('jsonInput', function () {
     return {
         scope: true,
@@ -1301,33 +1294,6 @@ utils.filter('stripNull', function () {
         }
 
         return val;
-    }
-});
-
-utils.filter('tc_signature', function () {
-    return function (s) {
-        if (s === undefined || s == null) return "";
-        let o = "";
-
-        o += "** " + s.name + " **\n\n";
-        if (s.comment !== null && s.comment !== undefined && s.comment !== ""){
-            o += s.comment + "\n\n";
-        }
-        if (s.threat_actor !== undefined && s.threat_actor !== null && s.threat_actor !== ""){
-            o += "Associated threat actor: " + s.threat_actor + "\n";
-        }
-        if (s.implant_family !== undefined && s.implant_family !== null && s.implant_family !== ""){
-            o += "Associated implant: " + s.implant_family + "\n";
-        }
-        if (s.callback !== undefined && s.callback !== null && s.callback !== ""){
-            o += "Callback function: " + s.callback + "\n";
-        }
-        o += "Score: " + s.al_score + "\n\nPatterns:\n";
-        for (let i in s.values){
-            let regex = s.values[i];
-            o += regex + "\n"
-        }
-        return o;
     }
 });
 

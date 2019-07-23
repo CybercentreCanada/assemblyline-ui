@@ -7,7 +7,6 @@ BUCKET_MAP = {
     'result': STORAGE.result,
     'signature': STORAGE.signature,
     'submission': STORAGE.submission,
-    'tc_signature': STORAGE.tc_signature,
     'workflow': STORAGE.workflow
 }
 

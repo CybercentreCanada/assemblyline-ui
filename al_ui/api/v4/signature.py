@@ -6,8 +6,7 @@ from textwrap import dedent
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
-from assemblyline.common.yara import YaraParser
-from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES, VALID_GROUPS
+from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import LOGGER, STORAGE, ORGANISATION
@@ -86,11 +85,12 @@ def add_signature(**kwargs):
 
     # Get rule dependancies
     yara_version = data['meta'].get('yara_version', None)
-    data['depends'], data['modules'] = YaraParser.parse_dependencies(data['condition'],
-                                                                     YaraParser.YARA_MODULES.get(yara_version, None))
+    # data['depends'], data['modules'] = YaraParser.parse_dependencies(data['condition'],
+    #                                                                 YaraParser.YARA_MODULES.get(yara_version, None))
 
     # Validate rule
-    res = YaraParser.validate_rule(data)
+    # res = YaraParser.validate_rule(data)
+    res = {}
     if res['valid']:
         # Test signature name
         other = STORAGE.signature.search(f"name:{data['name']} AND NOT id:{sid}*", fl='id', rows='0')
@@ -418,7 +418,7 @@ def download_signatures(**kwargs):
                 //
                 """).format(query=query, error=error, last_modified=last_modified, query_hash=query_hash)
 
-            rule_file_bin = header + YaraParser().dump_rule_file(signature_list)
+            rule_file_bin = header # + YaraParser().dump_rule_file(signature_list)
             rule_file_bin = rule_file_bin
 
             signature_cache.save(query_hash, rule_file_bin.encode(encoding="UTF-8"), ttl=DEFAULT_CACHE_TTL)
@@ -466,9 +466,9 @@ def get_signature(sid, rev, **kwargs):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
 
         # Cleanup
-        for key in VALID_GROUPS:
-            if data['meta'].get(key, None) is None:
-                data['meta'].pop(key, None)
+        # for key in VALID_GROUPS:
+        #    if data['meta'].get(key, None) is None:
+        #        data['meta'].pop(key, None)
 
         if not Classification.enforce:
             data.pop('classification', None)
@@ -540,7 +540,7 @@ def set_signature(sid, rev, **kwargs):
                                                          "status through this API.", 400)
 
         # Check if rule requires a revision bump
-        if YaraParser.require_bump(data, old_data):
+        if True: # YaraParser.require_bump(data, old_data):
             # Get new ID
             data['meta']['rule_id'] = sid
             data['meta']['rule_version'] = STORAGE.get_signature_last_revision_for_id(sid) + 1
