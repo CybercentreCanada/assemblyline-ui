@@ -168,6 +168,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
     $scope.loading = false;
     $scope.user = null;
     $scope.obj = {};
+    $scope.started = false;
 
     //File transfer letiables/Functions
     $scope.transfer_started = false;
@@ -184,29 +185,33 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                     return;
                 }
             }
-            $http({
-                method: 'POST',
-                url: "/api/v4/ui/start/" + uuid + "/",
-                data: $scope.params
-            })
-                .success(function (data) {
-                    window.location = "/submission_detail.html?new&sid=" + data.api_response.sid;
+            if (!$scope.started){
+                $scope.started = true;
+                $http({
+                    method: 'POST',
+                    url: "/api/v4/ui/start/" + uuid + "/",
+                    data: $scope.params
                 })
-                .error(function (data, status, headers, config) {
-                    if (data === "") {
-                        return;
-                    }
+                    .success(function (data) {
+                        window.location = "/submission_detail.html?new&sid=" + data.api_response.sid;
+                    })
+                    .error(function (data, status, headers, config) {
+                        if (data === "") {
+                            return;
+                        }
 
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
+                        if (data.api_error_message) {
+                            $scope.error = data.api_error_message;
+                        }
+                        else {
+                            $scope.error = config.url + " (" + status + ")";
+                        }
 
-                    $scope.reset_transfer();
-                    uuid = null;
-                });
+                        $scope.reset_transfer();
+                        uuid = null;
+                    });
+            }
+
         });
         $scope.obj.flow.upload();
     };
