@@ -175,6 +175,10 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
     $scope.start_transfer = function () {
         $scope.transfer_started = true;
         $scope.obj.flow.on('complete', function () {
+            if ($scope.obj.flow.files.length === 0){
+                return;
+            }
+
             for (let x = 0; x < $scope.obj.flow.files.length; x++) {
                 if ($scope.obj.flow.files[x].error) {
                     return;

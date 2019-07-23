@@ -359,7 +359,7 @@
           input.setAttribute('type', 'file');
           // input fill entire dom node
           extend(domNode.style, {
-            display: 'inline-block',
+            // display: 'inline-block',
             position: 'relative',
             overflow: 'hidden',
             verticalAlign: 'top'
@@ -373,7 +373,7 @@
             right: 0,
             fontFamily: 'Arial',
             // 4 persons reported this, the max values that worked for them were 243, 236, 236, 118
-            fontSize: '118px',
+            fontSize: '140px',
             margin: 0,
             padding: 0,
             opacity: 0,
@@ -543,10 +543,9 @@
       }, this);
       if (this.fire('filesAdded', files, event)) {
         each(files, function (file) {
-          if (this.opts.singleFile && this.files.length > 0) {
-            this.removeFile(this.files[0]);
+          if ((this.opts.singleFile && this.files.length === 0) || !this.opts.singleFile) {
+            this.files.push(file);
           }
-          this.files.push(file);
         }, this);
       }
       this.fire('filesSubmitted', files, event);
@@ -883,7 +882,7 @@
      */
     progress: function () {
       if (this.error) {
-        return 1;
+        return 0;
       }
       if (this.chunks.length === 1) {
         this._prevProgress = Math.max(this._prevProgress, this.chunks[0].progress());

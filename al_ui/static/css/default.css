@@ -118,11 +118,28 @@ section.container{
 	margin-top: -50px;
 }
 
+.huge-icon {
+	font-size: 700%;
+}
+
+.drop.drag-enter,
+.drop:hover {
+	border: 2px #AAA dashed;
+	background-color: #F6F6F6;
+	color: #AAA;
+}
+
 .drop {
 	padding: 15px;
 	border: 2px #f1f1f1 dashed;
 	border-radius: 5px;
-	line-height: 34px;
+	color: #CCC;
+}
+
+.file-selected {
+	padding: 15px;
+	border: 2px #f1f1f1 dashed;
+	border-radius: 5px;
 	color: #999;
 }
 

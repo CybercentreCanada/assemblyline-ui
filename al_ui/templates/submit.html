@@ -46,59 +46,53 @@
         <div class="tab-content">
             <div class="tab-pane active" style="margin-top: 20px" id="file">
                 <div flow-transfers>
-                    <div class="bigpad">
-                        <div class="drop text-center" flow-drop flow-drag-enter="class='alert-info'" flow-drag-leave="class=''" ng-class="class">
-                            <span class="btn btn-default" flow-btn ng-disabled="transfer_started"><span class="glyphicon glyphicon-file">&nbsp;</span>Add File</span>
-                            <span class="btn btn-default" flow-btn flow-directory ng-show="$flow.supportDirectory"ng-disabled="transfer_started"><span class="glyphicon glyphicon-folder-open">&nbsp;</span>Add Folder</span><br/><br/>
-                            or Drop your file(s) here
-                        </div>
+                    <div class="text-center bigpad" ng-show="transfers.length == 0">
+                        <div class="drop" flow-btn flow-single-file flow-drop flow-drag-enter="class='drag-enter'" flow-drag-leave="class=''" ng-class="class">
+							<div>
+								<scan class="huge-icon icon-searchdocument"></scan>
+							</div>
+							<span class="text-big text-muted">Select a file to scan</span>
+						</div>
+                    </div>
+
+					<div class="text-center bigpad" ng-show="transfers.length != 0">
+                        {% raw %}
+						<div class="file-selected">
+							<div ng-repeat="file in transfers" class="pad">
+								<div class="text-center">
+									<scan class="huge-icon icon-searchdocument"></scan>
+								</div>
+								<div>
+									<span class="text-big">{{ file.relativePath }}</span> ({{ file.size }} bytes)
+								</div>
+								<div class="pad">
+									<span class="btn btn-danger" ng-click="file.retry()" ng-show="file.error">Upload failed. Retry?</span>
+									<span disabled="disabled" class="btn btn-primary" ng-show="transfer_started&&!file.error&&file.progress()!=1">{{ file.progress() * 100 | number : 0 }}% Uploaded</span>
+			                        <span class="text-primary text-large" ng-show="transfer_started&&!file.error&&file.progress()==1">Starting scan, you will be redirected soon...</span>
+			                        <span class="btn btn-primary" ng-click="prepare_transfer();" ng-show="!transfer_started">Upload and Scan</span>
+									<span class="btn btn-default" ng-click="reset_transfer()" ng-show="file.progress()!=1">Cancel</span>
+								</div>
+							</div>
+						</div>
+                        {% endraw %}
                     </div>
 
                     {% if show_tos %}
                     <div class="pad text-center text-muted">
-                        By clicking <i>Scan files</i>, you consent to our <a href="/terms.html">Terms&nbsp;of&nbsp;Service</a>.
+                        By clicking <i>Upload and Scan</i>, you consent to our <a href="/terms.html">Terms&nbsp;of&nbsp;Service</a>.
                     </div>
                     {% endif %}
-
-                    <div class="bigpad text-center">
-                        <span class="btn btn-primary bigbutton" ng-click="prepare_transfer();" ng-disabled="transfers.length==0||transfer_started">Scan File(s)</span>
-                    </div>
-
-                    <div class="bigpad well" ng-show="transfers.length != 0">
-                        <h3>Files to be scanned: <a class="btn btn-s btn-danger" ng-click="reset_transfer();" ng-show="!transfer_started">Remove All</a></h3>
-                        {% raw %}
-                        <div ng-repeat="file in transfers" class="transfer-box">
-                            {{ file.relativePath }} ({{ file.size }} bytes)
-                            <table width="100%">
-                                <tr>
-                                    <td width="100%">
-                                        <div class="progress">
-                                            <div class="progress-bar" role="progressbar"
-                                                aria-valuenow="{{file.progress() * 100}}"
-                                                aria-valuemin="0"
-                                                aria-valuemax="100"
-                                                ng-style="{width: (file.progress() * 100) + '%'}">
-                                                <span class="sr-only">{{ file.progress() * 100 }}% Complete</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <a class="btn btn-xs btn-danger" ng-click="file.cancel()" ng-show="!transfer_started">Remove</a>
-                                        <a class="btn btn-xs btn-info" ng-click="file.retry()" ng-show="file.error">Retry</a>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                        {% endraw %}
-                    </div>
                 </div>
             </div>
 
             {% if show_url %}
             <div class="tab-pane" style="margin-top: 20px" id="url">
                 <form name="url_form">
-                    <div class="bigpad">
+                    <div class="bigpad input-group">
                         <input id="urlbox" placeholder="Url" name="urlbox" type="url" class="form-control" ng-model="submission_url" required/>
+						<span class="input-group-btn">
+                        	<button type="submit" class="btn btn-primary" ng-click="prepare_transfer(submission_url);" ng-disabled="!url_form.urlbox.$valid||submission_url.length==0||loading">Scan</button>
+                    	</span>
                     </div>
 
                     {% if show_tos %}
@@ -107,9 +101,7 @@
                     </div>
                     {% endif %}
 
-                    <div class="bigpad text-center">
-                        <button type="submit" class="btn btn-primary bigbutton" ng-click="prepare_transfer(submission_url);" ng-disabled="!url_form.urlbox.$valid||submission_url.length==0||loading">Scan Url</button>
-                    </div>
+
                 </form>
             </div>
             {% endif %}
