@@ -52,6 +52,7 @@ def add_signature(**kwargs):
      "sid": "0000000000",  #SID that the rule was assigned
      "rev": 2 }            #Revision number at which the rule was saved.
     """
+    # TODO: Fix for new signature stuff
     user = kwargs['user']
     data = request.json
 
@@ -113,15 +114,14 @@ def add_signature(**kwargs):
 
 
 # noinspection PyPep8Naming
-@signature_api.route("/change_status/<sid>/<rev>/<status>/", methods=["GET"])
+@signature_api.route("/change_status/<sid>/<status>/", methods=["GET"])
 @api_login(required_priv=['W'], allow_readonly=False)
-def change_status(sid, rev, status, **kwargs):
+def change_status(sid, status, **kwargs):
     """
     Change the status of a signature
        
     Variables:
     sid    =>  ID of the signature
-    rev    =>  Revision number of the signature
     status  =>  New state
     
     Arguments: 
@@ -144,46 +144,44 @@ def change_status(sid, rev, status, **kwargs):
                                  "Only admins are allowed to change the signature status to a deployed status.",
                                  403)
     
-    key = f"{sid}r.{rev}"
-    data = STORAGE.signature.get(key, as_obj=False)
+    data = STORAGE.signature.get(sid, as_obj=False)
     if data:
-        if not Classification.is_accessible(user['classification'], data['meta'].get('classification',
-                                                                                     Classification.UNRESTRICTED)):
+        if not Classification.is_accessible(user['classification'],
+                                            data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "You are not allowed change status on this signature", 403)
     
-        if data['meta']['al_status'] in STALE_STATUSES and status not in DRAFT_STATUSES:
+        if data['status'] in STALE_STATUSES and status not in DRAFT_STATUSES:
             return make_api_response("",
-                                     f"Only action available while signature in {data['meta']['al_status']} "
+                                     f"Only action available while signature in {data['status']} "
                                      f"status is to change signature to a DRAFT status. ({', '.join(DRAFT_STATUSES)})",
                                      403)
 
-        if data['meta']['al_status'] in DEPLOYED_STATUSES and status in DRAFT_STATUSES:
+        if data['status'] in DEPLOYED_STATUSES and status in DRAFT_STATUSES:
             return make_api_response("",
-                                     f"You cannot change the status of signature {sid} r.{rev} from "
-                                     f"{data['meta']['al_status']} to {status}.", 403)
+                                     f"You cannot change the status of signature {sid} from "
+                                     f"{data['status']} to {status}.", 403)
 
-        query = "meta.al_status:{status} AND id:{sid}* AND NOT id:{key}"
+        query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{sid}"
         today = now_as_iso()
         uname = user['uname']
 
         if status not in ['DISABLED', 'INVALID', 'TESTING']:
             keys = [k['id']
-                    for k in STORAGE.signature.search(query.format(key=key, sid=sid, status=status),
-                                                      fl="id", as_obj=False)['items']]
+                    for k in STORAGE.signature.search(query, fl="id", as_obj=False)['items']]
             for other in STORAGE.signature.multiget(keys, as_obj=False, as_dictionary=False):
-                other['meta_extra']['al_state_change_date'] = today
-                other['meta_extra']['al_state_change_user'] = uname
-                other['meta']['al_status'] = 'DISABLED'
+                other['state_change_date'] = today
+                other['state_change_user'] = uname
+                other['status'] = 'DISABLED'
 
                 STORAGE.signature.save(f"{other['meta']['rule_id']}r.{other['meta']['rule_version']}", other)
 
-        data['meta_extra']['al_state_change_date'] = today
-        data['meta_extra']['al_state_change_user'] = uname
-        data['meta']['al_status'] = status
+        data['state_change_date'] = today
+        data['state_change_user'] = uname
+        data['status'] = status
 
-        return make_api_response({"success": STORAGE.signature.save(key, data)})
+        return make_api_response({"success": STORAGE.signature.save(sid, data)})
     else:
-        return make_api_response("", f"Signature not found. ({sid} r.{rev})", 404)
+        return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
 @signature_api.route("/<sid>/<rev>/", methods=["DELETE"])
@@ -205,6 +203,7 @@ def delete_signature(sid, rev, **kwargs):
     Result example:
     {"success": True}  # Signature delete successful
     """
+    # TODO: Fix for new signature stuff
     user = kwargs['user']
     data = STORAGE.signature.get(f"{sid}r.{rev}", as_obj=False)
     if data:
@@ -252,6 +251,7 @@ def download_signatures(**kwargs):
     Result example:
     <A .YAR SIGNATURE FILE>
     """
+    # TODO: Fix for new signature stuff
     user = kwargs['user']
     query = request.args.get('query', 'meta.al_status:DEPLOYED')
     safe = request.args.get('safe', "false") == 'true'
@@ -429,15 +429,14 @@ def download_signatures(**kwargs):
             )
 
 
-@signature_api.route("/<sid>/<rev>/", methods=["GET"])
+@signature_api.route("/<sid>/", methods=["GET"])
 @api_login(required_priv=['R'], allow_readonly=False)
-def get_signature(sid, rev, **kwargs):
+def get_signature(sid, **kwargs):
     """
     Get the detail of a signature based of its ID and revision
     
     Variables:
     sid    =>     Signature ID
-    rev    =>     Signature revision number
     
     Arguments: 
     None
@@ -446,36 +445,19 @@ def get_signature(sid, rev, **kwargs):
     None
      
     Result example:
-    {"name": "sig_name",          # Signature name    
-     "tags": ["PECheck"],         # Signature tags
-     "comments": [""],            # Signature comments lines
-     "meta": {                    # Meta fields ( **kwargs )
-       "id": "SID",                 # Mandatory ID field
-       "rule_version": 1 },         # Mandatory Revision field
-     "type": "rule",              # Rule type (rule, private rule ...)
-     "strings": ['$ = "a"'],      # Rule string section (LIST)
-     "condition": ["1 of them"]}  # Rule condition section (LIST)    
+    {}
     """
     user = kwargs['user']
-    data = STORAGE.signature.get(f"{sid}r.{rev}", as_obj=False)
+    data = STORAGE.signature.get(sid, as_obj=False)
 
     if data:
         if not Classification.is_accessible(user['classification'],
-                                            data['meta'].get('classification',
-                                                             Classification.UNRESTRICTED)):
+                                            data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
-
-        # Cleanup
-        # for key in VALID_GROUPS:
-        #    if data['meta'].get(key, None) is None:
-        #        data['meta'].pop(key, None)
-
-        if not Classification.enforce:
-            data.pop('classification', None)
 
         return make_api_response(data)
     else:
-        return make_api_response("", "Signature not found. (%s r.%s)" % (sid, rev), 404)
+        return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
 @signature_api.route("/<sid>/<rev>/", methods=["POST"])
@@ -512,6 +494,7 @@ def set_signature(sid, rev, **kwargs):
      "sid": "0000000000",  #SID that the rule was assigned (Same as provided)
      "rev": 2 }            #Revision number at which the rule was saved.
     """
+    # TODO: Fix for new signature stuff
     user = kwargs['user']
     key = f"{sid}r.{rev}"
 
@@ -618,6 +601,7 @@ def signature_statistics(**kwargs):
       },
      ...
     ]"""
+    # TODO: Fix for new signature stuff
 
     user = kwargs['user']
 
@@ -670,6 +654,7 @@ def update_available(**_):
 
     Arguments:
     last_update        => ISO time of last update.
+    type               => Signature type to check
 
     Data Block:
     None
@@ -677,7 +662,8 @@ def update_available(**_):
     Result example:
     { "update_available" : true }      # If updated rules are available.
     """
+    sig_type = request.args.get('type', '*')
     last_update = iso_to_epoch(request.args.get('last_update', '1970-01-01T00:00:00.000000Z'))
-    last_modified = iso_to_epoch(STORAGE.get_signature_last_modified())
+    last_modified = iso_to_epoch(STORAGE.get_signature_last_modified(sig_type))
 
     return make_api_response({"update_available": last_modified > last_update})

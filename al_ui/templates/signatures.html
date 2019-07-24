@@ -10,8 +10,8 @@
 	{%raw%}
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
-			<h1>YARA Signature Management</h1>
-			<div><h4 ng-hide="signature_list == null || (total == 0 && !filtered)" class="text-muted">:: {{total}} Yara signature<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4></div>
+			<h1>Signature Management</h1>
+			<div><h4 ng-hide="signature_list == null || (total == 0 && !filtered)" class="text-muted">:: {{total}} signature<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4></div>
 			<div ng-hide="signature_list == null || (total == 0 && !filtered)">
 				<a class="btn btn-success btn-sm" ng-click="add_signature();"><span class="glyphicon glyphicon-plus">&nbsp;</span>Add Signature</a>
 				<a ng-disabled="total == 0" href="/api/v4/signature/download/?query={{filter}}" class="btn btn-default btn-sm"><span class="glyphicon glyphicon-download-alt">&nbsp;</span>Download <span ng-show="filtered">Filtered </span>Signatures</a>
@@ -24,24 +24,24 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active">
-						<th>ID</th><th>Name</th><th>Group</th><th ng-if="user.c12n_enforcing">Classification</th><th>Contact</th><th>Yara</th><th>Status</th>
+						<th nowrap>Signature ID</th><th>Revision</th><th>Name</th><th>Source</th><th>Type</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-click="editSignature(s.meta.rule_id, s.meta.rule_version)" ng-repeat="s in signature_list" style="cursor: pointer;">
-						<td nowrap>{{s.meta.rule_id}} r.{{s.meta.rule_version}}</td>
+					<tr ng-click="editSignature(s.id)" ng-repeat="s in signature_list" style="cursor: pointer;">
+						<td nowrap>{{s.signature_id}}</td>
+						<td nowrap>{{s.revision}}</td>
 						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
-						<td>{{s.meta.rule_group}}</td>
-						<td ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_long}}</label></td>
-						<td nowrap>{{s.meta.poc}}</td>
-						<td>{{s.meta.yara_version}}</td>
-						<td>
-							<span ng-show="s.meta.al_status=='DEPLOYED'" class="label classification label-success">{{s.meta.al_status}}</span>
-							<span ng-show="s.meta.al_status=='NOISY'" class="label classification label-info">{{s.meta.al_status}}</span>
-							<span ng-show="s.meta.al_status=='DISABLED'" class="label classification label-danger">{{s.meta.al_status}}</span>
-							<span ng-show="s.meta.al_status=='TESTING'" class="label classification label-warning">{{s.meta.al_status}}</span>
-							<span ng-show="s.meta.al_status=='STAGING'" class="label classification label-primary">{{s.meta.al_status}}</span>
-                            <span ng-show="s.meta.al_status=='INVALID'" class="label classification label-default">{{s.meta.al_status}}</span>
+						<td nowrap>{{s.source}}</td>
+						<td nowrap>{{s.type}}</td>
+						<td nowrap ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_long}}</label></td>
+						<td nowrap>
+							<span ng-show="s.status=='DEPLOYED'" class="label classification label-success">{{s.status}}</span>
+							<span ng-show="s.status=='NOISY'" class="label classification label-info">{{s.status}}</span>
+							<span ng-show="s.status=='DISABLED'" class="label classification label-danger">{{s.status}}</span>
+							<span ng-show="s.status=='TESTING'" class="label classification label-warning">{{s.status}}</span>
+							<span ng-show="s.status=='STAGING'" class="label classification label-primary">{{s.status}}</span>
+                            <span ng-show="s.status=='INVALID'" class="label classification label-default">{{s.status}}</span>
 						</td>
 					</tr>
 				</tbody>
@@ -67,16 +67,16 @@
 				<div class="modal-content">
 					<div class="modal-header">
 						<div class="pull-right text-large">
-							<span ng-show="current_signature.meta.al_status=='DEPLOYED'" class="label label-success">{{current_signature.meta.al_status}}</span>
-							<span ng-show="current_signature.meta.al_status=='NOISY'" class="label label-info">{{current_signature.meta.al_status}}</span>
-							<span ng-show="current_signature.meta.al_status=='DISABLED'" class="label label-danger">{{current_signature.meta.al_status}}</span>
-							<span ng-show="current_signature.meta.al_status=='TESTING'" class="label label-warning">{{current_signature.meta.al_status}}</span>
-							<span ng-show="current_signature.meta.al_status=='STAGING'" class="label label-primary">{{current_signature.meta.al_status}}</span>
-                            <span ng-show="current_signature.meta.al_status=='INVALID'" class="label label-default">{{current_signature.meta.al_status}}</span>
+							<span ng-show="current_signature.status=='DEPLOYED'" class="label label-success">{{current_signature.status}}</span>
+							<span ng-show="current_signature.status=='NOISY'" class="label label-info">{{current_signature.status}}</span>
+							<span ng-show="current_signature.status=='DISABLED'" class="label label-danger">{{current_signature.status}}</span>
+							<span ng-show="current_signature.status=='TESTING'" class="label label-warning">{{current_signature.status}}</span>
+							<span ng-show="current_signature.status=='STAGING'" class="label label-primary">{{current_signature.status}}</span>
+                            <span ng-show="current_signature.status=='INVALID'" class="label label-default">{{current_signature.status}}</span>
 
                             <button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
-						<h4 class="modal_title" id="myModalLabel">Signature detail ::{{current_signature.meta.rule_id}} r.{{current_signature.meta.rule_version}}::</h4>
+						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature_id}}</h4>
 					</div>
 					<div class="modal-body">
 						<div signature-detail></div>

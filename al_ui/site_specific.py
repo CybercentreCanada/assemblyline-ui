@@ -149,23 +149,11 @@ def create_menu(user, path):
 
 
     if not config.ui.read_only:
-        signature_submenu = [
-            {"class": "dropdown-header",
-             "active": False,
-             "link": None,
-             "title": "Static Analysis"},
-            {"class": "",
-             "active": path.startswith("/signatures.html"),
-             "link": "/signatures.html",
-             "title": "Yara signatures",
-             "has_submenu": False}
-        ]
         menu.extend([{"class": "",
                       "active": path.startswith("/signatures.html"),
-                      "link": "#",
+                      "link": "/signatures.html",
                       "title": "Signatures",
-                      "has_submenu": True,
-                      "submenu": signature_submenu}])
+                      "has_submenu": False}])
 
     menu.extend([
         {"class": "hidden-md hidden-lg",
