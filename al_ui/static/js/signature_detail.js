@@ -11,26 +11,14 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.loading = false;
     $scope.loading_extra = false;
     $scope.sid = null;
-    $scope.rev = null;
     $scope.sig_temp_key = null;
     $scope.sig_temp_val = null;
     $scope.current_signature = null;
     $scope.editmode = true;
-    $scope.organisation = "ORG";
+    $scope.organisation = "assemblyline";
     $scope.state_changed = false;
     $scope.signature_changed = false;
     $scope.current_signature_state = "TESTING";
-    $scope.exclusion = [
-        'rule_group',
-        'classification',
-        'description',
-        'rule_id',
-        'organisation',
-        'poc',
-        'rule_version',
-        'yara_version',
-        'al_status'
-    ];
     $scope.non_editable = [
         'al_imported_by',
         'al_state_change_date',
@@ -55,28 +43,6 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
         $scope.current_signature.classification = classification;
     };
 
-    $scope.beautify_error_message = function (data) {
-        if (data.field === undefined) {
-            return data;
-        }
-
-        let out = String();
-
-        if (data.field == null) {
-            out += "Rule has a " + data.message.type + " on line " + data.message.line + ": [ " + data.message.error + " ]\n\n";
-            out += data.message.rule_text;
-        }
-        else {
-            out += "Field ";
-            out += data.field;
-            out += " has an error:\n\n";
-            out += data.message;
-        }
-
-        return out;
-    };
-
-
     //Save params
     $scope.save = function () {
         $scope.error = '';
@@ -84,12 +50,12 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'POST',
-            url: "/api/v4/signature/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/",
+            url: "/api/v4/signature/" + $scope.sid + "/",
             data: $scope.current_signature
         })
             .success(function (data) {
                 $("#myModal").modal('hide');
-                if (data.api_response.rev !== $scope.current_signature.meta.rule_version) {
+                if (data.api_response.rev !== $scope.current_signature.revision) {
                     $scope.success = "Signature " + data.api_response.sid + " succesfully saved and bumped to revision " + data.api_response.rev + ".";
                 }
                 else {
@@ -107,7 +73,7 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
                 }
 
                 if (data.api_error_message) {
-                    $scope.error = $scope.beautify_error_message(data.api_error_message);
+                    $scope.error = data.api_error_message;
                 }
                 else {
                     $scope.error = config.url + " (" + status + ")";
@@ -120,11 +86,11 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.change_state = function (new_status) {
         $http({
             method: 'GET',
-            url: "/api/v4/signature/change_status/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/" + new_status + "/"
+            url: "/api/v4/signature/change_status/" + $scope.sid + "/" + new_status + "/"
         })
             .success(function () {
                 $("#myModal").modal('hide');
-                $scope.success = "Status of signature " + $scope.current_signature.meta.rule_id + " r." + $scope.current_signature.meta.rule_version + " successfully changed to " + new_status + ".";
+                $scope.success = "Status of signature " + $scope.sid + " successfully changed to " + new_status + ".";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -149,60 +115,6 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
         $scope.state_changed = true;
     };
 
-    $scope.extraKeys = function () {
-        let out = [];
-
-        if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            for (let key in $scope.current_signature.meta_extra) {
-                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
-                    out.push(key);
-                }
-            }
-        }
-        out.sort();
-
-        return out;
-    };
-
-    $scope.otherKeys = function () {
-        let out = [];
-
-        if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            for (let key in $scope.current_signature.meta) {
-                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
-                    out.push(key);
-                }
-            }
-        }
-        out.sort();
-
-        return out;
-    };
-
-    $scope.remove_meta = function (key, is_extra) {
-        if (is_extra === undefined){
-            is_extra = false;
-        }
-        if (is_extra){
-            delete $scope.current_signature.meta_extra[key];
-        }
-        else{
-            delete $scope.current_signature.meta[key];
-        }
-    };
-
-    $scope.add_meta = function () {
-        if ($scope.sig_temp_key in $scope.current_signature.meta_extra ||
-            $scope.sig_temp_key in $scope.current_signature.meta ||
-            $scope.sig_temp_key === "" || $scope.sig_temp_key == null) {
-            return;
-        }
-        $scope.current_signature.meta_extra[$scope.sig_temp_key] = $scope.sig_temp_val;
-
-        $scope.sig_temp_key = "";
-        $scope.sig_temp_val = "";
-    };
-
     //load data
     $scope.start = function () {
         $scope.load_data();
@@ -211,11 +123,11 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.load_data = function () {
         $http({
             method: 'GET',
-            url: "/api/v4/signature/" + $scope.sid + "/" + $scope.rev + "/"
+            url: "/api/v4/signature/" + $scope.sid + "/"
         })
             .success(function (data) {
                 $scope.current_signature = data.api_response;
-                $scope.current_signature_state = data.api_response.meta.al_status;
+                $scope.current_signature_state = data.api_response.status;
             })
             .error(function (data, status, headers, config) {
                 if (data === "") {

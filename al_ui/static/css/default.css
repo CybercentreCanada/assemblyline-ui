@@ -180,6 +180,11 @@ section.container{
 	padding: 16px 32px;
 }
 
+.signature_status {
+	padding: 5px 20px;
+	vertical-align: bottom;
+}
+
 .transfer-box {
 	margin-bottom: 5px;
 }
@@ -1475,4 +1480,11 @@ figure.front{
 
 .hint_row:hover{
     background-color: #F3F3F3;
+}
+
+.rule_preview {
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+    border-top-width: 0px;
+    word-wrap: normal;
 }

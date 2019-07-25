@@ -118,14 +118,14 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         $scope.editmode = false;
         $scope.current_signature = {
             classification: classification_definition.UNRESTRICTED,
-            data: "",
-            name: "",
+            data: null,
+            name: null,
             order: 1,
             revision: 1,
-            signature_id: "",
-            source: $scope.organisation,
+            signature_id: null,
+            source: $scope.organisation + ".yar",
             status: "TESTING",
-            type: ""
+            type: "yara"
         };
         $scope.error = '';
         $scope.success = '';

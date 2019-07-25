@@ -184,15 +184,14 @@ def change_status(sid, status, **kwargs):
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
-@signature_api.route("/<sid>/<rev>/", methods=["DELETE"])
+@signature_api.route("/<sid>/", methods=["DELETE"])
 @api_login(required_priv=['W'], allow_readonly=False, require_admin=True)
-def delete_signature(sid, rev, **kwargs):
+def delete_signature(sid, **kwargs):
     """
-    Delete a signature based of its ID and revision
+    Delete a signature based of its ID
 
     Variables:
     sid    =>     Signature ID
-    rev    =>     Signature revision number
 
     Arguments:
     None
@@ -203,16 +202,15 @@ def delete_signature(sid, rev, **kwargs):
     Result example:
     {"success": True}  # Signature delete successful
     """
-    # TODO: Fix for new signature stuff
     user = kwargs['user']
-    data = STORAGE.signature.get(f"{sid}r.{rev}", as_obj=False)
+    data = STORAGE.signature.get(sid, as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'],
-                                            data['meta'].get('classification', Classification.UNRESTRICTED)):
+                                            data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to delete this signature.", 403)
-        return make_api_response({"success": STORAGE.signature.delete(f"{sid}r.{rev}")})
+        return make_api_response({"success": STORAGE.signature.delete(sid)})
     else:
-        return make_api_response("", f"Signature not found. ({sid} r.{rev})", 404)
+        return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
 # noinspection PyBroadException

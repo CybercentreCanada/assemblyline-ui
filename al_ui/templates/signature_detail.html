@@ -11,15 +11,7 @@
 	<section id="appContent" class="container" ng-show="current_signature">
 		<div class="header_title text-right">
 			<h1>Signature Detail</h1>
-			<h4 class="text-muted">:: {{sid}} r.{{rev}} ::</h4>
-			<div class="text-large">
-				<span ng-show="current_signature.meta.al_status=='DEPLOYED'" class="label label-success">{{current_signature.meta.al_status}}</span>
-				<span ng-show="current_signature.meta.al_status=='NOISY'" class="label label-info">{{current_signature.meta.al_status}}</span>
-				<span ng-show="current_signature.meta.al_status=='DISABLED'" class="label label-danger">{{current_signature.meta.al_status}}</span>
-				<span ng-show="current_signature.meta.al_status=='TESTING'" class="label label-warning">{{current_signature.meta.al_status}}</span>
-				<span ng-show="current_signature.meta.al_status=='STAGING'" class="label label-primary">{{current_signature.meta.al_status}}</span>
-                <span ng-show="current_signature.meta.al_status=='INVALID'" class="label label-default">{{current_signature.meta.al_status}}</span>
-			</div>
+			<h4 class="text-muted">:: {{sid}} ::</h4>
 		</div>
 		<div>
 		    <div signature-detail></div>

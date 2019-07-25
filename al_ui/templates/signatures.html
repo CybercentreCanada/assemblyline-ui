@@ -67,14 +67,7 @@
 				<div class="modal-content">
 					<div class="modal-header">
 						<div class="pull-right text-large">
-							<span ng-show="current_signature.status=='DEPLOYED'" class="label label-success">{{current_signature.status}}</span>
-							<span ng-show="current_signature.status=='NOISY'" class="label label-info">{{current_signature.status}}</span>
-							<span ng-show="current_signature.status=='DISABLED'" class="label label-danger">{{current_signature.status}}</span>
-							<span ng-show="current_signature.status=='TESTING'" class="label label-warning">{{current_signature.status}}</span>
-							<span ng-show="current_signature.status=='STAGING'" class="label label-primary">{{current_signature.status}}</span>
-                            <span ng-show="current_signature.status=='INVALID'" class="label label-default">{{current_signature.status}}</span>
-
-                            <button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
+							<button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
 						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature_id}}</h4>
 					</div>

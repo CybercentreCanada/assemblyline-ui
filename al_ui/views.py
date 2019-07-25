@@ -297,23 +297,21 @@ def settings(**kwargs):
 def signature_detail(**kwargs):
     user = kwargs['user']
     sid = angular_safe(request.args.get("sid", None))
-    rev = angular_safe(request.args.get("rev", None))
 
-    if not sid or not rev:
+    if not sid:
         abort(404)
 
-    data = STORAGE.signature.get("%sr.%s" % (sid, rev), as_obj=False)
+    data = STORAGE.signature.get(sid, as_obj=False)
 
     if not data:
         abort(404)
 
     if not Classification.is_accessible(user['classification'],
-                                        data['meta'].get('classification', Classification.UNRESTRICTED)):
+                                        data.get('classification', Classification.UNRESTRICTED)):
         abort(403)
 
     return custom_render("signature_detail.html",
                          sid=sid,
-                         rev=rev,
                          organisation=ORGANISATION,
                          **kwargs)
 
