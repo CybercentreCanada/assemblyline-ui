@@ -7,10 +7,12 @@ from textwrap import dedent
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
+from assemblyline.odm.random_data import NullLogger
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from al_ui.config import LOGGER, STORAGE, ORGANISATION
-
+from assemblyline.run.suricata_importer import SuricataImporter
+from assemblyline.run.yara_importer import YaraImporter
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -37,80 +39,78 @@ def add_signature(**kwargs):
     None
     
     Data Block (REQUIRED): # Signature block
-    {"name": "sig_name",          # Signature name    
-     "tags": ["PECheck"],         # Signature tags
-     "comments": [""],            # Signature comments lines
-     "meta": {                    # Meta fields ( **kwargs )
-       "id": "SID",                 # Mandatory ID field
-       "rule_version": 1 },         # Mandatory Revision field
-     "type": "rule",              # Rule type (rule, private rule ...)
-     "strings": ['$ = "a"'],      # Rule string section (LIST)
-     "condition": ["1 of them"]}  # Rule condition section (LIST)    
-    
+    {"name": "sig_name",           # Signature name
+     "type": "yara",               # One of yara, suricata or tagcheck
+     "data": "rule sample {...}",  # Data of the rule to be added
+     "source": "yara_signatures"   # Source from where the signature has been gathered
+    }
+
     Result example:
-    {"success": true,      #If saving the rule was a success or not
-     "sid": "0000000000",  #SID that the rule was assigned
-     "rev": 2 }            #Revision number at which the rule was saved.
+    {"success": true,            #If saving the rule was a success or not
+     "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
     """
-    # TODO: Fix for new signature stuff
     user = kwargs['user']
     data = request.json
 
-    # Check if organisation matches
-    data_org = data.get("meta", {}).get("organisation", None)
-    if data_org != ORGANISATION:
-        return make_api_response("", f"The organisation provided does not match your organisation. "
-                                     f"({data_org} != {ORGANISATION})", 400)
+    # Get data values
+    sig_type = data.get('type', None) or None
+    name = data.get('name', None) or None
+    sig_data = data.get('data', None) or None
 
-    if not Classification.is_accessible(user['classification'], data['meta'].get('classification',
-                                                                                 Classification.UNRESTRICTED)):
+    if sig_type == 'yara':
+        yp = YaraImporter(logger=NullLogger())
+        sig_data_name = yp.get_signature_name(sig_data)
+    elif sig_type == 'suricata':
+        sp = SuricataImporter(logger=NullLogger())
+        meta = sp.parse_meta(sig_data)
+        sig_data_name = meta.get('msg', None)
+    elif sig_type == 'tagcheck':
+        sig_data_name = name
+    else:
+        return make_api_response("", f"Invalid signature type. Must be one of: suricata, tagcheck, yara.", 400)
+
+    if name != sig_data_name:
+        return make_api_response("", f"Signature name does not match the name found in the signature_data. "
+                                     f"({name} != {sig_data_name})", 400)
+
+    if sig_type is None or name is None or sig_data is None:
+        return make_api_response("", f"Signature name, type and data are mandatory fields.", 400)
+
+    # Check if organisation matches
+    source = data.get("source", None)
+    expected_source = f"{ORGANISATION.lower()}_signatures"
+    if source != expected_source:
+        return make_api_response("", f"The source provided does not match the source name of your deployment. "
+                                     f"({source} != {expected_source})", 400)
+
+    if not Classification.is_accessible(user['classification'], data.get('classification',
+                                                                         Classification.UNRESTRICTED)):
         return make_api_response("", "You are not allowed to add a signature with "
                                      "higher classification than yours", 403)
 
-    # Check signature type
-    if not user['is_admin'] and "global" in data['type']:
-        return make_api_response("", "Only admins are allowed to add global signatures.", 403)
-
     # Compute signature ID and Revision
-    new_id = STORAGE.get_signature_last_id(ORGANISATION) + 1
+    new_id = STORAGE.get_signature_last_id(ORGANISATION, source, sig_type) + 1
     sid = "%s_%06d" % (ORGANISATION, new_id)
-    data['meta']['rule_id'] = sid
-    data['meta']['rule_version'] = 1
-    key = f"{sid}r.{data['meta']['rule_version']}"
+    data['signature_id'] = sid
+    data['revision'] = 1
+    key = f"{sig_type}_{sid}_{data['revision']}"
 
     # Set last saved by
-    if "meta_extra" not in data:
-        data['meta_extra'] = {'last_saved_by': user['uname']}
-    else:
-        data['meta_extra']['last_saved_by'] = user['uname']
+    data['last_saved_by'] = user['uname']
 
-    # Get rule dependancies
-    yara_version = data['meta'].get('yara_version', None)
-    # data['depends'], data['modules'] = YaraParser.parse_dependencies(data['condition'],
-    #                                                                 YaraParser.YARA_MODULES.get(yara_version, None))
+    # Test signature name
+    check_name_query = f"name:{data['name']} AND type:{sig_type} AND source:{source} AND NOT id:{sid}*"
+    other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
+    if other['total'] > 0:
+        return make_api_response(
+            {"success": False},
+            "A signature with that name already exists",
+            400
+        )
 
-    # Validate rule
-    # res = YaraParser.validate_rule(data)
-    res = {}
-    if res['valid']:
-        # Test signature name
-        other = STORAGE.signature.search(f"name:{data['name']} AND NOT id:{sid}*", fl='id', rows='0')
-        if other['total'] > 0:
-            return make_api_response(
-                {"success": False},
-                "A signature with that name already exists",
-                400
-            )
-
-        # Add signature test warnings
-        data['warning'] = res.get('warning', None)
-
-        # Save the signature
-        return make_api_response({"success": STORAGE.signature.save(key, data),
-                                  "sid": data['meta']['rule_id'],
-                                  "rev": int(data['meta']['rule_version'])})
-    else:
-        return make_api_response({"success": False}, res, 400)
+    # Save the signature
+    return make_api_response({"success": STORAGE.signature.save(key, data),
+                              "id": key})
 
 
 # noinspection PyPep8Naming
@@ -458,12 +458,10 @@ def get_signature(sid, **kwargs):
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
-@signature_api.route("/<sid>/<rev>/", methods=["POST"])
+@signature_api.route("/<sid>/", methods=["POST"])
 @api_login(required_priv=['W'], allow_readonly=False)
-def set_signature(sid, rev, **kwargs):
+def set_signature(sid, **kwargs):
     """
-    [INCOMPLETE]
-       - CHECK IF SIGNATURE NAME ALREADY EXISTS
     Update a signature defined by a sid and a rev.
        NOTE: The API will compare the old signature
              with the new one and will make the decision
@@ -471,104 +469,84 @@ def set_signature(sid, rev, **kwargs):
     
     Variables:
     sid    =>     Signature ID
-    rev    =>     Signature revision number
-    
+
     Arguments: 
     None
     
     Data Block (REQUIRED): # Signature block
-    {"name": "sig_name",          # Signature name    
-     "tags": ["PECheck"],         # Signature tags
-     "comments": [""],            # Signature comments lines
-     "meta": {                    # Meta fields ( **kwargs )
-       "id": "SID",                 # Mandatory ID field
-       "rule_version": 1 },         # Mandatory Revision field
-     "type": "rule",              # Rule type (rule, private rule ...)
-     "strings": ['$ = "a"'],      # Rule string section (LIST)
-     "condition": ["1 of them"]}  # Rule condition section (LIST)    
-    
+    {"name": "sig_name",           # Signature name
+     "type": "yara",               # One of yara, suricata or tagcheck
+     "data": "rule sample {...}",  # Data of the rule to be added
+     "source": "yara_signatures"   # Source from where the signature has been gathered
+    }
+
     Result example:
     {"success": true,      #If saving the rule was a success or not
-     "sid": "0000000000",  #SID that the rule was assigned (Same as provided)
-     "rev": 2 }            #Revision number at which the rule was saved.
+     "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
     """
-    # TODO: Fix for new signature stuff
     user = kwargs['user']
-    key = f"{sid}r.{rev}"
 
     # Get old signature
-    old_data = STORAGE.signature.get(key, as_obj=False)
+    old_data = STORAGE.signature.get(sid, as_obj=False)
     if old_data:
         data = request.json
+        sig_type = data['type']
+        sig_data = data['data']
+        name = data['name']
+        if sig_type == 'yara':
+            yp = YaraImporter(logger=NullLogger())
+            sig_data_name = yp.get_signature_name(sig_data)
+        elif sig_type == 'suricata':
+            yp = SuricataImporter(logger=NullLogger())
+            sig_data_name = yp.parse_meta(sig_data).get('msg', None)
+        elif sig_type == 'tagcheck':
+            sig_data_name = name
+        else:
+            return make_api_response("", f"Invalid signature type. Must be one of: suricata, tagcheck, yara.", 400)
+
+        if name != sig_data_name:
+            return make_api_response("", f"Signature name does not match the name found in the signature_data. "
+                                         f"({name} != {sig_data_name})", 400)
+
+        if data == old_data:
+            return make_api_response({"success": STORAGE.signature.save(sid, data),
+                                      "sid": sid})
+
         # Test classification access
         if not Classification.is_accessible(user['classification'],
-                                            data['meta'].get('classification', Classification.UNRESTRICTED)):
+                                            data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "You are not allowed to change a signature to an "
                                          "higher classification than yours", 403)
     
         if not Classification.is_accessible(user['classification'],
-                                            old_data['meta'].get('classification', Classification.UNRESTRICTED)):
+                                            old_data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "You are not allowed to change a signature with "
                                          "higher classification than yours", 403)
 
-        # Test signature type access
-        if not user['is_admin'] and "global" in data['type']:
-            return make_api_response("", "Only admins are allowed to add global signatures.", 403)
-
         # Check signature statuses
-        if old_data['meta']['al_status'] != data['meta']['al_status']:
+        if old_data['status'] != data['status']:
             return make_api_response({"success": False}, "You cannot change the signature "
                                                          "status through this API.", 400)
 
         # Check if rule requires a revision bump
-        if True: # YaraParser.require_bump(data, old_data):
+        if data['data'] != old_data['data'] and old_data['status'] in DEPLOYED_STATUSES:
             # Get new ID
-            data['meta']['rule_id'] = sid
-            data['meta']['rule_version'] = STORAGE.get_signature_last_revision_for_id(sid) + 1
+            data['revision'] = STORAGE.get_signature_last_revision_for_id(data['signature_id'],
+                                                                          data['source'], data['type']) + 1
+            data['state_change_date'] = None
+            data['state_change_user'] = None
 
-            # Cleanup fields
-            if 'creation_date' in data['meta']:
-                del(data['meta']['creation_date'])
-            if "meta_extra" in data:
-                if 'al_state_change_date' in data['meta_extra']:
-                    del(data['meta_extra']['al_state_change_date'])
-                if 'al_state_change_user' in data['meta_extra']:
-                    del(data['meta_extra']['al_state_change_user'])
-
-            data['meta']['al_status'] = "TESTING"
-            key = f"{sid}r.{data['meta']['rule_version']}"
-        else:
-
-            # Make sure rule id and revision match
-            data['meta']['rule_id'] = sid
-            data['meta']['rule_version'] = rev
+            data['status'] = "TESTING"
+            sid = f"{data['type']}_{data['signature_id']}_{data['revision']}"
 
         # Reset signature last modified
-        if 'last_modified' in data['meta']:
-            del (data['meta']['last_modified'])
+        data['last_modified'] = "NOW"
+        data['last_saved_by'] = user['uname']
 
-        # Set last saved by
-        if "meta_extra" not in data:
-            data['meta_extra'] = {'last_saved_by': user['uname']}
-        else:
-            data['meta_extra']['last_saved_by'] = user['uname']
-
-        # check rule dependencies
-        yara_modules = YaraParser.YARA_MODULES.get(data['meta'].get('yara_version', None), None)
-        data['depends'], data['modules'] = YaraParser.parse_dependencies(data['condition'], yara_modules)
-
-        # Validate rule
-        res = YaraParser.validate_rule(data)
-        if res['valid']:
-            # Save signature
-            data['warning'] = res.get('warning', None)
-            return make_api_response({"success": STORAGE.signature.save(key, data),
-                                      "sid": data['meta']['rule_id'],
-                                      "rev": int(data['meta']['rule_version'])})
-        else:
-            return make_api_response({"success": False}, res, 403)
+        return make_api_response({"success": STORAGE.signature.save(sid, data),
+                                  "sid": sid})
     else:
-        return make_api_response({"success": False}, "Signature not found. %s" % key, 404)
+        return make_api_response({"success": False}, "Signature not found. %s" % sid, 404)
 
 
 @signature_api.route("/stats/", methods=["GET"])
@@ -603,14 +581,15 @@ def signature_statistics(**kwargs):
 
     user = kwargs['user']
 
-    def get_stat_for_signature(p_sid, p_rev, p_name, p_classification):
+    def get_stat_for_signature(p_sid, p_rev, p_name, p_type, p_classification):
         stats = STORAGE.result.stats("result.score",
-                                     query=f"result.sections.tags.file.rule.yara:{p_name}")
+                                     query=f'result.sections.tags.file.rule.{type}:"{p_name}"')
         if stats['count'] == 0:
             return {
                 'sid': p_sid,
                 'rev': int(p_rev),
                 'name': p_name,
+                'type': p_type,
                 'classification': p_classification,
                 'count': stats['count'],
                 'min': 0,
@@ -622,6 +601,7 @@ def signature_statistics(**kwargs):
                 'sid': p_sid,
                 'rev': int(p_rev),
                 'name': p_name,
+                'type': p_type,
                 'classification': p_classification,
                 'count': stats['count'],
                 'min': int(stats['min']),
@@ -629,14 +609,14 @@ def signature_statistics(**kwargs):
                 'avg': int(stats['avg']),
             }
 
-    sig_list = sorted([(x['meta']['rule_id'], x['meta']['rule_version'], x['name'], x['classification'])
+    sig_list = sorted([(x['signature_id'], x['revision'], x['name'], x['type'], x['classification'])
                        for x in STORAGE.signature.stream_search("name:*",
-                                                                fl="name,meta.rule_id,meta.rule_version,classification",
+                                                                fl="name,type,signature_id,revision,classification",
                                                                 access_control=user['access_control'], as_obj=False)])
 
     with concurrent.futures.ThreadPoolExecutor(max(min(len(sig_list), 20), 1)) as executor:
-        res = [executor.submit(get_stat_for_signature, sid, rev, name, classification)
-               for sid, rev, name, classification in sig_list]
+        res = [executor.submit(get_stat_for_signature, sid, rev, name, sig_type, classification)
+               for sid, rev, name, sig_type, classification in sig_list]
 
     return make_api_response(sorted([r.result() for r in res], key=lambda i: (i['sid'], i['rev'])))
 

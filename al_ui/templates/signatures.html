@@ -24,13 +24,12 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active">
-						<th nowrap>Signature ID</th><th>Revision</th><th>Name</th><th>Source</th><th>Type</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
+						<th nowrap>Signature ID</th><th>Name</th><th>Source</th><th>Type</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr ng-click="editSignature(s.id)" ng-repeat="s in signature_list" style="cursor: pointer;">
-						<td nowrap>{{s.signature_id}}</td>
-						<td nowrap>{{s.revision}}</td>
+						<td nowrap>{{s.id}}</td>
 						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
 						<td nowrap>{{s.source}}</td>
 						<td nowrap>{{s.type}}</td>
@@ -69,7 +68,7 @@
 						<div class="pull-right text-large">
 							<button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
-						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature_id}}</h4>
+						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature.type}}_{{current_signature.signature_id}}_{{current_signature.revision}}</h4>
 					</div>
 					<div class="modal-body">
 						<div signature-detail></div>

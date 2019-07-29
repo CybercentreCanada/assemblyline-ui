@@ -122,8 +122,8 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             name: null,
             order: 1,
             revision: 1,
-            signature_id: null,
-            source: $scope.organisation + ".yar",
+            signature_id: $scope.organisation + "_XXXXXX",
+            source: $scope.organisation.toLowerCase() + "_signatures",
             status: "TESTING",
             type: "yara"
         };
@@ -237,11 +237,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
                 .success(function (data) {
                     $("#myModal").modal('hide');
-                    if (data.api_response.rev !== $scope.current_signature.revision) {
-                        $scope.success = "Signature " + data.api_response.sid + " succesfully saved and bumped to revision " + data.api_response.rev + ".";
+                    if (data.api_response.sid !== $scope.current_signature_id) {
+                        $scope.success = "Signature " + $scope.current_signature_id + " succesfully saved as a new signature with id: " + data.api_response.sid + ".";
                     }
                     else {
-                        $scope.success = "Signature " + data.api_response.sid + " succesfully saved.";
+                        $scope.success = "Signature " + data.api_response.sid + " succesfully modified.";
                     }
 
                     $timeout(function () {
@@ -342,6 +342,36 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.started = true;
 
             });
+    };
+
+
+    $scope.insertTab = function (e){
+        let kC = e.keyCode ? e.keyCode : e.charCode ? e.charCode : e.which;
+        let o = e.target;
+        if (kC === 9 && !e.shiftKey && !e.ctrlKey && !e.altKey)
+        {
+            let oS = o.scrollTop;
+            if (o.setSelectionRange)
+            {
+                let sS = o.selectionStart;
+                let sE = o.selectionEnd;
+                o.value = o.value.substring(0, sS) + "    " + o.value.substr(sE);
+                o.setSelectionRange(sS + 4, sS + 4);
+                o.focus();
+            }
+            else if (o.createTextRange)
+            {
+                document.selection.createRange().text = "    ";
+                e.returnValue = false;
+            }
+            o.scrollTop = oS;
+            if (e.preventDefault)
+            {
+                e.preventDefault();
+            }
+            return false;
+        }
+        return true;
     };
 }
 

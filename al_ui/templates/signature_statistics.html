@@ -21,7 +21,11 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active" style="cursor: pointer;">
-						<th class="hover" ng-click="sort_stats('sid')">ID
+						<th class="hover" ng-click="sort_stats('type')">ID
+                            <span ng-show="sort.column=='type' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
+                            <span ng-show="sort.column=='type' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
+                        </th>
+                        <th class="hover" ng-click="sort_stats('sid')">ID
                             <span ng-show="sort.column=='sid' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
                             <span ng-show="sort.column=='sid' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
                         </th>
@@ -53,7 +57,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-click="viewSignature(s.sid, s.rev)" ng-repeat="s in stats_output" style="cursor: pointer;">
+					<tr ng-click="viewSignature(s.type, s.sid, s.rev)" ng-repeat="s in stats_output" style="cursor: pointer;">
+						<td>{{s.type}}</td>
 						<td>{{s.sid}} r.{{s.rev}}</td>
 						<td>{{s.name | maxLength:45}}</td>
 						<td>{{s.count}}</td>
@@ -92,29 +97,21 @@
 					<div class="modal-header">
 						<section class="row">
 							<div class="col-md-9">
-								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Signature Details:: {{current_signature.meta.rule_id}}r.{{current_signature.meta.rule_version}}</h4>
+								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Signature Details:: {{current_signature.type}}_{{current_signature.signature_id}}_{{current_signature.revision}}</h4>
 							</div>
                             <div ng-if="user.c12n_enforcing" class="col-md-3">
                                 <label class="control-label">
                                     Classification
                                 </label>
-                                <label class="label classification  {{current_signature.meta.classification | class_label_color}}">
-                                    {{current_signature.meta.classification | class_sm}}
+                                <label class="label classification  {{current_signature.classification | class_label_color}}">
+                                    {{current_signature.classification | class_sm}}
                                 </label>
                             </div>
 						</section>
 					</div>
 									
 					<div class="modal-body">
-						<pre style="word-wrap: normal;">{{current_signature | signature}}</pre>
-                        <div ng-show="current_signature.depends.length > 0">
-                            <p>Depends on rules:</p>
-                            <ul>
-                                <li ng-repeat="dep in current_signature.depends">
-                                    <a href="/search.html?query=name:{{dep}}">{{dep}}</a>
-                                </li>
-                            </ul>
-                        </div>
+						<pre style="word-wrap: normal;">{{current_signature.data}}</pre>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
