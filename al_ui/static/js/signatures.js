@@ -114,24 +114,6 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             });
     };
 
-    $scope.add_signature = function () {
-        $scope.editmode = false;
-        $scope.current_signature = {
-            classification: classification_definition.UNRESTRICTED,
-            data: null,
-            name: null,
-            order: 1,
-            revision: 1,
-            signature_id: $scope.organisation + "_XXXXXX",
-            source: $scope.organisation.toLowerCase() + "_signatures",
-            status: "TESTING",
-            type: "yara"
-        };
-        $scope.error = '';
-        $scope.success = '';
-        $("#myModal").modal('show');
-    };
-
     let myModal = $("#myModal");
     myModal.on('shown.bs.modal', function () {
         $scope.$apply(function () {
@@ -148,16 +130,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         if ($scope.editmode) {
             $("#preview").addClass('active');
             $("#preview_tab").addClass('active');
-            $("#edit").removeClass('active');
-            $("#edit_tab").removeClass('active');
             $("#state").removeClass('active');
             $("#state_tab").removeClass('active');
         }
         else {
             $("#preview").removeClass('active');
             $("#preview_tab").removeClass('active');
-            $("#edit").addClass('active');
-            $("#edit_tab").addClass('active');
             $("#state").removeClass('active');
             $("#state_tab").removeClass('active');
         }
@@ -193,75 +171,6 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                     $scope.error = config.url + " (" + status + ")";
                 }
             });
-
-    };
-
-    //Save params
-    $scope.save = function () {
-        $scope.error = '';
-        $scope.success = '';
-
-        if (!$scope.editmode) {
-            $http({
-                method: 'PUT',
-                url: "/api/v4/signature/add/",
-                data: $scope.current_signature
-            })
-                .success(function (data) {
-                    $("#myModal").modal('hide');
-                    $scope.success = "Signature " + data.api_response.sid + " r." + data.api_response.rev + " successfully added!";
-                    $timeout(function () {
-                        $scope.success = "";
-                        $scope.load_data();
-                    }, 2000);
-
-                })
-                .error(function (data, status, headers, config) {
-                    if (data === "") {
-                        return;
-                    }
-
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                });
-        }
-        else {
-            $http({
-                method: 'POST',
-                url: "/api/v4/signature/" + $scope.current_signature_id + "/",
-                data: $scope.current_signature
-            })
-                .success(function (data) {
-                    $("#myModal").modal('hide');
-                    if (data.api_response.sid !== $scope.current_signature_id) {
-                        $scope.success = "Signature " + $scope.current_signature_id + " succesfully saved as a new signature with id: " + data.api_response.sid + ".";
-                    }
-                    else {
-                        $scope.success = "Signature " + data.api_response.sid + " succesfully modified.";
-                    }
-
-                    $timeout(function () {
-                        $scope.success = "";
-                        $scope.load_data();
-                    }, 2000);
-                })
-                .error(function (data, status, headers, config) {
-                    if (data === "") {
-                        return;
-                    }
-
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                });
-        }
 
     };
 

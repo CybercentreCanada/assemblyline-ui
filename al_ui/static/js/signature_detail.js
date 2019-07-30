@@ -19,15 +19,6 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
     $scope.state_changed = false;
     $scope.signature_changed = false;
     $scope.current_signature_state = "TESTING";
-    $scope.non_editable = [
-        'al_imported_by',
-        'al_state_change_date',
-        'al_state_change_user',
-        'creation_date',
-        'last_modified',
-        'last_saved_by',
-        'modification_date'
-    ];
 
     //DEBUG MODE
     $scope.debug = false;
@@ -41,46 +32,6 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
 
     $scope.receiveClassification = function (classification) {
         $scope.current_signature.classification = classification;
-    };
-
-    //Save params
-    $scope.save = function () {
-        $scope.error = '';
-        $scope.success = '';
-
-        $http({
-            method: 'POST',
-            url: "/api/v4/signature/" + $scope.sid + "/",
-            data: $scope.current_signature
-        })
-            .success(function (data) {
-                $("#myModal").modal('hide');
-                if (data.api_response.rev !== $scope.current_signature.revision) {
-                    $scope.success = "Signature " + data.api_response.sid + " succesfully saved and bumped to revision " + data.api_response.rev + ".";
-                }
-                else {
-                    $scope.success = "Signature " + data.api_response.sid + " succesfully saved.";
-                }
-
-                $timeout(function () {
-                    $scope.success = "";
-                    $scope.load_data();
-                }, 2000);
-            })
-            .error(function (data, status, headers, config) {
-                if (data === "") {
-                    return;
-                }
-
-                if (data.api_error_message) {
-                    $scope.error = data.api_error_message;
-                }
-                else {
-                    $scope.error = config.url + " (" + status + ")";
-                }
-            });
-
-
     };
 
     $scope.change_state = function (new_status) {

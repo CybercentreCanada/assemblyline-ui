@@ -1486,5 +1486,6 @@ figure.front{
     border-top-left-radius: 0px;
     border-top-right-radius: 0px;
     border-top-width: 0px;
-    word-wrap: normal;
+	white-space: pre-wrap;
+	word-break: break-word;
 }

@@ -9,7 +9,6 @@
 	</div>
 	<ul class="nav nav-tabs" id="tabContent">
 		<li id="preview_tab" class="active"><a href="#preview" data-toggle="tab">Preview</a></li>
-		<li id="edit_tab" ng-show="current_signature.source==organisation.toLowerCase()+'_signatures'"><a href="#edit" data-toggle="tab"><span ng-show="editmode">Edit</span><span ng-show="!editmode">Add</span> Signature</a></li>
 		<li ng-if="current_signature_state=='TESTING'||current_signature_state=='STAGING'||user.is_admin" ng-show="editmode" id="state_tab"><a href="#state" data-toggle="tab">Change State</a></li>
 	</ul>
 				
@@ -19,66 +18,6 @@
 				<div class="label classification {{current_signature.classification | class_label_color}}">{{current_signature.classification | class_long}}</div>
 			</div>
 			<pre class="rule_preview">{{current_signature.data}}</pre>
-		</div>
-		<div class="tab-pane" id="edit" ng-show="current_signature.source==organisation.toLowerCase()+'_signatures'">
-			<div class="pad">
-				<p ng-show="current_signature.status=='DEPLOYED'||current_signature.status=='NOISY'||current_signature.status=='DISABLED'" class="text-center text-danger pad"><b>Warning:</b> Because this signature is not in a TESTING/STAGING phase anymore, any important modification will trigger a revision bump.</p>
-				<div ng-if="user.c12n_enforcing" class="label classification {{current_signature.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_signature.classification)">{{current_signature.classification | class_long}}</div>
-			</div>
-			<section class="row">
-				<div class="col-md-12">
-					<div class="pull-right">
-						<a class="btn btn-xs btn-link" href="/yara_standard.html"><span class="glyphicon glyphicon-question-sign">&nbsp;</span>MALWARE&nbsp;Standard</a>&nbsp;
-						<a class="btn btn-xs btn-link" href="/static/pdf/yara.pdf"><span class="glyphicon glyphicon-book">&nbsp;</span>Yara&nbsp;User&nbsp;Manual</a>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Signature Type</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
-						<select class="form-control input-sm" ng-model="current_signature.type">
-							<option>tagcheck</option>
-							<option>suricata</option>
-							<option>yara</option>
-						</select>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Signature Name</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
-						<input type="text" class="form-control input-sm " placeholder="Signature name" ng-model="current_signature.name">
-					</div>
-				</div>
-			</section>
-			<section class="row">
-				<div class="col-md-12">
-					<div class="form-group">
-						<label class="control-label">Signature ID:</label>
-						<input disabled="disabled" type="text" class="form-control input-sm" ng-model="current_signature.signature_id">
-					</div>
-				</div>
-			</section>
-			<section class="row">
-				<div class="col-md-12">
-					<div class="form-group">
-						<label class="control-label">Revision #:</label>
-						<input disabled="disabled" type="number" min="1" class="form-control input-sm" ng-model="current_signature.revision">
-					</div>
-				</div>
-			</section>
-			<section class="row">
-				<div class="col-md-12">
-					<div class="form-group">
-						<label class="control-label">Source:</label>
-						<input disabled="disabled" class="form-control input-sm" ng-model="current_signature.source">
-					</div>
-				</div>
-			</section>
-			<section class="row">
-				<div class="col-md-12">
-					<div class="form-group">
-						<label class="control-label"><h4><strong>Signature:</strong></h4></label>&nbsp;&nbsp;<label class="label label-danger">required</label>
-						<textarea ng-keydown="insertTab($event);" style="font-family: monospace;" wrap="off" class="form-control input-sm" rows="12" placeholder="Put the full signature as it would show in a normal signature file" ng-model="current_signature.data"></textarea>
-					</div>
-				</div>
-			</section>
-
-			<button type="button" class="btn btn-primary" ng-click="save();">Save signature</button>
 		</div>
 		<div ng-show="editmode" class="tab-pane" id="state">
 			<div class="pad">
