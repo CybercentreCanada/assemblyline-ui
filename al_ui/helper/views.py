@@ -54,8 +54,10 @@ class protected_renderer(BaseSecurityRenderer):
             self.test_readonly("Page")
 
             # Validate User-Agent
-            user_agent = request.environ.get("HTTP_USER_AGENT", "Unknown browser")
-            if "MSIE 8" in user_agent or "MSIE 9" in user_agent or "MSIE 7" in user_agent or "MSIE 6" in user_agent:
+            UNK = "__UNKNOWN__"
+            user_agent = request.environ.get("HTTP_USER_AGENT", UNK)
+            if UNK == user_agent or "MSIE 8" in user_agent or "MSIE 9" in user_agent or "MSIE 7" in user_agent \
+                    or "MSIE 6" in user_agent:
                 return redirect(redirect_helper("/unsupported.html"))
 
             # Create Path

@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatbile" content="IE-edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>400 - Bad Request</title>
 		<link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
 		<style>
@@ -20,6 +23,16 @@
 				font-size: 14px; 
 				font-family: Helvetica, Arial, Sans-Serif;
 				color: #575757;
+			}
+
+			img {
+				width: 90%;
+			}
+
+			@media (min-width: 750px){
+				img {
+					width: auto;
+				}
 			}
 			
 			.container-fluid {
@@ -49,7 +62,7 @@
 					<img src="/static/images/400.png"/>
 					<br/>
 					<br/>
-					<h1>The server does not understand your request...</h1><br/>
+					<h3>The server does not understand your request...</h3><br/>
 				</div>
 			</div>
 		</div>

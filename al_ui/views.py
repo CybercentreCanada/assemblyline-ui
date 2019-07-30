@@ -367,8 +367,7 @@ def tos(**kwargs):
 
 @views.route("/unsupported.html")
 def unsupported():
-    return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"],
-                           is_ie=("MSIE" in request.environ["HTTP_USER_AGENT"]))
+    return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"])
 
 
 @views.route("/yara_standard.html")
