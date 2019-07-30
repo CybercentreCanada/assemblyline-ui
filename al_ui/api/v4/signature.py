@@ -6,6 +6,7 @@ from textwrap import dedent
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
+from assemblyline.common.memory_zip import InMemoryZip
 from assemblyline.common.uid import get_id_from_data, SHORT
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
@@ -23,7 +24,7 @@ DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
 
 @signature_api.route("/add/", methods=["PUT"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
-def add_signature(**kwargs):
+def add_signature(**_):
     """
     Add a signature to the system and assigns it a new ID
         WARNING: If two person call this method at exactly the
@@ -176,7 +177,7 @@ def _get_cached_signatures(signature_cache, query_hash):
         if s is None:
             return s
         return make_file_response(
-            s, f"al_yara_signatures_{query_hash[:7]}.yar", len(s), content_type="text/yara"
+            s, f"al_signatures_{query_hash[:7]}.zip", len(s), content_type="application/zip"
         )
     except Exception:  # pylint: disable=W0702
         LOGGER.exception('Failed to read cached signatures:')
@@ -194,21 +195,17 @@ def download_signatures(**kwargs):
     None 
     
     Arguments: 
-    query       => SOLR query to filter the signatures
+    query       => Query used to filter the signatures
                    Default: All deployed signatures
-    safe        => Get a ruleset that will work in yara
-                   Default: False
-    
+
     Data Block:
     None
     
     Result example:
-    <A .YAR SIGNATURE FILE>
+    <A zip file containing all signatures files from the different sources>
     """
-    # TODO: Fix for new signature stuff
     user = kwargs['user']
-    query = request.args.get('query', 'meta.al_status:DEPLOYED')
-    safe = request.args.get('safe', "false") == 'true'
+    query = request.args.get('query', 'status:DEPLOYED')
 
     access = user['access_control']
     last_modified = STORAGE.get_signature_last_modified()
@@ -220,166 +217,34 @@ def download_signatures(**kwargs):
         if response:
             return response
 
-        with Lock(f"{query_hash}.yar", 30):
+        with Lock(f"al_signatures_{query_hash[:7]}.zip", 30):
             response = _get_cached_signatures(signature_cache, query_hash)
             if response:
                 return response
 
+            output_files = {}
+
             keys = [k['id']
-                    for k in STORAGE.signature.search(query, fl="id", access_control=access, as_obj=False)['items']]
-            signature_list = STORAGE.signature.multiget(keys, as_dictionary=False, as_obj=False)
+                    for k in STORAGE.signature.stream_search(query, fl="id", access_control=access, as_obj=False)]
+            signature_list = sorted(STORAGE.signature.multiget(keys, as_dictionary=False, as_obj=False),
+                                    key=lambda x: x['order'])
 
-            # Sort rules to satisfy dependencies
-            duplicate_rules = []
-            error_rules = []
-            global_rules = []
-            private_rules_no_dep = []
-            private_rules_dep = []
-            rules_no_dep = []
-            rules_dep = []
+            for sig in signature_list:
+                out_fname = f"{sig['type']}/{sig['source']}"
+                output_files.setdefault(out_fname, [])
+                output_files[out_fname].append(sig['data'])
 
-            if safe:
-                rules_map = {}
-                for s in signature_list:
-                    name = s.get('name', None)
-                    if not name:
-                        continue
+            output_zip = InMemoryZip()
+            for fname, data in output_files.items():
+                output_zip.append(fname, "\n\n".join(data))
 
-                    version = int(s.get('meta', {}).get('rule_version', '1'))
+            rule_file_bin = output_zip.read()
 
-                    p = rules_map.get(name, {})
-                    pversion = int(p.get('meta', {}).get('rule_version', '0'))
-
-                    if version < pversion:
-                        duplicate_rules.append(name)
-                        continue
-
-                    rules_map[name] = s
-                signature_list = rules_map.values()
-
-            name_map = {}
-            for s in signature_list:
-                if s['type'].startswith("global"):
-                    global_rules.append(s)
-                    name_map[s['name']] = True
-                elif s['type'].startswith("private"):
-                    if s['depends'] is None or len(s['depends']) == 0:
-                        private_rules_no_dep.append(s)
-                        name_map[s['name']] = True
-                    else:
-                        private_rules_dep.append(s)
-                else:
-                    if s['depends'] is None or len(s['depends']) == 0:
-                        rules_no_dep.append(s)
-                        name_map[s['name']] = True
-                    else:
-                        rules_dep.append(s)
-
-            global_rules = sorted(global_rules, key=lambda k: k['meta']['rule_id'])
-            private_rules_no_dep = sorted(private_rules_no_dep, key=lambda k: k['meta']['rule_id'])
-            rules_no_dep = sorted(rules_no_dep, key=lambda k: k['meta']['rule_id'])
-            private_rules_dep = sorted(private_rules_dep, key=lambda k: k['meta']['rule_id'])
-            rules_dep = sorted(rules_dep, key=lambda k: k['meta']['rule_id'])
-
-            signature_list = global_rules + private_rules_no_dep
-            while private_rules_dep:
-                new_private_rules_dep = []
-                for r in private_rules_dep:
-                    found = False
-                    for d in r['depends']:
-                        if not name_map.get(d, False):
-                            new_private_rules_dep.append(r)
-                            found = True
-                            break
-                    if not found:
-                        name_map[r['name']] = True
-                        signature_list.append(r)
-
-                if private_rules_dep == new_private_rules_dep:
-                    for x in private_rules_dep:
-                        error_rules += [d for d in x["depends"]]
-
-                    if not safe:
-                        for s in private_rules_dep:
-                            name_map[s['name']] = True
-                        signature_list += private_rules_dep
-
-                    new_private_rules_dep = []
-
-                private_rules_dep = new_private_rules_dep
-
-            signature_list += rules_no_dep
-            while rules_dep:
-                new_rules_dep = []
-                for r in rules_dep:
-                    found = False
-                    for d in r['depends']:
-                        if not name_map.get(d, False):
-                            new_rules_dep.append(r)
-                            found = True
-                            break
-                    if not found:
-                        name_map[r['name']] = True
-                        signature_list.append(r)
-
-                if rules_dep == new_rules_dep:
-                    error_rules += [x["name"] for x in rules_dep]
-                    if not safe:
-                        for s in rules_dep:
-                            name_map[s['name']] = True
-                        signature_list += rules_dep
-
-                    new_rules_dep = []
-
-                rules_dep = new_rules_dep
-            # End of sort
-
-            error = ""
-            if duplicate_rules:
-                if safe:
-                    err_txt = "were skipped"
-                else:
-                    err_txt = "exist"
-                error += dedent("""\
-                
-                    // [ERROR] Duplicates rules {msg}:
-                    //
-                    //	{rules}
-                    //
-                    """).format(msg=err_txt, rules="\n//\t".join(duplicate_rules))
-            if error_rules:
-                if safe:
-                    err_txt = "were skipped due to"
-                else:
-                    err_txt = "are"
-                error += dedent("""\
-                
-                    // [ERROR] Some rules {msg} missing dependencies:
-                    //
-                    //	{rules}
-                    //
-                    """).format(msg=err_txt, rules="\n//\t".join(error_rules))
-            # noinspection PyAugmentAssignment
-
-            header = dedent("""\
-                // Signatures last updated: {last_modified}
-                // Yara file unique identifier: {query_hash}
-                // Query executed to find signatures:
-                //
-                //	{query}
-                // {error}
-                // Number of rules in file:
-                //
-                """).format(query=query, error=error, last_modified=last_modified, query_hash=query_hash)
-
-            rule_file_bin = header # + YaraParser().dump_rule_file(signature_list)
-            rule_file_bin = rule_file_bin
-
-            signature_cache.save(query_hash, rule_file_bin.encode(encoding="UTF-8"), ttl=DEFAULT_CACHE_TTL)
+            signature_cache.save(query_hash, rule_file_bin, ttl=DEFAULT_CACHE_TTL)
 
             return make_file_response(
-                rule_file_bin, f"al_yara_signatures_{query_hash[:7]}.yar",
-                len(rule_file_bin), content_type="text/yara"
+                rule_file_bin, f"al_signatures_{query_hash[:7]}.zip",
+                len(rule_file_bin), content_type="application/zip"
             )
 
 

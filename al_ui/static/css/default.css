@@ -1482,6 +1482,11 @@ figure.front{
     background-color: #F3F3F3;
 }
 
+.description {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .rule_preview {
     border-top-left-radius: 0px;
     border-top-right-radius: 0px;

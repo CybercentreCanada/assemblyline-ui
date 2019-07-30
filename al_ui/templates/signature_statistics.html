@@ -21,7 +21,7 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active" style="cursor: pointer;">
-						<th class="hover" ng-click="sort_stats('type')">ID
+						<th class="hover" ng-click="sort_stats('type')">Type
                             <span ng-show="sort.column=='type' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
                             <span ng-show="sort.column=='type' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
                         </th>
@@ -111,7 +111,7 @@
 					</div>
 									
 					<div class="modal-body">
-						<pre style="word-wrap: normal;">{{current_signature.data}}</pre>
+						<pre class="description">{{current_signature.data}}</pre>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
