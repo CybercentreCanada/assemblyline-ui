@@ -11,7 +11,7 @@ vm_api._doc = "Manage the different Virtual machines of the system"
 
 
 @vm_api.route("/<vm>/", methods=["PUT"])
-@api_login(require_admin=True, allow_readonly=False)
+@api_login(require_type=['admin'], allow_readonly=False)
 def add_virtual_machine(vm, **_):
     """
     Add the vm configuration to the system
@@ -50,7 +50,7 @@ def add_virtual_machine(vm, **_):
 
 
 @vm_api.route("/<vm>/", methods=["GET"])
-@api_login(require_admin=True, audit=False, allow_readonly=False)
+@api_login(require_type=['admin'], audit=False, allow_readonly=False)
 def get_virtual_machine(vm, **_):
     """
     Load the configuration for a given virtual machine
@@ -85,7 +85,7 @@ def get_virtual_machine(vm, **_):
 
 
 @vm_api.route("/list/", methods=["GET"])
-@api_login(require_admin=True, audit=False, allow_readonly=False)
+@api_login(require_type=['admin'], audit=False, allow_readonly=False)
 def list_virtual_machine(**_):
     """
     List all virtual machines of the system.
@@ -126,7 +126,7 @@ def list_virtual_machine(**_):
 
 
 @vm_api.route("/<vm>/", methods=["DELETE"])
-@api_login(require_admin=True, allow_readonly=False)
+@api_login(require_type=['admin'], allow_readonly=False)
 def remove_virtual_machine(vm, **_):
     """
     Remove the vm configuration
@@ -153,7 +153,7 @@ def remove_virtual_machine(vm, **_):
 
 
 @vm_api.route("/<vm>/", methods=["POST"])
-@api_login(require_admin=True, allow_readonly=False)
+@api_login(require_type=['admin'], allow_readonly=False)
 def set_virtual_machine(vm, **_):
     """
     Save the configuration of a given virtual machine

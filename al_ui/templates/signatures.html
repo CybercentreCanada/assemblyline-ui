@@ -65,7 +65,7 @@
 				<div class="modal-content">
 					<div class="modal-header">
 						<div class="pull-right text-large">
-							<button ng_show="user.is_admin" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
+							<button ng_if="user.type.indexOf('admin')!=-1||user.type.indexOf('signature_manager')==-1" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
 						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature.type}}_{{current_signature.signature_id}}_{{current_signature.revision}}</h4>
 					</div>

@@ -39,8 +39,8 @@ def angular_safe(value):
 
 # noinspection PyPep8Naming
 class protected_renderer(BaseSecurityRenderer):
-    def __init__(self, require_admin=False, load_settings=False, audit=True, required_priv=None, allow_readonly=True):
-        super().__init__(require_admin, audit, required_priv, allow_readonly)
+    def __init__(self, require_type=None, load_settings=False, audit=True, required_priv=None, allow_readonly=True):
+        super().__init__(require_type, audit, required_priv, allow_readonly)
 
         self.load_settings = load_settings
 
@@ -65,7 +65,7 @@ class protected_renderer(BaseSecurityRenderer):
             logged_in_uname = self.get_logged_in_user()
 
             user = login(logged_in_uname, path)
-            self.test_require_admin(user, "Url")
+            self.test_require_type(user, "Url")
 
             self.audit_if_required(args, kwargs, logged_in_uname, user, func)
 
@@ -96,7 +96,7 @@ class protected_renderer(BaseSecurityRenderer):
 
             return func(*args, **kwargs)
         base.protected = True
-        base.require_admin = self.require_admin
+        base.require_type = self.require_type
         base.audit = self.audit
         base.required_priv = self.required_priv
         base.allow_readonly = self.allow_readonly

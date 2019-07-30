@@ -14,9 +14,9 @@
 		<div class="table-responsive">
 			<table class="table table-hover" ng-show="map">
 				<tr class="active">
-					<th>Url</th><th>Function</th><th>Methods</th><th>Protected</th><th>Admin</th><th></th><th></th>
+					<th>Url</th><th>Function</th><th>Methods</th><th>Protected</th><th nowrap>Allowed types</th><th></th><th></th>
 				</tr>
-				<tr ng-repeat="page in map | orderBy:['protected','admin_only','url']" ng-class="{danger:!page.protected, success:page.admin_only}">
+				<tr ng-repeat="page in map | orderBy:['protected', 'url']" ng-class="{danger:!page.protected, success:page.required_type.indexOf('admin')!=-1}">
 					<td>{{page.url | breakableStr}}</td>
 					<td>{{page.function}}</td>
 					<td>{{page.methods | joinBy:' | '}}</td>
@@ -25,8 +25,10 @@
 						<span ng-hide="page.protected" class="glyphicon glyphicon-remove text-danger"></span>
 					</td>
 					<td class="text-muted">
-						<span ng-show="page.admin_only" class="glyphicon glyphicon-ok text-success"></span>
-						<span ng-hide="page.admin_only" class="glyphicon glyphicon-remove text-danger"></span>
+						<span title='admin' ng-show="page.required_type.indexOf('admin')!=-1" class="icon-squarea text-danger"></span>
+						<span title='Signature Manager' ng-show="page.required_type.indexOf('signature_manager')!=-1" class="icon-squarem text-info"></span>
+						<span title='Signature Importer' ng-show="page.required_type.indexOf('signature_importer')!=-1" class="icon-squarei text-primary"></span>
+						<span title='user' ng-show="page.required_type.indexOf('user')!=-1" class="icon-squareu text-default"></span>
 					</td>
                     <td class="text-muted">
 						<span ng-repeat="priv in page.req_priv" class="icon-square{{ priv | lowercase }}" ng-class="{'text-danger': priv=='E', 'text-success': priv=='R', 'text-warning': priv=='W'}">&nbsp;</span>

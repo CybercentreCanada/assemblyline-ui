@@ -51,7 +51,7 @@ def get_service_constants(**_):
 
 
 @service_api.route("/versions/<servicename>/", methods=["GET"])
-@api_login(require_admin=True, audit=False, allow_readonly=False)
+@api_login(require_type=['admin'], audit=False, allow_readonly=False)
 def get_potential_versions(servicename, **_):
     """
     List the different versions of a service stored in the system
@@ -77,7 +77,7 @@ def get_potential_versions(servicename, **_):
 
 
 @service_api.route("/<servicename>/", methods=["GET"])
-@api_login(require_admin=True, audit=False, allow_readonly=False)
+@api_login(require_type=['admin'], audit=False, allow_readonly=False)
 def get_service(servicename, **_):
     """
     Load the configuration for a given service
@@ -161,7 +161,7 @@ def list_all_services(**_):
 
 
 @service_api.route("/<servicename>/", methods=["DELETE"])
-@api_login(require_admin=True, allow_readonly=False)
+@api_login(require_type=['admin'], allow_readonly=False)
 def remove_service(servicename, **_):
     """
     Remove a service configuration
@@ -194,7 +194,7 @@ def remove_service(servicename, **_):
 
 
 @service_api.route("/<servicename>/", methods=["POST"])
-@api_login(require_admin=True, allow_readonly=False)
+@api_login(require_type=['admin'], allow_readonly=False)
 def set_service(servicename, **_):
     """
     Calculate the delta between the original service config and

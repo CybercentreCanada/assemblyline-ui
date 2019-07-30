@@ -46,7 +46,7 @@ def delete_submission(sid, **kwargs):
         return make_api_response("", f"There are not submission with sid: {sid}", 404)
 
     if Classification.is_accessible(user['classification'], submission['classification']) \
-            and (submission['params']['submitter'] == user['uname'] or user['is_admin']):
+            and (submission['params']['submitter'] == user['uname'] or 'admin' in user['type']):
         with forge.get_filestore() as f_transport:
             STORAGE.delete_submission_tree(sid, Classification, transport=f_transport)
         STORAGE.submission.commit()

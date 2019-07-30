@@ -37,7 +37,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
             avatar: null,
             groups: ["USERS"],
             is_active: true,
-            is_admin: false,
+            type: ['user'],
             classification: classification_definition.UNRESTRICTED,
             name: "",
             uname: "",

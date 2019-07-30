@@ -80,28 +80,17 @@ def login(uname, path=None):
                                 {"icon": "glyphicon-log-out", "active": path.startswith("/logout.html"),
                                  "link": "/logout.html", "title": "Sign out"}])
 
-        if user['is_admin']:
+        if 'admin' in user['type']:
             user['menu_active'] = (path.startswith("/settings.html") or path.startswith("/account.html") or
                                    path.startswith("/admin/") or path.startswith("/dashboard.html") or
                                    path.startswith("/kibana-dash.html"))
-            # TODO: Maybe we should remove this from our interface. I'm excluding it for now
-            # if config.logging.logserver.kibana.host:
-            #     user["kibana_dashboards"] = [{"icon": None,
-            #                                   "active": path.startswith("/kibana-dash.html?dash=%s" % x),
-            #                                   "link": "/kibana-dash.html?dash=%s" % x,
-            #                                   "title": "%s" % x.replace("-", " ")}
-            #                                  for x in config.logging.logserver.kibana.dashboards if x != ""]
             user["admin_menu"] = [
-            #    {"icon": None, "active": path.startswith("/admin/seed.html"),
-            #     "link": "/admin/seed.html", "title": "Configuration"},
                 {"icon": None, "active": path.startswith("/admin/documentation.html"),
                  "link": "/admin/documentation.html", "title": "Documentation"},
                 {"icon": None, "active": path.startswith("/admin/errors.html"),
                  "link": "/admin/errors.html", "title": "Errors viewer"}]
             if not config.ui.read_only:
                 user["admin_menu"].extend([
-            #        {"icon": None, "active": path.startswith("/admin/hosts.html"),
-            #         "link": "/admin/hosts.html", "title": "Hosts"},
                     {"icon": None, "active": path.startswith("/admin/services.html"),
                      "link": "/admin/services.html", "title": "Services"}])
             user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/site_map.html"),
@@ -146,12 +135,12 @@ def save_user_account(username, data, user):
     if username != data['uname']:
         raise AccessDeniedException("You are not allowed to change the username.")
 
-    if username != user['uname'] and not user['is_admin']:
+    if username != user['uname'] and 'admin' not in user['type']:
         raise AccessDeniedException("You are not allowed to change another user then yourself.")
 
     current = STORAGE.user.get(username, as_obj=False)
     if current:
-        if not user['is_admin']:
+        if 'admin' not in user['type']:
             for key in current.keys():
                 if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
                     raise AccessDeniedException("Only Administrators can change the value of the field [%s]." % key)

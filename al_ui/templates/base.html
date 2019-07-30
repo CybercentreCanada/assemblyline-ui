@@ -112,14 +112,7 @@
 											</a>
 										</li>
 									{% endfor %}
-									{% if user.is_admin %}
-										{% if user.kibana_dashboards|length > 0 %}
-                                            <li class="divider"></li>
-                                            <li class="dropdown-header">Kibana Dashboards</li>
-                                            {% for submenu_item in user.kibana_dashboards %}
-                                                <li {% if submenu_item.active %}class="active"{% endif %}><a href="{{submenu_item.link}}">{{submenu_item.title}}</a></li>
-                                            {% endfor %}
-                                        {% endif %}
+									{% if 'admin' in user.type %}
 										<li class="divider"></li>
 										<li class="dropdown-header">Administration</li>
 										{% for submenu_item in user.admin_menu %}
@@ -154,15 +147,8 @@
 											</a>
 										</li>
 									{% endfor %}
-									{% if user.is_admin %}
-                                        {% if user.kibana_dashboards|length > 0 %}
-                                            <li class="divider"></li>
-                                            <li class="dropdown-header">Kibana Dashboards</li>
-                                            {% for submenu_item in user.kibana_dashboards %}
-                                                <li {% if submenu_item.active %}class="active"{% endif %}><a href="{{submenu_item.link}}">{{submenu_item.title}}</a></li>
-                                            {% endfor %}
-                                        {% endif %}
-										<li class="divider"></li>
+									{% if 'admin' in user.type %}
+                                        <li class="divider"></li>
 										<li class="dropdown-header">Administration</li>
 										{% for submenu_item in user.admin_menu %}
 											<li {% if submenu_item.active %}class="active"{% endif %}><a href="{{submenu_item.link}}">{{submenu_item.title}}</a></li>

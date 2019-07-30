@@ -6,14 +6,11 @@ from textwrap import dedent
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
+from assemblyline.common.uid import get_id_from_data, SHORT
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
-from assemblyline.odm.random_data import NullLogger
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from al_ui.config import LOGGER, STORAGE, ORGANISATION
-from assemblyline.run.suricata_importer import SuricataImporter
-from assemblyline.run.yara_importer import YaraImporter
-
+from al_ui.config import LOGGER, STORAGE
 Classification = forge.get_classification()
 config = forge.get_config()
 
@@ -25,7 +22,7 @@ DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
 
 
 @signature_api.route("/add/", methods=["PUT"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False)
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
 def add_signature(**kwargs):
     """
     Add a signature to the system and assigns it a new ID
@@ -49,57 +46,20 @@ def add_signature(**kwargs):
     {"success": true,            #If saving the rule was a success or not
      "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
     """
-    user = kwargs['user']
     data = request.json
 
-    # Get data values
-    sig_type = data.get('type', None) or None
-    name = data.get('name', None) or None
-    sig_data = data.get('data', None) or None
-
-    if sig_type == 'yara':
-        yp = YaraImporter(logger=NullLogger())
-        sig_data_name = yp.get_signature_name(sig_data)
-    elif sig_type == 'suricata':
-        sp = SuricataImporter(logger=NullLogger())
-        meta = sp.parse_meta(sig_data)
-        sig_data_name = meta.get('msg', None)
-    elif sig_type == 'tagcheck':
-        sig_data_name = name
-    else:
-        return make_api_response("", f"Invalid signature type. Must be one of: suricata, tagcheck, yara.", 400)
-
-    if name != sig_data_name:
-        return make_api_response("", f"Signature name does not match the name found in the signature_data. "
-                                     f"({name} != {sig_data_name})", 400)
-
-    if sig_type is None or name is None or sig_data is None:
+    if data.get('type', None) is None or data['name'] is None or data['data'] is None:
         return make_api_response("", f"Signature name, type and data are mandatory fields.", 400)
 
-    # Check if organisation matches
-    source = data.get("source", None)
-    expected_source = f"{ORGANISATION.lower()}_signatures"
-    if source != expected_source:
-        return make_api_response("", f"The source provided does not match the source name of your deployment. "
-                                     f"({source} != {expected_source})", 400)
-
-    if not Classification.is_accessible(user['classification'], data.get('classification',
-                                                                         Classification.UNRESTRICTED)):
-        return make_api_response("", "You are not allowed to add a signature with "
-                                     "higher classification than yours", 403)
-
-    # Compute signature ID and Revision
-    new_id = STORAGE.get_signature_last_id(ORGANISATION, source, sig_type) + 1
-    sid = "%s_%06d" % (ORGANISATION, new_id)
-    data['signature_id'] = sid
-    data['revision'] = 1
-    key = f"{sig_type}_{sid}_{data['revision']}"
-
-    # Set last saved by
-    data['last_saved_by'] = user['uname']
+    # Compute signature ID if missing
+    data['signature_id'] = data.get('signature_id', get_id_from_data(data['data'], SHORT))
+    key = f"{data['type']}_{data['signature_id']}_{data['revision']}"
 
     # Test signature name
-    check_name_query = f"name:{data['name']} AND type:{sig_type} AND source:{source} AND NOT id:{sid}*"
+    check_name_query = f"name:{data['name']} " \
+                       f"AND type:{data['type']} " \
+                       f"AND source:{data['source']} " \
+                       f"AND NOT id:{data['siganture_id']}*"
     other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
     if other['total'] > 0:
         return make_api_response(
@@ -115,7 +75,7 @@ def add_signature(**kwargs):
 
 # noinspection PyPep8Naming
 @signature_api.route("/change_status/<sid>/<status>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def change_status(sid, status, **kwargs):
     """
     Change the status of a signature
@@ -139,11 +99,7 @@ def change_status(sid, status, **kwargs):
         return make_api_response("",
                                  f"You cannot apply the status {status} on yara rules.",
                                  403)
-    if not user['is_admin'] and status in DEPLOYED_STATUSES:
-        return make_api_response("",
-                                 "Only admins are allowed to change the signature status to a deployed status.",
-                                 403)
-    
+
     data = STORAGE.signature.get(sid, as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'],
@@ -185,7 +141,7 @@ def change_status(sid, status, **kwargs):
 
 
 @signature_api.route("/<sid>/", methods=["DELETE"])
-@api_login(required_priv=['W'], allow_readonly=False, require_admin=True)
+@api_login(required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def delete_signature(sid, **kwargs):
     """
     Delete a signature based of its ID
@@ -459,8 +415,8 @@ def get_signature(sid, **kwargs):
 
 
 @signature_api.route("/<sid>/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
-def set_signature(sid, **kwargs):
+@api_login(required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
+def set_signature(sid, **_):
     """
     Update a signature defined by a sid and a rev.
        NOTE: The API will compare the old signature
@@ -484,65 +440,10 @@ def set_signature(sid, **kwargs):
     {"success": true,      #If saving the rule was a success or not
      "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
     """
-    user = kwargs['user']
-
     # Get old signature
     old_data = STORAGE.signature.get(sid, as_obj=False)
     if old_data:
         data = request.json
-        sig_type = data['type']
-        sig_data = data['data']
-        name = data['name']
-        if sig_type == 'yara':
-            yp = YaraImporter(logger=NullLogger())
-            sig_data_name = yp.get_signature_name(sig_data)
-        elif sig_type == 'suricata':
-            yp = SuricataImporter(logger=NullLogger())
-            sig_data_name = yp.parse_meta(sig_data).get('msg', None)
-        elif sig_type == 'tagcheck':
-            sig_data_name = name
-        else:
-            return make_api_response("", f"Invalid signature type. Must be one of: suricata, tagcheck, yara.", 400)
-
-        if name != sig_data_name:
-            return make_api_response("", f"Signature name does not match the name found in the signature_data. "
-                                         f"({name} != {sig_data_name})", 400)
-
-        if data == old_data:
-            return make_api_response({"success": STORAGE.signature.save(sid, data),
-                                      "sid": sid})
-
-        # Test classification access
-        if not Classification.is_accessible(user['classification'],
-                                            data.get('classification', Classification.UNRESTRICTED)):
-            return make_api_response("", "You are not allowed to change a signature to an "
-                                         "higher classification than yours", 403)
-    
-        if not Classification.is_accessible(user['classification'],
-                                            old_data.get('classification', Classification.UNRESTRICTED)):
-            return make_api_response("", "You are not allowed to change a signature with "
-                                         "higher classification than yours", 403)
-
-        # Check signature statuses
-        if old_data['status'] != data['status']:
-            return make_api_response({"success": False}, "You cannot change the signature "
-                                                         "status through this API.", 400)
-
-        # Check if rule requires a revision bump
-        if data['data'] != old_data['data'] and old_data['status'] in DEPLOYED_STATUSES:
-            # Get new ID
-            data['revision'] = STORAGE.get_signature_last_revision_for_id(data['signature_id'],
-                                                                          data['source'], data['type']) + 1
-            data['state_change_date'] = None
-            data['state_change_user'] = None
-
-            data['status'] = "TESTING"
-            sid = f"{data['type']}_{data['signature_id']}_{data['revision']}"
-
-        # Reset signature last modified
-        data['last_modified'] = "NOW"
-        data['last_saved_by'] = user['uname']
-
         return make_api_response({"success": STORAGE.signature.save(sid, data),
                                   "sid": sid})
     else:

@@ -32,9 +32,9 @@ def make_subapi_blueprint(name, api_version=3):
 # API Helper func and decorators
 # noinspection PyPep8Naming
 class api_login(BaseSecurityRenderer):
-    def __init__(self, require_admin=False, username_key='username', audit=True, required_priv=None,
+    def __init__(self, require_type=None, username_key='username', audit=True, required_priv=None,
                  check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
-        super().__init__(require_admin, audit, required_priv, allow_readonly)
+        super().__init__(require_type, audit, required_priv, allow_readonly)
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
@@ -119,7 +119,7 @@ class api_login(BaseSecurityRenderer):
             else:
                 impersonator = {}
                 user = temp_user
-            self.test_require_admin(user, "API")
+            self.test_require_type(user, "API")
 
             #############################################
             # Special username api query validation
@@ -135,7 +135,7 @@ class api_login(BaseSecurityRenderer):
                         and not kwargs[self.username_key] == "__global__" \
                         and not kwargs[self.username_key] == "__workflow__" \
                         and not kwargs[self.username_key].lower() == "__current__" \
-                        and not user['is_admin']:
+                        and 'admin' not in user['type']:
                     return make_api_response({}, "Your username does not match requested username", 403)
 
             self.audit_if_required(args, kwargs, logged_in_uname, user, func)
@@ -172,7 +172,7 @@ class api_login(BaseSecurityRenderer):
 
             return func(*args, **kwargs)
         base.protected = True
-        base.require_admin = self.require_admin
+        base.require_type = self.require_type
         base.audit = self.audit
         base.required_priv = self.required_priv
         base.check_xsrf_token = self.check_xsrf_token
@@ -318,7 +318,7 @@ def api_version_list(**kwargs):
 
 
 @api.route("/site_map/")
-@api_login(require_admin=True, audit=False)
+@api_login(require_type=['admin'], audit=False)
 def site_map(**kwargs):
     """
     Check if all pages have been protected by a login decorator
@@ -337,13 +337,10 @@ def site_map(**kwargs):
      {"function": views.default,     #Function name
       "url": "/",                    #Url to page
       "protected": true,             #Is function login protected
-      "admin_only": false,           #Is this page only for admins
+      "require_type": false,         #List of user type allowed to view the page
       "methods": ["GET"]},           #Methods allowed to access the page
     ]
     """
-    if not kwargs['user']['is_admin']:
-        return make_api_response({}, "Only admins are allowed to view this API", 403)
-
     pages = []
     for rule in current_app.url_map.iter_rules():
         func = current_app.view_functions[rule.endpoint]
@@ -352,7 +349,7 @@ def site_map(**kwargs):
             if item != "OPTIONS" and item != "HEAD":
                 methods.append(item)
         protected = func.__dict__.get('protected', False)
-        admin_only = func.__dict__.get('require_admin', False)
+        required_type = func.__dict__.get('require_type', ['user'])
         audit = func.__dict__.get('audit', False)
         priv = func.__dict__.get('required_priv', '')
         allow_readonly = func.__dict__.get('allow_readonly', True)
@@ -367,7 +364,7 @@ def site_map(**kwargs):
                       "url": rule.rule,
                       "methods": methods,
                       "protected": protected,
-                      "admin_only": admin_only,
+                      "required_type": required_type,
                       "audit": audit,
                       "req_priv": priv})
 
