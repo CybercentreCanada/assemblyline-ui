@@ -1,16 +1,15 @@
 
-import time
-
 import json
+import time
 
 from flask import request
 
-from assemblyline.common import forge
-from assemblyline.common.attack_map import attack_map
-from assemblyline.datastore import SearchException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
 from al_ui.helper.result import format_result
+from assemblyline.common import forge
+from assemblyline.common.attack_map import attack_map
+from assemblyline.datastore import SearchException
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -129,8 +128,8 @@ def get_file_submission_results(sid, sha256, **kwargs):
         for res in output['results']:
             for sec in res.get('result', {}).get('sections', []):
                 # Process Attack matrix
-                attack_id = sec.get('heuristic', {}).get('attack_id', None)
-                if attack_id:
+                if sec.get('heuristic', False) and sec['heuristic'].get('attack_id', False):
+                    attack_id = sec['heuristic']['attack_id']
                     attack_pattern_def = attack_map.get(attack_id, {})
                     if attack_pattern_def:
                         for cat in attack_pattern_def['categories']:

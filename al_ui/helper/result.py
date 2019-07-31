@@ -1,7 +1,6 @@
+from al_ui.config import CLASSIFICATION
 from assemblyline.common.attack_map import attack_map
 from assemblyline.common.classification import InvalidClassification
-
-from al_ui.config import CLASSIFICATION
 from assemblyline.common.tagging import tag_dict_to_list
 
 
@@ -19,8 +18,8 @@ def filter_sections(sections, user_classification, min_classification):
             continue
 
         section['tags'] = tag_dict_to_list(section['tags'])
-        attack_id = section['heuristic'].get('attack_id', None)
-        if attack_id:
+        if section.get('heuristic', False) and section['heuristic'].get('attack_id', False):
+            attack_id = section['heuristic']['attack_id']
             if attack_id in attack_map:
                 section['heuristic']['attack_pattern'] = attack_map[attack_id]['name']
             else:
