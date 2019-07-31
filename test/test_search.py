@@ -129,7 +129,7 @@ def test_histogram_search(datastore, login_session):
         'alert': 'ts',
         'file': 'seen.first',
         'heuristic': False,
-        'signature': 'meta.creation_date',
+        'signature': 'last_modified',
         'submission': 'times.submitted',
         'workflow': 'last_edit'
     }
@@ -147,7 +147,7 @@ def test_histogram_search(datastore, login_session):
         'alert': 'al.score',
         'file': 'seen.count',
         'result': 'result.score',
-        'signature': 'meta.rule_version',
+        'signature': 'order',
         'submission': 'file_count',
         'heuristic': False,
         'workflow': 'hit_count'
@@ -179,7 +179,7 @@ def test_search(datastore, login_session):
 
     for collection in collections:
         resp = get_api_data(session, f"{HOST}/api/v4/search/{collection}/", params={"query": "id:*"})
-        assert TEST_SIZE <= resp['total'] == len(resp['items'])
+        assert TEST_SIZE <= resp['total'] >= len(resp['items'])
 
 
 # noinspection PyUnusedLocal
@@ -190,7 +190,7 @@ def test_stats_search(datastore, login_session):
         'alert': 'al.score',
         'file': 'seen.count',
         'result': 'result.score',
-        'signature': 'meta.rule_version',
+        'signature': 'revision',
         'submission': 'file_count',
         'heuristic': False,
         'workflow': 'hit_count'

@@ -60,7 +60,7 @@ def add_signature(**_):
     check_name_query = f"name:{data['name']} " \
                        f"AND type:{data['type']} " \
                        f"AND source:{data['source']} " \
-                       f"AND NOT id:{data['siganture_id']}*"
+                       f"AND NOT id:{data['signature_id']}*"
     other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
     if other['total'] > 0:
         return make_api_response(

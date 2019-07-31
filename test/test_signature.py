@@ -36,19 +36,18 @@ def test_add_signature(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/signature/add/", data=json.dumps(data), method="PUT")
     ds.signature.commit()
 
-    assert resp == {'rev': 1, 'sid': f'{config.system.organisation}_000001', 'success': True}
+    assert resp == {'id': f'{data["type"]}_{data["signature_id"]}_{data["revision"]}', 'success': True}
 
 
 # noinspection PyUnusedLocal
 def test_change_status(datastore, login_session):
     _, session = login_session
 
-    signature = random.choice(ds.signature.search("meta.al_status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = signature['meta']['rule_id']
-    rev = signature['meta']['rule_version']
+    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
+    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
     status = "DISABLED"
 
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/change_status/{sid}/{rev}/{status}/")
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/change_status/{sid}/{status}/")
     ds.signature.commit()
 
     assert resp['success']
@@ -58,11 +57,10 @@ def test_change_status(datastore, login_session):
 def test_delete_signature(datastore, login_session):
     _, session = login_session
 
-    signature = random.choice(ds.signature.search("meta.al_status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = signature['meta']['rule_id']
-    rev = signature['meta']['rule_version']
+    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
+    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
 
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/", method="DELETE")
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/", method="DELETE")
     ds.signature.commit()
     assert resp['success']
 
@@ -72,49 +70,44 @@ def test_download_signatures(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/download/", raw=True)
-    assert resp.decode(encoding="UTF-8").startswith("// Signatures last updated: ")
+    assert resp.startswith(b"PK")
+    assert b".yar" in resp
+    assert b"suricata" in resp
 
 
 # noinspection PyUnusedLocal
 def test_get_signature(datastore, login_session):
     _, session = login_session
 
-    signature = random.choice(ds.signature.search("meta.al_status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = signature['meta']['rule_id']
-    rev = signature['meta']['rule_version']
+    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
+    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
 
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/")
-    assert sid == resp['meta']['rule_id'] and rev == resp['meta']['rule_version'] and signature['name'] == resp['name']
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/")
+    assert sid == f"{resp['type']}_{resp['signature_id']}_{resp['revision']}" and signature['name'] == resp['name']
 
 
 # noinspection PyUnusedLocal
 def test_set_signature(datastore, login_session):
     _, session = login_session
 
-    signature = random.choice(ds.signature.search("meta.al_status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = signature['meta']['rule_id']
-    rev = signature['meta']['rule_version']
+    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
+    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
 
     # Non revision bumping changes
-    data = ds.signature.get(f"{sid}r.{rev}", as_obj=False)
-    data['meta']['description'] = "NO REVISION CHANGE"
-    data['comments'].append("NO REVISION CHANGE")
+    data = ds.signature.get(sid, as_obj=False)
+    data['order'] = 9999
+    data['state_change_user'] = "BOB"
 
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/", data=json.dumps(data), method="POST")
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/", data=json.dumps(data), method="POST")
     ds.signature.commit()
 
-    assert resp == {'rev': rev, 'sid': sid, 'success': True}
+    assert resp == {'sid': sid, 'success': True}
 
     # Revision bumping changes
-    data = ds.signature.get(f"{sid}r.{rev}", as_obj=False)
-    data['meta']['description'] = "THIS SHOULD BE A NEW REVISION"
-    data['comments'].append("THIS SHOULD BE A NEW REVISION")
-    data['strings'].append('$added = "ADDING TRIGGER REVISION BUMP"')
+    new_data = ds.signature.get(sid, as_obj=False)
 
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/{rev}/", data=json.dumps(data), method="POST")
-    ds.signature.commit()
-
-    assert resp == {'rev': rev+1, 'sid': sid, 'success': True}
+    assert new_data['order'] == 9999
+    assert new_data['state_change_user'] == "BOB"
 
 
 # noinspection PyUnusedLocal
@@ -126,7 +119,8 @@ def test_signature_stats(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/signature/stats/")
     assert len(resp) == signature_count
     for sig_stat in resp:
-        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'max', 'min', 'name', 'rev', 'sid']
+        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'max',
+                                                 'min', 'name', 'rev', 'sid', 'type']
 
 
 # noinspection PyUnusedLocal
