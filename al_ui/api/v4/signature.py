@@ -2,12 +2,12 @@ import concurrent.futures
 
 from flask import request
 from hashlib import sha256
-from textwrap import dedent
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
 from assemblyline.common.uid import get_id_from_data, SHORT
+from assemblyline.odm.models.service import UpdateSource
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
@@ -72,6 +72,58 @@ def add_signature(**_):
     # Save the signature
     return make_api_response({"success": STORAGE.signature.save(key, data),
                               "id": key})
+
+
+@signature_api.route("/sources/<service>/", methods=["PUT"])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+def add_signature_source(service, **_):
+    """
+    [INCOMPLETE]
+    Add a signature source for a given service
+
+    Variables:
+    service           =>      Service to which we want to add the source to
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True/False}   # if the operation succeeded of not
+    """
+    try:
+        data = UpdateSource(request.json)
+    except (ValueError, KeyError):
+        return make_api_response({"success": False},
+                                 err="Invalid source object data",
+                                 status_code=400)
+
+    service_data = STORAGE.get_service_with_delta(service)
+    if not service_data.update_config.generates_signatures:
+        return make_api_response({"success": False},
+                                 err="This service does not generate alerts therefor "
+                                     "you cannot add a source to get the alerts from",
+                                 status_code=400)
+
+    for source in service_data.update_config.sources:
+        if source.name == data.name:
+            return make_api_response({"success": False},
+                                     err=f"Update source filename already exist: {data.name}",
+                                     status_code=400)
+
+        if source.uri == data.uri:
+            return make_api_response({"success": False},
+                                     err=f"Update source uri already exist: {data.uri}",
+                                     status_code=400)
+
+    service_data.update_config.sources.append(data)
+    service_delta = STORAGE.service_delta.get(service)
+    service_delta.update_config.sources = service_data.update_config.sources
+
+    # Save the signature
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
 
 # noinspection PyPep8Naming
@@ -168,6 +220,30 @@ def delete_signature(sid, **kwargs):
         return make_api_response({"success": STORAGE.signature.delete(sid)})
     else:
         return make_api_response("", f"Signature not found. ({sid})", 404)
+
+
+@signature_api.route("/sources/<service>/<name>/", methods=["DELETE"])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+def delete_signature_source(service, name, **_):
+    """
+    [INCOMPLETE]
+    Delete a signature source by name for a given service
+
+    Variables:
+    service           =>      Service to which we want to delete the source from
+    name              =>      Name of the source you want to remove
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True/False}   # if the operation succeeded of not
+    """
+    # Save the signature
+    return make_api_response({"success": False, "service": service, "name": name})
 
 
 # noinspection PyBroadException
@@ -279,9 +355,42 @@ def get_signature(sid, **kwargs):
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
+@signature_api.route("/sources/", methods=["GET"])
+@api_login(audit=False, required_priv=['R'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+def get_signature_sources(**_):
+    """
+    Get all signature sources
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     'Yara': {
+       ... Source object ...
+      }
+    }
+    """
+    services = STORAGE.list_all_services(full=True, as_obj=False)
+
+    out = {}
+    for service in services:
+        if service.get("update_config", {}).get("generates_signatures", False):
+            out[service['name']] = service['update_config']['sources']
+
+    # Save the signature
+    return make_api_response(out)
+
+
 @signature_api.route("/<sid>/", methods=["POST"])
 @api_login(required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
-def set_signature(sid, **_):
+def update_signature(sid, **_):
     """
     Update a signature defined by a sid and a rev.
        NOTE: The API will compare the old signature
@@ -315,6 +424,30 @@ def set_signature(sid, **_):
         return make_api_response({"success": False}, "Signature not found. %s" % sid, 404)
 
 
+@signature_api.route("/sources/<service>/<name>/", methods=["POST"])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+def update_signature_source(service, name, **_):
+    """
+    [INCOMPLETE]
+    Update a signature source by name for a given service
+
+    Variables:
+    service           =>      Service to which we want to update the source
+    name              =>      Name of the source you want update
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True/False}   # if the operation succeeded of not
+    """
+    # Save the signature
+    return make_api_response({"success": False, "service": service, "name": name})
+
+
 @signature_api.route("/stats/", methods=["GET"])
 @api_login(allow_readonly=False)
 def signature_statistics(**kwargs):
@@ -343,7 +476,6 @@ def signature_statistics(**kwargs):
       },
      ...
     ]"""
-    # TODO: Fix for new signature stuff
 
     user = kwargs['user']
 

@@ -507,6 +507,12 @@ utils.directive('signatureDetail', function () {
     };
 });
 
+utils.directive('signatureSource', function () {
+    return {
+        templateUrl: '/static/ng-template/signature_source.html'
+    };
+});
+
 utils.directive('jsonInput', function () {
     return {
         scope: true,

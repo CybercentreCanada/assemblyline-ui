@@ -311,6 +311,12 @@ def signatures(**kwargs):
     return custom_render("signatures.html", org=ORGANISATION, **kwargs)
 
 
+@views.route("/source_management.html")
+@protected_renderer(audit=False, allow_readonly=False, require_type=['admin', 'signature_manager'])
+def signature_management(**kwargs):
+    return custom_render("source_management.html", **kwargs)
+
+
 @views.route("/signature_statistics.html")
 @protected_renderer(audit=False, allow_readonly=False)
 def signature_statistics(*_, **kwargs):
