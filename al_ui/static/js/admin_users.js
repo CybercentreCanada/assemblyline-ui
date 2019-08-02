@@ -240,6 +240,15 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
             });
     };
 
+    $scope.toggle_type = function(type){
+        if ($scope.current_user.type.indexOf(type) !== -1){
+            $scope.current_user.type.splice($scope.current_user.type.indexOf(type), 1);
+        }
+        else {
+            $scope.current_user.type.push(type);
+        }
+    };
+
     $scope.reset_error_ctrls = function () {
         let ctrl = $("#uname");
         ctrl.removeClass("has-error");

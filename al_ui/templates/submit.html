@@ -18,7 +18,7 @@
 {% block loading_menu %}ng-hide="!loading"{% endblock %}
 {% block content %}
     <section {% if not is_readonly %}flow-init flow-name="obj.flow" {% endif %}id="appContent" class="container">
-		<div class="bigpad">
+		<div class="bigpad centered_boxed_content">
 			<div class="banner">
 				{% block banner %}<img class="banner_img" src="/static/images/banner.svg">{% endblock %}
 			</div>
@@ -29,197 +29,199 @@
 		{% block caveat %}{% endblock %}
 
         {% raw %}
-        <div ng-if="user.c12n_enforcing" class="form-group text-center">
+        <div ng-if="user.c12n_enforcing" class="form-group text-center centered_boxed_content">
             <label class="text-large text-muted">The following classification will be applied to your submission:</label>
             <div ng-controller="classificationCtrl" classification-picker></div>
             <div class="label text-large classification {{params.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(params.classification)">{{params.classification | class_long}}</div>
         </div>
 		{% endraw %}
 
-		<ul class="nav nav-tabs" id="tabContent">
-            <li id="file_tab" class="active"><a href="#file" data-toggle="tab" ng-click="page_switch()" class="ng-binding">Files</a></li>
-			{% if show_url %}<li id="url_tab" class=""><a href="#url" data-toggle="tab" ng-click="page_switch()" class="ng-binding">Url</a></li>{% endif %}
-			<li id="options_tab" class=""><a href="#options" data-toggle="tab" ng-click="page_switch()" class="ng-binding">Options</a></li>
-        </ul>
+        <section id="upload_and_options" class="centered_boxed_content">
+            <ul class="nav nav-tabs" id="tabContent">
+                <li id="file_tab" class="active"><a href="#file" data-toggle="tab" ng-click="page_switch()" class="ng-binding">File</a></li>
+                {% if show_url %}<li id="url_tab" class=""><a href="#url" data-toggle="tab" ng-click="page_switch()" class="ng-binding">Url</a></li>{% endif %}
+                <li id="options_tab" class=""><a href="#options" data-toggle="tab" ng-click="page_switch()" class="ng-binding">Options</a></li>
+            </ul>
 
 
-        <div class="tab-content">
-            <div class="tab-pane active" style="margin-top: 20px" id="file">
-                <div flow-transfers>
-                    <div class="text-center bigpad" ng-show="transfers.length == 0">
-                        <div class="drop" flow-btn flow-single-file flow-drop flow-drag-enter="class='drag-enter'" flow-drag-leave="class=''" ng-class="class">
-							<div>
-								<scan class="huge-icon icon-searchdocument"></scan>
-							</div>
-							<span class="text-big text-muted">Select a file to scan</span>
-						</div>
+            <div class="tab-content">
+                <div class="tab-pane active" style="margin-top: 20px" id="file">
+                    <div flow-transfers>
+                        <div class="text-center bigpad" ng-show="transfers.length == 0">
+                            <div class="drop" flow-btn flow-single-file flow-drop flow-drag-enter="class='drag-enter'" flow-drag-leave="class=''" ng-class="class">
+                                <div>
+                                    <scan class="huge-icon icon-searchdocument"></scan>
+                                </div>
+                                <span class="text-big text-muted">Select a file to scan</span>
+                            </div>
+                        </div>
+
+                        <div class="text-center bigpad" ng-show="transfers.length != 0">
+                            {% raw %}
+                            <div class="file-selected">
+                                <div ng-repeat="file in transfers">
+                                    <div class="text-center">
+                                        <scan class="huge-icon icon-searchdocument"></scan>
+                                    </div>
+                                    <div>
+                                        <span class="text-big">{{ file.relativePath }}</span> ({{ file.size | fileSize}})
+                                    </div>
+                                    <div class="pad">
+                                        <span class="btn btn-danger" ng-click="file.retry()" ng-show="file.error">Upload failed. Retry?</span>
+                                        <span disabled="disabled" class="btn btn-primary" ng-show="transfer_started&&!file.error&&file.progress()!=1">{{ file.progress() * 100 | number : 0 }}% Uploaded</span>
+                                        <span class="text-primary text-large" ng-show="transfer_started&&!file.error&&file.progress()==1">Starting scan, you will be redirected soon...</span>
+                                        <span class="btn btn-primary" ng-click="prepare_transfer();" ng-show="!transfer_started">Upload and Scan</span>
+                                        <span class="btn btn-default" ng-click="reset_transfer()" ng-show="file.progress()!=1">Cancel</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endraw %}
+                        </div>
+
+                        {% if show_tos %}
+                        <div class="pad text-center text-muted">
+                            By clicking <i>Upload and Scan</i>, you consent to our <a href="/terms.html">Terms&nbsp;of&nbsp;Service</a>.
+                        </div>
+                        {% endif %}
                     </div>
-
-					<div class="text-center bigpad" ng-show="transfers.length != 0">
-                        {% raw %}
-						<div class="file-selected">
-							<div ng-repeat="file in transfers">
-								<div class="text-center">
-									<scan class="huge-icon icon-searchdocument"></scan>
-								</div>
-								<div>
-									<span class="text-big">{{ file.relativePath }}</span> ({{ file.size | fileSize}})
-								</div>
-								<div class="pad">
-									<span class="btn btn-danger" ng-click="file.retry()" ng-show="file.error">Upload failed. Retry?</span>
-									<span disabled="disabled" class="btn btn-primary" ng-show="transfer_started&&!file.error&&file.progress()!=1">{{ file.progress() * 100 | number : 0 }}% Uploaded</span>
-			                        <span class="text-primary text-large" ng-show="transfer_started&&!file.error&&file.progress()==1">Starting scan, you will be redirected soon...</span>
-			                        <span class="btn btn-primary" ng-click="prepare_transfer();" ng-show="!transfer_started">Upload and Scan</span>
-									<span class="btn btn-default" ng-click="reset_transfer()" ng-show="file.progress()!=1">Cancel</span>
-								</div>
-							</div>
-						</div>
-                        {% endraw %}
-                    </div>
-
-                    {% if show_tos %}
-                    <div class="pad text-center text-muted">
-                        By clicking <i>Upload and Scan</i>, you consent to our <a href="/terms.html">Terms&nbsp;of&nbsp;Service</a>.
-                    </div>
-                    {% endif %}
                 </div>
-            </div>
 
-            {% if show_url %}
-            <div class="tab-pane" style="margin-top: 20px" id="url">
-                <form name="url_form">
-                    <div class="bigpad input-group">
-                        <input id="urlbox" placeholder="Url" name="urlbox" type="url" class="form-control" ng-model="submission_url" required/>
-						<span class="input-group-btn">
-                        	<button type="submit" class="btn btn-primary" ng-click="prepare_transfer(submission_url);" ng-disabled="!url_form.urlbox.$valid||submission_url.length==0||loading">Scan</button>
-                    	</span>
+                {% if show_url %}
+                <div class="tab-pane" style="margin-top: 20px" id="url">
+                    <form name="url_form">
+                        <div class="bigpad input-group">
+                            <input id="urlbox" placeholder="Url" name="urlbox" type="url" class="form-control" ng-model="submission_url" required/>
+                            <span class="input-group-btn">
+                                <button type="submit" class="btn btn-primary" ng-click="prepare_transfer(submission_url);" ng-disabled="!url_form.urlbox.$valid||submission_url.length==0||loading">Scan</button>
+                            </span>
+                        </div>
+
+                        {% if show_tos %}
+                        <div class="pad text-center text-muted">
+                            By clicking <i>Scan</i>, you consent to our <a href="/terms.html">Terms&nbsp;of&nbsp;Service</a>.
+                        </div>
+                        {% endif %}
+
+
+                    </form>
+                </div>
+                {% endif %}
+
+                <div class="tab-pane" style="margin-top: 20px" id="options">
+                    {%raw%}
+                    <div class="row">
+                        <section id="section_service_selection" class="col-sm-6">
+                            <div class="menuheader" data-toggle="collapse" data-target="#services">
+                                <span class="text-big" style="padding-right: 10px;">Services Selection</span>
+                                <div class="btn-group">
+                                    <a class="btn btn-default btn-xs" ng-click="serviceSelectionNone($event)">None</a>
+                                    <a class="btn btn-default btn-xs" ng-click="serviceSelectionReset($event)">Reset</a>
+                                    <a class="btn btn-default btn-xs" ng-click="serviceSelectionAll($event)">All</a>
+                                </div>
+                            </div>
+                            <div id="services" class="collapse in">
+                                <div ng-repeat="service_group in params.services | orderBy:'name'">
+                                    <div class="checkbox">
+                                        <label ng-class="{checked:service_group.selected}">
+                                            <input type="checkbox" ng-model="service_group.selected" ng-change="toggleCBGroup(service_group.name, service_group.selected);"> {{service_group.name}}
+                                        </label>
+                                    </div>
+                                    <div ng-repeat="service in service_group.services | orderBy:'name'">
+                                        <div class="checkbox indent">
+                                            <label ng-class="{checked:service.selected}">
+                                                <input type="checkbox" ng-model="service.selected" ng-change="toggleCBService(service.category, service.name, service.selected);"> {{service.name}}<span ng-if="service.is_external"> (E)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <div class="col-sm-6">
+                            <section id="section_scan_params">
+                                <div class="menuheader" data-toggle="collapse" data-target="#scan_param">
+                                    <span class="text-big">Submission Parameters</span>
+                                </div>
+                                <div id="scan_param" class="collapse in">
+                                    <div class="form-group">
+                                        <label for="description">Description</label>
+                                        <input type="text" class="form-control" placeholder="Enter description for the scan" ng-model="params.description">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="priority">Priority</label>
+                                        <select class="form-control" ng-model="params.priority">
+                                            <option value="500">Low</option>
+                                            <option value="1000">Medium</option>
+                                            <option value="1500">High</option>
+                                        </select>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label ng-class="{checked:params.ignore_filtering}">
+                                            <input type="checkbox" ng-model="params.ignore_filtering"> Ignore filtering services
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label ng-class="{checked:params.ignore_cache}">
+                                            <input type="checkbox" ng-model="params.ignore_cache"> Ignore result cache
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label ng-class="{checked:params.ignore_dynamic_recursion_prevention}">
+                                            <input type="checkbox" ng-model="params.ignore_dynamic_recursion_prevention"> Ignore dynamic recursion prevention
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label ng-class="{checked:params.profile}">
+                                            <input type="checkbox" ng-model="params.profile"> Profile current scan
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label ng-class="{checked:params.deep_scan}">
+                                            <input type="checkbox" ng-model="params.deep_scan"> Perform deep analysis
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="ttl">Time to live (days)</label>
+                                        <input type="number" class="form-control" min="0" max="180" ng-model="params.ttl">
+                                    </div>
+                                </div>
+                            </section>
+                            <section id="section_service_specific" ng-hide="params.service_spec.length == 0">
+                                <div class="menuheader" data-toggle="collapse" data-target="#service_specific">
+                                    <span class="text-big">Service Specific Parameters</span>
+                                </div>
+                                <div id="service_specific" class="collapse in">
+                                    <div ng-repeat="service in params.service_spec">
+                                        <h4>{{ service.name }}</h4>
+                                        <div ng-repeat="param in service.params">
+                                            <div ng-if="param.type == 'bool'" class="checkbox">
+                                                <label ng-class="{checked:param.value}">
+                                                    <input type="checkbox" ng-model="param.value" ng-checked="param.value"> {{param.name | titleCase}}
+                                                </label>
+                                            </div>
+                                            <div ng-if="param.type == 'list'" class="form-group">
+                                                <label for="{{param.name}}">{{param.name | titleCase}}</label>
+                                                <select class="form-control" id="{{param.name}}" ng-model="param.value">
+                                                    <option ng-repeat="item in param.list" value="{{item}}">{{item}}</option>
+                                                </select>
+                                            </div>
+                                            <div ng-if="param.type == 'unicode' || param.type == 'str' || param.type == 'int'" class="form-group">
+                                                <label for="{{param.name}}">{{param.name | titleCase}}</label>
+                                                <input type="text" class="form-control" id="{{param.name}}" ng-model="param.value">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
                     </div>
+                    {%endraw%}
+                </div>
 
-                    {% if show_tos %}
-                    <div class="pad text-center text-muted">
-                        By clicking <i>Scan</i>, you consent to our <a href="/terms.html">Terms&nbsp;of&nbsp;Service</a>.
-                    </div>
-                    {% endif %}
-
-
-                </form>
             </div>
-            {% endif %}
-
-			<div class="tab-pane" style="margin-top: 20px" id="options">
-				{%raw%}
-				<div class="row">
-					<section id="section_service_selection" class="col-sm-6">
-						<div class="menuheader" data-toggle="collapse" data-target="#services">
-							<span class="text-big" style="padding-right: 10px;">Services Selection</span>
-							<div class="btn-group">
-								<a class="btn btn-default btn-xs" ng-click="serviceSelectionNone($event)">None</a>
-								<a class="btn btn-default btn-xs" ng-click="serviceSelectionReset($event)">Reset</a>
-								<a class="btn btn-default btn-xs" ng-click="serviceSelectionAll($event)">All</a>
-							</div>
-						</div>
-						<div id="services" class="collapse in">
-							<div ng-repeat="service_group in params.services | orderBy:'name'">
-								<div class="checkbox">
-									<label ng-class="{checked:service_group.selected}">
-										<input type="checkbox" ng-model="service_group.selected" ng-change="toggleCBGroup(service_group.name, service_group.selected);"> {{service_group.name}}
-									</label>
-								</div>
-								<div ng-repeat="service in service_group.services | orderBy:'name'">
-									<div class="checkbox indent">
-										<label ng-class="{checked:service.selected}">
-											<input type="checkbox" ng-model="service.selected" ng-change="toggleCBService(service.category, service.name, service.selected);"> {{service.name}}<span ng-if="service.is_external"> (E)</span>
-										</label>
-									</div>
-								</div>
-							</div>
-						</div>
-					</section>
-					<div class="col-sm-6">
-						<section id="section_scan_params">
-							<div class="menuheader" data-toggle="collapse" data-target="#scan_param">
-								<span class="text-big">Submission Parameters</span>
-							</div>
-							<div id="scan_param" class="collapse in">
-								<div class="form-group">
-									<label for="description">Description</label>
-									<input type="text" class="form-control" placeholder="Enter description for the scan" ng-model="params.description">
-								</div>
-								<div class="form-group">
-									<label for="priority">Priority</label>
-									<select class="form-control" ng-model="params.priority">
-										<option value="500">Low</option>
-										<option value="1000">Medium</option>
-										<option value="1500">High</option>
-									</select>
-								</div>
-								<div class="checkbox">
-									<label ng-class="{checked:params.ignore_filtering}">
-										<input type="checkbox" ng-model="params.ignore_filtering"> Ignore filtering services
-									</label>
-								</div>
-								<div class="checkbox">
-									<label ng-class="{checked:params.ignore_cache}">
-										<input type="checkbox" ng-model="params.ignore_cache"> Ignore result cache
-									</label>
-								</div>
-								<div class="checkbox">
-									<label ng-class="{checked:params.ignore_dynamic_recursion_prevention}">
-										<input type="checkbox" ng-model="params.ignore_dynamic_recursion_prevention"> Ignore dynamic recursion prevention
-									</label>
-								</div>
-								<div class="checkbox">
-									<label ng-class="{checked:params.profile}">
-										<input type="checkbox" ng-model="params.profile"> Profile current scan
-									</label>
-								</div>
-								<div class="checkbox">
-									<label ng-class="{checked:params.deep_scan}">
-										<input type="checkbox" ng-model="params.deep_scan"> Perform deep analysis
-									</label>
-								</div>
-								<div class="form-group">
-									<label for="ttl">Time to live (days)</label>
-									<input type="number" class="form-control" min="0" max="180" ng-model="params.ttl">
-								</div>
-							</div>
-						</section>
-						<section id="section_service_specific" ng-hide="params.service_spec.length == 0">
-							<div class="menuheader" data-toggle="collapse" data-target="#service_specific">
-								<span class="text-big">Service Specific Parameters</span>
-							</div>
-							<div id="service_specific" class="collapse in">
-								<div ng-repeat="service in params.service_spec">
-									<h4>{{ service.name }}</h4>
-									<div ng-repeat="param in service.params">
-										<div ng-if="param.type == 'bool'" class="checkbox">
-											<label ng-class="{checked:param.value}">
-												<input type="checkbox" ng-model="param.value" ng-checked="param.value"> {{param.name | titleCase}}
-											</label>
-										</div>
-										<div ng-if="param.type == 'list'" class="form-group">
-											<label for="{{param.name}}">{{param.name | titleCase}}</label>
-											<select class="form-control" id="{{param.name}}" ng-model="param.value">
-												<option ng-repeat="item in param.list" value="{{item}}">{{item}}</option>
-											</select>
-										</div>
-										<div ng-if="param.type == 'unicode' || param.type == 'str' || param.type == 'int'" class="form-group">
-											<label for="{{param.name}}">{{param.name | titleCase}}</label>
-											<input type="text" class="form-control" id="{{param.name}}" ng-model="param.value">
-										</div>
-									</div>
-								</div>
-							</div>
-						</section>
-					</div>
-
-				</div>
-				{%endraw%}
-            </div>
-
-        </div>
+        </section>
         {% else %}
-        <div class="bigpad">
+        <div class="bigpad centered_boxed_content">
             <div class="alert alert-warning">
                 <h4 class="pad text-center">This deployment is set to read-only mode</h4>
                 <p class="pad">No files can be submitted or deleted to this system. Only automated script are allowed to add submissions to this system and that operation is performed daily as a bulk. This deployment is used as an archive to keep the submissions for a longer period of time then the production system allows.</p>

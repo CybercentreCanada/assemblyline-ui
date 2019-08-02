@@ -52,10 +52,28 @@
 					<div ng-if="user.type.indexOf('admin')!=-1" class="label classification {{current_user.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_user.classification)">{{current_user.classification | class_sm}}</div>
 					<div ng-if="user.type.indexOf('admin')==-1" class="label classification {{current_user.classification | class_label_color}}">{{current_user.classification | class_sm}}</div>
 				</div>
-				<div class="checkbox">
-					<label>
-						<input type="checkbox" ng-model="current_user.is_admin" ng-disabled="!user.is_admin"> Administrative account
-					</label>
+				<div class="form-group">
+					<label class="control-label">User access types</label>
+					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
+						<label>
+							<input type="checkbox" ng-click="toggle_type('user')" ng-checked="user.type.indexOf('user')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Normal User
+						</label>
+					</div>
+					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
+						<label>
+							<input type="checkbox" ng-click="toggle_type('admin')" ng-checked="user.type.indexOf('admin')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Administrator
+						</label>
+					</div>
+					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
+						<label>
+							<input type="checkbox" ng-click="toggle_type('signature_manager')" ng-checked="user.type.indexOf('signature_manager')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Signature Manager
+						</label>
+					</div>
+					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
+						<label>
+							<input type="checkbox" ng-click="toggle_type('signature_importer')" ng-checked="user.type.indexOf('signature_importer')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Signature Importer
+						</label>
+					</div>
 				</div>
 				<div class="checkbox">
 					<label>

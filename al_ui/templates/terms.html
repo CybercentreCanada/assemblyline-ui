@@ -17,7 +17,7 @@
             <div class="banner">
                 {%endraw%}{% block banner %}<img class="banner_img" src="/static/images/banner.svg">{% endblock %}{%raw%}
             </div>
-            <section id="section_tos" class="text-large bigpad">
+            <section id="section_tos" class="text-large bigpad centered_boxed_content">
                 {%endraw%}{{ tos }}{%raw%}
             </section>
             {%endraw%}
@@ -27,7 +27,7 @@
                 <div class="text-large text-muted"><span class="glyphicon glyphicon-check"></span>&nbsp;&nbsp;Agreed to Terms of Service on: {{ agreed_date }}</div>
             </div>
             {% else %}
-            <div class="checkbox">
+            <div class="checkbox centered_boxed_content">
                 <label ng-class="{checked:tos}">
                     <input type="checkbox" ng-model="tos"/> I, <i>{{ user.name }}</i>, agree to the Terms of Service previously mentioned
                 </label>
