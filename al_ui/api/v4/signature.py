@@ -7,7 +7,6 @@ from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
 from assemblyline.common.uid import get_id_from_data, SHORT
-from assemblyline.odm.models.service import UpdateSource
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
 from al_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
@@ -78,7 +77,6 @@ def add_signature(**_):
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def add_signature_source(service, **_):
     """
-    [INCOMPLETE]
     Add a signature source for a given service
 
     Variables:
@@ -88,39 +86,53 @@ def add_signature_source(service, **_):
     None
 
     Data Block:
-    None
+    {
+      "uri": "http://somesite/file_to_get",   # URI to fetch for parsing the rules
+      "name": "signature_file.yar",           # Name of the file we will parse the rules as
+      "username": null,                       # Username used to get to the URI
+      "password": null,                       # Password used to get to the URI
+      "header": {                             # Header sent during the request to the URI
+        "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
+      },
+      "public_key": null,                     # Public key used to get to the URI
+      "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
+    }
 
     Result example:
     {"success": True/False}   # if the operation succeeded of not
     """
     try:
-        data = UpdateSource(request.json)
+        data = request.json
     except (ValueError, KeyError):
         return make_api_response({"success": False},
                                  err="Invalid source object data",
                                  status_code=400)
 
-    service_data = STORAGE.get_service_with_delta(service)
-    if not service_data.update_config.generates_signatures:
+    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+    if not service_data.get('update_config', {}).get('generates_signatures', False):
         return make_api_response({"success": False},
                                  err="This service does not generate alerts therefor "
                                      "you cannot add a source to get the alerts from",
                                  status_code=400)
 
-    for source in service_data.update_config.sources:
-        if source.name == data.name:
+    current_sources = service_data.get('update_config', {}).get('sources', [])
+    for source in current_sources:
+        if source['name'] == data['name']:
             return make_api_response({"success": False},
-                                     err=f"Update source filename already exist: {data.name}",
+                                     err=f"Update source filename already exist: {data['name']}",
                                      status_code=400)
 
-        if source.uri == data.uri:
+        if source['uri'] == data['uri']:
             return make_api_response({"success": False},
-                                     err=f"Update source uri already exist: {data.uri}",
+                                     err=f"Update source uri already exist: {data['uri']}",
                                      status_code=400)
 
-    service_data.update_config.sources.append(data)
-    service_delta = STORAGE.service_delta.get(service)
-    service_delta.update_config.sources = service_data.update_config.sources
+    current_sources.append(data)
+    service_delta = STORAGE.service_delta.get(service, as_obj=False)
+    if service_delta.get('update_config') is None:
+        service_delta['update_config'] = {"sources": current_sources}
+    else:
+        service_delta['update_config']['sources'] = current_sources
 
     # Save the signature
     return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
@@ -226,7 +238,6 @@ def delete_signature(sid, **kwargs):
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def delete_signature_source(service, name, **_):
     """
-    [INCOMPLETE]
     Delete a signature source by name for a given service
 
     Variables:
@@ -242,8 +253,36 @@ def delete_signature_source(service, name, **_):
     Result example:
     {"success": True/False}   # if the operation succeeded of not
     """
+    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+    current_sources = service_data.get('update_config', {}).get('sources', [])
+
+    if not service_data.get('update_config', {}).get('generates_signatures', False):
+        return make_api_response({"success": False},
+                                 err="This service does not generate alerts therefor "
+                                     "you cannot delete one of its sources.",
+                                 status_code=400)
+
+    new_sources = []
+    found = False
+    for source in current_sources:
+        if name == source['name']:
+            found = True
+        else:
+            new_sources.append(source)
+
+    if not found:
+        return make_api_response({"success": False},
+                                 err=f"Could not found source '{name}' in service {service}.",
+                                 status_code=404)
+
+    service_delta = STORAGE.service_delta.get(service, as_obj=False)
+    if service_delta.get('update_config') is None:
+        service_delta['update_config'] = {"sources": new_sources}
+    else:
+        service_delta['update_config']['sources'] = new_sources
+
     # Save the signature
-    return make_api_response({"success": False, "service": service, "name": name})
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
 
 # noinspection PyBroadException
@@ -373,8 +412,18 @@ def get_signature_sources(**_):
     Result example:
     {
      'Yara': {
-       ... Source object ...
-      }
+        {
+          "uri": "http://somesite/file_to_get",   # URI to fetch for parsing the rules
+          "name": "signature_file.yar",           # Name of the file we will parse the rules as
+          "username": null,                       # Username used to get to the URI
+          "password": null,                       # Password used to get to the URI
+          "header": {                             # Header sent during the request to the URI
+            "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
+          },
+          "public_key": null,                     # Public key used to get to the URI
+          "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
+        }, ...
+      }, ...
     }
     """
     services = STORAGE.list_all_services(full=True, as_obj=False)
@@ -428,7 +477,6 @@ def update_signature(sid, **_):
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def update_signature_source(service, name, **_):
     """
-    [INCOMPLETE]
     Update a signature source by name for a given service
 
     Variables:
@@ -439,13 +487,62 @@ def update_signature_source(service, name, **_):
     None
 
     Data Block:
-    None
+    {
+      "uri": "http://somesite/file_to_get",   # URI to fetch for parsing the rules
+      "name": "signature_file.yar",           # Name of the file we will parse the rules as
+      "username": null,                       # Username used to get to the URI
+      "password": null,                       # Password used to get to the URI
+      "header": {                             # Header sent during the request to the URI
+        "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
+      },
+      "public_key": null,                     # Public key used to get to the URI
+      "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
+    }
 
     Result example:
     {"success": True/False}   # if the operation succeeded of not
     """
+    data = request.json
+    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+    current_sources = service_data.get('update_config', {}).get('sources', [])
+
+    if name != data['name']:
+        return make_api_response({"success": False},
+                                 err="You are not allowed to change the source resulting filename.",
+                                 status_code=400)
+
+    if not service_data.get('update_config', {}).get('generates_signatures', False):
+        return make_api_response({"success": False},
+                                 err="This service does not generate alerts therefor you cannot update its sources.",
+                                 status_code=400)
+
+    if len(current_sources) == 0:
+        return make_api_response({"success": False},
+                                 err="This service does not have any sources therefor you cannot update any source.",
+                                 status_code=400)
+
+    new_sources = []
+    found = False
+    for source in current_sources:
+        if data['name'] == source['name']:
+            new_sources.append(data)
+            found = True
+        else:
+            new_sources.append(source)
+
+    if not found:
+        return make_api_response({"success": False},
+                                 err=f"Could not found source '{data.name}' in service {service}.",
+                                 status_code=404)
+
+    service_delta = STORAGE.service_delta.get(service, as_obj=False)
+    if service_delta.get('update_config') is None:
+        service_delta['update_config'] = {"sources": new_sources}
+    else:
+        service_delta['update_config']['sources'] = new_sources
+
     # Save the signature
-    return make_api_response({"success": False, "service": service, "name": name})
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
 
 @signature_api.route("/stats/", methods=["GET"])

@@ -11,8 +11,10 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.loading = false;
     $scope.loading_extra = false;
     $scope.current_source = null;
+    $scope.current_source_name = null;
     $scope.current_service = null;
     $scope.editmode = false;
+    $scope.started = false;
 
     //DEBUG MODE
     $scope.debug = false;
@@ -86,7 +88,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         if ($scope.editmode){
             $http({
                 method: 'POST',
-                url: "/api/v4/signature/sources/" + $scope.current_service + "/" + $scope.current_source.name + "/",
+                url: "/api/v4/signature/sources/" + $scope.current_service + "/" + $scope.current_source_name + "/",
                 data: $scope.current_source
             })
             .success(function () {
@@ -95,6 +97,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.success = "Signature source '" + $scope.current_source.name + "' successfully updated!";
 
                 $scope.current_source = null;
+                $scope.current_source_name = null;
                 $scope.current_service = null;
 
                 $timeout(function () {
@@ -129,6 +132,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.success = "Signature source '" + $scope.current_source.name + "' successfully added!";
 
                 $scope.current_source = null;
+                $scope.current_source_name = null;
                 $scope.current_service = null;
 
                 $timeout(function () {
@@ -173,6 +177,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         $scope.editmode = true;
         $scope.error = '';
         $scope.success = '';
+        $scope.current_source_name = source.name;
         $scope.comp_temp_error = null;
         $scope.conf_temp = {
             key: "",

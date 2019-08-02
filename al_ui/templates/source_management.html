@@ -11,6 +11,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Signature Sources</h1>
+			<div><h4 ng-hide="source_map == null" class="text-muted">:: {{obj_len(source_map)}} service<span ng-show="obj_len(source_map) > 1">s</span> generate signatures ::</h4></div>
 		</div>
 
 		<section ng-repeat="(service, sources) in source_map" class="bigpad">
@@ -20,19 +21,21 @@
 			</div>
 
 			<div id="{{service}}_sources" class="collapse in">
-				<div ng-show="sources.length == 0 && !loading_extra">
+				<div ng-show="sources.length == 0 && started">
 					<h4 class="text-muted">
 						This service does not have any signature sources right now.
 					</h4>
 				</div>
 				<div ng-repeat="source in sources">
-					<div ng-click="editSource(service, source)">{{source.name}}</div>
+					<div style="padding: 2px 5px" ng-click="editSource(service, source)" class="clickable compact_item">
+						<span class="text-large">{{source.name}}</span><span class="text-muted"> :: {{source.uri}}</span><span class="text-muted" ng-show="source.pattern"> - pattern:/{{source.pattern}}/</span>
+					</div>
 				</div>
 			</div>
 
 		</section>
 
-		<div ng-show="source_map != null && obj_len(source_map) == 0 && !loading_extra">
+		<div ng-show="source_map != null && obj_len(source_map) == 0 && started">
 			<div class="jumbotron text-center">
 				<h2 class="text-muted">
 					There are no service in the system that support signature creation.
@@ -51,7 +54,7 @@
 						<h4 class="modal_title" id="myModalLabel">{{current_service}} :: Signature Source<span ng-show="editmode"> :: [{{current_source.name}}]</span></h4>
 					</div>
 					<div class="modal-body">
-						<div signature-source />
+						<div signature-source></div>
 					</div>
 					<div class="modal-footer">
 						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
