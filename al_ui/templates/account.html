@@ -52,35 +52,27 @@
 					<div ng-if="user.type.indexOf('admin')!=-1" class="label classification {{current_user.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_user.classification)">{{current_user.classification | class_sm}}</div>
 					<div ng-if="user.type.indexOf('admin')==-1" class="label classification {{current_user.classification | class_label_color}}">{{current_user.classification | class_sm}}</div>
 				</div>
-				<div class="form-group">
-					<label class="control-label">User access types</label>
-					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
-						<label>
-							<input type="checkbox" ng-click="toggle_type('user')" ng-checked="user.type.indexOf('user')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Normal User
-						</label>
-					</div>
-					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
-						<label>
-							<input type="checkbox" ng-click="toggle_type('admin')" ng-checked="user.type.indexOf('admin')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Administrator
-						</label>
-					</div>
-					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
-						<label>
-							<input type="checkbox" ng-click="toggle_type('signature_manager')" ng-checked="user.type.indexOf('signature_manager')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Signature Manager
-						</label>
-					</div>
-					<div class="checkbox" style="margin: 5px 0px 5px 15px;">
-						<label>
-							<input type="checkbox" ng-click="toggle_type('signature_importer')" ng-checked="user.type.indexOf('signature_importer')!=-1" ng-disabled="user.type.indexOf('admin')==-1"> Signature Importer
-						</label>
-					</div>
-				</div>
 				<div class="checkbox">
 					<label>
 						<input type="checkbox" ng-model="current_user.is_active" ng-disabled="user.type.indexOf('admin')==-1"> Account active
 					</label>
 				</div>
                 <div class="form-group">
+					<label class="control-label">User access types</label>
+					<div ng-hide="user.type.indexOf('admin')==-1" style="display: block" class="text-large">
+						<span id="user_label" style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('user')" ng-class="{'label-highlight': user.type.indexOf('user')!=-1}">Normal User</span>
+						<span id="admin_label" style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('admin')" ng-class="{'label-highlight': user.type.indexOf('admin')!=-1}">Administrator</span>
+						<span id="signature_manager_label" style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_manager')" ng-class="{'label-highlight': user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
+						<span id="signature_importer_label" style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_importer')" ng-class="{'label-highlight': user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
+					</div>
+					<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
+						<span id="user_label" class="label label-default label-tag" ng-class="{'label-primary': user.type.indexOf('user')!=-1}">Normal User</span>
+						<span id="admin_label" class="label label-default label-tag" ng-class="{'label-primary': user.type.indexOf('admin')!=-1}">Administrator</span>
+						<span id="signature_manager_label" class="label label-default label-tag" ng-class="{'label-primary': user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
+						<span id="signature_importer_label" class="label label-default label-tag" ng-class="{'label-primary': user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
+					</div>
+				</div>
+				<div class="form-group">
                     <label class="control-label">API quota</label>
                     <input type="number" class="form-control input-sm" ng-model="current_user.api_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
                 </div>

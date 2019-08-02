@@ -315,11 +315,16 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     };
 
     $scope.toggle_type = function(type){
+        let obj = $("#" + type + "_label");
         if ($scope.current_user.type.indexOf(type) !== -1){
             $scope.current_user.type.splice($scope.current_user.type.indexOf(type), 1);
+            obj.removeClass('label-highlight');
+            obj.addClass('label-nolight');
         }
         else {
             $scope.current_user.type.push(type);
+            obj.addClass('label-highlight');
+            obj.removeClass('label-nolight');
         }
     };
 
