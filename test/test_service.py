@@ -52,7 +52,7 @@ def test_get_service(datastore, login_session):
             "image": f"cccs/alsvc_{service.lower()}:latest",
         },
     })
-    assert resp == service_data.as_primitives()
+    assert resp == service_data.as_primitives(strip_null=True)
 
 
 # noinspection PyUnusedLocal
