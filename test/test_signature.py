@@ -4,12 +4,14 @@ import random
 
 import pytest
 
-from base import HOST, login_session, get_api_data
+from assemblyline.odm.models.service import UpdateSource
+from base import HOST, login_session, get_api_data, APIError
 
 from assemblyline.common import forge
 from assemblyline.odm.models.signature import Signature
 from assemblyline.odm.randomizer import random_model_obj
-from assemblyline.odm.random_data import create_users, wipe_users, create_signatures, wipe_signatures
+from assemblyline.odm.random_data import create_users, wipe_users, create_signatures, \
+    wipe_signatures, create_services, wipe_services
 
 config = forge.get_config()
 ds = forge.get_datastore(config)
@@ -17,12 +19,14 @@ ds = forge.get_datastore(config)
 
 def purge_signature():
     wipe_users(ds)
+    wipe_services(ds)
     wipe_signatures(ds)
 
 
 @pytest.fixture(scope="module")
 def datastore(request):
     create_users(ds)
+    create_services(ds)
     create_signatures(ds)
     request.addfinalizer(purge_signature)
     return ds
@@ -37,6 +41,35 @@ def test_add_signature(datastore, login_session):
     ds.signature.commit()
 
     assert resp == {'id': f'{data["type"]}_{data["signature_id"]}_{data["revision"]}', 'success': True}
+
+
+# noinspection PyUnusedLocal
+def test_add_signature_source(datastore, login_session):
+    _, session = login_session
+
+    data = random_model_obj(UpdateSource).as_primitives()
+    data['name'] = "_NEW_added_SOURCE_"
+
+    invalid_service = random.choice(ds.service.search("NOT _exists_:update_config.generates_signatures",
+                                              rows=100, as_obj=False)['items'])
+    with pytest.raises(APIError):
+        resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/{invalid_service['name']}/",
+                            data=json.dumps(data), method="PUT")
+
+    service = random.choice(ds.service.search("update_config.generates_signatures:true",
+                                              rows=100, as_obj=False)['items'])
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/{service['name']}/",
+                        data=json.dumps(data), method="PUT")
+    assert resp['success']
+
+    ds.service.commit()
+    new_service_data = ds.get_service_with_delta(service['name'], as_obj=False)
+    found = False
+    for source in new_service_data['update_config']['sources']:
+        if source == data:
+            found = True
+
+    assert found
 
 
 # noinspection PyUnusedLocal
@@ -66,6 +99,34 @@ def test_delete_signature(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
+def test_delete_signature_source(datastore, login_session):
+    _, session = login_session
+
+    invalid_service = random.choice(ds.service.search("NOT _exists_:update_config.generates_signatures",
+                                              rows=100, as_obj=False)['items'])
+    with pytest.raises(APIError):
+        resp = get_api_data(session,
+                            f"{HOST}/api/v4/signature/sources/{invalid_service['name']}/TEST_SOURCE/",
+                            method="DELETE")
+
+    service = random.choice(ds.service.search("update_config.generates_signatures:true",
+                                              rows=100, as_obj=False)['items'])
+    service_data = ds.get_service_with_delta(service['name'], as_obj=False)
+    source_name = service_data['update_config']['sources'][0]['name']
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/{service['name']}/{source_name}/", method="DELETE")
+    assert resp['success']
+
+    ds.service.commit()
+    new_service_data = ds.get_service_with_delta(service['name'], as_obj=False)
+    found = False
+    for source in new_service_data['update_config']['sources']:
+        if source['name'] == source_name:
+            found = True
+
+    assert not found
+
+
+# noinspection PyUnusedLocal
 def test_download_signatures(datastore, login_session):
     _, session = login_session
 
@@ -85,6 +146,16 @@ def test_get_signature(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/")
     assert sid == f"{resp['type']}_{resp['signature_id']}_{resp['revision']}" and signature['name'] == resp['name']
 
+
+# noinspection PyUnusedLocal
+def test_get_signature_source(datastore, login_session):
+    _, session = login_session
+
+    services = ds.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']
+
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/")
+    for service in services:
+        assert service['name'] in resp
 
 # noinspection PyUnusedLocal
 def test_set_signature(datastore, login_session):
@@ -109,6 +180,39 @@ def test_set_signature(datastore, login_session):
     assert new_data['order'] == 9999
     assert new_data['state_change_user'] == "BOB"
 
+
+# noinspection PyUnusedLocal
+def test_set_signature_source(datastore, login_session):
+    _, session = login_session
+    original_source = service_data = None
+
+    for service in ds.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']:
+        service_data = ds.get_service_with_delta(service['name'], as_obj=False)
+        if len(service_data['update_config']['sources']) != 0:
+            original_source = service_data['update_config']['sources'][0]
+            break
+
+    assert original_source
+    assert service_data
+
+    new_source = random_model_obj(UpdateSource).as_primitives()
+    new_source['name'] = original_source['name']
+
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/{service_data['name']}/{original_source['name']}/",
+                        data=json.dumps(new_source), method="POST")
+    assert resp['success']
+
+    ds.service.commit()
+    new_service_data = ds.get_service_with_delta(service_data['name'], as_obj=False)
+    found = False
+    for source in new_service_data['update_config']['sources']:
+        if source['name'] == original_source['name']:
+            found = True
+            assert original_source != source
+            assert source == new_source
+            break
+
+    assert found
 
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):
