@@ -240,6 +240,10 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
             });
     };
 
+    $scope.toggle_active = function(){
+        $scope.current_user.is_active = !$scope.current_user.is_active;
+    };
+
     $scope.toggle_type = function(type){
         if ($scope.current_user.type.indexOf(type) !== -1){
             $scope.current_user.type.splice($scope.current_user.type.indexOf(type), 1);
