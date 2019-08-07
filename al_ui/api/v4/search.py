@@ -177,7 +177,7 @@ def list_bucket_fields(bucket, **kwargs):
     """
     if bucket in BUCKET_MAP or ():
         return make_api_response(BUCKET_MAP[bucket].fields())
-    elif kwargs['user']['is_admin'] and hasattr(STORAGE, bucket):
+    elif 'admin' in kwargs['user']['type'] and hasattr(STORAGE, bucket):
         return make_api_response(getattr(STORAGE, bucket).fields())
     elif bucket == "ALL":
         return make_api_response(list_all_fields())

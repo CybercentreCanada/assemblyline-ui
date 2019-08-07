@@ -8,11 +8,14 @@ from assemblyline.common.isotime import now
 
 
 class BaseSecurityRenderer(object):
-    def __init__(self, require_admin=False, audit=True, required_priv=None, allow_readonly=True):
+    def __init__(self, require_type=None, audit=True, required_priv=None, allow_readonly=True):
         if required_priv is None:
             required_priv = ["E"]
+        if require_type is None:
+            require_type = ["user"]
 
-        self.require_admin = require_admin
+
+        self.require_type = require_type
         self.audit = audit and AUDIT
         self.required_priv = required_priv
         self.allow_readonly = allow_readonly
@@ -86,9 +89,12 @@ class BaseSecurityRenderer(object):
 
         return session.get("username", None)
 
-    def test_require_admin(self, user, r_type):
-        if self.require_admin and not user['is_admin']:
-            raise AccessDeniedException(f"{r_type} {request.path} requires ADMIN privileges")
+    def test_require_type(self, user, r_type):
+        for required_type in self.require_type:
+            if required_type in user['type']:
+                return
+
+        raise AccessDeniedException(f"{r_type} {request.path} requires ADMIN privileges")
 
     def test_readonly(self, r_type):
         if not self.allow_readonly and config.ui.read_only:

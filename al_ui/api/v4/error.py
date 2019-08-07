@@ -45,7 +45,7 @@ def get_error(error_key, **kwargs):
 
 
 @error_api.route("/list/", methods=["GET"])
-@api_login(require_admin=True)
+@api_login(require_type=['admin'])
 def list_errors(**_):
     """
     List all error in the system (per page)

@@ -1,0 +1,70 @@
+{% extends base_template %}
+{% block html_param %}ng-app="app"{% endblock %}
+{% block title_page %}AL - Signature sources{% endblock %}
+{% block js_import %}
+	<script src="/static/js/source_management.js"></script>
+{% endblock %}
+{% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};start();"{% endblock %}
+{% block content %}
+	{%raw%}
+	<section id="appContent" class="container">
+		<div class="header_title text-right">
+			<h1>Signature Sources</h1>
+			<div><h4 ng-hide="source_map == null" class="text-muted">:: {{obj_len(source_map)}} service<span ng-show="obj_len(source_map) > 1">s</span> generate signatures ::</h4></div>
+		</div>
+
+		<section ng-repeat="(service, sources) in source_map" class="bigpad">
+			<button title="Add signature source to {{service}}" class="pull-right btn btn-success btn-sm" ng-click="addSource(service);"><span class="glyphicon glyphicon-plus"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Add source</span></button>
+			<div class="menuheader" data-toggle="collapse" data-target="#{{service}}_sources">
+				<span class="text-big">{{service}}</span>
+			</div>
+
+			<div id="{{service}}_sources" class="collapse in">
+				<div ng-show="sources.length == 0 && started">
+					<h4 class="text-muted">
+						This service does not have any signature sources right now.
+					</h4>
+				</div>
+				<div ng-repeat="source in sources">
+					<div style="padding: 2px 5px" ng-click="editSource(service, source)" class="clickable compact_item">
+						<span class="text-large">{{source.name}}</span><span class="text-muted"> :: {{source.uri}}</span><span class="text-muted" ng-show="source.pattern"> - pattern:/{{source.pattern}}/</span>
+					</div>
+				</div>
+			</div>
+
+		</section>
+
+		<div ng-show="source_map != null && obj_len(source_map) == 0 && started">
+			<div class="jumbotron text-center">
+				<h2 class="text-muted">
+					There are no service in the system that support signature creation.
+				</h2>
+			</div>
+		</div>
+		
+		<!-- HIDE FOLLOWING: Should go inside a modal form -->
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-resize">
+				<div class="modal-content">
+					<div class="modal-header">
+						<div class="pull-right text-large" ng-show="editmode">
+							<button style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();"><span class="glyphicon glyphicon-remove"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Remove</span></button>
+						</div>
+						<h4 class="modal_title" id="myModalLabel">{{current_service}} :: Signature Source<span ng-show="editmode"> :: [{{current_source.name}}]</span></h4>
+					</div>
+					<div class="modal-body">
+						<div signature-source></div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						<button type="button" class="btn btn-primary" ng-click="save();">Save changes</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- END HIDE -->
+	</section>
+	{%endraw%}
+{% endblock %}				
+{% block loading_jumbo %}ng-hide="source_map != null"{% endblock %}

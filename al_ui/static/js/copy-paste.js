@@ -11,7 +11,7 @@ function alter_copy() {
     let selection = window.getSelection();
     let sel_text = selection.toString().replace(/\u200b/gi, '');
 
-    let newDiv = document.createElement('div');
+    let newDiv = document.createElement('pre');
     newDiv.style.position = 'absolute';
     newDiv.style.left = '-99999px';
 

@@ -1,0 +1,65 @@
+<section class="row pad">
+	<div class="col-md-12">
+		<div class="form-group">
+			<label class="control-label">URI</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_source.uri">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="form-group">
+			<label class="control-label">Resulting Filename</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
+			<input type="text" class="form-control input-sm input" ng-model="current_source.name" ng-disabled="editmode">
+		</div>
+		<div class="form-group">
+			<label class="control-label">Pattern</label>
+			<input type="text" class="form-control input-sm" ng-model="current_source.pattern">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="form-group">
+			<label class="control-label">Username</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_source.username">
+		</div>
+			<div class="form-group">
+			<label class="control-label">Password</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_source.password">
+		</div>
+	</div>
+	<div class="col-md-12">
+		<div class="form-group">
+			<label class="control-label">Public key</label>
+			<textarea class="form-control input-sm" ng-model="current_source.public_key" rows="6"></textarea>
+		</div>
+    </div>
+</section>
+
+<section class="row">
+	<div class="col-md-12" class="form-group">
+		<label class="control-label">Headers</label>
+	</div>
+	<div class="col-md-12">
+		<div ng-repeat="(key, val) in current_source.headers | orderBy:key" class="row" style="padding: 2px 0px">
+			<div class="col-xs-10 col-sm-3">
+				<label class="control-lablel">{{key}}:</label>
+			</div>
+			<div class="col-xs-10 col-sm-8">
+				<input type="text" class="form-control input-sm" ng-model="val"/>
+			</div>
+			<div class="col-xs-2 col-sm-1" style="padding-left: 0px">
+				<span class="btn btn-sm btn-danger" ng-click="remove_header(key);"><span class="glyphicon glyphicon-minus"></span></span>
+			</div>
+		</div>
+		<div class="row" style="margin-top: 10px;">
+			<div id="new_conf_temp_key" class="col-xs-10 col-sm-3">
+				<input id="conf_temp_key" type="text" class="form-control input-sm" ng-model="conf_temp.key" placeholder="Header name"/>
+			</div>
+			<div id="new_conf_temp_val" class="col-xs-10 col-sm-8">
+				<input id="conf_temp_val" type="text" class="form-control input-sm" ng-model="conf_temp.val" placeholder="Header value"/>
+			</div>
+			<div class="col-xs-2 col-sm-1" style="padding-left: 0px">
+				<span class="btn btn-sm btn-success" ng-click="add_header();"><span class="glyphicon glyphicon-plus"></span></span>
+			</div>
+		</div>
+	</div>
+	<div id="conf_temp_error" class="col-md-12 text-danger">{{conf_temp_error}}</div>
+</section>

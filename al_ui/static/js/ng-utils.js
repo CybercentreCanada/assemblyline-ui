@@ -507,10 +507,9 @@ utils.directive('signatureDetail', function () {
     };
 });
 
-utils.directive('tcSignatureDetail', function () {
+utils.directive('signatureSource', function () {
     return {
-        templateUrl: '/static/ng-template/tc_signature_detail.html',
-        replace: true
+        templateUrl: '/static/ng-template/signature_source.html'
     };
 });
 
@@ -1118,128 +1117,6 @@ utils.filter('verdict', function () {
     }
 });
 
-utils.filter('signature', function () {
-    return function (s) {
-        if (s === undefined || s == null) return "";
-        let malware_types = ['exploit', 'implant', 'info', 'technique', 'tool'];
-        let malware_important = ['classification', 'description', 'organisation', 'poc', 'rule_id', 'rule_version', 'yara_version'];
-        let keys = [];
-
-        let type_index = malware_types.indexOf(s.meta.rule_group);
-        if (type_index > -1) {
-            malware_types.splice(type_index, 1);
-        }
-
-        if (s.classification !== undefined){
-            keys.push('classification')
-        }
-
-        for (let key_meta_extra in s.meta_extra) {
-            keys.push(key_meta_extra);
-        }
-
-        for (let key_meta in s.meta) {
-            if (key_meta !== "rule_group" && key_meta !== s.meta.rule_group) {
-                keys.push(key_meta);
-            }
-        }
-        keys.sort();
-
-        let o = String();
-
-        if (s.warning !== undefined && s.warning != null) {
-            o += "// WARNING: " + s.warning + "\n";
-        }
-
-        for (let m_id in s.modules) {
-            let module = s.modules[m_id];
-            o += "import \"" + module + "\"\n";
-        }
-
-        //Do header
-        o += "\n" + s.type + " " + s.name;
-        if (s.tags !== undefined && s.tags != null && s.tags.length !== 0) {
-            o += ": " + s.tags.join(" ");
-        }
-        o += " {\n";
-
-        //Do Comments
-        for (let i_comments in s.comments) {
-            o += "    //" + s.comments[i_comments] + "\n";
-        }
-
-        //Do meta (malware types)
-        o += "    meta:\n";
-        o += "        rule_group = \"" + s.meta.rule_group + "\"\n";
-        o += "        " + s.meta.rule_group + " = \"" + s.meta[s.meta.rule_group] + "\"\n";
-        for (let i_types in malware_types) {
-            let key_types = malware_types[i_types];
-            let idx_types = keys.indexOf(key_types);
-            if (idx_types !== -1 && s.meta[key_types] !== null) {
-                o += "        " + key_types + " = \"" + s.meta[key_types] + "\"\n";
-                keys.splice(idx_types, 1);
-            }
-        }
-        o += "        \n";
-
-        //Do meta required fields
-        let doSpace = false;
-        for (let i_imp in malware_important) {
-            let key_imp = malware_important[i_imp];
-            let idx = keys.indexOf(key_imp);
-            if (idx !== -1) {
-                doSpace = true;
-                if (key_imp === 'classification'){
-                    o += "        " + key_imp + " = \"" + s.classification + "\"\n";
-                }
-                else if (key_imp in s.meta){
-                    o += "        " + key_imp + " = \"" + s.meta[key_imp] + "\"\n";
-                }
-                keys.splice(idx, 1);
-            }
-        }
-        if (doSpace) {
-            o += "        \n";
-        }
-
-        //Do meta rest
-        for (let i_meta in keys) {
-            let key = keys[i_meta];
-            let value = null;
-            if (key in s.meta){
-                value = s.meta[key];
-            }
-            else if (key in s.meta_extra){
-                value = s.meta_extra[key];
-            }
-            if (value !== null){
-                o += "        " + key + " = \"" + value + "\"\n";
-            }
-        }
-        o += "    \n";
-
-        //Do Strings
-        if (s.strings.length !== 0) {
-            o += "    strings:\n";
-            for (let i_strings in s.strings) {
-                o += "        " + s.strings[i_strings] + "\n";
-            }
-            o += "    \n";
-        }
-
-        //Do Condition
-        if (s.condition.length !== 0) {
-            o += "    condition:\n";
-            for (let i in s.condition) {
-                o += "        " + s.condition[i] + "\n";
-            }
-            o += "    \n";
-        }
-        o += "}\n\n";
-        return o
-    }
-});
-
 utils.filter('sortList', function () {
     return function (input) {
         if (input != null) {
@@ -1301,33 +1178,6 @@ utils.filter('stripNull', function () {
         }
 
         return val;
-    }
-});
-
-utils.filter('tc_signature', function () {
-    return function (s) {
-        if (s === undefined || s == null) return "";
-        let o = "";
-
-        o += "** " + s.name + " **\n\n";
-        if (s.comment !== null && s.comment !== undefined && s.comment !== ""){
-            o += s.comment + "\n\n";
-        }
-        if (s.threat_actor !== undefined && s.threat_actor !== null && s.threat_actor !== ""){
-            o += "Associated threat actor: " + s.threat_actor + "\n";
-        }
-        if (s.implant_family !== undefined && s.implant_family !== null && s.implant_family !== ""){
-            o += "Associated implant: " + s.implant_family + "\n";
-        }
-        if (s.callback !== undefined && s.callback !== null && s.callback !== ""){
-            o += "Callback function: " + s.callback + "\n";
-        }
-        o += "Score: " + s.al_score + "\n\nPatterns:\n";
-        for (let i in s.values){
-            let regex = s.values[i];
-            o += regex + "\n"
-        }
-        return o;
     }
 });
 

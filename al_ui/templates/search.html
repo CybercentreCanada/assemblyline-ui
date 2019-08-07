@@ -244,25 +244,24 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th>ID</th><th>Name</th><th>Group</th><th ng-if="user.c12n_enforcing">Classification</th><th>Contact</th><th>Yara</th><th>Status</th>
+									<th nowrap>Signature ID</th><th>Name</th><th>Source</th><th>Type</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="s in signature_list.items">
-									<td nowrap><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.rule_id}} r.{{s.meta.rule_version}}</a></td>
-									<td width="100%"><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.name | breakableStr}}</a></td>
-									<td><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.rule_group}}</a></td>
-									<td ng-if="user.c12n_enforcing"><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}"><label class="label classification {{s.meta.classification | class_label_color}}">{{s.meta.classification | class_sm}}</label></a></td>
-									<td><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.poc}}</a></td>
-									<td><a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">{{s.meta.yara_version}}</a></td>
+									<td nowrap><a href="/signature_detail.html?sid={{s.id}}">{{s.id}}</a></td>
+									<td width="100%"><a href="/signature_detail.html?sid={{s.id}}">{{s.name | breakableStr}}</a></td>
+									<td><a href="/signature_detail.html?sid={{s.id}}">{{s.source}}</a></td>
+									<td><a href="/signature_detail.html?sid={{s.id}}">{{s.type}}</a></td>
+									<td ng-if="user.c12n_enforcing"><a href="/signature_detail.html?sid={{s.id}}"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_sm}}</label></a></td>
 									<td>
-										<a href="/signature_detail.html?sid={{s.meta.rule_id}}&rev={{s.meta.rule_version}}">
-											<span ng-show="s.meta.al_status=='DEPLOYED'" class="label classification label-success">{{s.meta.al_status}}</span>
-											<span ng-show="s.meta.al_status=='NOISY'" class="label classification label-info">{{s.meta.al_status}}</span>
-											<span ng-show="s.meta.al_status=='DISABLED'" class="label classification label-danger">{{s.meta.al_status}}</span>
-											<span ng-show="s.meta.al_status=='TESTING'" class="label classification label-warning">{{s.meta.al_status}}</span>
-											<span ng-show="s.meta.al_status=='STAGING'" class="label classification label-primary">{{s.meta.al_status}}</span>
-                                            <span ng-show="s.meta.al_status=='INVALID'" class="label classification label-default">{{s.meta.al_status}}</span>
+										<a href="/signature_detail.html?sid={{s.id}}">
+											<span ng-show="s.status=='DEPLOYED'" class="label classification label-success">{{s.status}}</span>
+											<span ng-show="s.status=='NOISY'" class="label classification label-info">{{s.status}}</span>
+											<span ng-show="s.status=='DISABLED'" class="label classification label-danger">{{s.status}}</span>
+											<span ng-show="s.status=='TESTING'" class="label classification label-warning">{{s.status}}</span>
+											<span ng-show="s.status=='STAGING'" class="label classification label-primary">{{s.status}}</span>
+                                            <span ng-show="s.status=='INVALID'" class="label classification label-default">{{s.status}}</span>
 										</a>
 									</td>
 								</tr>

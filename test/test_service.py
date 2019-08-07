@@ -42,17 +42,8 @@ def test_get_service(datastore, login_session):
 
     service = random.choice(list(SERVICES.keys()))
     resp = get_api_data(session, f"{HOST}/api/v4/service/{service}/")
-    service_data = Service({
-        "name": service,
-        "enabled": True,
-        "category": SERVICES[service][0],
-        "stage": SERVICES[service][1],
-        "version": "4.0.0",
-        "docker_config": {
-            "image": f"cccs/alsvc_{service.lower()}:latest",
-        },
-    })
-    assert resp == service_data.as_primitives()
+    service_data = datastore.get_service_with_delta(service, as_obj=False)
+    assert resp == service_data
 
 
 # noinspection PyUnusedLocal

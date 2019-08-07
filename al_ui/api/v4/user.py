@@ -21,7 +21,7 @@ ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_admin=True)
+@api_login(require_type=['admin'])
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -38,7 +38,7 @@ def add_user_account(username, **_):
      "is_active": true,          # Is the user active?
      "classification": "",       # Max classification for user
      "uname": "usertest",        # Username
-     "is_admin": false,          # Is the user admin?
+     "type": ['user'],           # List of all types the user is member of
      "avatar": null,             # Avatar of the user
      "groups": ["TEST"]          # Groups the user is member of
     } 
@@ -102,12 +102,12 @@ def get_user_account(username, **kwargs):
      "is_active": true,          # Is the user active?
      "classification": "",            # Max classification for user
      "uname": "usertest",        # Username
-     "is_admin": false,          # Is the user admin?
+     "type": ['user'],           # List of all types the user is member of
      "avatar": null,             # Avatar of the user
      "groups": ["TEST"]          # Groups the user is member of
     } 
     """
-    if username != kwargs['user']['uname'] and not kwargs['user']['is_admin']:
+    if username != kwargs['user']['uname'] and 'admin' not in  kwargs['user']['type']:
         return make_api_response({}, "You are not allow to view other users then yourself.", 403)
 
     user = STORAGE.user.get(username, as_obj=False)
@@ -128,7 +128,7 @@ def get_user_account(username, **kwargs):
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_admin=True)
+@api_login(require_type=['admin'])
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -183,7 +183,7 @@ def set_user_account(username, **kwargs):
      "is_active": true,          # Is the user active?
      "classification": "",            # Max classification for user
      "uname": "usertest",        # Username
-     "is_admin": false,          # Is the user admin?
+     "type": ['user'],           # List of all types the user is member of
      "avatar": null,             # Avatar of the user
      "groups": ["TEST"]          # Groups the user is member of
     } 
@@ -475,7 +475,7 @@ def set_user_favorites(username, **_):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_admin=True, audit=False)
+@api_login(require_type=['admin'], audit=False)
 def list_users(**_):
     """
     List all users of the system.
@@ -499,7 +499,7 @@ def list_users(**_):
        "is_active": true,          # Is the user active?
        "classification": "",            # Max classification for user
        "uname": "usertest",        # Username
-       "is_admin": false,          # Is the user admin?
+       "type": ['user'],           # List of all types the user is member of
        "avatar": null,             # Avatar (Always null here)
        "groups": ["TEST"]          # Groups the user is member of
        }, ...],

@@ -177,17 +177,6 @@ def heuristics_stats(*_, **kwargs):
     return custom_render("heuristics_stats.html", **kwargs)
 
 
-# @views.route("/kibana-dash.html")
-# @protected_renderer(audit=False, require_admin=True, allow_readonly=False)
-# def kibana_dashboard(**kwargs):
-#     dash = angular_safe(request.args.get('dash', None))
-#     if not dash:
-#         abort(404)
-#
-#     return custom_render("kibana-dash.html", dash=dash,
-#                          padding={True: 70, False: 50}[kwargs['user']['c12n_enforcing']], **kwargs)
-#
-#
 @views.route("/login.html")
 def login():
     registration_key = request.args.get('registration_key', None)
@@ -297,23 +286,21 @@ def settings(**kwargs):
 def signature_detail(**kwargs):
     user = kwargs['user']
     sid = angular_safe(request.args.get("sid", None))
-    rev = angular_safe(request.args.get("rev", None))
 
-    if not sid or not rev:
+    if not sid:
         abort(404)
 
-    data = STORAGE.signature.get("%sr.%s" % (sid, rev), as_obj=False)
+    data = STORAGE.signature.get(sid, as_obj=False)
 
     if not data:
         abort(404)
 
     if not Classification.is_accessible(user['classification'],
-                                        data['meta'].get('classification', Classification.UNRESTRICTED)):
+                                        data.get('classification', Classification.UNRESTRICTED)):
         abort(403)
 
     return custom_render("signature_detail.html",
                          sid=sid,
-                         rev=rev,
                          organisation=ORGANISATION,
                          **kwargs)
 
@@ -322,6 +309,12 @@ def signature_detail(**kwargs):
 @protected_renderer(audit=False, allow_readonly=False)
 def signatures(**kwargs):
     return custom_render("signatures.html", org=ORGANISATION, **kwargs)
+
+
+@views.route("/source_management.html")
+@protected_renderer(audit=False, allow_readonly=False, require_type=['admin', 'signature_manager'])
+def signature_management(**kwargs):
+    return custom_render("source_management.html", **kwargs)
 
 
 @views.route("/signature_statistics.html")
@@ -364,12 +357,6 @@ def submit(**kwargs):
     return custom_render("submit.html", show_tos=show_tos, show_url=show_url, **kwargs)
 
 
-@views.route("/tc_signatures.html")
-@protected_renderer(audit=False, allow_readonly=False)
-def tagcheck_sigs(**kwargs):
-    return custom_render("tc_signatures.html", org=ORGANISATION, **kwargs)
-
-
 @views.route("/terms.html")
 @protected_renderer(audit=False)
 def tos(**kwargs):
@@ -386,8 +373,7 @@ def tos(**kwargs):
 
 @views.route("/unsupported.html")
 def unsupported():
-    return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"],
-                           is_ie=("MSIE" in request.environ["HTTP_USER_AGENT"]))
+    return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"])
 
 
 @views.route("/yara_standard.html")
@@ -405,7 +391,7 @@ def workflows(**kwargs):
 ############################################
 # Admin Protected pages
 @views.route("/admin/documentation.html")
-@protected_renderer(require_admin=True, audit=False)
+@protected_renderer(require_type=['admin'], audit=False)
 def admin_build_doc(**kwargs):
     def _list_files():
         fmap = OrderedDict()
@@ -452,43 +438,31 @@ def admin_build_doc(**kwargs):
 
 
 @views.route("/admin/errors.html")
-@protected_renderer(require_admin=True, audit=False)
+@protected_renderer(require_type=['admin'], audit=False)
 def admin_errors(**kwargs):
     query = angular_safe(request.args.get('filter', ""))
     return custom_render("admin_errors.html", filter=query, **kwargs)
 
 
-# @views.route("/admin/hosts.html")
-# @protected_renderer(require_admin=True, audit=False, allow_readonly=False)
-# def admin_hosts(**kwargs):
-#     return custom_render("admin_hosts.html", **kwargs)
-#
-#
-# @views.route("/admin/seed.html")
-# @protected_renderer(require_admin=True, audit=False)
-# def admin_seed(**kwargs):
-#     return custom_render("admin_seed.html", **kwargs)
-#
-#
 @views.route("/admin/services.html")
-@protected_renderer(require_admin=True, audit=False, allow_readonly=False)
+@protected_renderer(require_type=['admin'], audit=False, allow_readonly=False)
 def admin_services(**kwargs):
     return custom_render("admin_service_configs.html", **kwargs)
 
 
 @views.route("/admin/site_map.html")
-@protected_renderer(require_admin=True, audit=False)
+@protected_renderer(require_type=['admin'], audit=False)
 def admin_site_map(**kwargs):
     return custom_render("admin_site_map.html", **kwargs)
 
 
 @views.route("/admin/users.html")
-@protected_renderer(require_admin=True, audit=False)
+@protected_renderer(require_type=['admin'], audit=False)
 def admin_user(**kwargs):
     return custom_render("admin_users.html", **kwargs)
 
 
 @views.route("/admin/virtual_machines.html")
-@protected_renderer(require_admin=True, audit=False, allow_readonly=False)
+@protected_renderer(require_type=['admin'], audit=False, allow_readonly=False)
 def admin_vm(**kwargs):
     return custom_render("admin_virtual_machines.html", **kwargs)

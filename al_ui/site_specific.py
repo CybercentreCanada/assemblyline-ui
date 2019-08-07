@@ -150,23 +150,20 @@ def create_menu(user, path):
 
     if not config.ui.read_only:
         signature_submenu = [
-            {"class": "dropdown-header",
-             "active": False,
-             "link": None,
-             "title": "Static Analysis"},
-            {"class": "",
-             "active": path.startswith("/tc_signatures.html"),
-             "link": "/tc_signatures.html",
-             "title": "Tagcheck signatures",
-             "has_submenu": False},
             {"class": "",
              "active": path.startswith("/signatures.html"),
              "link": "/signatures.html",
-             "title": "Yara signatures",
+             "title": "Signature managment",
+             "has_submenu": False},
+            {"class": "",
+             "active": path.startswith("/source_management.html"),
+             "link": "/source_management.html",
+             "title": "Source management",
              "has_submenu": False}
         ]
+
         menu.extend([{"class": "",
-                      "active": path.startswith("/signatures.html") or path.startswith("/tc_signatures.html"),
+                      "active": path.startswith("/signatures.html") or path.startswith("/source_management.html"),
                       "link": "#",
                       "title": "Signatures",
                       "has_submenu": True,

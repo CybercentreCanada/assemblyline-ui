@@ -58,18 +58,12 @@
 		<div class="container-fluid">
 			<div class="row-fluid">
 				<div class="centering text-center">
-					{%if is_ie %}
-						<img src="/static/images/ie.jpg"><br/><br/>
-					{%endif%}
 					<div class="alert alert-dismissable alert-danger">
 						<div class="pad">
-							<strong class="text-big">WARNING !!</strong><p>Your browser is not supported by our system. Upgrade to a proper browser (Chrome or Firefox are what you should be using).</p>
+							<strong class="text-big">WARNING !!</strong><p>Your browser is not supported by our system. Supported browsers are: Chrome, Firefox, Safari and Edge.</p>
 							<span class="text-tiny">{{user_agent}}</span>
 						</div>
 					</div>
-					{%if is_ie %}
-						<p class="pad text-big">OMG you are using internet explorer, just go home you don't deserve to be here...</p>
-					{% endif %}
 				</div>
 			</div>
 		</div>

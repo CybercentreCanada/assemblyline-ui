@@ -39,11 +39,11 @@ def get_api_documentation(**kwargs):
       'id': "api_doc",                  # Unique ID for the API
       'function': "apiv4.api_doc",      # Function called in the code
       'protected': False,               # Does the API require login?
-      'require_admin': False,           # Is the API only for Admins?
+      'require_type': ['user'],         # Type of users allowed to use API
       'complete' : True},               # Is the API stable?
       ...]
     """
-    admin_user = kwargs['user']['is_admin']
+    user_types = kwargs['user']['type']
 
     api_blueprints = {}
     api_list = []
@@ -56,48 +56,50 @@ def get_api_documentation(**kwargs):
                     methods.append(item)
 
             func = current_app.view_functions[rule.endpoint]
-            require_admin = func.__dict__.get('require_admin', False)
+            require_type = func.__dict__.get('require_type', ['user'])
             allow_readonly = func.__dict__.get('allow_readonly', True)
 
             if config.ui.read_only and not allow_readonly:
                 continue
 
-            if not admin_user and require_admin:
-                continue
+            for u_type in user_types:
+                if u_type in require_type:
+                    doc_string = func.__doc__
+                    func_title = " ".join([x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
+                    blueprint = rule.endpoint[rule.endpoint.index(".") + 1:rule.endpoint.rindex(".")]
+                    if not blueprint:
+                        blueprint = "documentation"
 
-            doc_string = func.__doc__
-            func_title = " ".join([x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
-            blueprint = rule.endpoint[rule.endpoint.index(".") + 1:rule.endpoint.rindex(".")]
-            if not blueprint:
-                blueprint = "documentation"
+                    if blueprint not in api_blueprints:
+                        try:
+                            doc = current_app.blueprints[rule.endpoint[:rule.endpoint.rindex(".")]]._doc
+                        except Exception:
+                            doc = ""
 
-            if blueprint not in api_blueprints:
-                try:
-                    doc = current_app.blueprints[rule.endpoint[:rule.endpoint.rindex(".")]]._doc
-                except Exception:
-                    doc = ""
+                        api_blueprints[blueprint] = doc
 
-                api_blueprints[blueprint] = doc
+                    try:
+                        description = "\n".join([x[4:] for x in doc_string.splitlines()])
+                    except Exception:
+                        description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
 
-            try:
-                description = "\n".join([x[4:] for x in doc_string.splitlines()])
-            except Exception:
-                description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
+                    if rule.endpoint == "apiv3.api_doc":
+                        api_id = "documentation_api_doc"
+                    else:
+                        api_id = rule.endpoint.replace("apiv3.", "").replace(".", "_")
 
-            if rule.endpoint == "apiv3.api_doc":
-                api_id = "documentation_api_doc"
-            else:
-                api_id = rule.endpoint.replace("apiv3.", "").replace(".", "_")
+                    api_list.append({
+                        "protected": func.__dict__.get('protected', False),
+                        "require_type": require_type,
+                        "name": func_title,
+                        "id": api_id,
+                        "function": rule.endpoint,
+                        "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
+                        "methods": methods, "description": description,
+                        "complete": "[INCOMPLETE]" not in description,
+                        "required_priv": func.__dict__.get('required_priv', "")
+                    })
 
-            api_list.append({
-                "protected": func.__dict__.get('protected', False),
-                "require_admin": require_admin,
-                "name": func_title,
-                "id": api_id,
-                "function": rule.endpoint,
-                "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
-                "methods": methods, "description": description,
-                "complete": "[INCOMPLETE]" not in description,
-                "required_priv": func.__dict__.get('required_priv', "")
-            })
+                    break
+
     return make_api_response({"apis": api_list, "blueprints": api_blueprints})

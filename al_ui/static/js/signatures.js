@@ -11,27 +11,15 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
     $scope.loading = false;
     $scope.loading_extra = false;
     $scope.current_signature = null;
-    $scope.sig_temp_key = null;
-    $scope.sig_temp_val = null;
+    $scope.current_signature_id = null;
+    $scope.organisation = "assemblyline";
     $scope.started = false;
     $scope.editmode = true;
-    $scope.organisation = "ORG";
     $scope.state_changed = false;
     $scope.signature_changed = false;
     $scope.current_signature_state = "TESTING";
     $scope.filtered = false;
     $scope.filter = "id:*";
-    $scope.exclusion = [
-        'rule_group',
-        'classification',
-        'description',
-        'rule_id',
-        'organisation',
-        'poc',
-        'rule_version',
-        'yara_version',
-        'al_status'
-    ];
     $scope.non_editable = [
         'al_imported_by',
         'al_state_change_date',
@@ -99,12 +87,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'DELETE',
-            url: "/api/v4/signature/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/"
+            url: "/api/v4/signature/" + $scope.current_signature_id + "/"
         })
             .success(function () {
                 $scope.loading_extra = false;
                 $("#myModal").modal('hide');
-                $scope.success = "Signature '" + $scope.current_signature.meta.rule_id + " r." + $scope.current_signature.meta.rule_version + "' successfully deleted!";
+                $scope.success = "Signature '" + $scope.current_signature_id + "' successfully deleted!";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -126,93 +114,12 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             });
     };
 
-    $scope.add_signature = function () {
-        $scope.editmode = false;
-        $scope.current_signature = {
-            classification: classification_definition.UNRESTRICTED,
-            comments: [],
-            condition: [],
-            meta: {
-                al_status: "TESTING",
-                description: "",
-                organisation: $scope.organisation,
-                poc: $scope.user.uname + "@" + $scope.organisation.toLowerCase(),
-                rule_group: "info",
-                rule_id: $scope.organisation + "_XXXXXX",
-                rule_version: 1,
-                yara_version: "3.8"
-            },
-            meta_extra: {},
-            name: "",
-            strings: [],
-            tags: [],
-            type: "rule"
-        };
-        $scope.error = '';
-        $scope.success = '';
-        $("#myModal").modal('show');
-    };
-
-    $scope.remove_meta = function (key, is_extra) {
-        if (is_extra === undefined){
-            is_extra = false;
-        }
-        if (is_extra){
-            delete $scope.current_signature.meta_extra[key];
-        }
-        else{
-            delete $scope.current_signature.meta[key];
-        }
-    };
-
-    $scope.add_meta = function () {
-        if ($scope.sig_temp_key in $scope.current_signature.meta_extra ||
-            $scope.sig_temp_key in $scope.current_signature.meta ||
-            $scope.sig_temp_key === "" || $scope.sig_temp_key == null) {
-            return;
-        }
-        $scope.current_signature.meta_extra[$scope.sig_temp_key] = $scope.sig_temp_val;
-
-        $scope.sig_temp_key = "";
-        $scope.sig_temp_val = "";
-    };
-
-    $scope.extraKeys = function () {
-        let out = [];
-
-        if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            for (let key in $scope.current_signature.meta_extra) {
-                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
-                    out.push(key);
-                }
-            }
-        }
-        out.sort();
-
-        return out;
-    };
-
-    $scope.otherKeys = function () {
-        let out = [];
-
-        if ($scope.current_signature !== undefined && $scope.current_signature != null) {
-            for (let key in $scope.current_signature.meta) {
-                if ($scope.exclusion.indexOf(key) === -1 && key !== $scope.current_signature.meta.rule_group) {
-                    out.push(key);
-                }
-            }
-        }
-        out.sort();
-
-        return out;
-    };
-
     let myModal = $("#myModal");
     myModal.on('shown.bs.modal', function () {
         $scope.$apply(function () {
             $scope.state_changed = false;
             $scope.signature_changed = false;
-            $scope.current_signature_state = $scope.current_signature.meta.al_status;
+            $scope.current_signature_state = $scope.current_signature.status;
         });
     });
 
@@ -223,23 +130,19 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         if ($scope.editmode) {
             $("#preview").addClass('active');
             $("#preview_tab").addClass('active');
-            $("#edit").removeClass('active');
-            $("#edit_tab").removeClass('active');
             $("#state").removeClass('active');
             $("#state_tab").removeClass('active');
         }
         else {
             $("#preview").removeClass('active');
             $("#preview_tab").removeClass('active');
-            $("#edit").addClass('active');
-            $("#edit_tab").addClass('active');
             $("#state").removeClass('active');
             $("#state_tab").removeClass('active');
         }
 
     });
 
-    $scope.editSignature = function (sid, rev) {
+    $scope.editSignature = function (sid) {
         $scope.loading_extra = true;
         $scope.editmode = true;
         $scope.error = '';
@@ -247,10 +150,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
         $http({
             method: 'GET',
-            url: "/api/v4/signature/" + sid + "/" + rev + "/"
+            url: "/api/v4/signature/" + sid + "/"
         })
             .success(function (data) {
                 $scope.loading_extra = false;
+                $scope.current_signature_id = sid;
                 $scope.current_signature = data.api_response;
                 $("#myModal").modal('show');
             })
@@ -270,104 +174,14 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
     };
 
-    $scope.beautify_error_message = function (data) {
-        if (data.field === undefined) {
-            return data;
-        }
-
-        let out = String();
-
-        if (data.field == null) {
-            out += "Rule has a " + data.message.type + " on line " + data.message.line + ": [ " + data.message.error + " ]\n\n";
-            out += data.message.rule_text;
-        }
-        else {
-            out += "Field ";
-            out += data.field;
-            out += " has an error:\n\n";
-            out += data.message;
-        }
-
-        return out;
-    };
-
-    //Save params
-    $scope.save = function () {
-        $scope.error = '';
-        $scope.success = '';
-
-        if (!$scope.editmode) {
-            $http({
-                method: 'PUT',
-                url: "/api/v4/signature/add/",
-                data: $scope.current_signature
-            })
-                .success(function (data) {
-                    $("#myModal").modal('hide');
-                    $scope.success = "Signature " + data.api_response.sid + " r." + data.api_response.rev + " successfully added!";
-                    $timeout(function () {
-                        $scope.success = "";
-                        $scope.load_data();
-                    }, 2000);
-
-                })
-                .error(function (data, status, headers, config) {
-                    if (data === "") {
-                        return;
-                    }
-
-                    if (data.api_error_message) {
-                        $scope.error = $scope.beautify_error_message(data.api_error_message);
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                });
-        }
-        else {
-            $http({
-                method: 'POST',
-                url: "/api/v4/signature/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/",
-                data: $scope.current_signature
-            })
-                .success(function (data) {
-                    $("#myModal").modal('hide');
-                    if (data.api_response.rev !== $scope.current_signature.meta.rule_version) {
-                        $scope.success = "Signature " + data.api_response.sid + " succesfully saved and bumped to revision " + data.api_response.rev + ".";
-                    }
-                    else {
-                        $scope.success = "Signature " + data.api_response.sid + " succesfully saved.";
-                    }
-
-                    $timeout(function () {
-                        $scope.success = "";
-                        $scope.load_data();
-                    }, 2000);
-                })
-                .error(function (data, status, headers, config) {
-                    if (data === "") {
-                        return;
-                    }
-
-                    if (data.api_error_message) {
-                        $scope.error = $scope.beautify_error_message(data.api_error_message);
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                });
-        }
-
-    };
-
     $scope.change_state = function (new_status) {
         $http({
             method: 'GET',
-            url: "/api/v4/signature/change_status/" + $scope.current_signature.meta.rule_id + "/" + $scope.current_signature.meta.rule_version + "/" + new_status + "/"
+            url: "/api/v4/signature/change_status/" + $scope.current_signature_id + "/" + new_status + "/"
         })
             .success(function () {
                 $("#myModal").modal('hide');
-                $scope.success = "Status of signature " + $scope.current_signature.meta.rule_id + " r." + $scope.current_signature.meta.rule_version + " successfully changed to " + new_status + ".";
+                $scope.success = "Status of signature " + $scope.current_signature_id + " successfully changed to " + new_status + ".";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
@@ -437,6 +251,36 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
                 $scope.started = true;
 
             });
+    };
+
+
+    $scope.insertTab = function (e){
+        let kC = e.keyCode ? e.keyCode : e.charCode ? e.charCode : e.which;
+        let o = e.target;
+        if (kC === 9 && !e.shiftKey && !e.ctrlKey && !e.altKey)
+        {
+            let oS = o.scrollTop;
+            if (o.setSelectionRange)
+            {
+                let sS = o.selectionStart;
+                let sE = o.selectionEnd;
+                o.value = o.value.substring(0, sS) + "    " + o.value.substr(sE);
+                o.setSelectionRange(sS + 4, sS + 4);
+                o.focus();
+            }
+            else if (o.createTextRange)
+            {
+                document.selection.createRange().text = "    ";
+                e.returnValue = false;
+            }
+            o.scrollTop = oS;
+            if (e.preventDefault)
+            {
+                e.preventDefault();
+            }
+            return false;
+        }
+        return true;
     };
 }
 

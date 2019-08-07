@@ -14,10 +14,22 @@
 			<h1>User Account</h1>
 		</div>
 		<section ng-show="current_user" class="row">
-			<div class="col-md-3 pad">
-				<div ng-controller="imageCtrl" image-preview></div>
+			<div class="col-sm-4 col-md-3">
+				<div ng-controller="imageCtrl" image-preview style="width: 200px; margin: auto;"></div>
+
+                <div class="form-group bigpad" style="width: 200px; margin: auto;">
+					<div ng-hide="user.type.indexOf('admin')==-1" style="display: block" class="text-large">
+						<span style="cursor: pointer" class="label label-nolight classification pad" ng-click="toggle_active()" ng-class="{'label-highlight': current_user.is_active}">
+							<span ng-show="current_user.is_active">Account Enabled</span>
+							<span ng-hide="current_user.is_active">Account Disabled</span>
+						</span>
+					</div>
+					<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
+						<span id="user_active" class="label label-default classification" ng-class="{'label-primary': user.is_active}">Active</span>
+					</div>
+				</div>
 			</div>
-			<div class="col-md-5 pad">
+			<div class="col-sm-8 col-md-5">
 				<div class="form-group">
 					<label class="control-label">User ID</label>
 					<input type="text" class="form-control input-sm" ng-model="current_user.uname" disabled>
@@ -47,28 +59,35 @@
 					<input type="text" class="form-control input-sm" ng-model="current_user.dn" disabled>
 				</div>
 			</div>
-			<div class="col-md-4 pad">
-                <div ng-if="user.c12n_enforcing" class="pad">
-					<div ng-if="user.is_admin" class="label classification {{current_user.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_user.classification)">{{current_user.classification | class_sm}}</div>
-					<div ng-if="!user.is_admin" class="label classification {{current_user.classification | class_label_color}}">{{current_user.classification | class_sm}}</div>
+			<div class="col-sm-4 hidden-md"></div>
+			<div class="col-sm-8 col-md-4">
+				<div ng-if="user.c12n_enforcing" class="form-group">
+					<label class="control-label">Classification</label>
+					<div ng-if="user.type.indexOf('admin')!=-1" class="label classification {{current_user.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_user.classification)">{{current_user.classification | class_sm}}</div>
+					<div ng-if="user.type.indexOf('admin')==-1" class="label classification {{current_user.classification | class_label_color}}">{{current_user.classification}}</div>
 				</div>
-				<div class="checkbox">
-					<label>
-						<input type="checkbox" ng-model="current_user.is_admin" ng-disabled="!user.is_admin"> Administrative account
-					</label>
+				<div class="form-group">
+					<label class="control-label">User access types</label>
+					<div ng-hide="user.type.indexOf('admin')==-1" style="display: block" class="text-large">
+						<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('user')" ng-class="{'label-highlight': current_user.type.indexOf('user')!=-1}">Normal User</span>
+						<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('admin')" ng-class="{'label-highlight': current_user.type.indexOf('admin')!=-1}">Administrator</span>
+						<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_manager')" ng-class="{'label-highlight': current_user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
+						<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_importer')" ng-class="{'label-highlight': current_user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
+					</div>
+					<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
+						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('user')!=-1}">Normal User</span>
+						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('admin')!=-1}">Administrator</span>
+						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
+						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
+					</div>
 				</div>
-				<div class="checkbox">
-					<label>
-						<input type="checkbox" ng-model="current_user.is_active" ng-disabled="!user.is_admin"> Account active
-					</label>
-				</div>
-                <div class="form-group">
+				<div class="form-group">
                     <label class="control-label">API quota</label>
-                    <input type="number" class="form-control input-sm" ng-model="current_user.api_quota" ng-disabled="!user.is_admin" min="0" max="1024">
+                    <input type="number" class="form-control input-sm" ng-model="current_user.api_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
                 </div>
                 <div class="form-group">
                     <label class="control-label">Submission quota</label>
-                    <input type="number" class="form-control input-sm" ng-model="current_user.submission_quota" ng-disabled="!user.is_admin" min="0" max="1024">
+                    <input type="number" class="form-control input-sm" ng-model="current_user.submission_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
                 </div>
 				<div class="form-group" ng-if="!current_user['2fa_enabled']&&user.allow_2fa">
 					<span class="btn btn-success button" ng-click="enable_2fa();"><span class="glyphicon glyphicon-lock"></span> Enable 2-Factor Authentication</span>
@@ -83,7 +102,7 @@
 					<span class="btn btn-primary button" ng-click="manage_apikeys();"><span class="icon-authentication-keyalt">&nbsp;&nbsp;</span>Manage APIKeys</span>
                 </div>
 			</div>
-            <div class="col-md-12 text-center text-muted pad" ng-show="current_user.agrees_with_tos">
+            <div class="col-sm-12 text-center text-muted pad" ng-show="current_user.agrees_with_tos">
                 <span class="glyphicon glyphicon-check"></span>&nbsp;&nbsp;Agreed to Terms of Service on: {{ current_user.agrees_with_tos | date:"yyyy-MM-dd HH:mm:ss" }}
             </div>
 		</section>

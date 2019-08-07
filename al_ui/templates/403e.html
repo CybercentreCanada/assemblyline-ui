@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatbile" content="IE-edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>403 - Access Denied</title>
 		<link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
 		<style>
@@ -22,6 +25,16 @@
 				color: #575757;
 			}
 			
+			img {
+				width: 90%;
+			}
+
+			@media (min-width: 750px){
+				img {
+					width: auto;
+				}
+			}
+
 			.container-fluid {
 				height: 100%;
 				display: table;
@@ -48,7 +61,7 @@
 				<div class="centering text-center">
 					<img src="/static/images/cloud.png"/>
 					<br/>
-					<h1 style="padding-bottom: 20px">Waiting for system administrators approval ...</h1>
+					<h3 style="padding-bottom: 20px">Waiting for system administrators approval ...</h3>
 					<div><i>{{exception}}</i></div>
 					{% if email %}<div style="padding-top: 20px"> Contact system administrators at <a href="mailto:{{email}}">{{email}}</a> to get your account activated.</div>{% endif %}
 				</div>

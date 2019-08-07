@@ -37,7 +37,7 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
             avatar: null,
             groups: ["USERS"],
             is_active: true,
-            is_admin: false,
+            type: ['user'],
             classification: classification_definition.UNRESTRICTED,
             name: "",
             uname: "",
@@ -238,6 +238,19 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                     $scope.error = config.url + " (" + status + ")";
                 }
             });
+    };
+
+    $scope.toggle_active = function(){
+        $scope.current_user.is_active = !$scope.current_user.is_active;
+    };
+
+    $scope.toggle_type = function(type){
+        if ($scope.current_user.type.indexOf(type) !== -1){
+            $scope.current_user.type.splice($scope.current_user.type.indexOf(type), 1);
+        }
+        else {
+            $scope.current_user.type.push(type);
+        }
     };
 
     $scope.reset_error_ctrls = function () {

@@ -92,6 +92,40 @@ section.container{
 	z-index: 1;
 }
 
+@media (min-width: 768px){
+	.pager_count{
+		padding-right: 0px;
+	}
+
+	.pager_pages{
+        padding-left: 0px;
+    }
+}
+
+.centered_boxed_content{
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (min-width: 768px){
+	.centered_boxed_content{
+		max-width: 700px;
+	}
+}
+
+@media (min-width: 992px){
+	.centered_boxed_content{
+        max-width: 850px;
+	}
+}
+
+@media (min-width: 1450px){
+	.centered_boxed_content{
+        max-width: 1100px;
+	}
+}
+
+
 .input-sm-compact {
 	height: 30px;
 	padding: 5px;
@@ -178,6 +212,11 @@ section.container{
 
 .bigbutton {
 	padding: 16px 32px;
+}
+
+.signature_status {
+	padding: 5px 20px;
+	vertical-align: bottom;
 }
 
 .transfer-box {
@@ -454,6 +493,8 @@ section.container{
 	height: 200px;
 	display: table-cell;
 	vertical-align: middle;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
 .centering {
@@ -1475,4 +1516,17 @@ figure.front{
 
 .hint_row:hover{
     background-color: #F3F3F3;
+}
+
+.description {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.rule_preview {
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+    border-top-width: 0px;
+	white-space: pre-wrap;
+	word-break: break-word;
 }

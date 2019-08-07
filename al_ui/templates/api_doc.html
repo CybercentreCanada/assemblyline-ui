@@ -29,12 +29,20 @@
 						<div class="col-sm-9"><span class="label" ng-repeat="method in function.methods" ng-class="{'label-primary': method=='GET', 'label-success': method=='POST', 'label-warning': method=='PUT', 'label-danger': method=='DELETE'}">{{ method }}</span>&nbsp;{{function.path}}</div><div class="col-sm-3 text-right"><span class="sub_title">{{function.name}}</span></div>
 					</div>
 					<div id="{{function.id}}" class="collapse col-sm-12 data">
-						<div class="row" ng-show="function.ui_only||function.protected||function.require_admin">
+						<div class="row" ng-show="function.ui_only||function.protected">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Requirements:</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
 								<span class="label label-warning label-tag" ng-show="function.ui_only">Reserved for UI</span>
 								<span class="label label-info label-tag" ng-show="function.protected">Require Login</span>
-								<span class="label label-danger label-tag" ng-show="function.require_admin">Administrators Only</span>
+							</div>
+						</div>
+                        <div class="row" ng-show="function.require_type">
+							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Allowed user types:</strong></div>
+							<div class="col-xs-7 col-sm-9 col-md-10">
+								<span class="label label-default label-tag" ng-show="function.require_type.indexOf('user') != -1">User</span>
+								<span class="label label-info label-tag" ng-show="function.require_type.indexOf('signature_manager') != -1">Signature Manager</span>
+								<span class="label label-primary label-tag" ng-show="function.require_type.indexOf('signature_importer') != -1">Signature Importer</span>
+								<span class="label label-danger label-tag" ng-show="function.require_type.indexOf('admin') != -1">Administrator</span>
 							</div>
 						</div>
                         <div class="row" ng-show="function.required_priv">
