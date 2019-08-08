@@ -111,7 +111,7 @@ def main():
 
     # Debugging execute
     if config.DEBUG:
-        from werkzeug.contrib.profiler import ProfilerMiddleware
+        from werkzeug.middleware.profiler import ProfilerMiddleware
         app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
     app.jinja_env.cache = {}
 
