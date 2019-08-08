@@ -642,3 +642,51 @@ def list_submissions_for_user(username, **kwargs):
                                                            as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
+
+
+@submission_api.route("/verdict/<submission_id>/<verdict>/", methods=["PUT"])
+@api_login(audit=False, check_xsrf_token=False)
+def set_verdict(submission_id, verdict, **kwargs):
+    """
+    Set the verdict of a submission based on its ID.
+
+    Variables:
+    submission_id   ->   ID of the submission to give a verdict to
+    verdict         ->   verdict that the user think the submission is: malicious or non_malicious
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True}   # Has the verdict been set or not
+    """
+    reverse_verdict = {
+        'malicious': 'non_malicious',
+        'non_malicious': 'malicious'
+    }
+
+    user = kwargs['user']
+
+    if verdict not in ['malicious', 'non_malicious']:
+        return make_api_response({"success": False}, f"'{verdict}' is not a valid verdict.", 400)
+
+    document = STORAGE.submission.get(submission_id, as_obj=False)
+
+    if not document:
+        return make_api_response({"success": False}, f"There are no submission with id: {submission_id}", 404)
+
+    if not Classification.is_accessible(user['classification'], document['classification']):
+        return make_api_response({"success": False}, "You are not allowed to give verdict on submission with "
+                                                     f"ID: {submission_id}", 403)
+
+    if user['uname'] not in document['verdict'][verdict]:
+        document['verdict'][verdict].append(user['uname'])
+    if user['uname'] in document['verdict'][reverse_verdict[verdict]]:
+        document['verdict'][reverse_verdict[verdict]].remove(user['uname'])
+
+    # TODO: propagate verdict to alerts
+
+    return make_api_response({"success": STORAGE.submission.save(submission_id, document)})

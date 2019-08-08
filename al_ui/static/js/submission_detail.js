@@ -50,8 +50,6 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.num_files = 0;
         $scope.temp_keys = {error: [], result: []};
         $scope.outstanding = null;
-        $scope.verdict = null;
-        $scope.current_verdict= null;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -197,67 +195,48 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             return angular.toJson(obj, true);
         };
 
-        $scope.agree = function (collection, collection_id){
-            $scope.send_verdict(collection, collection_id, $filter('verdict')($scope.data.max_score));
+        $scope.send_malicious_verdict = function (collection_id){
+            $scope.send_verdict(collection_id, 'malicious');
         };
 
-        $scope.disagree = function (collection, collection_id){
-            swal({
-                    title: "Disagree with verdict?",
-                    text: "Upon further analysis, do you think the submission is malicious or not?",
-                    type: "warning",
-                    showCancelButton: true,
-                    confirmButtonColor: "#d9534f",
-                    confirmButtonText: "Malicious",
-                    cancelButtonText: "Non-Malicious",
-                    closeOnConfirm: false,
-                    closeOnCancel: false,
-                },
-                function () {
-                    // Malicious
-                    $scope.send_verdict(collection, collection_id, 'malicious');
-
-                },
-                function () {
-                    // Non-malicious (cancel)
-                    $scope.send_verdict(collection, collection_id, 'non-malicious');
-                });
+        $scope.send_non_malicious_verdict = function (collection_id){
+            $scope.send_verdict(collection_id, 'non_malicious');
         };
 
-        $scope.send_verdict = function (collection, collection_id, verdict) {
+        $scope.send_verdict = function (collection_id, verdict) {
+            if ($scope.data.verdict[verdict].indexOf($scope.user.uname) !== -1 || $scope.loading_extra){
+                return
+            }
+
+            $scope.loading_extra = true;
             $http({
                 method: 'PUT',
-                url: "/api/v4/verdict/" + collection + "/" + collection_id + "/" + verdict + "/"
-            })
-                .success(function () {
-                    swal("Thank you!", "Your feedback to the system was successfully submitted.", "success");
-                    $scope.verdict = verdict.toLowerCase();
-                    $scope.current_verdict = $filter('verdict')($scope.data.max_score).toLowerCase();
-                })
-                .error(function (data, status, headers, config) {
-                    if (data === "" || data === null) {
-                        return;
-                    }
-
-                    $scope.loading_extra = false;
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    } else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                });
-        };
-
-        $scope.get_verdict = function (collection, collection_id) {
-            $http({
-                method: 'GET',
-                url: "/api/v4/verdict/" + collection + "/" + collection_id + "/"
+                url: "/api/v4/submission/verdict/" + collection_id + "/" + verdict + "/"
             })
                 .success(function (data) {
-                    $scope.verdict = data.api_response.verdict;
-                    $scope.current_verdict = $filter('verdict')($scope.data.max_score).toLowerCase();
+                    $scope.loading_extra = false;
+                    if (!data.api_response.success){
+                        return
+                    }
+                    if (verdict === "malicious"){
+                        if ($scope.data.verdict.malicious.indexOf($scope.user.uname) === -1){
+                            $scope.data.verdict.malicious.push($scope.user.uname)
+                        }
+                        if ($scope.data.verdict.non_malicious.indexOf($scope.user.uname) !== -1){
+                            $scope.data.verdict.non_malicious.splice($scope.data.verdict.non_malicious.indexOf($scope.user.uname), 1)
+                        }
+                    }
+                    else{
+                        if ($scope.data.verdict.non_malicious.indexOf($scope.user.uname) === -1){
+                            $scope.data.verdict.non_malicious.push($scope.user.uname)
+                        }
+                        if ($scope.data.verdict.malicious.indexOf($scope.user.uname) !== -1){
+                            $scope.data.verdict.malicious.splice($scope.data.verdict.malicious.indexOf($scope.user.uname), 1)
+                        }
+                    }
                 })
                 .error(function (data, status, headers, config) {
+                    $scope.loading_extra = false;
                     if (data === "" || data === null) {
                         return;
                     }
@@ -740,7 +719,6 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         aggregated: $scope.futile_errors($scope.data.errors)
                     };
                     if ($scope.data.state === "completed") {
-                        $scope.get_verdict('submission', $scope.sid);
                         $scope.get_summary();
                         $scope.get_file_tree();
                         $scope.temp_data = null;

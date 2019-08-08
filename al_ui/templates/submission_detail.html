@@ -53,25 +53,51 @@
 	<div id="underlay">
 		<section id="appContent" class="container">
 			<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
-			<div class="bigpad pull-left" ng-show="started && !data.times.completed"><div class="throbber"></div></div>
-			<div style="margin-top: 20px" class="bigpad pull-left" ng-show="data.times.completed">
-				<span class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span>
-				<span title="I agree with the verdict" class="muted_button glyphicon glyphicon-thumbs-up text-big" ng-click="agree('submission', data.sid)"></span>
-				<span title="I disagree with the verdict" class="muted_button glyphicon glyphicon-thumbs-down text-big" ng-click="disagree('submission', data.sid)"></span>
-				<div ng-if="verdict" style="display: block" class="pad">
-					<span style="color: #00520080" ng-if="current_verdict==verdict"><span class="glyphicon glyphicon-check"></span>&nbsp;&nbsp;You agreed with the verdict</span>
-					<span style="color: #52000080" ng-if="current_verdict!=verdict"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;You think the verdict should be: {{verdict.toUpperCase()}}</span>
+			<div class="row">
+				<div style="margin-top: 20px" class="col-sm-4">
+					<div ng-show="started && !data.times.completed"><div class="throbber"></div></div>
+					<div class="hidden-xs" ng-show="data.times.completed">
+						<div class="pad"><span style="width: 170px; display: block;" class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span></div>
+						<div>
+							<svg height="10" width="170">
+								<rect height="10" width="170" style="fill: transparent;stroke: lightgrey"></rect>
+								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="8" fill="#d9534f"></rect>
+								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="8" fill="#5cb85c"></rect>
+								<rect x="85" y="0" height="10" width="1" fill="lightgrey"></rect>
+							</svg>
+						</div>
+						<div style="width: 170px" class="text-center">
+							<span title="Malicious" class="icon-emojidevil text-larger" ng-class="{'bad-icon': data.verdict.malicious.indexOf(user.uname)!=-1, 'undecided-icon': data.verdict.malicious.indexOf(user.uname)==-1}" ng-click="send_malicious_verdict(data.sid)"></span>
+							<span style="padding: 0 10px;" class="verdict-label">User's<br/>verdicts</span>
+							<span title="Safe" class="icon-happy text-larger" ng-class="{'good-icon': data.verdict.non_malicious.indexOf(user.uname)!=-1, 'undecided-icon': data.verdict.non_malicious.indexOf(user.uname)==-1}"  ng-click="send_non_malicious_verdict(data.sid)"></span>
+						</div>
+					</div>
+				</div>
+				<div class="col-sm-8 header_title text-right">
+					<h1>Submission Details</h1>
+					<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
+					<p ng-show="started" ng-if="!user.read_only">
+						<a ng-click="resubmit_submission();" class="btn btn-default btn-sm" title="Resubmit current submission"><span class="glyphicon glyphicon-repeat"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Resubmit</span></a>&nbsp;
+						<a ng-click="delete_submission();" class="btn btn-danger btn-sm" title="Delete Submission"><span class="glyphicon glyphicon-remove"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Delete Submission</span></a>
+					</p>
+					<div class="hidden-sm hidden-md hidden-lg" ng-show="data.times.completed">
+						<div class="pad" style="display: inline-table;"><span style="width: 170px; display: block;" class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span></div>
+						<div>
+							<svg height="10" width="170">
+								<rect height="10" width="170" style="fill: transparent;stroke: lightgrey"></rect>
+								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="8" fill="#d9534f"></rect>
+								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="8" fill="#5cb85c"></rect>
+								<rect x="85" y="0" height="10" width="1" fill="lightgrey"></rect>
+							</svg>
+						</div>
+						<div style="padding-right: 35px">
+							<span title="Malicious" class="icon-emojidevil text-larger" ng-class="{'bad-icon': data.verdict.malicious.indexOf(user.uname)!=-1, 'undecided-icon': data.verdict.malicious.indexOf(user.uname)==-1}" ng-click="send_malicious_verdict(data.sid)"></span>
+							<span style="padding: 0 10px;" class="verdict-label">User's<br/>verdicts</span>
+							<span title="Safe" class="icon-happy text-larger" ng-class="{'good-icon': data.verdict.non_malicious.indexOf(user.uname)!=-1, 'undecided-icon': data.verdict.non_malicious.indexOf(user.uname)==-1}"  ng-click="send_non_malicious_verdict(data.sid)"></span>
+						</div>
+					</div>
 				</div>
 			</div>
-			<div class="header_title text-right">
-				<h1>Submission Details</h1>
-				<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
-				<p ng-show="started" ng-if="!user.read_only">
-					<a ng-click="resubmit_submission();" class="btn btn-default btn-sm" title="Resubmit current submission"><span class="glyphicon glyphicon-repeat"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Resubmit</span></a>&nbsp;
-					<a ng-click="delete_submission();" class="btn btn-danger btn-sm" title="Delete Submission"><span class="glyphicon glyphicon-remove"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Delete Submission</span></a>
-				</p>
-			</div>
-			
 			<div class="jumbotron" ng-show="new&&!started">
 				<div class="pad">
 					<strong class="text-big">Your files were successfully submitted.</strong>

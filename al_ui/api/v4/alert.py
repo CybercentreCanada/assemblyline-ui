@@ -810,3 +810,51 @@ def find_related_alert_ids(**kwargs):
                                                               access_control=user['access_control'], as_obj=False)])
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
+
+
+@alert_api.route("/verdict/<alert_id>/<verdict>/", methods=["PUT"])
+@api_login(audit=False, check_xsrf_token=False)
+def set_verdict(alert_id, verdict, **kwargs):
+    """
+    Set the verdict of an alert based on its ID.
+
+    Variables:
+    submission_id   ->   ID of the alert to give a verdict to
+    verdict         ->   verdict that the user think the alert is: malicious or non_malicious
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True}   # Has the verdict been set or not
+    """
+    reverse_verdict = {
+        'malicious': 'non_malicious',
+        'non_malicious': 'malicious'
+    }
+
+    user = kwargs['user']
+
+    if verdict not in ['malicious', 'non_malicious']:
+        return make_api_response({"success": False}, f"'{verdict}' is not a valid verdict.", 400)
+
+    document = STORAGE.alert.get(alert_id, as_obj=False)
+
+    if not document:
+        return make_api_response({"success": False}, f"There are no alert with id: {alert_id}", 404)
+
+    if not Classification.is_accessible(user['classification'], document['classification']):
+        return make_api_response({"success": False}, "You are not allowed to give verdict on alert with "
+                                                     f"ID: {alert_id}", 403)
+
+    if user['uname'] not in document['verdict'][verdict]:
+        document['verdict'][verdict].append(user['uname'])
+    if user['uname'] in document['verdict'][reverse_verdict[verdict]]:
+        document['verdict'][reverse_verdict[verdict]].remove(user['uname'])
+
+    # TODO: Propagate verdict to submissions
+
+    return make_api_response({"success": STORAGE.alert.save(alert_id, document)})

@@ -34,7 +34,6 @@ from al_ui.api.v4.ui import ui_api
 from al_ui.api.v3.user import user_api as user_v3_api
 from al_ui.api.v4.user import user_api
 from al_ui.api.v4.vm import vm_api
-from al_ui.api.v4.verdict import verdict_api
 from al_ui.api.v4.workflow import workflow_api
 from al_ui.error import errors
 from al_ui.views import views
@@ -84,7 +83,6 @@ app.register_blueprint(u2f_api)
 app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
 app.register_blueprint(user_v3_api)
-app.register_blueprint(verdict_api)
 app.register_blueprint(views)
 app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)

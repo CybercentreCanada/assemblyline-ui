@@ -64,6 +64,61 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             return today.getFullYear() + mm + dd;
         };
 
+        $scope.send_malicious_verdict = function (alert){
+            $scope.send_verdict(alert, 'malicious');
+        };
+
+        $scope.send_non_malicious_verdict = function (alert){
+            $scope.send_verdict(alert, 'non_malicious');
+        };
+
+        $scope.send_verdict = function (alert, verdict) {
+            if (alert.verdict[verdict].indexOf($scope.user.uname) !== -1 || $scope.loading_extra){
+                return
+            }
+
+            $scope.loading_extra = true;
+            $http({
+                method: 'PUT',
+                url: "/api/v4/alert/verdict/" + alert.alert_id + "/" + verdict + "/"
+            })
+                .success(function (data) {
+                    $scope.loading_extra = false;
+                    if (!data.api_response.success){
+                        return
+                    }
+                    if (verdict === "malicious"){
+                        if (alert.verdict.malicious.indexOf($scope.user.uname) === -1){
+                            alert.verdict.malicious.push($scope.user.uname)
+                        }
+                        if (alert.verdict.non_malicious.indexOf($scope.user.uname) !== -1){
+                            alert.verdict.non_malicious.splice(alert.verdict.non_malicious.indexOf($scope.user.uname), 1)
+                        }
+                    }
+                    else{
+                        if (alert.verdict.non_malicious.indexOf($scope.user.uname) === -1){
+                            alert.verdict.non_malicious.push($scope.user.uname)
+                        }
+                        if (alert.verdict.malicious.indexOf($scope.user.uname) !== -1){
+                            alert.verdict.malicious.splice(alert.verdict.malicious.indexOf($scope.user.uname), 1)
+                        }
+                    }
+                })
+                .error(function (data, status, headers, config) {
+                    $scope.loading_extra = false;
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    $scope.loading_extra = false;
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    } else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                });
+        };
+
         $scope.has_items = function (variable) {
             return variable !== undefined && variable.length >= 1;
         };

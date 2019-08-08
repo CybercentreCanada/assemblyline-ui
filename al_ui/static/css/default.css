@@ -404,8 +404,41 @@ section.container{
 	font-size: 130%;
 }
 
-.text-big {
+.text-larger {
+	font-size: 150%;
+}
+
+.text-big,
+.text-largest {
 	font-size: 170%;
+}
+
+.verdict-label {
+	font-size: 75%;
+    font-family: monospace;
+    display: inline-block;
+    text-align: center;
+    padding: 0px 5px;
+}
+
+.good-icon {
+	color: #5cb85c;
+	vertical-align: top;
+}
+
+.bad-icon {
+	color: #d9534f;
+	vertical-align: top;
+}
+
+.undecided-icon:hover {
+	color: #AAA;
+	cursor: pointer;
+}
+
+.undecided-icon {
+	color: #DDD;
+	vertical-align: top;
 }
 
 .list-group-item.disabled{
@@ -760,17 +793,6 @@ section.container{
 	color: #FFF;
 }
 
-.muted_button:hover{
-	cursor: pointer;
-	color: #666;
-}
-
-.muted_button {
-	vertical-align: middle;
-	color: #EEE;
-	padding-left: 5px;
-	padding-right: 5px;
-}
 
 .clickable_color:hover {
 	cursor: pointer;
