@@ -850,11 +850,16 @@ def set_verdict(alert_id, verdict, **kwargs):
         return make_api_response({"success": False}, "You are not allowed to give verdict on alert with "
                                                      f"ID: {alert_id}", 403)
 
-    if user['uname'] not in document['verdict'][verdict]:
-        document['verdict'][verdict].append(user['uname'])
-    if user['uname'] in document['verdict'][reverse_verdict[verdict]]:
-        document['verdict'][reverse_verdict[verdict]].remove(user['uname'])
+    resp = STORAGE.alert.update_by_query(f"sid:{document['sid']}", [
+        ('REMOVE', f'verdict.{verdict}', user['uname']),
+        ('APPEND', f'verdict.{verdict}', user['uname']),
+        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
+    ])
 
-    # TODO: Propagate verdict to submissions
+    propagate_resp = STORAGE.submission.update(document['sid'], [
+        ('REMOVE', f'verdict.{verdict}', user['uname']),
+        ('APPEND', f'verdict.{verdict}', user['uname']),
+        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
+    ])
 
-    return make_api_response({"success": STORAGE.alert.save(alert_id, document)})
+    return make_api_response({"success": resp is not False and propagate_resp})
