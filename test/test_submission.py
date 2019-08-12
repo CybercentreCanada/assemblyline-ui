@@ -35,16 +35,16 @@ def datastore(request):
 def test_delete_submission(datastore, login_session):
     _, session = login_session
 
-    submission = random.choice(ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{HOST}/api/v4/submission/{submission['sid']}/", method="DELETE")
     assert resp['success']
 
-    ds.error.commit()
-    ds.file.commit()
-    ds.result.commit()
-    ds.submission.commit()
+    datastore.error.commit()
+    datastore.file.commit()
+    datastore.result.commit()
+    datastore.submission.commit()
 
-    for s in ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items']:
+    for s in datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items']:
         assert s['sid'] != submission['sid']
 
 
@@ -52,8 +52,8 @@ def test_delete_submission(datastore, login_session):
 def test_get_submission_file_result(datastore, login_session):
     _, session = login_session
 
-    sid = random.choice(ds.submission.search("id:*", fl='id', rows=NUM_SUBMISSIONS, as_obj=False)['items'])['id']
-    submission = ds.submission.get(sid)
+    sid = random.choice(datastore.submission.search("id:*", fl='id', rows=NUM_SUBMISSIONS, as_obj=False)['items'])['id']
+    submission = datastore.submission.get(sid)
     sha256 = random.choice(submission.results)[:64]
     resp = get_api_data(session, f"{HOST}/api/v4/submission/{sid}/file/{sha256}/")
     assert len(resp['errors']) == len([x for x in submission.errors if x.startswith(sha256)])
@@ -64,7 +64,7 @@ def test_get_submission_file_result(datastore, login_session):
 def test_get_submission(datastore, login_session):
     _, session = login_session
 
-    submission = random.choice(ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{HOST}/api/v4/submission/{submission['sid']}/")
     assert resp['sid'] == submission['sid']
     assert resp['params']['description'] == submission['params']['description']
@@ -75,7 +75,7 @@ def test_get_submission(datastore, login_session):
 def test_get_submission_is_completed(datastore, login_session):
     _, session = login_session
 
-    submission = random.choice(ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{HOST}/api/v4/submission/is_completed/{submission['sid']}/")
     if submission['state'] == 'completed':
         assert resp is True
@@ -87,7 +87,7 @@ def test_get_submission_is_completed(datastore, login_session):
 def test_get_submission_full(datastore, login_session):
     _, session = login_session
 
-    submission = random.choice(ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{HOST}/api/v4/submission/full/{submission['sid']}/")
     assert resp['sid'] == submission['sid']
     assert resp['params']['description'] == submission['params']['description']
@@ -100,7 +100,7 @@ def test_get_submission_full(datastore, login_session):
 def test_get_submission_summary(datastore, login_session):
     _, session = login_session
 
-    submission = random.choice(ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{HOST}/api/v4/submission/summary/{submission['sid']}/")
     assert isinstance(resp['map'], dict)
     assert isinstance(resp['tags'], dict)
@@ -110,7 +110,7 @@ def test_get_submission_summary(datastore, login_session):
 def test_get_submission_tree(datastore, login_session):
     _, session = login_session
 
-    submission = random.choice(ds.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{HOST}/api/v4/submission/tree/{submission['sid']}/")
     assert isinstance(resp, dict)
     for k in resp:
@@ -122,7 +122,7 @@ def test_get_submission_list_group(datastore, login_session):
     _, session = login_session
 
     group = get_random_groups()
-    search_len = ds.submission.search(f'params.groups:{group}', rows=0)['total']
+    search_len = datastore.submission.search(f'params.groups:{group}', rows=0)['total']
     resp = get_api_data(session, f"{HOST}/api/v4/submission/list/group/{group}/")
     assert resp['total'] == search_len
 
@@ -132,6 +132,31 @@ def test_get_submission_list_user(datastore, login_session):
     _, session = login_session
 
     user = get_random_user()
-    search_len = ds.submission.search(f'params.submitter:{user}', rows=0)['total']
+    search_len = datastore.submission.search(f'params.submitter:{user}', rows=0)['total']
     resp = get_api_data(session, f"{HOST}/api/v4/submission/list/user/{user}/")
     assert resp['total'] == search_len
+
+
+# noinspection PyUnusedLocal
+def test_set_verdict(datastore, login_session):
+    _, session = login_session
+
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+
+    # Test setting MALICIOUS verdict
+    resp = get_api_data(session, f"{HOST}/api/v4/submission/verdict/{submission['sid']}/malicious/", method="PUT")
+    assert resp['success']
+
+    datastore.submission.commit()
+    submission_data = datastore.submission.get(submission['sid'])
+    assert 'admin' in submission_data['verdict']['malicious']
+    assert 'admin' not in submission_data['verdict']['non_malicious']
+
+    # Test setting NON-MALICOUS verdict
+    resp = get_api_data(session, f"{HOST}/api/v4/submission/verdict/{submission['sid']}/non_malicious/", method="PUT")
+    assert resp['success']
+
+    datastore.submission.commit()
+    submission_data = datastore.submission.get(submission['sid'])
+    assert 'admin' not in submission_data['verdict']['malicious']
+    assert 'admin' in submission_data['verdict']['non_malicious']

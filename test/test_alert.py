@@ -5,17 +5,18 @@ import pytest
 from assemblyline.common import forge
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.randomizer import random_model_obj
-from assemblyline.odm.random_data import create_users, wipe_users
+from assemblyline.odm.random_data import create_users, wipe_users, wipe_submissions, create_submission
 
 from base import HOST, login_session, get_api_data
 
 NUM_ALERTS = 10
 test_alert = None
 ds = forge.get_datastore()
-
+fs = forge.get_filestore()
 
 def purge_alert():
     wipe_users(ds)
+    wipe_submissions(ds, fs)
     ds.alert.wipe()
 
 
@@ -24,12 +25,14 @@ def datastore(request):
     global test_alert
 
     create_users(ds)
+    submission = create_submission(ds, fs)
 
     for _ in range(NUM_ALERTS):
         a = random_model_obj(Alert)
         if test_alert is None:
             test_alert = a
         a.owner = None
+        a.sid = submission.sid
         ds.alert.save(a.alert_id, a)
     ds.alert.commit()
 
@@ -157,3 +160,36 @@ def test_statuses(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/alert/status/batch/", data=json.dumps("MALICIOUS"),
                         params={'q': "id:*"}, method='POST')
     assert resp.get('success', 0) > 0
+
+
+# noinspection PyUnusedLocal
+def test_set_verdict(datastore, login_session):
+    _, session = login_session
+
+    # Test setting MALICIOUS verdict
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/verdict/{test_alert.alert_id}/malicious/", method="PUT")
+    assert resp['success']
+
+    datastore.alert.commit()
+    alert_data = datastore.alert.get(test_alert.alert_id)
+    assert 'admin' in alert_data['verdict']['malicious']
+    assert 'admin' not in alert_data['verdict']['non_malicious']
+
+    datastore.submission.commit()
+    submission_data = datastore.submission.get(test_alert.sid)
+    assert 'admin' in submission_data['verdict']['malicious']
+    assert 'admin' not in submission_data['verdict']['non_malicious']
+
+    # Test setting NON-MALICOUS verdict
+    resp = get_api_data(session, f"{HOST}/api/v4/alert/verdict/{test_alert.alert_id}/non_malicious/", method="PUT")
+    assert resp['success']
+
+    datastore.alert.commit()
+    alert_data = datastore.alert.get(test_alert.alert_id)
+    assert 'admin' not in alert_data['verdict']['malicious']
+    assert 'admin' in alert_data['verdict']['non_malicious']
+
+    datastore.submission.commit()
+    submission_data = datastore.submission.get(test_alert.sid)
+    assert 'admin' not in submission_data['verdict']['malicious']
+    assert 'admin' in submission_data['verdict']['non_malicious']
