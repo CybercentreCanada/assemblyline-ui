@@ -11,7 +11,7 @@
                     <span ng-if="alert.extended_scan=='submitted'" class="icon icon-circleselection" title="Waiting on extended scan to be completed"></span>
                     <span ng-if="alert.extended_scan=='skipped'" class="text-warning icon icon-ban-circle" title="Extended Scan was skipped for this alert"></span>
                 </div>
-                <div>
+                <div title="Malicious: {{alert.verdict.malicious.length}} / Non-Malicious: {{alert.verdict.non_malicious.length}}">
                     <div>
                         <svg height="10" width="100%">
                             <rect height="10" width="100%" style="fill: transparent;stroke: lightgrey"></rect>
