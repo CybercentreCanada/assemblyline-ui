@@ -1,5 +1,5 @@
 
-from al_ui.config import STORAGE, SYSTEM_SERVICE_CATEGORY_NAME
+from al_ui.config import STORAGE
 from assemblyline.odm.models.submission import DEFAULT_SRV_SEL
 
 
@@ -22,8 +22,6 @@ def get_default_service_list(srv_list=None, default_selection=None):
     for item in srv_list:
         grp = item['category']
 
-        if grp == SYSTEM_SERVICE_CATEGORY_NAME:
-            continue
         if grp not in services:
             services[grp] = []
 

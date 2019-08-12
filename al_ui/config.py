@@ -24,7 +24,6 @@ DEBUG = config.ui.debug
 DOWNLOAD_ENCODING = config.ui.download_encoding
 MAX_CLASSIFICATION = CLASSIFICATION.UNRESTRICTED
 ORGANISATION = config.system.organisation
-SYSTEM_SERVICE_CATEGORY_NAME = config.services.system_category
 SYSTEM_TYPE = config.system.type
 
 BUILD_MASTER = version.FRAMEWORK_VERSION
