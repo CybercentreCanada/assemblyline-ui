@@ -231,6 +231,13 @@ def logout(**_):
     return custom_render("logout.html",)
 
 
+@views.route("/report.html", methods=["GET"])
+@protected_renderer(load_settings=True)
+def report(**kwargs):
+    sid = angular_safe(request.args.get("sid", None))
+    return custom_render("report.html", sid=sid, **kwargs)
+
+
 # noinspection PyBroadException
 @views.route("/reset.html")
 def reset():

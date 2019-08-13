@@ -16,21 +16,59 @@ a:hover {
 	text-decoration: none;
 }
 
-#wrap {
-	min-height: 100%;
-	height: auto !important;
-	height: 100%;
-	margin: 0 auto -48px;
-	padding-bottom: 56px;
+.print_banner {
+	display: none;
+
 }
 
-#push, #footer{
-	height: 50px;
-	margin-top: -50px;
+.report_section {
+	padding-bottom: 20px;
 }
 
-#wrap > #main {
-	padding-top: 75px;
+@media print {
+	@page {
+		margin: 0;
+		size: letter;
+	}
+
+	.container {
+		padding: 0;
+	}
+
+	.report_section {
+		page-break-inside: avoid;
+		padding: 1cm;
+	}
+
+	#push, #footer {
+		display: none;
+	}
+
+	.print_banner {
+		-webkit-print-color-adjust: exact;
+		display: block;
+		padding: 1cm;
+		background: #d2d2d2 !important;
+	}
+}
+
+@media screen {
+	#wrap {
+		min-height: 100%;
+		height: auto !important;
+		height: 100%;
+		margin: 0 auto -48px;
+		padding-bottom: 56px;
+	}
+
+	#push, #footer{
+		height: 50px;
+		margin-top: -50px;
+	}
+
+	#wrap > #main {
+		padding-top: 75px;
+	}
 }
 
 @media (min-width: 768px){
@@ -295,6 +333,12 @@ section.container{
   	margin: 5px 0px 15px;
   	border-bottom: 1px solid #CCC;
   	cursor: pointer;
+}
+
+#appContent .menureport {
+	padding-bottom: 5px;
+  	margin: 5px 0px 15px;
+  	border-bottom: 1px solid #EEE;
 }
 
 #appContent .menuheader {
