@@ -716,11 +716,11 @@ def get_report(submission_id, **kwargs):
             summary_type = None
 
             if t["type"] in config.submission.tag_types.behavior:
-                summary_type = 'behavior'
+                summary_type = 'behaviors'
             elif t["type"] in config.submission.tag_types.attribution:
-                summary_type = 'attribution'
+                summary_type = 'attributions'
             elif t["type"] in config.submission.tag_types.ioc:
-                summary_type = 'ioc'
+                summary_type = 'indicators_of_compromise'
 
             if t['value'] == "" or summary_type is None:
                 continue

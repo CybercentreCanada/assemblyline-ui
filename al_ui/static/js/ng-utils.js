@@ -1181,6 +1181,14 @@ utils.filter('stripNull', function () {
     }
 });
 
+utils.filter('shortTagType', function () {
+    return function (input) {
+        let idx = input.lastIndexOf('.');
+
+        return input.slice(idx, input.length);
+    }
+});
+
 utils.filter('titleCase', function () {
     return function (input) {
         input = input.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ");

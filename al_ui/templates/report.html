@@ -10,6 +10,7 @@
 	{%raw%}
 	<section id="appContent" class="container">
 		<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
+		<div class="div_footer">Submission Report :: {{sid}}<span ng-if="user.c12n_enforcing">:: {{data.classification | class_sm}}</span></div>
 		<div class="row print_banner">
 			<div class="col-xs-4">
 				<img style="width: 100%; margin-top: 20px" src="/static/images/banner.svg">
@@ -132,11 +133,11 @@
 					<span class="text-big">Att&ck Matrix</span>
 				</div>
 
-				<div id="attack_matrix" class="row">
-					<div class="report_block col-xs-6 col-md-4 col-lg-3" ng-repeat="(category, attack_patterns) in data.attack_matrix | orderBy:category">
+				<div id="attack_matrix" class="row make-columns">
+					<div class="report_block col-item" ng-repeat="(category, attack_patterns) in data.attack_matrix | orderBy:category">
 						<h4 class="text-muted">{{category | titleCase}}</h4>
 						<div ng-repeat="(attack_name, files) in attack_patterns | orderBy:attack_name">
-							<label>{{attack_name}}</label>
+							<label style="display: inline;">{{attack_name}}</label>
 							<ul>
 								<li ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></li>
 							</ul>
@@ -147,23 +148,38 @@
 
 			<section class="report_section" ng-show="obj_len(data.tags[tag_category]) != 0" ng-repeat="(tag_category, category_values) in data.tags | orderBy:tag_category">
 				<div class="menureport">
-					<span class="text-big">{{tag_category | titleCase }}s</span>
+					<span class="text-big">{{tag_category | titleCase }}</span>
 				</div>
-
-				<div id="{{tag_category}}">
-					<div class="row" ng-repeat="(tag, values) in category_values | orderBy:tag">
-						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tag}}</strong></div>
-						<div class="col-xs-6 col-sm-8 col-md-9">
-							<span id="{{tag}}_{{val}}" class="label label-tag label-nolight" ng-repeat="val in values">{{val | breakableStr }}</span>
+				<table class="table">
+					<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
+					<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
+						<tr ng-repeat="(value, files) in values | orderBy:value">
+							<td nowrap><label class="text-muted">{{tag_type | shortTagType | titleCase}}</label></td>
+							<td style="width: 100%"><strong>{{value}}</strong></td>
+							<td nowrap class="text-smaller text-info" style="font-family: monospace">
+								<div ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<!--
+				<div id="{{tag_category}}" class="row make-columns">
+					<div class="report_block col-item" ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
+						<h4 class="text-muted">{{tag_type | shortTagType | titleCase}}</h4>
+						<div ng-repeat="(value, files) in values | orderBy:value">
+							<label style="display: inline;">{{value}}</label>
+							<ul>
+								<li ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></li>
+							</ul>
 						</div>
 					</div>
 				</div>
-
+				-->
 			</section>
 
 			<section class="report_section" id="section_files" ng-show="data">
 				<div class="menureport">
-					<span class="text-big">Files</span>
+					<span class="text-big">Generated files</span>
 				</div>
 				<div id="files">
 					<ng-include src="'/static/ng-template/report_file_item.html'" ng-init="file_tree=data.file_tree"></ng-include>

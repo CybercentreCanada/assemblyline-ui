@@ -16,6 +16,29 @@ a:hover {
 	text-decoration: none;
 }
 
+.row.make-columns {
+	-webkit-column-width: 21em;
+	   -moz-column-width: 21em;
+	        column-width: 21em;
+	-webkit-column-gap: 1em;
+	   -moz-column-gap: 1em;
+	        column-gap: 1em;
+	-webkit-column-rule: 1px dotted #eee;
+	   -moz-column-rule: 1px dotted #eee;
+	        column-rule: 1px dotted #eee;
+}
+
+.row.make-columns > div {
+	display: inline-block;
+	height: 100%;
+	width: 100%;
+}
+
+.col-item{
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
 .print_banner {
 	display: none;
 
@@ -23,17 +46,25 @@ a:hover {
 
 .report_section {
 	padding-bottom: 20px;
+	page-break-inside: avoid;
 }
 
 .report_block {
-	padding-top: 0;
-	padding-bottom: 15px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	page-break-inside: avoid;
 }
 
 @media print {
 	@page {
 		margin: 1cm;
-		size: letter;
+	}
+
+	div.div_footer{
+		position: fixed;
+		text-align: center;
+		width: 100%;
+		bottom: 0;
 	}
 
 	.container {
@@ -41,12 +72,10 @@ a:hover {
 	}
 
 	.report_section {
-		page-break-inside: avoid;
 		padding-bottom: 1cm;
 	}
 
 	.report_block {
-		page-break-inside: avoid;
 		padding-top: 0;
 		padding-bottom: 1cm;
 	}
@@ -62,6 +91,10 @@ a:hover {
 }
 
 @media screen {
+	div.div_footer{
+		display: none;
+	}
+
 	#wrap {
 		min-height: 100%;
 		height: auto !important;
