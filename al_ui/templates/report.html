@@ -22,8 +22,8 @@
 		<div class="hidden-print text-right">
 			<h1>Submission Report</h1>
 			<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
-			<a ng-click="print();" class="btn btn-default btn-sm" title="Print page"><span class="glyphicon glyphicon-print"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Print report</span></a>&nbsp;
-			<a ng-click="save_as_pdf();" class="btn btn-success btn-sm" title="Save report as pdf"><span class="glyphicon glyphicon-save"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Save as PDF</span></a>
+			<a ng-click="do_print();" class="btn btn-default btn-sm" title="Print page"><span class="glyphicon glyphicon-print"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Print report</span></a>&nbsp;
+			<a href="submission_detail.html?sid={{sid}}" class="btn btn-primary btn-sm" title="View submission details"><span style="vertical-align: middle;" class="icon-details"><span class="hidden-sm hidden-xs">&nbsp;&nbsp;&nbsp;</span></span><span class="hidden-sm hidden-xs">View submission details</span></a>
 		</div>
 
 		<div ng-show="started">
@@ -127,22 +127,19 @@
 				</div>
 			</section>
 
-			<section ng-show="data.attack_matrix" class="report_section">
+			<section ng-show="data.attack_matrix && obj_len(data.attack_matrix) != 0" class="report_section">
 				<div class="menureport">
 					<span class="text-big">Att&ck Matrix</span>
 				</div>
 
-				<div id="attack_matrix">
-					<div ng-show="data.attack_matrix && (obj_len(data.attack_matrix) == 0)">
-						<div class="pad text-muted">
-							Nothing to report.
-						</div>
-					</div>
-
-					<div class="row" ng-repeat="(category, attack_patterns) in data.attack_matrix | orderBy:category">
-						<div class="col-xs-6 col-sm-4 col-md-3"><label>{{category}}</label></div>
-						<div class="col-xs-6 col-sm-8 col-md-9">
-							<span id="{{item[0]}}_{{item[1]}}" class="label label-tag label-nolight" ng-repeat="item in attack_patterns | orderBy:item[1]">{{item[1] | breakableStr }}</span>
+				<div id="attack_matrix" class="row">
+					<div class="report_block col-xs-6 col-md-4 col-lg-3" ng-repeat="(category, attack_patterns) in data.attack_matrix | orderBy:category">
+						<h4 class="text-muted">{{category | titleCase}}</h4>
+						<div ng-repeat="(attack_name, files) in attack_patterns | orderBy:attack_name">
+							<label>{{attack_name}}</label>
+							<ul>
+								<li ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></li>
+							</ul>
 						</div>
 					</div>
 				</div>

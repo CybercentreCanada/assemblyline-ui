@@ -33,6 +33,10 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
             return Object.keys(obj).length === 0;
         };
 
+        $scope.do_print = function(){
+            $window.print();
+        };
+
         //Error handling
         $scope.error = '';
 

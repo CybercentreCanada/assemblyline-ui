@@ -25,9 +25,14 @@ a:hover {
 	padding-bottom: 20px;
 }
 
+.report_block {
+	padding-top: 0;
+	padding-bottom: 15px;
+}
+
 @media print {
 	@page {
-		margin: 0;
+		margin: 1cm;
 		size: letter;
 	}
 
@@ -37,7 +42,13 @@ a:hover {
 
 	.report_section {
 		page-break-inside: avoid;
-		padding: 1cm;
+		padding-bottom: 1cm;
+	}
+
+	.report_block {
+		page-break-inside: avoid;
+		padding-top: 0;
+		padding-bottom: 1cm;
 	}
 
 	#push, #footer {
@@ -45,10 +56,8 @@ a:hover {
 	}
 
 	.print_banner {
-		-webkit-print-color-adjust: exact;
 		display: block;
-		padding: 1cm;
-		background: #d2d2d2 !important;
+		padding-bottom: 1cm;
 	}
 }
 

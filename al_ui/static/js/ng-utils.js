@@ -1183,7 +1183,7 @@ utils.filter('stripNull', function () {
 
 utils.filter('titleCase', function () {
     return function (input) {
-        input = input.replace(/_/g, " ").replace(/\./g, " ");
+        input = input.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ");
         return input.toProperCase();
     }
 });

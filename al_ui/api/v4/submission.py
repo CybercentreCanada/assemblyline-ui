@@ -489,7 +489,7 @@ def get_summary(sid, **kwargs):
             elif t["type"] in config.submission.tag_types.ioc:
                 summary_type = 'ioc'
 
-            if  t['value'] == ""  or summary_type is None:
+            if t['value'] == "" or summary_type is None:
                 continue
 
             sha256 = t["key"][:64]
@@ -682,8 +682,8 @@ def get_report(submission_id, **kwargs):
             for key, val in data.items():
                 output.setdefault(key, [])
 
-                for name in val['name']:
-                    output[key].append(name)
+                for res_name in val['name']:
+                    output[key].append(res_name)
 
                 children = recurse_get_names(val['children'])
                 for c_key, c_names in children.items():
@@ -708,7 +708,7 @@ def get_report(submission_id, **kwargs):
 
                 submission['attack_matrix'].setdefault(cat, {})
                 submission['attack_matrix'][cat].setdefault(item['name'], [])
-                for name in name_map[sha256]:
+                for name in name_map.get(sha256, [sha256]):
                     submission['attack_matrix'][cat][item['name']].append((name, sha256))
 
         # Process tags
@@ -722,7 +722,7 @@ def get_report(submission_id, **kwargs):
             elif t["type"] in config.submission.tag_types.ioc:
                 summary_type = 'ioc'
 
-            if  t['value'] == ""  or summary_type is None:
+            if t['value'] == "" or summary_type is None:
                 continue
 
             sha256 = t["key"][:64]
@@ -731,7 +731,7 @@ def get_report(submission_id, **kwargs):
             submission['tags'].setdefault(summary_type, {})
             submission['tags'][summary_type].setdefault(t['type'], {})
             submission['tags'][summary_type][t['type']].setdefault(t['value'], [])
-            for name in name_map[sha256]:
+            for name in name_map.get(sha256, [sha256]):
                 submission['tags'][summary_type][t['type']][t['value']].append((name, sha256))
 
         submission["file_info"] = STORAGE.file.get(submission['files'][0]['sha256'], as_obj=False)
