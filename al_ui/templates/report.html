@@ -48,7 +48,7 @@
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>Maliciousness Score</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span class="{{data.max_score | score_color}}"><strong>{{data.max_score}}</strong></span>
+							<strong class="{{data.max_score | score_color}}">{{data.max_score}}</strong>
 						</div>
 					</div>
 					<div class="row">
@@ -150,7 +150,7 @@
 				<div class="menureport">
 					<span class="text-big">{{tag_category | titleCase }}</span>
 				</div>
-				<table class="table">
+				<table class="table table-condensed table-striped">
 					<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
 					<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
 						<tr ng-repeat="(value, files) in values | orderBy:value">
