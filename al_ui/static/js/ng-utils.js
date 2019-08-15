@@ -1075,6 +1075,27 @@ utils.filter('score_color', function () {
     }
 });
 
+utils.filter('verdict_text_color', function () {
+    return function (score) {
+        if (score === undefined || score == null) return "text-muted";
+        if (score >= 2000) {
+            return "text-danger";
+        }
+        else if (score >= 500) {
+            return "text-warning2";
+        }
+        else if (score >= 100) {
+            return "text-info";
+        }
+        else if (score < 0) {
+            return "text-success";
+        }
+        else {
+            return "text-muted";
+        }
+    }
+});
+
 utils.filter('verdict_color', function () {
     return function (score) {
         if (score === undefined || score == null) return "label-default";
