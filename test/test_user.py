@@ -143,7 +143,7 @@ def test_get_user_settings(datastore, login_session):
     username = random.choice(user_list)
 
     resp = get_api_data(session, f"{HOST}/api/v4/user/settings/{username}/")
-    assert {'deep_scan', 'download_encoding', 'hide_raw_results', 'ignore_cache'}.issubset(set(resp.keys()))
+    assert {'deep_scan', 'download_encoding', 'ignore_cache'}.issubset(set(resp.keys()))
 
 
 # noinspection PyUnusedLocal
@@ -152,7 +152,7 @@ def test_get_user_submission_params(datastore, login_session):
     username = random.choice(user_list)
 
     resp = get_api_data(session, f"{HOST}/api/v4/user/submission_params/{username}/")
-    assert not {'download_encoding', 'hide_raw_results'}.issubset(set(resp.keys()))
+    assert not {'download_encoding'}.issubset(set(resp.keys()))
     assert {'deep_scan', 'groups', 'ignore_cache', 'submitter'}.issubset(set(resp.keys()))
     assert resp['submitter'] == username
 

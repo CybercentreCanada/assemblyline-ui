@@ -542,7 +542,6 @@ def get_user_settings(username, **kwargs):
      "profile": true,               # Should submissions be profiled
      "classification": "",          # Default classification for this user sumbissions
      "description": "",             # Default description for this user's submissions
-     "hide_raw_results": false,     # Should you hide raw JSON results?
      "download_encoding": "blah",   # Default encoding for downloaded files
      "expand_min_score": 100,       # Default minimum score to auto-expand sections
      "priority": 1000,              # Default submission priority
@@ -578,7 +577,6 @@ def set_user_settings(username, **_):
      "profile": true,              # Should submissions be profiled
      "classification": "",         # Default classification for this user sumbissions
      "description": "",            # Default description for this user's submissions
-     "hide_raw_results": false,    # Should you hide raw JSON results?
      "download_encoding": "blah",  # Default encoding for downloaded files
      "expand_min_score": 100,      # Default minimum score to auto-expand sections
      "priority": 1000,             # Default submission priority 

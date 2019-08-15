@@ -174,7 +174,7 @@ def load_user_settings(user):
                 settings[key] = item
         
         # Remove all obsolete keys
-        for key in settings.keys():
+        for key in list(settings.keys()):
             if key not in default_settings:
                 del settings[key]
                 

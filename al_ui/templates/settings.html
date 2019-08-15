@@ -12,47 +12,59 @@
 			<h1>User's Settings</h1>
 			<h4 class="text-muted">:: {{user.name}} ::</h4>
 		</div>
-		<section id="section_scan_params" ng-show="params">
+		<section id="section_scan_params" ng-show="params" class="header_title">
 			<div class="menuheader" data-toggle="collapse" data-target="#scan_param">
-				<span class="text-big">Scan/View Parameters</span>
+				<span class="text-big">Submissions Options</span>
 			</div>
 			<div id="scan_param" class="collapse in">
             {% endraw %}
             {% if not is_readonly %}
             {% raw %}
 				<div class="checkbox">
+					<label ng-class="{checked:params.ignore_dynamic_recursion_prevention}">
+						<input type="checkbox" ng-model="params.ignore_dynamic_recursion_prevention"> Ignore dynamic recursion prevention<span class="text-muted"> :: Prevent dynamic service to recursively perform dynamic analysis on files</span>
+					</label>
+				</div>
+				<div class="checkbox">
 					<label ng-class="{checked:params.ignore_filtering}">
-						<input type="checkbox" ng-model="params.ignore_filtering"> Scan files even if filtering services marks them as known good
+						<input type="checkbox" ng-model="params.ignore_filtering"> Ignore filtering services<span class="text-muted"> :: Scan files even if filtering services marks them as known good</span>
 					</label>
 				</div>
 				<div class="checkbox">
 					<label ng-class="{checked:params.ignore_cache}">
-						<input type="checkbox" ng-model="params.ignore_cache"> Force rescan of the file even if the cache already have the result
-					</label>
-				</div>
-				<div class="checkbox">
-					<label ng-class="{checked:params.ignore_dynamic_recursion_prevention}">
-						<input type="checkbox" ng-model="params.ignore_dynamic_recursion_prevention"> Turn off dynamic service recursion prevention
-					</label>
-				</div>
-				<div class="checkbox">
-					<label ng-class="{checked:params.profile}">
-						<input type="checkbox" ng-model="params.profile"> Profile all my scans
+						<input type="checkbox" ng-model="params.ignore_cache"> Ignore result cache<span class="text-muted"> :: Force rescan of the file even if the cache already have the result</span>
 					</label>
 				</div>
 				<div class="checkbox">
 					<label ng-class="{checked:params.deep_scan}">
-						<input type="checkbox" ng-model="params.deep_scan"> Perform a deep analysis on the submitted files
+						<input type="checkbox" ng-model="params.deep_scan"> Perform deep analysis<span class="text-muted"> :: Perform a deeper analysis on the submitted files (slower)</span>
 					</label>
 				</div>
+				<div class="checkbox">
+					<label ng-class="{checked:params.profile}">
+						<input type="checkbox" ng-model="params.profile"> Profile scans<span class="text-muted"> :: Signal the system to do profiling on your scans</span>
+					</label>
+				</div>
+				<div class="form-group">
+					<label>Time to live for my scans (in days)</label>
+					<input type="number" class="form-control" min="1" max="180" ng-model="params.ttl">
+				</div>
+            	<div ng-if="user.c12n_enforcing" class="form-group">
+                    <label>Default submission classification</label>
+                    <div ng-controller="classificationCtrl" classification-picker></div>
+                    <div class="label text-large classification {{params.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(params.classification)">{{params.classification | class_long}}</div>
+                </div>
             {% endraw %}
             {% endif %}
+			</div>
+		</section>
+		<section id="section_ui_params" ng-show="params" class="header_title">
+			<div class="menuheader" data-toggle="collapse" data-target="#ui_params">
+				<span class="text-big">User Interface Options</span>
+			</div>
+
+			<div id="ui_params" class="collapse in">
             {% raw %}
-			    <div class="checkbox">
-					<label ng-class="{checked:params.hide_raw_results}">
-						<input type="checkbox" ng-model="params.hide_raw_results"> Hide results footer that displays the RAW JSON results (Makes UI slower, Un-check for debugging only)
-					</label>
-				</div>
 				<div class="form-group">
 					<label for="dl_enc">Download encoding</label>
 					<select id="dl_enc" class="form-control" ng-model="params.download_encoding">
@@ -61,37 +73,23 @@
 						{% endraw %}{% block encodings%}{% endblock%}{% raw %}
 					</select>
 				</div>
-            {% endraw %}
-            {% if not is_readonly %}
-            {% raw %}
 				<div class="form-group">
-					<label>Time to live for my scans (in days)</label>
-					<input type="number" class="form-control" min="1" max="180" ng-model="params.ttl">
+					<label>Minimum service verdict for a secvice section to auto-expand</label>
+					<select id="auto_expend" class="form-control" ng-model="params.expand_min_score">
+						<option value="-10000">Safe (Negative score)</option>
+						<option value="0">Non-Malicious (0-100 score)</option>
+						<option value="100">Suspicious (100-500 score)</option>
+						<option value="500">Highly Suspicious (500-2000 score)</option>
+						<option value="2000">Malicious (2000+ score)</option>
+						<option value="100000000">Never auto-expend service sections</option>
+					</select>
 				</div>
-            {% endraw %}
-            {% endif %}
-            {% raw %}
-				<div class="form-group">
-					<label>Minimum score for a service to auto-expand the section</label>
-					<input type="number" class="form-control" min="-10000" ng-model="params.expand_min_score">
-				</div>
-            {% endraw %}
-            {% if not is_readonly %}
-            {% raw %}
-				<div ng-if="user.c12n_enforcing" class="form-group">
-                    <label>Default submission classification</label>
-                    <div ng-controller="classificationCtrl" classification-picker></div>
-                    <div class="label text-large classification {{params.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(params.classification)">{{params.classification | class_long}}</div>
-                </div>
-            {% endraw %}
-            {% endif %}
-            {% raw %}
-			</div>
+			{% endraw %}
+            </div>
 		</section>
-        {% endraw %}
         {% if not is_readonly %}
         {% raw %}
-		<section id="section_service_selection" ng-show="params">
+		<section id="section_service_selection" ng-show="params" class="header_title">
 			<div class="menuheader" data-toggle="collapse" data-target="#services">
 				<span class="text-big">Services Selection</span>
 				<div class="btn-group" style="padding-left: 10px;">

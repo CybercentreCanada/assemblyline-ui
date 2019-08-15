@@ -211,16 +211,6 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#submission_raw">
-                            <div id="submission_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{
-"submission": {{dump(data.submission)}},
-"services": {{dump(data.services)}}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 				
 				<section class="header_title" id="section_metadata" ng-hide="empty(data.metadata)">
@@ -234,14 +224,6 @@
 							<div class="col-xs-7 col-sm-9 col-md-10" style="white-space: pre-wrap">{{val | stripNull | joinBy:' | ' | objectViewer | iso_to_utc:true}}</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#meta_raw">
-                            <div id="meta_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(data.metadata)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 
 				<div ng-show="!summary" class="jumbotron">
@@ -290,14 +272,6 @@
 					</div>
 
 				</section>
-				<div ng-if="!settings.hide_raw_results">
-					<div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
-						<div id="summary_raw" class="collapse">
-							<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-							<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(summary)}}</pre>
-						</div>
-					</div>
-				</div>
 
 				<section class="header_title" ng-show="data && data.errors && data.errors.length != 0">
 					<div class="menuheader" data-toggle="collapse" data-target="#error_summary">
@@ -311,14 +285,6 @@
 							<strong>{{err | getServiceFromKey }}</strong> generated an error for file hash: <strong><a class="text-danger" href="submission_detail.html?sid={{sid}}#/{{err | getHashFromKey }}/">{{err | getHashFromKey }}</a></strong><span class="small">&nbsp;::&nbsp;{{err | getErrorTypeFromKey}}</span>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#error_raw">
-                            <div id="error_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(data.parsed_errors)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 				
 				
@@ -342,14 +308,6 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#ftree_raw">
-                            <div id="ftree_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(file_tree)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 			</div>
 		</section>
