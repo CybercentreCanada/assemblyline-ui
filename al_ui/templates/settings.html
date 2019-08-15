@@ -22,7 +22,7 @@
             {% raw %}
 				<div class="checkbox">
 					<label ng-class="{checked:params.ignore_dynamic_recursion_prevention}">
-						<input type="checkbox" ng-model="params.ignore_dynamic_recursion_prevention"> Ignore dynamic recursion prevention<span class="text-muted"> :: Prevent dynamic service to recursively perform dynamic analysis on files</span>
+						<input type="checkbox" ng-model="params.ignore_dynamic_recursion_prevention"> Ignore dynamic recursion prevention<span class="text-muted"> :: Stop preventing dynamic services to recursively perform dynamic analysis on files</span>
 					</label>
 				</div>
 				<div class="checkbox">
@@ -66,7 +66,14 @@
 			<div id="ui_params" class="collapse in">
             {% raw %}
 				<div class="form-group">
-					<label for="dl_enc">Download encoding</label>
+					<label for="sub_view">Default view for completed submissions</label>
+					<select id="sub_view" class="form-control" ng-model="params.submission_view">
+						<option value="details">Detailed view</option>
+						<option value="report">Report view</option>
+					</select>
+				</div>
+                <div class="form-group">
+					<label for="dl_enc">Encoding for all downloaded files</label>
 					<select id="dl_enc" class="form-control" ng-model="params.download_encoding">
 						<option value="raw">No encoding</option>
 						<option value="cart">CaRT (Assemblyline's malware neutering format)</option>
@@ -74,21 +81,14 @@
 					</select>
 				</div>
 				<div class="form-group">
-					<label>Minimum service verdict for a secvice section to auto-expand</label>
+					<label>Minimum verdict that a service needs to auto-expand its section</label>
 					<select id="auto_expend" class="form-control" ng-model="params.expand_min_score">
-						<option value="-10000">Safe (Negative score)</option>
-						<option value="0">Non-Malicious (0-100 score)</option>
-						<option value="100">Suspicious (100-500 score)</option>
-						<option value="500">Highly Suspicious (500-2000 score)</option>
-						<option value="2000">Malicious (2000+ score)</option>
+						<option value="-10000">Safe [Negative score]</option>
+						<option value="0">Non-Malicious [Score between 0-100]</option>
+						<option value="100">Suspicious [Score between 100-500]</option>
+						<option value="500">Highly Suspicious [Score between 500-2000]</option>
+						<option value="2000">Malicious [Score bigger then 2000]</option>
 						<option value="100000000">Never auto-expend service sections</option>
-					</select>
-				</div>
-				<div class="form-group">
-					<label for="sub_view">Submission default view for completed submissions</label>
-					<select id="sub_view" class="form-control" ng-model="params.submission_view">
-						<option value="details">Detailed view</option>
-						<option value="report">Report view</option>
 					</select>
 				</div>
 			{% endraw %}
