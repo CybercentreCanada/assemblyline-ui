@@ -69,6 +69,9 @@ a:hover {
 		text-align: center;
 		width: 100%;
 		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #FFF !important;
 	}
 
 	.container {
@@ -527,6 +530,11 @@ section.container{
 	vertical-align: top;
 }
 
+.list-non-indented {
+	padding-inline-start: 1.5em;
+	margin-bottom: 0;
+}
+
 .list-group-item.disabled{
 	color: #777;
 	background-color: #EEE;
@@ -656,31 +664,37 @@ section.container{
 }
 
 .label-danger {
+	-webkit-print-color-adjust: exact;
 	color: #FFF !important;
 	background-color: #d9534f !important;
 }
 
 .label-warning {
+	-webkit-print-color-adjust: exact;
 	color: #FFF !important;
 	background-color: #f0ad4e !important;
 }
 
 .label-info {
+	-webkit-print-color-adjust: exact;
 	color: #FFF !important;
 	background-color: #5bc0de !important;
 }
 
 .label-primary {
+	-webkit-print-color-adjust: exact;
 	color: #FFF !important;
 	background-color: #428bca !important;
 }
 
 .label-success {
+	-webkit-print-color-adjust: exact;
 	color: #FFF !important;
 	background-color: #5cb85c !important;
 }
 
 .label-default {
+	-webkit-print-color-adjust: exact;
 	color: #FFF !important;
 	background-color: #999 !important;
 }
@@ -1423,35 +1437,51 @@ figure.front{
 	}
 }
 
+.text-fixed {
+	font-family: monospace;
+}
+
+.text-heavy {
+	font-weight: 900;
+}
+
 .text-info {
+	-webkit-print-color-adjust: exact;
 	color: #31708f !important;
 }
 
 .text-primary {
+	-webkit-print-color-adjust: exact;
 	color: #428bca !important;
 }
 
 .text-success {
+	-webkit-print-color-adjust: exact;
 	color: #3c763d !important;
 }
 
 .text-warning {
+	-webkit-print-color-adjust: exact;
 	color: #8a6d3b !important;
 }
 
 .text-warning2 {
+	-webkit-print-color-adjust: exact;
 	color: #F0AD4E !important;
 }
 
 .text-danger {
+	-webkit-print-color-adjust: exact;
 	color: #a94442 !important;
 }
 
 .text-muted {
+	-webkit-print-color-adjust: exact;
 	color: #999 !important;
 }
 
 .text-extra-light{
+	-webkit-print-color-adjust: exact;
     color: #CCC !important;
 }
 
@@ -1626,6 +1656,22 @@ figure.front{
 .navbar-inverse.navbar-dev .navbar-nav>.open>a:focus {
     background-color: #0f1c2e;
     color: #EEE;
+}
+
+@media print {
+	.table-responsive {
+		width: inherit;
+		margin-bottom: inherit;
+		overflow-x: inherit;
+		overflow-y: inherit;
+		border: inherit;
+	}
+}
+
+.table>thead>tr>td.active, .table>tbody>tr>td.active, .table>tfoot>tr>td.active, .table>thead>tr>th.active,
+.table>tbody>tr>th.active, .table>tfoot>tr>th.active, .table>thead>tr.active>td, .table>tbody>tr.active>td,
+.table>tfoot>tr.active>td, .table>thead>tr.active>th, .table>tbody>tr.active>th, .table>tfoot>tr.active>th {
+    background-color: #f5f5f5!important;
 }
 
 .table-clickthrough>thead>tr>th, 

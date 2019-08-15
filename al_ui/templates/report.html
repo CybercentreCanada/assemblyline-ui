@@ -10,7 +10,7 @@
 	{%raw%}
 	<section id="appContent" class="container">
 		<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
-		<div class="div_footer">Submission Report :: {{sid}}<span ng-if="user.c12n_enforcing">:: {{data.classification | class_sm}}</span></div>
+		<div class="div_footer text-muted">Submission Report :: {{sid}}<span class="text-muted" ng-if="user.c12n_enforcing"> :: <span class="{{data.classification | class_text_color}}">{{data.classification | class_sm}}</span></span></div>
 		<div class="row print_banner">
 			<div class="col-xs-4">
 				<img style="width: 100%; margin-top: 20px" src="/static/images/banner.svg">
@@ -48,7 +48,7 @@
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>Maliciousness Score</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<strong class="{{data.max_score | score_color}}">{{data.max_score}}</strong>
+							<span class="text-heavy {{data.max_score | score_color}}">{{data.max_score}}</span>
 						</div>
 					</div>
 					<div class="row">
@@ -60,7 +60,7 @@
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>User's Verdict</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							Malicious: <b>{{data.verdict.malicious.length}}</b> / Non-Malicious: <b>{{data.verdict.non_malicious.length}}</b>
+							Malicious: <span class="text-heavy text-danger">{{data.verdict.malicious.length}}</span> / Non-Malicious: <span class="text-heavy text-success">{{data.verdict.non_malicious.length}}</span>
 						</div>
 					</div>
 					<div class="row">
@@ -91,25 +91,25 @@
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>MD5</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span style="font-family: monospace">{{data.file_info.md5}}</span>
+							<span class="text-fixed">{{data.file_info.md5}}</span>
 						</div>
 					</div>
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>SHA1</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span style="font-family: monospace">{{data.file_info.sha1}}</span>
+							<span class="text-fixed">{{data.file_info.sha1}}</span>
 						</div>
 					</div>
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>SHA256</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span style="font-family: monospace">{{data.file_info.sha256}}</span>
+							<span class="text-fixed">{{data.file_info.sha256}}</span>
 						</div>
 					</div>
 					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>SSDEEP</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span style="font-family: monospace">{{data.file_info.ssdeep}}</span>
+							<span class="text-fixed">{{data.file_info.ssdeep}}</span>
 						</div>
 					</div>
 				</div>
@@ -139,7 +139,7 @@
 						<div ng-repeat="(attack_name, files) in attack_patterns | orderBy:attack_name">
 							<label style="display: inline;">{{attack_name}}</label>
 							<ul>
-								<li ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></li>
+								<li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
 							</ul>
 						</div>
 					</div>
@@ -150,18 +150,23 @@
 				<div class="menureport">
 					<span class="text-big">{{tag_category | titleCase }}</span>
 				</div>
-				<table class="table table-condensed table-striped">
-					<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
-					<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
-						<tr ng-repeat="(value, files) in values | orderBy:value">
-							<td nowrap><label class="text-muted">{{tag_type | shortTagType | titleCase}}</label></td>
-							<td style="width: 100%"><strong>{{value}}</strong></td>
-							<td nowrap class="text-smaller text-info" style="font-family: monospace">
-								<div ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				<div class="table-responsive">
+					<table class="table table-condensed table-striped">
+						<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
+						<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
+							<tr ng-repeat="(value, files) in values | orderBy:value">
+								<td nowrap><label class="text-muted">{{tag_type | shortTagType | titleCase}}</label></td>
+								<td><strong>{{value | breakableStr}}</strong></td>
+								<td class="text-smaller text-fixed">
+									<ul class="list-non-indented">
+										<li ng-repeat="file in files" class="text-info" title="{{file[1]}}">{{file[0] | breakableStr}}</li>
+									</ul>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
 				<!--
 				<div id="{{tag_category}}" class="row make-columns">
 					<div class="report_block col-item" ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
