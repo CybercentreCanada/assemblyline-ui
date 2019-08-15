@@ -48,10 +48,18 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             }
         });
 
-
         //Load params from datastore
         $scope.start = function () {
             $scope.load_data();
+        };
+
+        $scope.get_default_view = function(submission){
+            if (submission.state === "completed" && $scope.settings.submission_view === "report"){
+                return 'report';
+            }
+            else{
+                return 'submission_detail';
+            }
         };
 
         $scope.load_data = function () {

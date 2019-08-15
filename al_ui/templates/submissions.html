@@ -1,10 +1,10 @@
 {% extends base_template %}
 {% block html_param %}ng-app="app"{% endblock %}
-{% block title_page %}AL - {% if group %}Group Scans [{{group}}]{% else %}User Scans [{{user.uname}}]{% endif %}{% endblock %}
+{% block title_page %}AL - {% if group %}Group Submissions [{{group}}]{% else %}User Submissions [{{user.uname}}]{% endif %}{% endblock %}
 {% block js_import %}
 	<script src="/static/js/submissions.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};{% if uname %}uname='{{uname}}';{% endif %}{% if group %}group='{{group}}';{% endif %}start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};settings={{settings}};debug={{debug}};{% if uname %}uname='{{uname}}';{% endif %}{% if group %}group='{{group}}';{% endif %}start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
@@ -30,15 +30,15 @@
 				</thead>
 				<tbody>
 					<tr ng-repeat="submission in submission_list | orderBy:'times.submitted':true">
-						<td nowrap><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-						<td ><a href="/submission_detail.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'" class="label classification {{submission.max_score | verdict_color}}">{{submission.max_score | verdict}}</span></a></td>
-						<td class="{{submission.max_score | score_color}}"><a href="/submission_detail.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'"><strong>{{submission.max_score}}</strong></span></a></td>
-						<td width="100%"><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.params.description | maxLength:120 | breakableStr}}</a></td>
-						<td nowrap><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.params.submitter}}</a></td>
-						<td><a href="/submission_detail.html?sid={{submission.sid}}">{{submission.file_count}}</a></td>
-						<td ng-if="user.c12n_enforcing"><a href="/submission_detail.html?sid={{submission.sid}}"><label class="label classification {{submission.classification | class_label_color}}">{{submission.classification | class_sm }}</label></a></td>
+						<td nowrap><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
+						<td ><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'" class="label classification {{submission.max_score | verdict_color}}">{{submission.max_score | verdict}}</span></a></td>
+						<td class="{{submission.max_score | score_color}}"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'"><strong>{{submission.max_score}}</strong></span></a></td>
+						<td width="100%"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.description | maxLength:120 | breakableStr}}</a></td>
+						<td nowrap><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.submitter}}</a></td>
+						<td><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.file_count}}</a></td>
+						<td ng-if="user.c12n_enforcing"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><label class="label classification {{submission.classification | class_label_color}}">{{submission.classification | class_sm }}</label></a></td>
 						<td nowrap>
-							<a href="/submission_detail.html?sid={{submission.sid}}">
+							<a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">
 								<span title="Completed without errors" ng-show="submission.state=='completed'&&submission.error_count==0" class="glyphicon glyphicon-ok text-success"></span>
 								<span title="Completed with errors" ng-show="submission.state=='completed'&&submission.error_count>0" class="glyphicon glyphicon-remove text-danger"></span>
 								<span title="Unknown?" ng-show="submission.state=='completed'&&submission.error_count===undefined" class="text-muted"><strong>?</strong></span>

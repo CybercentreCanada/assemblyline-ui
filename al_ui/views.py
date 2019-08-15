@@ -343,7 +343,7 @@ def submission_detail(**kwargs):
 
 
 @views.route("/submissions.html")
-@protected_renderer(audit=False)
+@protected_renderer(audit=False, load_settings=True)
 def submissions(**kwargs):
     user = kwargs['user']
 
