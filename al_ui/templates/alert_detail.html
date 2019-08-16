@@ -10,7 +10,7 @@
     <script src="/static/js/angular/angular-sanitize.min.js"></script>
     <script src="/static/js/ui-select/select.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};alert_key='{{alert_key}}';start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};settings={{settings}};alert_key='{{alert_key}}';start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}

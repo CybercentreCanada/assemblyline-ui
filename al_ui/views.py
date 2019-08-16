@@ -34,7 +34,7 @@ def account(**kwargs):
 
 # noinspection PyBroadException
 @views.route("/alerts.html")
-@protected_renderer(audit=False)
+@protected_renderer(audit=False, load_settings=True)
 def alerts(*_, **kwargs):
     filtering_group_fields = config.core.alerter.filtering_group_fields
     non_filtering_group_fields = config.core.alerter.non_filtering_group_fields
@@ -50,14 +50,14 @@ def alerts(*_, **kwargs):
 
     filter_queries = [angular_safe(x) for x in request.args.getlist("fq") if x != ""]
 
-    time_slice = angular_safe(request.args.get("time_slice", "4{DAY}".format(**STORAGE.ds.DATE_FORMAT)))
-    time_slice_array = [
+    tc = angular_safe(request.args.get("tc", "4{DAY}".format(**STORAGE.ds.DATE_FORMAT)))
+    tc_array = [
         {"value": "", "name": "None (slow)"},
         {"value": "24{HOUR}".format(**STORAGE.ds.DATE_FORMAT), "name": "24 Hours"},
         {"value": "4{DAY}".format(**STORAGE.ds.DATE_FORMAT), "name": "4 Days"},
         {"value": "7{DAY}".format(**STORAGE.ds.DATE_FORMAT), "name": "1 Week"}
     ]
-    start_time = angular_safe(request.args.get("start_time", None))
+    tc_start = angular_safe(request.args.get("tc_start", None))
     view_type = angular_safe(request.args.get("view_type", "grouped"))
     group_by = angular_safe(request.args.get("group_by", config.core.alerter.default_group_field))
     if group_by not in possible_group_fields:
@@ -66,20 +66,20 @@ def alerts(*_, **kwargs):
     return custom_render("alerts.html",
                          search_text=search_text,
                          filter=search_filter,
-                         start_time=start_time,
-                         time_slice=time_slice,
+                         tc_start=tc_start,
+                         tc=tc,
                          view_type=view_type,
                          filter_queries=json.dumps(filter_queries),
                          group_by=group_by,
                          filtering_group_fields=json.dumps(filtering_group_fields),
                          non_filtering_group_fields=json.dumps(non_filtering_group_fields),
-                         time_slice_array=time_slice_array,
+                         tc_array=tc_array,
                          time_separator=angular_safe(STORAGE.ds.DATE_FORMAT["SEPARATOR"]),
                          **kwargs)
 
 
 @views.route("/alert_detail.html")
-@protected_renderer(audit=False)
+@protected_renderer(audit=False, load_settings=True)
 def alert_detail(*_, **kwargs):
     user = kwargs['user']
 

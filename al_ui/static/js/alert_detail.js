@@ -32,6 +32,15 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
             console.log("Scope", $scope)
         };
 
+        $scope.get_default_view = function(){
+            if ($scope.settings.submission_view === "report"){
+                return 'report';
+            }
+            else{
+                return 'submission_detail';
+            }
+        };
+
         $scope.send_malicious_verdict = function (alert){
             $scope.send_verdict(alert, 'malicious');
         };
