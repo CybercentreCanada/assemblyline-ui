@@ -489,7 +489,7 @@ def get_summary(sid, **kwargs):
             elif t["type"] in config.submission.tag_types.ioc:
                 summary_type = 'ioc'
 
-            if  t['value'] == ""  or summary_type is None:
+            if t['value'] == "" or summary_type is None:
                 continue
 
             sha256 = t["key"][:64]
@@ -642,6 +642,103 @@ def list_submissions_for_user(username, **kwargs):
                                                            as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
+
+
+@submission_api.route("/report/<submission_id>/", methods=["GET"])
+@api_login(audit=False, check_xsrf_token=False)
+def get_report(submission_id, **kwargs):
+    """
+    Create a report for a submission based on its ID.
+
+    Variables:
+    submission_id   ->   ID of the submission to create the report for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    { <THE REPORT> }
+    """
+    user = kwargs['user']
+    submission = STORAGE.submission.get(submission_id, as_obj=False)
+    if submission is None:
+        return make_api_response("", "Submission ID %s does not exists." % submission_id, 404)
+
+    if user and Classification.is_accessible(user['classification'], submission['classification']):
+
+        if submission['state'] != 'completed':
+            return make_api_response("", f"It is too early to generate the report. "
+                                         f"Submission ID {submission_id} is incomplete.", 425)
+
+        submission.pop('errors', None)
+        tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth)
+        submission['file_tree'] = tree
+
+        def recurse_get_names(data):
+            output = {}
+            for key, val in data.items():
+                output.setdefault(key, [])
+
+                for res_name in val['name']:
+                    output[key].append(res_name)
+
+                children = recurse_get_names(val['children'])
+                for c_key, c_names in children.items():
+                    output.setdefault(c_key, [])
+                    output[c_key].extend(c_names)
+
+            return output
+
+        name_map = recurse_get_names(tree)
+
+        summary = STORAGE.get_summary_from_keys(submission.pop('results', []))
+        tags = summary['tags']
+        attack_matrix = summary['attack_matrix']
+        submission['attack_matrix'] = {}
+        submission['tags'] = {}
+
+        # Process attack matrix
+        for item in attack_matrix:
+            sha256 = item['key'][:64]
+
+            for cat in item['categories']:
+
+                submission['attack_matrix'].setdefault(cat, {})
+                submission['attack_matrix'][cat].setdefault(item['name'], [])
+                for name in name_map.get(sha256, [sha256]):
+                    submission['attack_matrix'][cat][item['name']].append((name, sha256))
+
+        # Process tags
+        for t in tags:
+            summary_type = None
+
+            if t["type"] in config.submission.tag_types.behavior:
+                summary_type = 'behaviors'
+            elif t["type"] in config.submission.tag_types.attribution:
+                summary_type = 'attributions'
+            elif t["type"] in config.submission.tag_types.ioc:
+                summary_type = 'indicators_of_compromise'
+
+            if t['value'] == "" or summary_type is None:
+                continue
+
+            sha256 = t["key"][:64]
+
+            # Tags
+            submission['tags'].setdefault(summary_type, {})
+            submission['tags'][summary_type].setdefault(t['type'], {})
+            submission['tags'][summary_type][t['type']].setdefault(t['value'], [])
+            for name in name_map.get(sha256, [sha256]):
+                submission['tags'][summary_type][t['type']][t['value']].append((name, sha256))
+
+        submission["file_info"] = STORAGE.file.get(submission['files'][0]['sha256'], as_obj=False)
+
+        return make_api_response(submission)
+    else:
+        return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
 
 @submission_api.route("/verdict/<submission_id>/<verdict>/", methods=["PUT"])

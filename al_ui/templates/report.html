@@ -1,0 +1,215 @@
+{% extends base_template %}
+{% block html_param %}ng-app="app"{% endblock %}
+{% block title_page %}AL - Submission report [{{sid}}]{% endblock %}
+{% block js_import %}
+    <script src="/static/js/report.js"></script>
+{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';settings={{settings}};start();"{% endblock %}
+{% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
+{% block content %}
+	{%raw%}
+	<section id="appContent" class="container">
+		<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
+		<div class="div_footer text-muted">Submission Report :: {{sid}}<span class="text-muted" ng-if="user.c12n_enforcing"> :: <span class="{{data.classification | class_text_color}}">{{data.classification | class_sm}}</span></span></div>
+		<div class="row print_banner">
+			<div class="col-xs-4">
+				<img style="width: 100%; margin-top: 20px" src="/static/images/banner.svg">
+			</div>
+			<div class="col-xs-8 header_title text-right">
+				<h1>Submission Report</h1>
+				<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
+			</div>
+		</div>
+		<div class="hidden-print text-right">
+			<h1>Submission Report</h1>
+			<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
+			<a ng-click="do_print();" class="btn btn-default btn-sm" title="Print page"><span class="glyphicon glyphicon-print"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Print report</span></a>&nbsp;
+			<a href="submission_detail.html?sid={{sid}}" class="btn btn-primary btn-sm" title="View submission details"><span style="vertical-align: middle;" class="icon-details"><span class="hidden-sm hidden-xs">&nbsp;&nbsp;&nbsp;</span></span><span class="hidden-sm hidden-xs">View submission details</span></a>
+		</div>
+
+		<div ng-show="started">
+			<section class="report_section" id="info_section" ng-show="data">
+				<div class="menureport">
+					<span class="text-big">General Information</span>
+				</div>
+				<div id="submission">
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>File Name</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.files[0].name}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Description</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.params.description}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Maliciousness Score</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span class="text-heavy {{data.max_score | score_color}}">{{data.max_score}}</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Verdict</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span class="label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>User's Verdict</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							Malicious: <span class="text-heavy text-danger">{{data.verdict.malicious.length}}</span> / Non-Malicious: <span class="text-heavy text-success">{{data.verdict.non_malicious.length}}</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Analysis date</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.times.submitted | date:"yyyy-MM-dd HH:mm:ss"}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Submitted By</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.params.submitter}}
+						</div>
+					</div>
+					<div class="row">&nbsp;</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>File type</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.file_info.type}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>MIME</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.file_info.mime}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Magic</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.file_info.magic}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Size</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span>{{data.file_info.size}} ({{data.file_info.size | fileSize}})</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>MD5</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span class="text-fixed">{{data.file_info.md5}}</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>SHA1</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span class="text-fixed">{{data.file_info.sha1}}</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>SHA256</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span class="text-fixed">{{data.file_info.sha256}}</span>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>SSDEEP</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span class="text-fixed">{{data.file_info.ssdeep}}</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="report_section" id="metadata_section" ng-hide="empty(data.metadata)">
+				<div class="menureport">
+					<span class="text-big">Metadata</span>
+				</div>
+				<div id="metadata">
+
+					<div class="row" ng-repeat="(key, val) in data.metadata | orderBy:key">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>{{key | titleCase }}</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10" style="white-space: pre-wrap">{{val | stripNull | joinBy:' | ' | objectViewer | iso_to_utc:true}}</div>
+					</div>
+				</div>
+			</section>
+
+			<section ng-show="data.attack_matrix && obj_len(data.attack_matrix) != 0" class="report_section">
+				<div class="menureport">
+					<span class="text-big">Att&ck Matrix</span>
+				</div>
+
+				<div id="attack_matrix" class="row make-columns">
+					<div class="report_block col-item" ng-repeat="(category, attack_patterns) in data.attack_matrix | orderBy:category">
+						<h4 class="text-muted">{{category | titleCase}}</h4>
+						<div ng-repeat="(attack_name, files) in attack_patterns | orderBy:attack_name">
+							<label style="display: inline;">{{attack_name}}</label>
+							<ul>
+								<li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="report_section" ng-show="obj_len(data.tags[tag_category]) != 0" ng-repeat="(tag_category, category_values) in data.tags | orderBy:tag_category">
+				<div class="menureport">
+					<span class="text-big">{{tag_category | titleCase }}</span>
+				</div>
+				<div class="table-responsive">
+					<table class="table table-condensed table-light-border">
+						<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
+						<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
+							<tr ng-repeat="(value, files) in values | orderBy:value">
+								<td nowrap><label class="text-muted">{{tag_type | shortTagType | titleCase}}</label></td>
+								<td><strong>{{value | breakableStr}}</strong></td>
+								<td class="text-smaller text-fixed">
+									<ul class="list-non-indented">
+										<li ng-repeat="file in files" class="text-info" title="{{file[1]}}">{{file[0] | breakableStr}}</li>
+									</ul>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<!--
+				<div id="{{tag_category}}" class="row make-columns">
+					<div class="report_block col-item" ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
+						<h4 class="text-muted">{{tag_type | shortTagType | titleCase}}</h4>
+						<div ng-repeat="(value, files) in values | orderBy:value">
+							<label style="display: inline;">{{value}}</label>
+							<ul>
+								<li ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+				-->
+			</section>
+
+			<section class="report_section" id="section_files" ng-show="data">
+				<div class="menureport">
+					<span class="text-big">Generated files</span>
+				</div>
+				<div id="files">
+					<ng-include src="'/static/ng-template/report_file_item.html'" ng-init="file_tree=data.file_tree"></ng-include>
+
+					<div ng-show="data.file_tree && (obj_len(data.file_tree) == 0)" >
+						<div class="pad text-muted">
+							No files associated to this submission.
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+	</section>
+	{%endraw%}
+{% endblock %}				
+{% block loading_jumbo %}ng-show="!started"{% endblock %}

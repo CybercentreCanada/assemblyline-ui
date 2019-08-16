@@ -59,11 +59,11 @@
 					<div title="Malicious: {{data.verdict.malicious.length}} / Non-Malicious: {{data.verdict.non_malicious.length}}" class="hidden-xs" ng-show="data.times.completed">
 						<div class="pad"><span style="width: 170px; display: block;" class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span></div>
 						<div>
-							<svg height="10" width="170">
-								<rect height="10" width="170" style="fill: transparent;stroke: lightgrey"></rect>
-								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="8" fill="#d9534f"></rect>
-								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="8" fill="#5cb85c"></rect>
-								<rect x="85" y="0" height="10" width="1" fill="lightgrey"></rect>
+							<svg height="15" width="170">
+								<rect height="15" width="170" style="fill: transparent;stroke: lightgrey"></rect>
+								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="13" fill="#d9534f"></rect>
+								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="13" fill="#5cb85c"></rect>
+								<rect x="85" y="0" height="15" width="1" fill="lightgrey"></rect>
 							</svg>
 						</div>
 						<div style="width: 170px" class="text-center">
@@ -78,16 +78,17 @@
 					<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
 					<p ng-show="started" ng-if="!user.read_only">
 						<a ng-click="resubmit_submission();" class="btn btn-default btn-sm" title="Resubmit current submission"><span class="glyphicon glyphicon-repeat"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Resubmit</span></a>&nbsp;
+						<a ng-show="data.state==='completed'" href="report.html?sid={{sid}}" class="btn btn-primary btn-sm" title="Show report"><span class="glyphicon glyphicon-book"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Show report</span></a>&nbsp;
 						<a ng-click="delete_submission();" class="btn btn-danger btn-sm" title="Delete Submission"><span class="glyphicon glyphicon-remove"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Delete Submission</span></a>
 					</p>
 					<div title="Malicious: {{data.verdict.malicious.length}} / Non-Malicious: {{data.verdict.non_malicious.length}}" class="hidden-sm hidden-md hidden-lg" ng-show="data.times.completed">
 						<div class="pad" style="display: inline-table;"><span style="width: 170px; display: block;" class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span></div>
 						<div>
-							<svg height="10" width="170">
-								<rect height="10" width="170" style="fill: transparent;stroke: lightgrey"></rect>
-								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="8" fill="#d9534f"></rect>
-								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="8" fill="#5cb85c"></rect>
-								<rect x="85" y="0" height="10" width="1" fill="lightgrey"></rect>
+							<svg height="15" width="170">
+								<rect height="15" width="170" style="fill: transparent;stroke: lightgrey"></rect>
+								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="13" fill="#d9534f"></rect>
+								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="13" fill="#5cb85c"></rect>
+								<rect x="85" y="0" height="15" width="1" fill="lightgrey"></rect>
 							</svg>
 						</div>
 						<div style="padding-right: 35px">
@@ -210,16 +211,6 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#submission_raw">
-                            <div id="submission_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{
-"submission": {{dump(data.submission)}},
-"services": {{dump(data.services)}}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 				
 				<section class="header_title" id="section_metadata" ng-hide="empty(data.metadata)">
@@ -233,14 +224,6 @@
 							<div class="col-xs-7 col-sm-9 col-md-10" style="white-space: pre-wrap">{{val | stripNull | joinBy:' | ' | objectViewer | iso_to_utc:true}}</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#meta_raw">
-                            <div id="meta_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(data.metadata)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 
 				<div ng-show="!summary" class="jumbotron">
@@ -289,14 +272,6 @@
 					</div>
 
 				</section>
-				<div ng-if="!settings.hide_raw_results">
-					<div class="raw_footer" data-toggle="collapse" data-target="#summary_raw">
-						<div id="summary_raw" class="collapse">
-							<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-							<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(summary)}}</pre>
-						</div>
-					</div>
-				</div>
 
 				<section class="header_title" ng-show="data && data.errors && data.errors.length != 0">
 					<div class="menuheader" data-toggle="collapse" data-target="#error_summary">
@@ -310,14 +285,6 @@
 							<strong>{{err | getServiceFromKey }}</strong> generated an error for file hash: <strong><a class="text-danger" href="submission_detail.html?sid={{sid}}#/{{err | getHashFromKey }}/">{{err | getHashFromKey }}</a></strong><span class="small">&nbsp;::&nbsp;{{err | getErrorTypeFromKey}}</span>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#error_raw">
-                            <div id="error_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(data.parsed_errors)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 				
 				
@@ -341,14 +308,6 @@
 							</div>
 						</div>
 					</div>
-                    <div ng-if="!settings.hide_raw_results">
-                        <div class="raw_footer" data-toggle="collapse" data-target="#ftree_raw">
-                            <div id="ftree_raw" class="collapse">
-                                <div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-                                <pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(file_tree)}}</pre>
-                            </div>
-                        </div>
-                    </div>
 				</section>
 			</div>
 		</section>

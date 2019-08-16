@@ -14,10 +14,10 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.started = false;
         $scope.filtered = false;
         $scope.filter = "";
-        $scope.time_slice_array = null;
-        $scope.time_slice = null;
+        $scope.tc_array = null;
+        $scope.tc = null;
         $scope.time_separator = "";
-        $scope.start_time = null;
+        $scope.tc_start = null;
         $scope.label_suggestions = ['PHISHING', 'COMPROMISE', 'CRIME', 'ATTRIBUTED', 'WHITELISTED',
             'FALSE_POSITIVE', 'REPORTED', 'MITIGATED', 'PENDING'];
 
@@ -62,6 +62,15 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 mm = '' + mm;
             }
             return today.getFullYear() + mm + dd;
+        };
+
+        $scope.get_default_view = function(){
+            if ($scope.settings.submission_view === "report"){
+                return 'report';
+            }
+            else{
+                return 'submission_detail';
+            }
         };
 
         $scope.send_malicious_verdict = function (alert){
@@ -181,8 +190,8 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             } else {
                 let params = {
                     q: $scope.filter,
-                    tc: $scope.time_slice,
-                    tc_start: $scope.start_time,
+                    tc: $scope.tc,
+                    tc_start: $scope.tc_start,
                     fq: $scope.filter_queries.slice()
                 };
 
@@ -340,8 +349,8 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             } else {
                 let params = {
                     q: $scope.filter,
-                    tc: $scope.time_slice,
-                    tc_start: $scope.start_time,
+                    tc: $scope.tc,
+                    tc_start: $scope.tc_start,
                     fq: $scope.filter_queries.slice()
                 };
 
@@ -410,8 +419,8 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
             } else {
                 let params = {
                     q: $scope.filter,
-                    tc: $scope.time_slice,
-                    tc_start: $scope.start_time,
+                    tc: $scope.tc,
+                    tc_start: $scope.tc_start,
                     fq: $scope.filter_queries.slice()
                 };
 
@@ -449,7 +458,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.lock_in_timestamp = function (alert) {
             $scope.filter_queries.push("reporting_ts:[" + alert.reporting_ts + " TO *]");
             $scope.gen_forced_filter(false);
-            let url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+            let url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&tc=" + $scope.tc + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
             for (let key in $scope.filter_queries) {
                 let fq = $scope.filter_queries[key];
                 url += "&fq=" + fq;
@@ -495,7 +504,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.invalid_query = "";
 
         $scope.filterData = function (searchText) {
-            let url = "/alerts.html?filter=" + encodeURIComponent(searchText) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+            let url = "/alerts.html?filter=" + encodeURIComponent(searchText) + "&tc=" + $scope.tc + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
             for (let key in $scope.filter_queries) {
                 let fq = $scope.filter_queries[key];
                 url += "&fq=" + fq;
@@ -529,8 +538,8 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 }
                 $scope.forced_filter += "&fq=" + fq;
             }
-            if ($scope.view_type === 'list' && $scope.start_time) {
-                $scope.forced_filter += "&start_time=" + $scope.start_time;
+            if ($scope.view_type === 'list' && $scope.tc_start) {
+                $scope.forced_filter += "&tc_start=" + $scope.tc_start;
                 if ($scope.field_fq != null && do_count) {
                     $scope.count_instances();
                 }
@@ -554,13 +563,13 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     }
                 }
 
-                url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+                url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&tc=&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
                 for (let key in new_fq) {
                     let fq = new_fq[key];
                     url += "&fq=" + fq;
                 }
             } else {
-                url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&time_slice=" + $scope.time_slice + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+                url = "/alerts.html?filter=" + encodeURIComponent($scope.filter) + "&tc=" + $scope.tc + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
             }
 
             window.location = url;
@@ -602,12 +611,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 url = "/api/v4/alert/grouped/" + $scope.group_by + "/";
             }
 
-            if ($scope.start_time != null) {
-                url_params += "&start_time=" + $scope.start_time;
+            if ($scope.tc_start != null) {
+                url_params += "&tc_start=" + $scope.tc_start;
             }
 
-            if ($scope.time_slice !== "") {
-                url_params += "&time_slice=" + $scope.time_slice;
+            if ($scope.tc !== "") {
+                url_params += "&tc=" + $scope.tc;
             }
 
             for (let key in $scope.filter_queries) {
@@ -631,13 +640,13 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.total = data.api_response.total;
                     if ($scope.view_type !== "list") {
                         $scope.counted_total += data.api_response.counted_total;
-                        $scope.start_time = data.api_response.tc_start;
+                        $scope.tc_start = data.api_response.tc_start;
                     } else {
                         $scope.counted_total += data.api_response.items.length;
                     }
                     $scope.started = true;
 
-                    $scope.filtered = (($scope.filter !== "*" && $scope.filter !== "") || $scope.time_slice !== "" || $scope.forced_filter !== "" || $scope.filtering_group_by.indexOf($scope.group_by) !== -1);
+                    $scope.filtered = (($scope.filter !== "*" && $scope.filter !== "") || $scope.tc !== "" || $scope.forced_filter !== "" || $scope.filtering_group_by.indexOf($scope.group_by) !== -1);
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;

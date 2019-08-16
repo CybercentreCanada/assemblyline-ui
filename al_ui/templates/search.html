@@ -106,16 +106,6 @@
 									</td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!settings.hide_raw_results">
-								<tr>
-									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#submission_raw">
-										<div id="submission_raw" class="collapse">
-											<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-											<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(submission_list)}}</pre>
-										</div>
-									</td>
-								</tr>
-							</tfoot>
 						</table>
 					</section>
 					<div ng-show="submission_list.total == 0">
@@ -156,16 +146,6 @@
 									<td nowrap ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{file.sha256}}"><label class="label classification {{file.classification | class_label_color}}">{{file.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!settings.hide_raw_results">
-								<tr>
-									<td colspan=6 class="raw_footer" data-toggle="collapse" data-target="#file_raw">
-										<div id="file_raw" class="collapse">
-											<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-											<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(file_list)}}</pre>
-										</div>
-									</td>
-								</tr>
-							</tfoot>
 						</table>
 					</section>
 					<div ng-show="file_list.total == 0">
@@ -204,16 +184,6 @@
 									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!settings.hide_raw_results">
-								<tr>
-									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#result_raw">
-										<div id="result_raw" class="collapse">
-											<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-											<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(result_list)}}</pre>
-										</div>
-									</td>
-								</tr>
-							</tfoot>
 						</table>
 					</section>
 					<div ng-show="result_list.total == 0">
@@ -266,16 +236,6 @@
 									</td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!settings.hide_raw_results">
-								<tr>
-									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#signature_raw">
-										<div id="signature_raw" class="collapse">
-											<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-											<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(signature_list)}}</pre>
-										</div>
-									</td>
-								</tr>
-							</tfoot>
 						</table>
 					</section>
 					<div ng-show="signature_list.total == 0">
@@ -318,16 +278,6 @@
 									<td ng-if="user.c12n_enforcing"><a href="/alert_detail.html?alert_key={{alert.id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>
 								</tr>
 							</tbody>
-							<tfoot ng-if="!settings.hide_raw_results">
-								<tr>
-									<td colspan=7 class="raw_footer" data-toggle="collapse" data-target="#alert_raw">
-										<div id="alert_raw" class="collapse">
-											<div class="text-muted text-center clickable pad" width="100%">Close raw viewer</div>
-											<pre style="cursor: auto;" ng-click="$event.stopPropagation()">{{dump(alert_list)}}</pre>
-										</div>
-									</td>
-								</tr>
-							</tfoot>
 						</table>
 					</section>
 					<div ng-show="alert_list.total == 0">
