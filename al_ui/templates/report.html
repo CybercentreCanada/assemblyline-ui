@@ -89,6 +89,18 @@
 						</div>
 					</div>
 					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Magic</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							{{data.file_info.magic}}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-4 col-md-3 col-lg-2"><label>Size</label></div>
+						<div class="col-xs-8 col-md-9 col-lg-10">
+							<span>{{data.file_info.size}} ({{data.file_info.size | fileSize}})</span>
+						</div>
+					</div>
+					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>MD5</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
 							<span class="text-fixed">{{data.file_info.md5}}</span>
@@ -151,7 +163,7 @@
 					<span class="text-big">{{tag_category | titleCase }}</span>
 				</div>
 				<div class="table-responsive">
-					<table class="table table-condensed table-striped">
+					<table class="table table-condensed table-light-border">
 						<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
 						<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
 							<tr ng-repeat="(value, files) in values | orderBy:value">

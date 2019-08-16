@@ -1668,6 +1668,22 @@ figure.front{
 	}
 }
 
+.table-light-border>tbody+tbody {
+    border-top: 1px solid #ddd;
+}
+
+.table-light-border>thead>tr>th, .table-light-border>tbody>tr>th, .table-light-border>tfoot>tr>th,
+.table-light-border>thead>tr>td, .table-light-border>tbody>tr>td, .table-light-border>tfoot>tr>td {
+    border-top: 1px dotted #eee;
+}
+
+@media print {
+    .table-light-border>thead>tr>th, .table-light-border>tbody>tr>th, .table-light-border>tfoot>tr>th,
+    .table-light-border>thead>tr>td, .table-light-border>tbody>tr>td, .table-light-border>tfoot>tr>td {
+        border-top: 1px dashed #eee;
+    }
+}
+
 .table>thead>tr>td.active, .table>tbody>tr>td.active, .table>tfoot>tr>td.active, .table>thead>tr>th.active,
 .table>tbody>tr>th.active, .table>tfoot>tr>th.active, .table>thead>tr.active>td, .table>tbody>tr.active>td,
 .table>tfoot>tr.active>td, .table>thead>tr.active>th, .table>tbody>tr.active>th, .table>tfoot>tr.active>th {
