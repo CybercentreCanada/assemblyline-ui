@@ -1,18 +1,18 @@
 #####################################
 # UI ONLY APIs
 
-import os
 import glob
+import os
 
 from flask import request
 
-from al_core.submission_client import SubmissionClient, SubmissionException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
 from al_ui.helper.service import ui_to_submission_params
 from al_ui.helper.user import check_submission_quota
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
 Classification = forge.get_classification()
 config = forge.get_config()

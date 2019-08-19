@@ -72,7 +72,7 @@ pipelines:
             image: python:3.6
             services: *services
             script: &deploy_test
-              - rm -rf al_core setup.py  # Make sure we are running on the package from the prior build
+              - rm -rf assemblyline_core setup.py  # Make sure we are running on the package from the prior build
               - apt update
               - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev
               - pip install -f dist assemblyline-ui

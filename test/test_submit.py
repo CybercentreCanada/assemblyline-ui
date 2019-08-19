@@ -4,14 +4,13 @@ import json
 import random
 
 import pytest
+from base import HOST, get_api_data
 
-from base import HOST, login_session, get_api_data
-
-from al_core.dispatching.dispatcher import SubmissionTask
 from assemblyline.common import forge
-from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
+from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_core.dispatching.dispatcher import SubmissionTask
 
 config = forge.get_config()
 ds = forge.get_datastore(config)

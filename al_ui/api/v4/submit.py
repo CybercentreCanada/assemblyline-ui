@@ -5,15 +5,15 @@ import shutil
 
 from flask import request
 
-from al_core.submission_client import SubmissionClient, SubmissionException
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE, TEMP_SUBMIT_DIR
+from al_ui.helper.service import ui_to_submission_params
 from al_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
 from al_ui.helper.user import check_submission_quota, get_default_user_settings
-from al_ui.helper.service import ui_to_submission_params
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
 Classification = forge.get_classification()
 config = forge.get_config()

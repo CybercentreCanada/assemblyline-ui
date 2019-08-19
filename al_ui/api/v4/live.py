@@ -1,9 +1,9 @@
 
-from al_core.dispatching.client import DispatchClient
-from assemblyline.common import forge
-from assemblyline.remote.datatypes.queues.named import NamedQueue
 from al_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from al_ui.config import STORAGE
+from assemblyline.common import forge
+from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_core.dispatching.client import DispatchClient
 
 Classification = forge.get_classification()
 config = forge.get_config()
