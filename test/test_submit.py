@@ -4,7 +4,7 @@ import json
 import random
 
 import pytest
-from base import HOST, get_api_data
+from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
