@@ -48,7 +48,7 @@ setup(
         'markdown',
     ],
     package_data={
-        'al_ui': [
+        'assemblyline_ui': [
             "templates/*",
             "static/css/*",
             "static/fonts/*",

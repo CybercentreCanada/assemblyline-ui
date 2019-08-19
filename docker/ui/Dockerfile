@@ -10,4 +10,4 @@ RUN pip3 install assemblyline-ui==$version
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "al_ui.app:app", "--config=/usr/local/lib/python3.7/site-packages/al_ui/gunicorn_config.py"]
+CMD ["gunicorn", "assemblyline_ui.app:app", "--config=/usr/local/lib/python3.7/site-packages/assemblyline_ui/gunicorn_config.py"]

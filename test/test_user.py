@@ -5,7 +5,7 @@ import pytest
 
 from base import APIError, HOST, login_session, get_api_data
 
-from al_ui.helper.user import load_user_settings
+from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites

@@ -34,8 +34,8 @@ pipelines:
             - cd $BITBUCKET_CLONE_DIR && pwd
             - pip install -r test/requirements.txt
             - pip install -e .
-            - python3 -m al_ui.app &
-            - python3 -m al_ui.socketsrv &
+            - python3 -m assemblyline_ui.app &
+            - python3 -m assemblyline_ui.socketsrv &
             - pytest -rsx -vv
           services: &services
             - elasticsearch
@@ -81,8 +81,8 @@ pipelines:
               - mkdir -p /var/lib/assemblyline/
               - cp test/bitbucket/config.yml /etc/assemblyline
               - pip install -r test/requirements.txt
-              - python3 -m al_ui.app &
-              - python3 -m al_ui.socketsrv &
+              - python3 -m assemblyline_ui.app &
+              - python3 -m assemblyline_ui.socketsrv &
               - pytest -rsx -vv
         - step:
             name: Test 3.7

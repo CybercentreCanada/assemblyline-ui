@@ -8,7 +8,7 @@ services:
     volumes:
       - /opt/alv4/alv4_ui/test/config/:/etc/assemblyline/
       - /opt/alv4/:/opt/alv4/
-    working_dir: /opt/alv4/alv4_ui/al_ui/
+    working_dir: /opt/alv4/alv4_ui/assemblyline_ui/
     command: python3 app.py
     depends_on:
       elasticsearch:
@@ -25,7 +25,7 @@ services:
     volumes:
       - /opt/alv4/alv4_ui/test/config/:/etc/assemblyline/
       - /opt/alv4/:/opt/alv4/
-    working_dir: /opt/alv4/alv4_ui/al_ui/
+    working_dir: /opt/alv4/alv4_ui/assemblyline_ui/
     command: python3 socketsrv.py
     depends_on:
       elasticsearch:

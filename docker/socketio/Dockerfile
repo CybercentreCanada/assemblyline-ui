@@ -10,4 +10,4 @@ RUN pip3 install assemblyline-ui==$version
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "-b", ":5002", "-w", "1", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "al_ui.socketsrv:app"]
+CMD ["gunicorn", "-b", ":5002", "-w", "1", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "assemblyline_ui.socketsrv:app"]
