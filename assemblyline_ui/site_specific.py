@@ -147,7 +147,6 @@ def create_menu(user, path):
              "submenu": alerting_submenu}]
 
 
-
     if not config.ui.read_only:
         signature_submenu = [
             {"class": "",

@@ -1,5 +1,6 @@
 
 import logging
+import os.path
 
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
@@ -46,7 +47,12 @@ register_site_specific_routes = context.register_site_specific_routes
 
 ##########################
 # App settings
-app = Flask("al_ui")
+current_directory = os.path.dirname(__file__)
+app = Flask(
+    "assemblyline_ui",
+    static_folder=os.path.join(current_directory, 'static'),
+    template_folder=os.path.join(current_directory, 'templates'),
+)
 app.logger.setLevel(60)  # This completely turns off the flask logger
 app.config.update(
     SESSION_COOKIE_SECURE=True,
