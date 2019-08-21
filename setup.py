@@ -3,7 +3,6 @@ import os
 
 from setuptools import setup, find_packages
 
-
 # For development and local builds use this version number, but for real builds replace it
 # with the tag found in the environment
 package_version = "4.0.0.dev0"
@@ -27,7 +26,6 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Libraries',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
     keywords="assemblyline malware gc canada cse-cst cse cst cyber cccs",
