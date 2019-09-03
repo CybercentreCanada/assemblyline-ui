@@ -34,7 +34,7 @@ if 'APPLICATION_ROOT' in os.environ:
     app.config['SESSION_COOKIE_PATH'] = '/'
 
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
-socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "threading")
+socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "threading", cors_allowed_origins='*')
 
 # Loading the different namespaces
 socketio.on_namespace(AlertMonitoringNamespace('/alerts'))
@@ -48,4 +48,4 @@ if __name__ == '__main__':
     wlog = logging.getLogger('werkzeug')
     wlog.setLevel(config.logging.log_level if config.ui.debug else 60)
     # Run debug mode
-    socketio.run(app, host="0.0.0.0", port=5002, debug=config.ui.debug)
+    socketio.run(app, host="0.0.0.0", port=5002)
