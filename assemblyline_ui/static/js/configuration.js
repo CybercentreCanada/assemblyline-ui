@@ -27,6 +27,15 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             return typeof val;
         };
 
+        $scope.isArrayOfArray = function (val) {
+            if (Array.isArray(val)){
+                if (Array.isArray(val[0])){
+                    return true;
+                }
+            }
+            return false;
+        };
+
         //Load params from datastore
         $scope.start = function () {
             $scope.load_data();
