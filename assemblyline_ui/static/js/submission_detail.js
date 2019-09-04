@@ -18,6 +18,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         //Parameters vars
         $scope.user = null;
         $scope.options = null;
+        $scope.configuration = null;
         $scope.loading = false;
         $scope.loading_extra = false;
         $scope.data = null;
@@ -710,6 +711,23 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             $scope.outstanding = null;
             $http({
                 method: 'GET',
+                url: "/api/v4/help/configuration/"
+            }).success(function (data){
+                $scope.configuration = data.api_response;
+            }).error(function (data, status, headers, config) {
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    } else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+            });
+
+            $http({
+                method: 'GET',
                 url: "/api/v4/submission/" + $scope.sid + "/"
             })
                 .success(function (data) {
@@ -946,8 +964,6 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         };
 
         $scope.update_summary = function (key, result) {
-            let valid_types = ["NET_IP", "NET_DOMAIN_NAME", "NET_FULL_URI", "AV_VIRUS_NAME", "IMPLANT_NAME", "IMPLANT_FAMILY", "TECHNIQUE_OBFUSCATION", "THREAT_ACTOR", "FILE_CONFIG", "FILE_OBFUSCATION", "EXPLOIT_NAME", "FILE_SUMMARY"];
-
             key = key.substr(0, 64);
             if ($scope.summary == null) {
                 $scope.summary = {};
@@ -961,38 +977,52 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $scope.tag_map[key] = [];
             }
 
-            for (let tag in result['result']['tags']) {
-                let tag_item = result['result']['tags'][tag];
-                if (valid_types.indexOf(tag_item.type) === -1) {
-                    continue;
-                }
-
-                if (!$scope.summary.hasOwnProperty(tag_item.type)) {
-                    $scope.summary[tag_item.type] = [];
-                }
-
-                let exists = false;
-                for (let i in $scope.summary[tag_item.type]) {
-                    if ($scope.summary[tag_item.type][i]["value"] === tag_item.value) {
-                        exists = true;
-                        break;
+            for (let section_id in result['result']['sections']) {
+                let section = result['result']['sections'][section_id];
+                for (let tag_id in section['tags']){
+                    let tag = section['tags'][tag_id];
+                    let summary_type = null;
+                    if ($scope.configuration['submission.tag_types.attribution'].indexOf(tag.type) !== -1) {
+                        summary_type = 'attribution'
                     }
-                }
+                    else if ($scope.configuration['submission.tag_types.behavior'].indexOf(tag.type) !== -1) {
+                        summary_type = 'behavior'
+                    }
+                    else if ($scope.configuration['submission.tag_types.ioc'].indexOf(tag.type) !== -1) {
+                        summary_type = 'ioc'
+                    }
 
-                if (!exists) {
-                    $scope.summary[tag_item.type].push({
-                        value: tag_item.value,
-                        classification: tag_item.classification,
-                        usage: tag_item.usage
-                    })
-                }
+                    if (summary_type === null){
+                        continue
+                    }
 
-                let tag_key = tag_item.type + $scope.splitter + tag_item.value;
-                $scope.tag_map[key].push(tag_key);
-                if (!$scope.tag_map.hasOwnProperty(tag_key)) {
-                    $scope.tag_map[tag_key] = [];
+                    if (!$scope.summary.hasOwnProperty(summary_type)) {
+                        $scope.summary[summary_type] = {};
+                    }
+
+                    if (!$scope.summary[summary_type].hasOwnProperty(tag.type)) {
+                        $scope.summary[summary_type][tag.type] = [];
+                    }
+
+                    let exists = false;
+                    for (let i in $scope.summary[summary_type][tag.type]) {
+                        if ($scope.summary[summary_type][tag.type][i]["value"] === tag.value) {
+                            exists = true;
+                            break;
+                        }
+                    }
+
+                    if (!exists) {
+                        $scope.summary[summary_type][tag.type].push(tag.value);
+                    }
+
+                    let tag_key = tag.type + $scope.splitter + tag.value;
+                    $scope.tag_map[key].push(tag_key);
+                    if (!$scope.tag_map.hasOwnProperty(tag_key)) {
+                        $scope.tag_map[tag_key] = [];
+                    }
+                    $scope.tag_map[tag_key].push(key);
                 }
-                $scope.tag_map[tag_key].push(key);
             }
         };
 
