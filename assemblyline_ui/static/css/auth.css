@@ -88,10 +88,15 @@ body {
 }
 
 .form-signin #inputUser,
+.form-signin #inputUserSignup,
 .form-signin #inputPassword,
-.form-signin #inputOTP {
+.form-signin #inputOTP,
+.form-signin #inputEmail,
+.form-signin #inputPasswordConfirm,
+.form-signin #inputPasswordSignup,
+.form-signin #inputPasswordSignupConfirm{
     direction: ltr;
-    height: 44px;
+    height: 40px;
     font-size: 16px;
     margin-top: 5px;
 }
