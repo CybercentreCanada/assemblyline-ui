@@ -25,7 +25,7 @@
 						</span>
 					</div>
 					<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
-						<span id="user_active" class="label label-default classification" ng-class="{'label-primary': user.is_active}">Active</span>
+						<span id="user_active" class="label classification pad" ng-class="{'label-primary': current_user.is_active, 'label-default': !current_user.is_active}">Active</span>
 					</div>
 				</div>
 			</div>
@@ -51,11 +51,11 @@
 					<input type="text" class="form-control input-sm" ng-model="current_user.groups" split-array="{splitter: ' '}">
 				</div>
 				<div class="form-group" ng-show="current_user.email">
-					<label class="control-label">Client Email Address</label>
+					<label class="control-label">Email Address</label>
 					<input type="text" class="form-control input-sm" ng-model="current_user.email" disabled>
 				</div>
 				<div class="form-group" ng-show="current_user.dn">
-					<label class="control-label">Client Certificate DN</label>
+					<label class="control-label">Certificate DN</label>
 					<input type="text" class="form-control input-sm" ng-model="current_user.dn" disabled>
 				</div>
 			</div>
@@ -75,10 +75,10 @@
 						<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_importer')" ng-class="{'label-highlight': current_user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
 					</div>
 					<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
-						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('user')!=-1}">Normal User</span>
-						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('admin')!=-1}">Administrator</span>
-						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
-						<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
+						<span class="label label-tag" ng-class="{'label-primary': current_user.type.indexOf('user')!=-1, 'label-default': current_user.type.indexOf('user')==-1}">Normal User</span>
+						<span class="label label-tag" ng-class="{'label-primary': current_user.type.indexOf('admin')!=-1, 'label-default': current_user.type.indexOf('admin')==-1}">Administrator</span>
+						<span class="label label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_manager')!=-1, 'label-default': current_user.type.indexOf('signature_manager')==-1}">Signature Manager</span>
+						<span class="label label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_importer')!=-1, 'label-default': current_user.type.indexOf('signature_importer')==-1}">Signature Importer</span>
 					</div>
 				</div>
 				<div class="form-group">
