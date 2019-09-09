@@ -1,3 +1,5 @@
+import json
+
 from assemblyline_ui.config import CLASSIFICATION
 from assemblyline.common.attack_map import attack_map
 from assemblyline.common.classification import InvalidClassification
@@ -16,6 +18,12 @@ def filter_sections(sections, user_classification, min_classification):
             max_classification = CLASSIFICATION.max_classification(section['classification'], max_classification)
         except InvalidClassification:
             continue
+
+        if section['body_format'] == "JSON" and isinstance(section['body'], str):
+            try:
+                section['body'] = json.loads(section['body'])
+            except ValueError:
+                pass
 
         section['tags'] = tag_dict_to_list(section['tags'])
         if section.get('heuristic', False) and section['heuristic'].get('attack_id', False):
