@@ -697,7 +697,9 @@ def get_report(submission_id, **kwargs):
         summary = STORAGE.get_summary_from_keys(submission.pop('results', []))
         tags = summary['tags']
         attack_matrix = summary['attack_matrix']
+        heuristics = summary['heuristics']
         submission['attack_matrix'] = {}
+        submission['heuristics'] = {}
         submission['tags'] = {}
 
         # Process attack matrix
@@ -710,6 +712,15 @@ def get_report(submission_id, **kwargs):
                 submission['attack_matrix'][cat].setdefault(item['name'], [])
                 for name in name_map.get(sha256, [sha256]):
                     submission['attack_matrix'][cat][item['name']].append((name, sha256))
+
+        # Process heuristics
+        for b_type, items in heuristics.items():
+            submission['heuristics'].setdefault(b_type, {})
+            for item in items:
+                sha256 = item['key'][:64]
+                submission['heuristics'][b_type].setdefault(item['name'], [])
+                for name in name_map.get(sha256, [sha256]):
+                    submission['heuristics'][b_type][item['name']].append((name, sha256))
 
         # Process tags
         for t in tags:

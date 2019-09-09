@@ -158,6 +158,43 @@
 				</div>
 			</section>
 
+			<section ng-show="data.heuristics && obj_len(data.heuristics) != 0" class="report_section">
+				<div class="menureport">
+					<span class="text-big">Heuristics</span>
+				</div>
+
+                <div class="box-container">
+					<div class="box">
+                        <div class="danger header">Malicious</div>
+                        <div class="item" ng-repeat="(b_name, files) in data.heuristics.malicious | orderBy:b_name">
+                            <label style="display: inline;">{{b_name}}</label>
+                            <ul>
+                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+                            </ul>
+                        </div>
+                    </div>
+					<div class="box">
+                        <div class="warning header">Suspicious</div>
+                        <div class="item" ng-repeat="(b_name, files) in data.heuristics.suspicious | orderBy:b_name">
+                            <label style="display: inline;">{{b_name}}</label>
+                            <ul>
+                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+                            </ul>
+                        </div>
+                    </div>
+					<div class="box">
+                        <div class="info header">Info</div>
+                        <div class="item" ng-repeat="(b_name, files) in data.heuristics.info | orderBy:b_name">
+                            <label style="display: inline;">{{b_name}}</label>
+                            <ul>
+                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+                            </ul>
+                        </div>
+                    </div>
+
+				</div>
+			</section>
+
 			<section class="report_section" ng-show="obj_len(data.tags[tag_category]) != 0" ng-repeat="(tag_category, category_values) in data.tags | orderBy:tag_category">
 				<div class="menureport">
 					<span class="text-big">{{tag_category | titleCase }}</span>
@@ -178,20 +215,6 @@
 						</tbody>
 					</table>
 				</div>
-
-				<!--
-				<div id="{{tag_category}}" class="row make-columns">
-					<div class="report_block col-item" ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
-						<h4 class="text-muted">{{tag_type | shortTagType | titleCase}}</h4>
-						<div ng-repeat="(value, files) in values | orderBy:value">
-							<label style="display: inline;">{{value}}</label>
-							<ul>
-								<li ng-repeat="file in files"><span title="{{file[1]}}">{{file[0]}}</span></li>
-							</ul>
-						</div>
-					</div>
-				</div>
-				-->
 			</section>
 
 			<section class="report_section" id="section_files" ng-show="data">
