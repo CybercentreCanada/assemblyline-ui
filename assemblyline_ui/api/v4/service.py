@@ -2,9 +2,9 @@
 from flask import request
 
 from assemblyline.common import forge
+from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
-from assemblyline.common.dict_utils import get_recursive_delta
 
 config = forge.get_config()
 
@@ -99,7 +99,6 @@ def get_service(servicename, **_):
      'cpu_cores': 0.1,
      'description': "Extracts some stuff"
      'enabled': True,
-     'install_by_default': True,
      'name': 'Extract',
      'ram_mb': 256,
      'rejects': 'empty|metadata/.*',
@@ -215,7 +214,6 @@ def set_service(servicename, **_):
      'cpu_cores': 0.1,
      'description': "Extract some stuff",
      'enabled': True,
-     'install_by_default': True,
      'name': 'Extract',
      'ram_mb': 256,
      'rejects': 'empty|metadata/.*',
