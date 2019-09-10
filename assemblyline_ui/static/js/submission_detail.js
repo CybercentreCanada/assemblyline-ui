@@ -1006,7 +1006,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
                     let exists = false;
                     for (let i in $scope.summary[summary_type][tag.type]) {
-                        if ($scope.summary[summary_type][tag.type][i]["value"] === tag.value) {
+                        if ($scope.summary[summary_type][tag.type][i] === tag.value) {
                             exists = true;
                             break;
                         }
