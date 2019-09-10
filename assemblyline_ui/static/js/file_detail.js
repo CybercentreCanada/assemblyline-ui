@@ -93,8 +93,32 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
         $scope.concatTags = function (res){
             let tag_list = [];
             res.result.sections.forEach(function(section){
-                tag_list = tag_list.concat(section.tags)
+                tag_list = tag_list.concat(section.tags);
+
+                if (section.heuristic !== undefined && section.heuristic !== null){
+                    if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
+                        tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                    }
+                    if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
+                        tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
+                    }
+                }
             });
+            return tag_list;
+        };
+
+        $scope.sectionTags = function (section){
+            let tag_list = [];
+            tag_list = tag_list.concat(section.tags);
+
+            if (section.heuristic !== undefined && section.heuristic !== null){
+                if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
+                    tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                }
+                if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
+                    tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
+                }
+            }
             return tag_list;
         };
 

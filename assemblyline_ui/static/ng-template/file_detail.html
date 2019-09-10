@@ -159,6 +159,29 @@
 		</section>
 
 		<section class="header_title">
+			<div class="menuheader" data-toggle="collapse" data-target="#heuristics">
+				<span class="text-big">Heuristics</span>
+				<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
+
+			</div>
+
+			<div id="heuristics" class="collapse in">
+				<div ng-show="obj_len(current_file.heuristics.info) == 0 && obj_len(current_file.heuristics.suspicious) == 0 && obj_len(current_file.heuristics.malicious) == 0">
+					<div class="pad text-muted">
+						Nothing to report.
+					</div>
+				</div>
+
+				<div class="row" ng-repeat="(category, heuristics_list) in current_file.heuristics | orderBy:category">
+					<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
+					<div class="col-xs-6 col-sm-8 col-md-9">
+						<span id="{{item[0]}}_{{item[1]}}" class="label label-tag" style="cursor: pointer;" ng-repeat="item in heuristics_list | orderBy:item[1]" ng-class="{'label-nolight': !isHighlighted('heuristic', item[0]), 'label-highlight': isHighlighted('heuristic', item[0])}" ng-click="trigger_highlight('heuristic', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.heur_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="header_title">
 			<div class="menuheader " data-toggle="collapse" data-target="#file_tags">
 				<span class="text-big">Generated Tags</span>
 				<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>

@@ -92,6 +92,21 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             return tag_list;
         };
 
+        $scope.sectionTags = function (section){
+            let tag_list = [];
+            tag_list = tag_list.concat(section.tags);
+
+            if (section.heuristic !== undefined && section.heuristic !== null){
+                if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
+                    tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                }
+                if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
+                    tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
+                }
+            }
+            return tag_list;
+        };
+
         $scope.useless_results = function () {
             return function (item) {
                 return !(item.result.score === 0 && item.result.sections.length === 0 && item.response.extracted.length === 0);

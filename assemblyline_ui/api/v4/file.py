@@ -399,7 +399,17 @@ def get_file_results(sha256, **kwargs):
         return make_api_response({}, "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        output = {"file_info": {}, "results": [], "tags": {}, "attack_matrix": {}}
+        output = {
+            "file_info": {},
+            "results": [],
+            "tags": {},
+            "attack_matrix": {},
+            'heuristics': {
+                'info': [],
+                'suspicious': [],
+                'malicious': []}
+        }
+
         with concurrent.futures.ThreadPoolExecutor(4) as executor:
             res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
             res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
@@ -430,20 +440,39 @@ def get_file_results(sha256, **kwargs):
         output['errors'] = [] 
         output['file_viewer_only'] = True
 
+        heuristics = STORAGE.get_all_heuristics()
         for res in output['results']:
             for sec in res.get('result', {}).get('sections', []):
-                # Process Attack matrix
-                attack_id = sec.get('heuristic', {}).get('attack_id', None)
-                if attack_id:
-                    attack_pattern_def = attack_map.get(attack_id, {})
-                    if attack_pattern_def:
-                        for cat in attack_pattern_def['categories']:
-                            output['attack_matrix'].setdefault(cat, [])
-                            if attack_pattern_def['name'] not in output['attack_matrix'][cat]:
-                                output['attack_matrix'][cat].append((attack_id, attack_pattern_def['name']))
+                if sec.get('heuristic', False):
+                    # Get the heuristics data
+                    h = heuristics.get(sec['heuristic']['heur_id'], None)
+                    if h is not None:
+                        if sec['heuristic']['score'] < 100:
+                            b_type = "info"
+                        elif sec['heuristic']['score'] < 1000:
+                            b_type = "suspicious"
+                        else:
+                            b_type = "malicious"
+
+                        item = (h['heur_id'], h['name'])
+                        if item not in output['heuristics'][b_type]:
+                            output['heuristics'][b_type].append(item)
                     else:
-                        # TODO: I need a logger because I need to report this.
+                        # TODO: I need a logger because I need to report this
                         pass
+
+                    # Process Attack matrix
+                    attack_id = sec['heuristic'].get('attack_id', None)
+                    if attack_id:
+                        attack_pattern_def = attack_map.get(attack_id, {})
+                        if attack_pattern_def:
+                            for cat in attack_pattern_def['categories']:
+                                output['attack_matrix'].setdefault(cat, [])
+                                if attack_pattern_def['name'] not in output['attack_matrix'][cat]:
+                                    output['attack_matrix'][cat].append((attack_id, attack_pattern_def['name']))
+                        else:
+                            # TODO: I need a logger because I need to report this.
+                            pass
 
                 # Process tags
                 for t in sec['tags']:

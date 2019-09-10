@@ -1219,12 +1219,14 @@ figure.front{
 	background: #F8EEEE;
 	border: solid 1px #F2DEDE;
 	margin: 1em 0em;
+	border-radius: 4px;
 }
 
 .card_error .header_title {
 	background: #F4E6E6;
 	padding: 0.5em;
 	border-bottom: solid 1px #F2CECE;
+	border-radius: 4px;
 }
 
 .card_error .header_title:hover {
@@ -1236,6 +1238,19 @@ figure.front{
 	-o-transition: all 0.3s ease;
 	transition: all 0.3s ease;
 	cursor: pointer;
+}
+
+.card .section {
+	border-radius: 4px;
+}
+
+.card .section.highlight {
+	background: aliceblue;
+}
+
+.card .result_title.highlight {
+	color: #428bca;
+	font-weight: 700;
 }
 
 .card .header_title.highlight {
@@ -1278,12 +1293,14 @@ figure.front{
 .card {
 	border: solid 1px #DDDDDD;
 	margin: 1em 0em;
+	border-radius: 4px;
 }
 
 .card .header_title {
 	background-color: #F8F8F8;
 	padding: 0.5em;
 	border-bottom: solid 1px #F2F2F2;
+	border-radius: 4px;
 }
 
 .card .header_title:hover {

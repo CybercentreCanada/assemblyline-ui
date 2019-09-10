@@ -88,7 +88,18 @@ def get_file_submission_results(sid, sha256, **kwargs):
     
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
         # Prepare output
-        output = {"file_info": {}, "results": [], "tags": {}, "errors": [], "attack_matrix": {}}
+        output = {
+            "file_info": {},
+            "results": [],
+            "tags": {},
+            "errors": [],
+            "attack_matrix": {},
+            'heuristics': {
+                "info": [],
+                "malicious": [],
+                "suspicious": []
+            }
+        }
         
         # Extra keys - This is a live mode optimisation
         res_keys = data.get("results", [])
@@ -124,21 +135,41 @@ def get_file_submission_results(sid, sha256, **kwargs):
                                                   as_obj=False, as_dictionary=False)
         output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
                                                               user["access_control"])
-        
+
+        heuristics = STORAGE.get_all_heuristics()
         for res in output['results']:
             for sec in res.get('result', {}).get('sections', []):
-                # Process Attack matrix
-                if sec.get('heuristic', False) and sec['heuristic'].get('attack_id', False):
-                    attack_id = sec['heuristic']['attack_id']
-                    attack_pattern_def = attack_map.get(attack_id, {})
-                    if attack_pattern_def:
-                        for cat in attack_pattern_def['categories']:
-                            output['attack_matrix'].setdefault(cat, [])
-                            if attack_pattern_def['name'] not in output['attack_matrix'][cat]:
-                                output['attack_matrix'][cat].append((attack_id, attack_pattern_def['name']))
+
+                if sec.get('heuristic', False):
+                    # Get the heuristics data
+                    h = heuristics.get(sec['heuristic']['heur_id'], None)
+                    if h is not None:
+                        if sec['heuristic']['score'] < 100:
+                            b_type = "info"
+                        elif sec['heuristic']['score'] < 1000:
+                            b_type = "suspicious"
+                        else:
+                            b_type = "malicious"
+
+                        item = (h['heur_id'], h['name'])
+                        if item not in output['heuristics'][b_type]:
+                            output['heuristics'][b_type].append(item)
                     else:
-                        # TODO: I need a logger because I need to report this.
+                        # TODO: I need a logger because I need to report this
                         pass
+
+                    # Process Attack matrix
+                    if sec['heuristic'].get('attack_id', False):
+                        attack_id = sec['heuristic']['attack_id']
+                        attack_pattern_def = attack_map.get(attack_id, {})
+                        if attack_pattern_def:
+                            for cat in attack_pattern_def['categories']:
+                                output['attack_matrix'].setdefault(cat, [])
+                                if attack_pattern_def['name'] not in output['attack_matrix'][cat]:
+                                    output['attack_matrix'][cat].append((attack_id, attack_pattern_def['name']))
+                        else:
+                            # TODO: I need a logger because I need to report this.
+                            pass
 
                 # Process tags
                 for t in sec['tags']:
