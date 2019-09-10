@@ -56,11 +56,28 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                     return;
                 }
 
-                if (data.api_error_message) {
-                    $scope.error = data.api_error_message;
+                if (status === 404){
+                    $timeout(function () {
+                    swal({
+                            title: "Submission ID does not exists",
+                            text: "\nThe selected submission ID cannot be found it the system. You'll be returned to the list of your submissions...",
+                            type: "error",
+                            confirmButtonColor: "#d9534f",
+                            confirmButtonText: "Close",
+                            closeOnConfirm: false
+                        },
+                        function () {
+                            $window.location = "/submissions.html";
+                        });
+                }, 100);
                 }
                 else {
-                    $scope.error = config.url + " (" + status + ")";
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    }
+                    else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
                 }
             });
         };
@@ -72,19 +89,15 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                 $scope.started = true;
                 $timeout(function () {
                     swal({
-                            title: "Error",
-                            text: "\nSelected SID does not exists. You'll be returned to the previous page you where on...",
+                            title: "Submission ID does not exists",
+                            text: "\nThe selected submission ID cannot be found it the system. You'll be returned to the list of your submissions...",
                             type: "error",
                             confirmButtonColor: "#d9534f",
                             confirmButtonText: "Close",
                             closeOnConfirm: false
                         },
                         function () {
-                            if ($window.location === document.referrer) {
-                                $window.location = "about:blank";
-                            } else {
-                                $window.location = document.referrer;
-                            }
+                            $window.location = "/submissions.html";
                         });
                 }, 100);
             } else {

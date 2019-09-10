@@ -279,7 +279,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         .success(function () {
                             swal("Deleted!", "Submission was succesfully deleted.", "success");
                             $timeout(function () {
-                                $window.location = document.referrer;
+                                $window.location = "/submissions.html";
                             }, 1500);
                         })
                         .error(function (data, status, headers, config) {
@@ -771,38 +771,30 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     if (status === 404) {
                         $timeout(function () {
                             swal({
-                                    title: "Error",
-                                    text: "\nSelected SID does not exists. You'll be returned to the previous page you where on...",
+                                    title: "Submission ID does not exists",
+                                    text: "\nThe selected submission ID cannot be found it the system. You'll be returned to the list of your submissions...",
                                     type: "error",
                                     confirmButtonColor: "#d9534f",
                                     confirmButtonText: "Close",
                                     closeOnConfirm: false
                                 },
                                 function () {
-                                    if ($window.location === document.referrer) {
-                                        $window.location = "about:blank";
-                                    } else {
-                                        $window.location = document.referrer;
-                                    }
+                                    $window.location = "/submissions.html";
                                 });
                         }, 100);
                         return;
                     } else if (status === 403) {
                         $timeout(function () {
                             swal({
-                                    title: "Error",
-                                    text: "\nYou do not have access to the page you've requested. You'll be returned to the previous page you where on...",
+                                    title: "Access denied",
+                                    text: "\nYou do not have access to the page you've requested. You'll be returned to the list of your submissions...",
                                     type: "error",
                                     confirmButtonColor: "#d9534f",
                                     confirmButtonText: "Close",
                                     closeOnConfirm: false
                                 },
                                 function () {
-                                    if ($window.location === document.referrer) {
-                                        $window.location = "about:blank";
-                                    } else {
-                                        $window.location = document.referrer;
-                                    }
+                                    $window.location = "/submissions.html";
                                 });
                         }, 100);
                         return;
@@ -1169,18 +1161,14 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 $timeout(function () {
                     swal({
                             title: "Error",
-                            text: "\nInvalid SID provided. You'll be returned to the previous page you where on...",
+                            text: "\nInvalid SID provided. You'll be returned to the list of user submissions...",
                             type: "error",
                             confirmButtonColor: "#d9534f",
                             confirmButtonText: "Close",
                             closeOnConfirm: false
                         },
                         function () {
-                            if ($window.location === document.referrer) {
-                                $window.location = "about:blank";
-                            } else {
-                                $window.location = document.referrer;
-                            }
+                            $windows.location = "/submissions.html"
                         });
                 }, 100);
             } else {
