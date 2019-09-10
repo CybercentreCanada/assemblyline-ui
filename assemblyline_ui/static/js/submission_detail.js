@@ -28,6 +28,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.summary = null;
         $scope.attack_matrix = null;
         $scope.attack_map = null;
+        $scope.heuristics = null;
         $scope.file_tree = null;
         $scope.tag_map = null;
         $scope.messages = [];
@@ -82,6 +83,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 if (section.heuristic !== undefined && section.heuristic !== null){
                     if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
                         tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                    }
+                    if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
+                        tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
                     }
                 }
             });
@@ -823,6 +827,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.attack_matrix = data.api_response.attack_matrix;
                     $scope.summary = data.api_response.tags;
                     $scope.tag_map = data.api_response.map;
+                    $scope.heuristics = data.api_response.heuristics;
                 })
                 .error(function (data, status, headers, config) {
                     if (data === "" || data === null) {

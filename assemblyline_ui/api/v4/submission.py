@@ -489,6 +489,26 @@ def get_summary(sid, **kwargs):
                 if (attack_id, item['name']) not in output['attack_matrix'][cat]:
                     output['attack_matrix'][cat].append((attack_id, item['name']))
 
+        # Process heuristics
+        for cat, items in heuristics.items():
+            for item in items:
+                sha256 = item['key'][:64]
+                heur_id = item['heur_id']
+
+                key = f"heuristic__{heur_id}"
+                output['map'].setdefault(sha256, [])
+                output['map'].setdefault(key, [])
+
+                if sha256 not in output['map'][key]:
+                    output['map'][key].append(sha256)
+
+                if key not in output['map'][sha256]:
+                    output['map'][sha256].append(key)
+
+                output['heuristics'].setdefault(cat, [])
+                if (heur_id, item['name']) not in output['heuristics'][cat]:
+                    output['heuristics'][cat].append((heur_id, item['name']))
+
         # Process tags
         for t in tags:
             summary_type = None

@@ -220,6 +220,8 @@ def login():
             pass
 
     next_url = angular_safe(request.args.get('next', "/"))
+    if "login.html" in next_url or "logout.html" in next_url:
+        next_url = "/"
     return custom_render("login.html", next=next_url, avatar=avatar,
                          username=username, alternate_login=alternate_login,
                          signup=config.auth.internal.signup.enabled)
