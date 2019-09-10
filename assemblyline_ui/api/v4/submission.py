@@ -431,6 +431,13 @@ def get_summary(sid, **kwargs):
            "PATTERN_NAME")       # Name of the Attack Pattern
         ... ],
         ...
+     },
+     "heuristics": {         # Heuristics dictionary
+       "info": [               # Heuritics maliciousness level
+          ("HEUR_ID",            # Heuristic ID
+           "Heuristic name")     # Name of the heuristic
+        ... ],
+        ...
      }
     }
     """
