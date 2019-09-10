@@ -146,7 +146,6 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     if t['value'] not in output["tags"][t['type']]:
                         output["tags"][t['type']].append(t['value'])
 
-
         return make_api_response(output)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
@@ -441,22 +440,34 @@ def get_summary(sid, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
     if user and Classification.is_accessible(user['classification'], submission['classification']):
-        output = {"map": {}, "tags": {'behavior': {}, 'attribution': {}, 'ioc': {}}, "attack_matrix": {}}
+        output = {
+            "map": {},
+            "tags": {
+                'behavior': {},
+                'attribution': {},
+                'ioc': {}
+            },
+            "attack_matrix": {},
+            "heuristics": {}
+        }
         summary_cache = STORAGE.submission_summary.get_if_exists(sid, as_obj=False)
 
         if not summary_cache:
             summary = STORAGE.get_summary_from_keys(submission["results"])
             tags = summary['tags']
             attack_matrix = summary['attack_matrix']
+            heuristics = summary['heuristics']
             summary_cache = {
                 "attack_matrix": json.dumps(summary['attack_matrix']),
                 "tags": json.dumps(summary['tags']),
-                "expiry_ts": submission['expiry_ts']
+                "expiry_ts": submission['expiry_ts'],
+                "heuristics": json.dumps(summary['heuristics'])
             }
             STORAGE.submission_summary.save(sid, summary_cache)
         else:
             tags = json.loads(summary_cache['tags'])
             attack_matrix = json.loads(summary_cache['attack_matrix'])
+            heuristics = json.loads(summary_cache['heuristics'])
 
         # Process attack matrix
         for item in attack_matrix:
@@ -693,11 +704,26 @@ def get_report(submission_id, **kwargs):
             return output
 
         name_map = recurse_get_names(tree)
+        results = submission.pop('results', [])
 
-        summary = STORAGE.get_summary_from_keys(submission.pop('results', []))
-        tags = summary['tags']
-        attack_matrix = summary['attack_matrix']
-        heuristics = summary['heuristics']
+        summary_cache = STORAGE.submission_summary.get_if_exists(submission_id, as_obj=False)
+        if not summary_cache:
+            summary = STORAGE.get_summary_from_keys(results)
+            tags = summary['tags']
+            attack_matrix = summary['attack_matrix']
+            heuristics = summary['heuristics']
+            summary_cache = {
+                "attack_matrix": json.dumps(summary['attack_matrix']),
+                "tags": json.dumps(summary['tags']),
+                "expiry_ts": submission['expiry_ts'],
+                "heuristics": json.dumps(summary['heuristics'])
+            }
+            STORAGE.submission_summary.save(submission_id, summary_cache)
+        else:
+            tags = json.loads(summary_cache['tags'])
+            attack_matrix = json.loads(summary_cache['attack_matrix'])
+            heuristics = json.loads(summary_cache['heuristics'])
+
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
         submission['tags'] = {}
