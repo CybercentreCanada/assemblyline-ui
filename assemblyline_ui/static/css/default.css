@@ -1242,10 +1242,16 @@ figure.front{
 
 .card .section {
 	border-radius: 4px;
+	margin-bottom: 2px;
 }
 
 .card .section.highlight {
 	background: aliceblue;
+	border: 1px solid #DDD;
+}
+
+.card .result_title.highlight:hover {
+	background: #DEEFFD;
 }
 
 .card .result_title.highlight {
@@ -1337,7 +1343,7 @@ figure.front{
 }
 
 .result_title{
-	margin-left: .5em;
+	padding-left: .5em;
 }
 
 .result_title:hover{
