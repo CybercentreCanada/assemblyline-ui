@@ -264,7 +264,7 @@
 					</div>
 
 					<div id="heuristics" class="collapse in">
-						<div ng-show="obj_len(current_file.heuristics.info) == 0 && obj_len(current_file.heuristics.suspicious) == 0 && obj_len(current_file.heuristics.malicious) == 0">
+						<div ng-show="current_file.heuristics.info.length == 0 && current_file.heuristics.suspicious.length == 0 && current_file.heuristics.malicious.length == 0">
 							<div class="pad text-muted">
 								Nothing to report.
 							</div>

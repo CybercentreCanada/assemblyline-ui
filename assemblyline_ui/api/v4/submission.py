@@ -94,11 +94,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
             "tags": {},
             "errors": [],
             "attack_matrix": {},
-            'heuristics': {
-                "info": [],
-                "malicious": [],
-                "suspicious": []
-            }
+            'heuristics': {}
         }
         
         # Extra keys - This is a live mode optimisation
@@ -145,15 +141,16 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     h = heuristics.get(sec['heuristic']['heur_id'], None)
                     if h is not None:
                         if sec['heuristic']['score'] < 100:
-                            b_type = "info"
+                            h_type = "info"
                         elif sec['heuristic']['score'] < 1000:
-                            b_type = "suspicious"
+                            h_type = "suspicious"
                         else:
-                            b_type = "malicious"
+                            h_type = "malicious"
 
                         item = (h['heur_id'], h['name'])
-                        if item not in output['heuristics'][b_type]:
-                            output['heuristics'][b_type].append(item)
+                        output['heuristics'].setdefault(h_type, [])
+                        if item not in output['heuristics'][h_type]:
+                            output['heuristics'][h_type].append(item)
                     else:
                         # TODO: I need a logger because I need to report this
                         pass
@@ -165,8 +162,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
                         if attack_pattern_def:
                             for cat in attack_pattern_def['categories']:
                                 output['attack_matrix'].setdefault(cat, [])
-                                if attack_pattern_def['name'] not in output['attack_matrix'][cat]:
-                                    output['attack_matrix'][cat].append((attack_id, attack_pattern_def['name']))
+                                item = (attack_id, attack_pattern_def['name'])
+                                if item not in output['attack_matrix'][cat]:
+                                    output['attack_matrix'][cat].append(item)
                         else:
                             # TODO: I need a logger because I need to report this.
                             pass
@@ -798,13 +796,13 @@ def get_report(submission_id, **kwargs):
                     submission['attack_matrix'][cat][item['name']].append((name, sha256))
 
         # Process heuristics
-        for b_type, items in heuristics.items():
-            submission['heuristics'].setdefault(b_type, {})
+        for h_type, items in heuristics.items():
+            submission['heuristics'].setdefault(h_type, {})
             for item in items:
                 sha256 = item['key'][:64]
-                submission['heuristics'][b_type].setdefault(item['name'], [])
+                submission['heuristics'][h_type].setdefault(item['name'], [])
                 for name in name_map.get(sha256, [sha256]):
-                    submission['heuristics'][b_type][item['name']].append((name, sha256))
+                    submission['heuristics'][h_type][item['name']].append((name, sha256))
 
         # Process tags
         for t in tags:
