@@ -233,7 +233,7 @@
 					</div>
 				</div>
 
-				<section ng-show="attack_matrix" class="header_title">
+				<section ng-show="attack_matrix && (obj_len(attack_matrix) != 0)" class="header_title">
 					<div class="menuheader" data-toggle="collapse" data-target="#attack_matrix">
 						<span class="text-big">Att&ck Matrix</span>
 						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
@@ -241,12 +241,6 @@
 					</div>
 
 					<div id="attack_matrix" class="collapse in">
-						<div ng-show="attack_matrix && (obj_len(attack_matrix) == 0)">
-							<div class="pad text-muted">
-								Nothing to report.
-							</div>
-						</div>
-
 						<div class="row" ng-repeat="(category, attack_patterns) in attack_matrix | orderBy:category">
 							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
 							<div class="col-xs-6 col-sm-8 col-md-9">
@@ -256,7 +250,7 @@
 					</div>
 				</section>
 
-				<section ng-show="heuristics" class="header_title">
+				<section ng-show="obj_len(heuristics) != 0 && (heuristics.info.length != 0 || heuristics.suspicious.length != 0 || heuristics.malicious.length != 0)" class="header_title">
 					<div class="menuheader" data-toggle="collapse" data-target="#heuristics">
 						<span class="text-big">Heuristics</span>
 						<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
@@ -264,12 +258,6 @@
 					</div>
 
 					<div id="heuristics" class="collapse in">
-						<div ng-show="current_file.heuristics.info.length == 0 && current_file.heuristics.suspicious.length == 0 && current_file.heuristics.malicious.length == 0">
-							<div class="pad text-muted">
-								Nothing to report.
-							</div>
-						</div>
-
 						<div class="row" ng-repeat="(category, heuristics_list) in heuristics | orderBy:category">
 							<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
 							<div class="col-xs-6 col-sm-8 col-md-9">
