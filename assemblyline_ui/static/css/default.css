@@ -1358,9 +1358,11 @@ figure.front{
 
 .result_body{
 	font-size: 90%;
-	margin-left: 4em;
-	white-space: pre-wrap;
 	margin-bottom: 1em;
+    margin-left: 4em;
+	margin-right: .5em;
+	white-space: pre-wrap;
+
 }
 
 .compact_item{
