@@ -47,8 +47,6 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         });
 
         $scope.viewHeuristic = function (heuristic) {
-            $scope.editmode = true;
-
             $scope.error = '';
             $scope.success = '';
             $scope.loading_extra = true;
