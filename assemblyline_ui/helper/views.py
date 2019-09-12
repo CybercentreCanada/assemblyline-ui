@@ -6,6 +6,7 @@ from datetime import timedelta
 from flask import redirect, render_template, request, abort, current_app, make_response
 from functools import update_wrapper
 
+from assemblyline_ui.http_exceptions import AccessDeniedException
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline.common.forge import get_ui_context, get_config
 from assemblyline_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, BUILD_NO, SYSTEM_TYPE, get_template_prefix
@@ -67,7 +68,10 @@ class protected_renderer(BaseSecurityRenderer):
             logged_in_uname = self.get_logged_in_user()
 
             user = login(logged_in_uname, path)
-            self.test_require_type(user, "Url")
+            try:
+                self.test_require_type(user, "Url")
+            except AccessDeniedException:
+                abort(403)
 
             self.audit_if_required(args, kwargs, logged_in_uname, user, func)
 

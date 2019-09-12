@@ -148,25 +148,32 @@ def create_menu(user, path):
 
 
     if not config.ui.read_only:
-        signature_submenu = [
-            {"class": "",
-             "active": path.startswith("/signatures.html"),
-             "link": "/signatures.html",
-             "title": "Signature managment",
-             "has_submenu": False},
-            {"class": "",
-             "active": path.startswith("/source_management.html"),
-             "link": "/source_management.html",
-             "title": "Source management",
-             "has_submenu": False}
-        ]
+        if 'admin' in user['type'] or 'signature_manager' in user['type']:
+            signature_submenu = [
+                {"class": "",
+                 "active": path.startswith("/signatures.html"),
+                 "link": "/signatures.html",
+                 "title": "Signature management",
+                 "has_submenu": False},
+                {"class": "",
+                 "active": path.startswith("/source_management.html"),
+                 "link": "/source_management.html",
+                 "title": "Source management",
+                 "has_submenu": False}
+            ]
 
-        menu.extend([{"class": "",
-                      "active": path.startswith("/signatures.html") or path.startswith("/source_management.html"),
-                      "link": "#",
-                      "title": "Signatures",
-                      "has_submenu": True,
-                      "submenu": signature_submenu}])
+            menu.extend([{"class": "",
+                          "active": path.startswith("/signatures.html") or path.startswith("/source_management.html"),
+                          "link": "#",
+                          "title": "Signatures",
+                          "has_submenu": True,
+                          "submenu": signature_submenu}])
+        else:
+            menu.append({"class": "",
+                         "active": path.startswith("/signatures.html"),
+                         "link": "/signatures.html",
+                         "title": "Signatures",
+                         "has_submenu": False})
 
     menu.extend([
         {"class": "hidden-md hidden-lg",
