@@ -27,6 +27,18 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             return typeof val;
         };
 
+        $scope.toggle_field = function(field) {
+            $scope.current_service[field] = !$scope.current_service[field]
+        };
+
+        $scope.enable_field = function(field) {
+            $scope.current_service[field] = true
+        };
+
+        $scope.disable_field = function(field) {
+            $scope.current_service[field] = false
+        };
+
         $scope.del = function () {
             swal({
                     title: "Delete Service?",
