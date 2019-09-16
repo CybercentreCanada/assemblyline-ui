@@ -1808,6 +1808,18 @@ figure.front{
 	flex-wrap: wrap;
 }
 
+.docker_card:hover {
+	background-color: #EEE;
+}
+
+.docker_card {
+	margin-top: 5px;
+	cursor: pointer;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 5px;
+}
+
 .indent_0 {}
 
 .indent,

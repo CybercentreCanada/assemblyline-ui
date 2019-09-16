@@ -32,11 +32,21 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.enable_field = function(field) {
-            $scope.current_service[field] = true
+            if (field in $scope.current_service){
+                $scope.current_service[field] = true
+            }
+            else{
+                $scope.current_service.update_config[field] = true
+            }
         };
 
         $scope.disable_field = function(field) {
-            $scope.current_service[field] = false
+            if (field in $scope.current_service){
+                $scope.current_service[field] = false
+            }
+            else{
+                $scope.current_service.update_config[field] = false
+            }
         };
 
         $scope.del = function () {

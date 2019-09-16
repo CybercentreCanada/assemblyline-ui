@@ -248,6 +248,15 @@ utils.directive('draggable', function () {
     }
 });
 
+utils.directive('dockerConfig', function () {
+    return {
+        scope: {
+            docker_config: '=src'
+        },
+        templateUrl: '/static/ng-template/docker_config.html'
+    }
+});
+
 utils.directive('droppable', function () {
     return {
         restrict: 'A',

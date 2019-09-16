@@ -1,0 +1,21 @@
+<section class="row">
+    <div class="col-sm-12">
+        <div class="docker_card" ng-click="edit_docker_config(docker_config)">
+            <!--<span class="text-muted text-large pull-right icon-edit"></span>-->
+            <div class="text-icon text-fixed">{{ docker_config.image }}</div>
+            <div style="margin-bottom: 6px;">
+                <span class="text-middle text-icon icon-cpualt-processoralt"></span><span class="text-middle">&nbsp;&nbsp;{{ docker_config.cpu_cores }}</span>
+                <span class="text-middle indent text-icon icon-ram"></span><span class="text-middle">&nbsp;&nbsp;{{ docker_config.ram_mb }}</span>
+            </div>
+            <div ng-show="docker_config.command !== null && docker_config.command !== undefined && docker_config.command.length != 0">
+                <label>Command:</label><span>&nbsp;{{ docker_config.command | joinBy:' ' }}</span>
+            </div>
+            <label>Internet access:</label><span ng-class="{'text-danger': !docker_config.allow_internet_access, 'text-success': docker_config.allow_internet_access}">&nbsp;{{ docker_config.allow_internet_access }}</span>
+            <div ng-show="docker_config.environment.length != 0">
+                <label>Environment:</label>
+                <div ng-repeat="env in docker_config.environment">{{ env.name }}={{ env.value }}</div>
+            </div>
+        </div>
+    </div>
+
+</section>
