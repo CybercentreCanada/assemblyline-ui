@@ -173,7 +173,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         $("#myModal").modal('show');
     };
 
-    $scope.editSource = function (service, source) {
+    $scope.edit_source_config = function (source, service) {
         $scope.editmode = true;
         $scope.error = '';
         $scope.success = '';

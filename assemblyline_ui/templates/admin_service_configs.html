@@ -64,6 +64,25 @@
 			</div>
 		</div>
 		<!-- END HIDE -->
+
+        <!-- HIDE FOLLOWING: Should go inside a modal form -->
+        <div class="modal fade" id="sourceModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-resize">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal_title" id="myModalLabel">Signature Source<span ng-show="editmode"> :: [{{current_source.name}}]</span></h4>
+                    </div>
+                    <div class="modal-body">
+                        <div signature-source></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="save_source_config()">Save changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END HIDE -->
 	</section>
 	{%endraw%}
 {% endblock %}				

@@ -257,6 +257,16 @@ utils.directive('dockerConfig', function () {
     }
 });
 
+utils.directive('sourceConfig', function () {
+    return {
+        scope: {
+            source_config: '=src',
+            service: '='
+        },
+        templateUrl: '/static/ng-template/source_config.html'
+    }
+});
+
 utils.directive('droppable', function () {
     return {
         restrict: 'A',

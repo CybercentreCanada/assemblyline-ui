@@ -27,9 +27,7 @@
 					</h4>
 				</div>
 				<div ng-repeat="source in sources">
-					<div style="padding: 2px 5px" ng-click="editSource(service, source)" class="clickable compact_item">
-						<span class="text-large">{{source.name}}</span><span class="text-muted"> :: {{source.uri}}</span><span class="text-muted" ng-show="source.pattern"> - pattern:/{{source.pattern}}/</span>
-					</div>
+                    <div source-config src="source"></div>
 				</div>
 			</div>
 

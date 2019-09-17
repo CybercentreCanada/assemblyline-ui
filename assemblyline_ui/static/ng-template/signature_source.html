@@ -6,9 +6,10 @@
 		</div>
 	</div>
 	<div class="col-md-6">
-		<div class="form-group">
+		<div id="source_resulting_filename" class="form-group">
 			<label class="control-label">Resulting Filename</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
 			<input type="text" class="form-control input-sm input" ng-model="current_source.name" ng-disabled="editmode">
+           	<div id="source_name_error" class="col-md-12 text-danger">{{source_name_error}}</div>
 		</div>
 		<div class="form-group">
 			<label class="control-label">Pattern</label>

@@ -49,6 +49,112 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             }
         };
 
+        $scope.add_source_config = function () {
+            $scope.editmode = false;
+            $("#source_resulting_filename").removeClass('has-error');
+            $scope.source_name_error = '';
+            $scope.comp_temp_error = null;
+            $scope.conf_temp = {
+                key: "",
+                val: ""
+            };
+
+            $scope.current_source = {};
+            $("#sourceModal").modal('show');
+        };
+
+        $scope.edit_source_config = function (source) {
+            $scope.editmode = true;
+            $("#source_resulting_filename").removeClass('has-error');
+            $scope.source_name_error = '';
+            $scope.comp_temp_error = null;
+            $scope.conf_temp = {
+                key: "",
+                val: ""
+            };
+
+            $scope.backup_source = source;
+            $scope.current_source = JSON.parse(JSON.stringify(source));
+            $("#sourceModal").modal('show');
+        };
+
+        $scope.save_source_config = function(){
+            let done = true;
+            if($scope.editmode){
+                for (let i in $scope.current_service.update_config.sources){
+                    if ($scope.current_source.name === $scope.current_service.update_config.sources[i].name){
+                        $scope.current_service.update_config.sources.splice(i, 1, $scope.current_source);
+                        break;
+                    }
+                }
+            }
+            else {
+                let ok = true;
+                for (let i in $scope.current_service.update_config.sources){
+                    if ($scope.current_source.name === $scope.current_service.update_config.sources[i].name){
+                        $("#source_resulting_filename").addClass('has-error');
+                        $scope.source_name_error = "This name already exists, it should be unique";
+                        ok = false;
+                        done = false;
+                    }
+                }
+                if (ok){
+                    $scope.current_service.update_config.sources.push($scope.current_source)
+                }
+
+            }
+            if (done){
+                $("#sourceModal").modal('hide');
+            }
+        };
+
+        $scope.delete_source_config = function(source){
+            let idx = $scope.current_service.update_config.sources.indexOf(source);
+            if (idx !== -1){
+                $scope.current_service.update_config.sources.splice(idx, 1);
+            }
+        };
+
+            $scope.remove_header = function (key) {
+        delete $scope.current_source.headers[key];
+    };
+
+    $scope.add_header = function () {
+        $("#new_conf_temp_key").removeClass("has-error");
+        $("#new_conf_temp_val").removeClass("has-error");
+        $scope.conf_temp_error = null;
+
+        if (!("headers" in $scope.current_source)){
+            $scope.current_source.headers = {};
+        }
+
+        if ($scope.conf_temp.key in $scope.current_source.headers) {
+            $scope.conf_temp_error = "This header name already exists.";
+            $("#new_conf_temp_key").addClass("has-error");
+            return
+        }
+
+        if ($scope.conf_temp.key === "" || $scope.conf_temp.key == null) {
+            $scope.conf_temp_error = "Header name is required.";
+            $("#new_conf_temp_key").addClass("has-error");
+            $("#new_conf_temp_val").removeClass("has-error");
+            return;
+        }
+
+        if ($scope.conf_temp.val === "" || $scope.conf_temp.val == null) {
+            $scope.conf_temp_error = "Each header requires a value.";
+            $("#new_conf_temp_key").removeClass("has-error");
+            $("#new_conf_temp_val").addClass("has-error");
+            return;
+        }
+        $scope.current_source.headers[$scope.conf_temp.key] = $scope.conf_temp.val;
+
+        $scope.conf_temp = {
+            key: "",
+            val: ""
+        };
+    };
+
         $scope.del = function () {
             swal({
                     title: "Delete Service?",
