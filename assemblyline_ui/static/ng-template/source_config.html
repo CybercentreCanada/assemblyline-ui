@@ -2,26 +2,31 @@
     <div class="col-sm-12">
         <div class="docker_card" ng-click="$parent.edit_source_config(source_config, service)">
             <div style="padding-bottom: 15px" class="text-icon text-fixed">{{ source_config.uri }}</div>
-            <label>Output filename:</label><span>&nbsp;{{ source_config.name }}</span>
-
-            <div ng-show="source_config.command !== null && source_config.command !== undefined && source_config.command.length != 0">
-                <label>Command:</label><span>&nbsp;{{ source_config.command | joinBy:' ' }}</span>
-            </div>
-            <div ng-show="source_config.pattern !== null && source_config.pattern !== undefined && source_config.pattern !== ''">
-                <label>Match pattern:</label>&nbsp;{{ source_config.pattern }}
-            </div>
-            <div ng-show="source_config.username !== null && source_config.username !== undefined && source_config.username !== ''">
-                <label>Username:</label>&nbsp;{{ source_config.username }}
-            </div>
-            <div ng-show="source_config.password !== null && source_config.password !== undefined && source_config.password !== ''">
-                <label>Password:</label>&nbsp;******
-            </div>
+            <table>
+				<tbody>
+					<tr>
+						<td style="font-weight: 700;vertical-align: top;">Output filename:&nbsp;</td><td class="text-fixed" style="word-break: break-all;">{{ source_config.name }}</td>
+					</tr>
+					<tr ng-show="source_config.command !== null && source_config.command !== undefined && source_config.command.length != 0">
+						<td style="font-weight: 700;vertical-align: top;">Command:&nbsp;</td><td class="text-fixed" style="word-break: break-all;">{{ source_config.command | joinBy:' ' }}</td>
+					</tr>
+					<tr ng-show="source_config.pattern !== null && source_config.pattern !== undefined && source_config.pattern !== ''">
+						<td style="font-weight: 700;vertical-align: top;">Match pattern:&nbsp;</td><td class="text-fixed" style="word-break: break-all;">{{ source_config.pattern }}</td>
+					</tr>
+					<tr ng-show="source_config.username !== null && source_config.username !== undefined && source_config.username !== ''">
+						<td style="font-weight: 700;vertical-align: top;">Username:&nbsp;</td><td class="text-fixed" style="word-break: break-all;">{{ source_config.username }}</td>
+					</tr>
+					<tr ng-show="source_config.password !== null && source_config.password !== undefined && source_config.password !== ''">
+						<td style="font-weight: 700;vertical-align: top;">Password:&nbsp;</td><td class="text-fixed" style="word-break: break-all;">******</td>
+					</tr>
+				</tbody>
+			</table>
             <div ng-show="source_config.public_key !== null && source_config.public_key !== undefined && source_config.public_key !== ''">
-                <label>Public key set</label>
+                <label style="margin-bottom: 0">A public key will be use to connect to the source</label>
             </div>
             <div ng-show="source_config.headers !== null && source_config.headers !== undefined && $parent.obj_len(docker_config.headers) != 0">
                 <label>Headers:</label>
-                <div style="padding-left: 5px;" ng-repeat="(k, v) in source_config.headers">{{ k | uppercase }}:&nbsp;{{ v }}</div>
+                <div class="indent text-fixed" ng-repeat="(k, v) in source_config.headers">{{ k | uppercase }}:&nbsp;{{ v }}</div>
             </div>
         </div>
     </div>
