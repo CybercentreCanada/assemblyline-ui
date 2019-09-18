@@ -1,6 +1,6 @@
 <section class="row">
     <div class="col-sm-12">
-        <div class="docker_card" ng-click="edit_docker_config(docker_config)">
+        <div class="docker_card" ng-click="$parent.edit_docker_config(docker_type, docker_config)">
             <div class="text-icon text-fixed">{{ docker_config.image }}</div>
             <div style="margin-bottom: 6px;">
                 <span class="text-middle text-icon icon-cpualt-processoralt"></span><span class="text-middle">&nbsp;&nbsp;{{ docker_config.cpu_cores }}</span>
@@ -11,8 +11,8 @@
             </div>
             <label>Internet access:</label><span ng-class="{'text-danger': !docker_config.allow_internet_access, 'text-success': docker_config.allow_internet_access}">&nbsp;{{ docker_config.allow_internet_access }}</span>
             <div ng-show="docker_config.environment.length != 0">
-                <label>Environment:</label>
-                <div ng-repeat="env in docker_config.environment">{{ env.name | uppercase }}={{ env.value }}</div>
+                <label>Environment variables:</label>
+                <div style="padding-left: 5px" ng-repeat="env in docker_config.environment">{{ env.name }} = {{ env.value }}</div>
             </div>
         </div>
     </div>

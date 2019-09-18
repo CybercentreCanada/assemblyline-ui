@@ -77,7 +77,26 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" ng-click="save_source_config()">Save changes</button>
+                        <button type="button" class="btn btn-primary" ng-click="save_source_config()"><span ng-show="editmode">Save changes</span><span ng-show="!editmode">Add source</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END HIDE -->
+
+        <!-- HIDE FOLLOWING: Should go inside a modal form -->
+        <div class="modal fade" id="dockerModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-resize">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal_title" id="myModalLabel">{{ docker_type | titleCase }}</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div docker-config-edit></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" ng-click="save_docker_config()"><span ng-show="editmode">Save changes</span><span ng-show="!editmode">Add docker config</span></button>
                     </div>
                 </div>
             </div>

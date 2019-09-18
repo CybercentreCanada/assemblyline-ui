@@ -251,7 +251,8 @@ utils.directive('draggable', function () {
 utils.directive('dockerConfig', function () {
     return {
         scope: {
-            docker_config: '=src'
+            docker_config: '=src',
+            docker_type: '=type'
         },
         templateUrl: '/static/ng-template/docker_config.html'
     }
@@ -264,6 +265,12 @@ utils.directive('sourceConfig', function () {
             service: '='
         },
         templateUrl: '/static/ng-template/source_config.html'
+    }
+});
+
+utils.directive('dockerConfigEdit', function () {
+    return {
+        templateUrl: '/static/ng-template/docker_config_edit.html'
     }
 });
 
@@ -1231,6 +1238,9 @@ utils.filter('shortTagType', function () {
 
 utils.filter('titleCase', function () {
     return function (input) {
+        if (input === null || input === undefined){
+            return input
+        }
         input = input.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ");
         return input.toProperCase();
     }

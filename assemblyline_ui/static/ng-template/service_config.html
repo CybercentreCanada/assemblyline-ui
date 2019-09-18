@@ -93,14 +93,14 @@
         <div class="col-xs-12">
             <h4><strong>Docker configuration</strong></h4>
         </div>
-        <div class="col-xs-12" docker-config src="current_service.docker_config" style="margin-bottom: 10px"></div>
+        <div class="col-xs-12" docker-config src="current_service.docker_config" type="'service_container'" style="margin-bottom: 10px"></div>
         <label class="col-xs-10 col-sm-11">Container dependancies</label>
         <div class="col-xs-2 col-sm-1">
             <span class="btn btn-sm btn-success" ng-click="add_dependency();"><span class="glyphicon glyphicon-plus"></span></span>
         </div>
 
         <div ng-repeat="dep in current_service.dependencies">
-            <div class="col-xs-10 col-sm-11" docker-config src="dep"></div>
+            <div class="col-xs-10 col-sm-11" docker-config src="dep" type="'dependency'"></div>
             <div class="col-xs-2 col-sm-1">
                 <span class="btn btn-sm btn-danger" ng-click="remove_dependency(dep);"><span class="glyphicon glyphicon-minus"></span></span>
             </div>
@@ -125,7 +125,7 @@
             <input type="number" class="form-control input-sm" ng-model="current_service.update_config.update_interval_seconds" min=60>
         </div>
         <label class="col-xs-12">Options</label>
-        <div ng-show="current_service.update_config.method=='run'" class="col-xs-12" docker-config src="current_service.update_config.run_options" style="margin-bottom: 10px"></div>
+        <div ng-show="current_service.update_config.method=='run'" class="col-xs-12" docker-config src="current_service.update_config.run_options" type="'update_container'" style="margin-bottom: 10px"></div>
         <div ng-hide="current_service.update_config.method=='run'" class="col-xs-12 text-muted" style="margin-bottom: 10px">Build options are not yet defined...</div>
         <div class="col-sm-6">
             <label>Generates Signatures</label>

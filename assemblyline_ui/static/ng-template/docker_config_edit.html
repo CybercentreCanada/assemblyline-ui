@@ -1,0 +1,72 @@
+<section class="row pad">
+	<div class="col-md-12">
+		<div class="form-group">
+			<label class="control-label">Container Image</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.image">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="form-group">
+			<label class="control-label">Allowed CPU cores</label>
+			<input type="number" min="0.01" step="0.01" class="form-control input-sm input" ng-model="current_docker_config.cpu_cores"/>
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="form-group">
+			<label class="control-label">Allowed RAM usage (MB)</label>
+			<input type="number" min="64" class="form-control input-sm input-medium" ng-model="current_docker_config.ram_mb">
+		</div>
+	</div>
+	<div class="col-md-12">
+		<div class="form-group">
+			<label class="control-label">Command to run in the container</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.command" split-array="{splitter: ' '}">
+		</div>
+    </div>
+    <div class="col-sm-12">
+        <label>Allow Internet Access</label>
+        <div class="radio">
+            <label ng-class="{checked:current_docker_config.allow_internet_access}">
+                <input type="radio" name="allow_internet_access" ng-click="enable_field('allow_internet_access')" ng-checked="current_docker_config.allow_internet_access">
+                Yes <span class="text-muted text-smaller">(Allowed to access resources outside of the assemblyline cluster)</span>
+            </label>
+        </div>
+        <div class="radio">
+            <label ng-class="{checked:!current_docker_config.allow_internet_access}">
+                <input type="radio" name="allow_internet_access" ng-click="disable_field('allow_internet_access')" ng-checked="!current_docker_config.allow_internet_access">
+                No <span class="text-muted text-smaller">(Confined to the container)</span>
+            </label>
+        </div>
+    </div>
+</section>
+
+<section class="row">
+	<div class="col-md-12" class="form-group">
+		<label class="control-label">Environment variable</label>
+	</div>
+	<div class="col-md-12">
+		<div ng-repeat="env in current_docker_config.environment | orderBy:env.name" class="row" style="padding: 2px 0px">
+			<div class="col-xs-10 col-sm-3">
+				<label class="control-lablel">{{env.name}}:</label>
+			</div>
+			<div class="col-xs-10 col-sm-8">
+				<input type="text" class="form-control input-sm" ng-model="env.value"/>
+			</div>
+			<div class="col-xs-2 col-sm-1" style="padding-left: 0px">
+				<span class="btn btn-sm btn-danger" ng-click="remove_environment(env.name, env.value);"><span class="glyphicon glyphicon-minus"></span></span>
+			</div>
+		</div>
+		<div class="row" style="margin-top: 10px;">
+			<div id="new_conf_temp_key" class="col-xs-10 col-sm-3">
+				<input id="conf_temp_key" type="text" class="form-control input-sm" ng-model="conf_temp.key" placeholder="Variable name"/>
+			</div>
+			<div id="new_conf_temp_val" class="col-xs-10 col-sm-8">
+				<input id="conf_temp_val" type="text" class="form-control input-sm" ng-model="conf_temp.val" placeholder="Value"/>
+			</div>
+			<div class="col-xs-2 col-sm-1" style="padding-left: 0px">
+				<span class="btn btn-sm btn-success" ng-click="add_environment();"><span class="glyphicon glyphicon-plus"></span></span>
+			</div>
+		</div>
+	</div>
+	<div id="conf_temp_error" class="col-md-12 text-danger">{{conf_temp_error}}</div>
+</section>

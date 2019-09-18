@@ -35,6 +35,9 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             if (field in $scope.current_service){
                 $scope.current_service[field] = true
             }
+            else if (field in $scope.current_docker_config){
+                $scope.current_docker_config[field] = true
+            }
             else{
                 $scope.current_service.update_config[field] = true
             }
@@ -44,9 +47,65 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             if (field in $scope.current_service){
                 $scope.current_service[field] = false
             }
+            else if (field in $scope.current_docker_config){
+                $scope.current_docker_config[field] = false
+            }
             else{
                 $scope.current_service.update_config[field] = false
             }
+        };
+
+        $scope.add_dependency = function () {
+            $scope.editmode = false;
+            $scope.comp_temp_error = null;
+            $scope.conf_temp = {
+                key: "",
+                val: ""
+            };
+
+            $scope.current_docker_config = {
+                allow_internet_access: false,
+                command: [],
+                cpu_cores: 1.0,
+                environment: [],
+                image: "",
+                ram_mb: 256
+            };
+            $scope.docker_type = 'dependency';
+            $("#dockerModal").modal('show');
+        };
+
+        $scope.remove_dependency = function (dep) {
+            //TODO: this
+        };
+
+        $scope.edit_docker_config = function (type, docker_config) {
+            $scope.editmode = true;
+            $scope.comp_temp_error = null;
+            $scope.conf_temp = {
+                key: "",
+                val: ""
+            };
+
+            $scope.backup_docker = docker_config;
+            $scope.current_docker_config = JSON.parse(JSON.stringify(docker_config));
+            $scope.docker_type = type;
+            $("#dockerModal").modal('show');
+        };
+
+        $scope.save_docker_config = function(){
+            if ($scope.docker_type === "service_container"){
+                $scope.current_service.docker_config = $scope.current_docker_config;
+            }
+            else if ($scope.docker_type === "update_container"){
+                $scope.current_service.update_config.run_options = $scope.current_docker_config;
+            }
+            else if ($scope.docker_type === "dependency"){
+                // TODO: edits
+                $scope.current_service.dependencies.push($scope.current_docker_config)
+            }
+
+            $("#dockerModal").modal('hide');
         };
 
         $scope.add_source_config = function () {
@@ -115,45 +174,87 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             }
         };
 
-            $scope.remove_header = function (key) {
-        delete $scope.current_source.headers[key];
-    };
-
-    $scope.add_header = function () {
-        $("#new_conf_temp_key").removeClass("has-error");
-        $("#new_conf_temp_val").removeClass("has-error");
-        $scope.conf_temp_error = null;
-
-        if (!("headers" in $scope.current_source)){
-            $scope.current_source.headers = {};
-        }
-
-        if ($scope.conf_temp.key in $scope.current_source.headers) {
-            $scope.conf_temp_error = "This header name already exists.";
-            $("#new_conf_temp_key").addClass("has-error");
-            return
-        }
-
-        if ($scope.conf_temp.key === "" || $scope.conf_temp.key == null) {
-            $scope.conf_temp_error = "Header name is required.";
-            $("#new_conf_temp_key").addClass("has-error");
-            $("#new_conf_temp_val").removeClass("has-error");
-            return;
-        }
-
-        if ($scope.conf_temp.val === "" || $scope.conf_temp.val == null) {
-            $scope.conf_temp_error = "Each header requires a value.";
-            $("#new_conf_temp_key").removeClass("has-error");
-            $("#new_conf_temp_val").addClass("has-error");
-            return;
-        }
-        $scope.current_source.headers[$scope.conf_temp.key] = $scope.conf_temp.val;
-
-        $scope.conf_temp = {
-            key: "",
-            val: ""
+        $scope.remove_environment = function (key, val) {
+            for (let i in $scope.current_docker_config.environment){
+                if ($scope.current_docker_config.environment[i].name === key && $scope.current_docker_config.environment[i].value === val){
+                    $scope.current_docker_config.environment.splice(i, 1);
+                    return;
+                }
+            }
         };
-    };
+
+        $scope.add_environment = function () {
+            $("#new_conf_temp_key").removeClass("has-error");
+            $("#new_conf_temp_val").removeClass("has-error");
+            $scope.conf_temp_error = null;
+
+            if (!("environment" in $scope.current_docker_config)){
+                $scope.current_docker_config.environment = [];
+            }
+
+            if ($scope.conf_temp.key === "" || $scope.conf_temp.key == null) {
+                $scope.conf_temp_error = "Environment variable name is required.";
+                $("#new_conf_temp_key").addClass("has-error");
+                $("#new_conf_temp_val").removeClass("has-error");
+                return;
+            }
+
+            if ($scope.conf_temp.val === "" || $scope.conf_temp.val == null) {
+                $scope.conf_temp_error = "Each environment variable requires a value.";
+                $("#new_conf_temp_key").removeClass("has-error");
+                $("#new_conf_temp_val").addClass("has-error");
+                return;
+            }
+            $scope.current_docker_config.environment.push({
+                name: $scope.conf_temp.key,
+                value: $scope.conf_temp.val
+            });
+
+            $scope.conf_temp = {
+                key: "",
+                val: ""
+            };
+        };
+
+        $scope.remove_header = function (key) {
+            delete $scope.current_source.headers[key];
+        };
+
+        $scope.add_header = function () {
+            $("#new_conf_temp_key").removeClass("has-error");
+            $("#new_conf_temp_val").removeClass("has-error");
+            $scope.conf_temp_error = null;
+
+            if (!("headers" in $scope.current_source)){
+                $scope.current_source.headers = {};
+            }
+
+            if ($scope.conf_temp.key in $scope.current_source.headers) {
+                $scope.conf_temp_error = "This header name already exists.";
+                $("#new_conf_temp_key").addClass("has-error");
+                return
+            }
+
+            if ($scope.conf_temp.key === "" || $scope.conf_temp.key == null) {
+                $scope.conf_temp_error = "Header name is required.";
+                $("#new_conf_temp_key").addClass("has-error");
+                $("#new_conf_temp_val").removeClass("has-error");
+                return;
+            }
+
+            if ($scope.conf_temp.val === "" || $scope.conf_temp.val == null) {
+                $scope.conf_temp_error = "Each header requires a value.";
+                $("#new_conf_temp_key").removeClass("has-error");
+                $("#new_conf_temp_val").addClass("has-error");
+                return;
+            }
+            $scope.current_source.headers[$scope.conf_temp.key] = $scope.conf_temp.val;
+
+            $scope.conf_temp = {
+                key: "",
+                val: ""
+            };
+        };
 
         $scope.del = function () {
             swal({
