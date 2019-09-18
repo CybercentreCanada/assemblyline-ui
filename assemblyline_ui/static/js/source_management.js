@@ -80,11 +80,31 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             });
     };
 
-    $scope.save = function () {
-        $scope.loading_extra = true;
+    $scope.reset_source = function(){
+        $("#source_uri").removeClass('has-error');
+        $("#source_resulting_filename").removeClass('has-error');
         $scope.error = '';
         $scope.success = '';
+        $scope.comp_temp_error = null;
+        $scope.conf_temp = {
+            key: "",
+            val: ""
+        };
+    };
 
+    $scope.save = function () {
+        $scope.reset_source();
+        if ($scope.current_source.uri === "" || $scope.current_source.uri === null || $scope.current_source.uri === undefined){
+            $("#source_uri").addClass('has-error');
+            return;
+        }
+
+        if ($scope.current_source.name === "" || $scope.current_source.name === null || $scope.current_source.name === undefined){
+            $("#source_resulting_filename").addClass('has-error');
+            return;
+        }
+
+        $scope.loading_extra = true;
         if ($scope.editmode){
             $http({
                 method: 'POST',
@@ -160,13 +180,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
     $scope.addSource = function (service) {
         $scope.editmode = false;
-        $scope.error = '';
-        $scope.success = '';
-        $scope.comp_temp_error = null;
-        $scope.conf_temp = {
-            key: "",
-            val: ""
-        };
+        $scope.reset_source();
 
         $scope.current_service = service;
         $scope.current_source = {};
@@ -175,16 +189,10 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
 
     $scope.edit_source_config = function (source, service) {
         $scope.editmode = true;
-        $scope.error = '';
-        $scope.success = '';
-        $scope.current_source_name = source.name;
-        $scope.comp_temp_error = null;
-        $scope.conf_temp = {
-            key: "",
-            val: ""
-        };
+        $scope.reset_source();
 
         $scope.current_service = service;
+        $scope.current_source_name = source.name;
         $scope.current_source = source;
         $("#myModal").modal('show');
     };

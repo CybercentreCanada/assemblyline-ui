@@ -57,6 +57,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.add_dependency = function () {
             $scope.editmode = false;
+            $("#docker_image").removeClass('has-error');
             $scope.comp_temp_error = null;
             $scope.conf_temp = {
                 key: "",
@@ -85,6 +86,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.edit_docker_config = function (type, docker_config) {
             $scope.editmode = true;
+            $("#docker_image").removeClass('has-error');
             $scope.comp_temp_error = null;
             $scope.conf_temp = {
                 key: "",
@@ -98,6 +100,10 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.save_docker_config = function(){
+            if ($scope.current_docker_config.image === "" || $scope.current_docker_config.image === null || $scope.current_docker_config.image === undefined){
+                $("#docker_image").addClass('has-error');
+                return;
+            }
             if ($scope.docker_type === "service_container"){
                 $scope.current_service.docker_config = $scope.current_docker_config;
             }
@@ -122,6 +128,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.add_source_config = function () {
             $scope.editmode = false;
+            $("#source_uri").removeClass('has-error');
             $("#source_resulting_filename").removeClass('has-error');
             $scope.source_name_error = '';
             $scope.comp_temp_error = null;
@@ -136,6 +143,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         $scope.edit_source_config = function (source) {
             $scope.editmode = true;
+            $("#source_uri").removeClass('has-error');
             $("#source_resulting_filename").removeClass('has-error');
             $scope.source_name_error = '';
             $scope.comp_temp_error = null;
@@ -150,7 +158,16 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.save_source_config = function(){
-            let done = true;
+            if ($scope.current_source.uri === "" || $scope.current_source.uri === null || $scope.current_source.uri === undefined){
+                $("#source_uri").addClass('has-error');
+                return;
+            }
+
+            if ($scope.current_source.name === "" || $scope.current_source.name === null || $scope.current_source.name === undefined){
+                $("#source_resulting_filename").addClass('has-error');
+                return;
+            }
+
             if($scope.editmode){
                 for (let i in $scope.current_service.update_config.sources){
                     if ($scope.current_source.name === $scope.current_service.update_config.sources[i].name){
@@ -160,23 +177,17 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 }
             }
             else {
-                let ok = true;
                 for (let i in $scope.current_service.update_config.sources){
                     if ($scope.current_source.name === $scope.current_service.update_config.sources[i].name){
                         $("#source_resulting_filename").addClass('has-error');
                         $scope.source_name_error = "This name already exists, it should be unique";
-                        ok = false;
-                        done = false;
+                        return;
                     }
                 }
-                if (ok){
-                    $scope.current_service.update_config.sources.push($scope.current_source)
-                }
+                $scope.current_service.update_config.sources.push($scope.current_source)
 
             }
-            if (done){
-                $("#sourceModal").modal('hide');
-            }
+            $("#sourceModal").modal('hide');
         };
 
         $scope.delete_source_config = function(source){
