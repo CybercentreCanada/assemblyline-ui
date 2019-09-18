@@ -76,7 +76,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.remove_dependency = function (dep) {
-            //TODO: this
+            for (let i in $scope.current_service.dependencies){
+                if (dep === $scope.current_service.dependencies[i]){
+                    $scope.current_service.dependencies.splice(i, 1);
+                }
+            }
         };
 
         $scope.edit_docker_config = function (type, docker_config) {
@@ -101,8 +105,16 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 $scope.current_service.update_config.run_options = $scope.current_docker_config;
             }
             else if ($scope.docker_type === "dependency"){
-                // TODO: edits
-                $scope.current_service.dependencies.push($scope.current_docker_config)
+                if ($scope.editmode){
+                    for (let i in $scope.current_service.dependencies){
+                        if ($scope.backup_docker === $scope.current_service.dependencies[i]){
+                            $scope.current_service.dependencies.splice(i, 1, $scope.current_docker_config);
+                        }
+                    }
+                }
+                else{
+                    $scope.current_service.dependencies.push($scope.current_docker_config);
+                }
             }
 
             $("#dockerModal").modal('hide');
