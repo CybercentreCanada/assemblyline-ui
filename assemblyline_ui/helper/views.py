@@ -68,10 +68,7 @@ class protected_renderer(BaseSecurityRenderer):
             logged_in_uname = self.get_logged_in_user()
 
             user = login(logged_in_uname, path)
-            try:
-                self.test_require_type(user, "Url")
-            except AccessDeniedException:
-                abort(403)
+            self.test_require_type(user, "Url")
 
             self.audit_if_required(args, kwargs, logged_in_uname, user, func)
 

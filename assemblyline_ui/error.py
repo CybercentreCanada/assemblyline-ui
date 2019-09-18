@@ -59,11 +59,11 @@ def handle_403(e):
 
 @errors.app_errorhandler(500)
 def handle_500(e):
-    if isinstance(e, AccessDeniedException):
-        return handle_403(e)
+    if isinstance(e.original_exception, AccessDeniedException):
+        return handle_403(e.original_exception)
 
-    if isinstance(e, QuotaExceededException):
-        return make_api_response("", str(e), 503)
+    if isinstance(e.original_exception, QuotaExceededException):
+        return make_api_response("", str(e.original_exception), 503)
 
     trace = exc_info()[2]
     log_with_traceback(LOGGER, trace, "Exception", is_exception=True)
