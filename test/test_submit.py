@@ -1,7 +1,8 @@
-import base64
 import hashlib
 import json
+import os
 import random
+import tempfile
 
 import pytest
 from base import HOST, login_session, get_api_data
@@ -108,23 +109,37 @@ def test_submit_url(datastore, login_session):
     assert msg.submission.sid == resp['sid']
 
 
-# noinspection PyUnusedLocal
+# noinspection PyUnusedLocal,PyBroadException
 def test_submit_binary(datastore, login_session):
     _, session = login_session
 
     sq.delete()
-    byte_str = get_random_phrase(wmin=15, wmax=30).encode()
-    sha256 = hashlib.sha256(byte_str).hexdigest()
-    data = {
-        'binary': base64.b64encode(byte_str).decode(),
-        'name': 'text.txt',
-        'metadata': {'test': 'test_submit_binary'}
-    }
-    resp = get_api_data(session, f"{HOST}/api/v4/submit/", method="POST", data=json.dumps(data))
-    assert isinstance(resp['sid'], str)
-    for f in resp['files']:
-        assert f['sha256'] == sha256
-        assert f['name'] == data['name']
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    fd, temp_path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(byte_str)
 
-    msg = SubmissionTask(sq.pop(blocking=False))
-    assert msg.submission.sid == resp['sid']
+        with open(temp_path, 'rb') as fh:
+            sha256 = hashlib.sha256(byte_str).hexdigest()
+            json_data = {
+                'name': 'text.txt',
+                'metadata': {'test': 'test_submit_binary'}
+            }
+            data = {'json': json.dumps(json_data)}
+            resp = get_api_data(session, f"{HOST}/api/v4/submit/", method="POST", data=data,
+                                files={'bin': fh}, headers={})
+
+        assert isinstance(resp['sid'], str)
+        for f in resp['files']:
+            assert f['sha256'] == sha256
+            assert f['name'] == json_data['name']
+
+        msg = SubmissionTask(sq.pop(blocking=False))
+        assert msg.submission.sid == resp['sid']
+
+    finally:
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass

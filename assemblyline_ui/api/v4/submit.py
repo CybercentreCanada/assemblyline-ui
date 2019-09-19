@@ -1,5 +1,5 @@
 
-import base64
+import json
 import os
 import shutil
 
@@ -21,137 +21,6 @@ config = forge.get_config()
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
 submit_api._doc = "Submit files to the system"
-
-
-# # noinspection PyUnusedLocal
-# @submit_api.route("/checkexists/", methods=["POST"])
-# @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-# def check_sha256_exists(*args, **kwargs):
-#     """
-#     Check if the the provided Resource locators exist in the
-#     system or not.
-#
-#     Variables:
-#     None
-#
-#     Arguments:
-#     None
-#
-#     Data Block (REQUIRED):
-#     ["sha2561", sha2562]    # List of sha256s (SHA256)
-#
-#     Result example:
-#     {
-#      "existing": [],  # List of existing sha256s
-#      "missing": []    # List of missing sha256s
-#      }
-#     """
-#     sha256s_to_check = request.json
-#     if type(sha256s_to_check) != list:
-#         return make_api_response("", "Expecting a list of sha256s", 403)
-#
-#     with forge.get_filestore() as f_transport:
-#         check_results = SubmissionWrapper.check_exists(f_transport, sha256s_to_check)
-#     return make_api_response(check_results)
-#
-#
-# # noinspection PyUnusedLocal
-# @submit_api.route("/identify/", methods=["POST"])
-# @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-# def identify_supplementary_files(*args, **kwargs):
-#     """
-#     Ask the UI to create file entries for supplementary files.
-#
-#     Variables:
-#     None
-#
-#     Arguments:
-#     None
-#
-#     Data Block (REQUIRED):
-#     {
-#      "1":                                   # File ID
-#        {"sha256": "982...077",                  # SHA256 of the file
-#         "classification": "UNRESTRICTED",       # Other KW args to be passed to function
-#         "ttl": 30 },                            # Days to live for the file
-#      ...
-#     }
-#
-#     Result example:
-#     {
-#      "1": {                       # File ID
-#        "status": "success",         # API result status for the file ("success", "failed")
-#        "fileinfo": {}               # File information Block
-#        }, ...
-#     }
-#     """
-#     user = kwargs['user']
-#     submit_requests = request.json
-#     submit_results = {}
-#     user_params = load_user_settings(user)
-#     for key, submit in submit_requests.iteritems():
-#         submit['submitter'] = user['uname']
-#         if 'classification' not in submit:
-#             submit['classification'] = user_params['classification']
-#         with forge.get_filestore() as f_transport:
-#             file_info = SubmissionWrapper.identify(f_transport, STORAGE, **submit)
-#         if file_info:
-#             submit_result = {"status": "succeeded", "fileinfo": file_info}
-#         else:
-#             submit_result = {"status": "failed", "fileinfo": {}}
-#         submit_results[key] = submit_result
-#     return make_api_response(submit_results)
-#
-#
-# # noinspection PyUnusedLocal
-# @submit_api.route("/presubmit/", methods=["POST"])
-# @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-# def pre_submission(*args, **kwargs):
-#     """
-#     Perform a presubmit of a list of local files. This is the first
-#     stage for a batch submit of files.
-#
-#     Variables:
-#     None
-#
-#     Arguments:
-#     None
-#
-#     Data Block (REQUIRED):
-#     {
-#      "1":                                       # File ID
-#        {"sha256": "982...077",                    # SHA256 of the file
-#         "path": "/local/file/path", },            # Path of the file
-#      ... }
-#
-#     Result example:
-#     {
-#      "1":                                       # File ID
-#        {"exists": false,                          # Does the file already exist?
-#         "succeeded": true,                        # Is the result for this file accurate?
-#         "filestore": "TransportFTP:transport.al", # File Transport method/url
-#         "kwargs":                                 # Extra (** kwargs)
-#           {"path": "/local/file path"},             # Path to the file
-#         "upload_path": "/remote/upload/path",     # Where to upload if missing
-#         "sha256": "982...077"},                   # SHA256 of the file
-#     }
-#     """
-#     presubmit_requests = request.json
-#     presubmit_results = {}
-#     for key, presubmit in presubmit_requests.iteritems():
-#         succeeded = True
-#         presubmit_result = {}
-#         try:
-#             with forge.get_filestore() as f_transport:
-#                 presubmit_result = SubmissionWrapper.presubmit(f_transport, **presubmit)
-#         except Exception as e:
-#             succeeded = False
-#             msg = 'Failed to presubmit for {0}:{1}'.format(key, e)
-#             presubmit_result['error'] = msg
-#         presubmit_result['succeeded'] = succeeded
-#         presubmit_results[key] = presubmit_result
-#
-#     return make_api_response(presubmit_results)
 
 
 # noinspection PyUnusedLocal
@@ -278,75 +147,12 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     return make_api_response(submit_result.as_primitives())
 
 
-# # noinspection PyUnusedLocal
-# @submit_api.route("/start/", methods=["POST"])
-# @api_login(audit=False, required_priv=['W'], allow_readonly=False)
-# def start_submission(*args, **kwargs):
-#     """
-#     Submit a batch of files at the same time. This assumes that the
-#     presubmit API was called first to verify if the files are indeed
-#     already on the system and that the missing files where uploaded
-#     using the given transport and upload location returned by the
-#     presubmit API.
-#
-#     Variables:
-#     None
-#
-#     Arguments:
-#     None
-#
-#     Data Block (REQUIRED):
-#     {
-#      "1":                         # File ID
-#        {"sha256": "982...077",      # SHA256 of the file
-#         "path": "/local/file/path", # Path of the file
-#         "KEYWORD": ARG, },          # Any other KWARGS for the submission block
-#      ... }
-#
-#     Result example:
-#     {
-#      "1":                         # File ID
-#        "submission":{},             # Submission Block
-#        "request": {},               # Request Block
-#        "times": {},                 # Timing Block
-#        "state": "submitted",        # Submission state
-#        "services": {},              # Service selection Block
-#        "fileinfo": {}               # File information Block
-#        }, ...
-#     }
-#     """
-#     user = kwargs['user']
-#
-#     submit_requests = request.json
-#
-#     check_submission_quota(user, len(submit_requests))
-#
-#     submit_results = {}
-#     user_params = load_user_settings(user)
-#     for key, submit in submit_requests.iteritems():
-#         submit['submitter'] = user['uname']
-#         submit['quota_item'] = True
-#         path = submit.get('path', './path/missing')
-#         if 'classification' not in submit:
-#             submit['classification'] = user_params['classification']
-#         if 'groups' not in submit:
-#             submit['groups'] = user['groups']
-#         if 'description' not in submit:
-#             submit['description'] = "Inspection of file: %s" % path
-#         if 'selected'not in submit:
-#             submit['selected'] = simplify_services(user_params["services"])
-#         with forge.get_filestore() as f_transport:
-#             submit_result = SubmissionWrapper.submit(f_transport, STORAGE, **submit)
-#         submit_results[key] = submit_result
-#     return make_api_response(submit_results)
-
-
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False)
 def submit(**kwargs):
     """
-    Submit a single file or url
+    Submit a single file, sha256 or url for analysis
     
     Variables:
     None
@@ -354,28 +160,49 @@ def submit(**kwargs):
     Arguments: 
     None
     
-    Data Block (REQUIRED): 
+    Data Block (REQUIRED):
+    ---------
+    The following data block submitting hashes or urls using application/json content encoding:
+    ---------
     {
-     "name": "file.exe",     # Name of the file
-     "binary": "A24AB..==",  # Base64 encoded file binary
-     "sha256": "123...DEF",  # SHA256 hash of the file if you know the file is already in the datastore
-     "url": "http://...",    # Url to fetch the file from
+      // REQUIRED: One of the two following
+      "sha256": "123...DEF",      # SHA256 hash of the file already in the datastore
+      "url": "http://...",        # Url to fetch the file from
 
-     "metadata": {           # Submission metadata
-         "key": val,            # Key/Value pair metadata values
-         },
+      // OPTIONAL VALUES
+      "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
 
-     "params": {             # Submission parameters
-         "key": val,            # Key/Value pair for params that different then defaults
-         },                     # Default params can be fetch at /api/v3/user/submission_params/<user>/
+      "metadata": {               # Submission metadata
+        "key": val,                 # Key/Value pair metadata values
+      },
 
-     "ui_params": {          # UI submission parameters (Only used by UI)
-         "key": val,            # UI Key/Value pair of the parameters for the submission
-         }
+      "params": {                 # Submission parameters
+        "key": val,                 # Key/Value pair for params that different then defaults
+      },                            # Default params can be fetch at /api/v3/user/submission_params/<user>/
     }
-    
+
+    ---------
+    File binary submissions are now done via multipart/form-data encoding to reduce memory footprint
+     and to prevent the client to have to base64 encode the file.
+     ** Read documentation of mime multipart standard if your library does not support it **
+
+    The json data block will be transmitted in a form-data block with the name 'json' and the file binary
+     will be transmitted in a file form-data block with the name 'bin'.
+    ---------
+
+    --0b34a3c50d3c02dd804a172329a0b2aa               <-- Randomly generated boundary for this http request
+    Content-Disposition: form-data; name="json"      <-- JSON data blob part (only previous optional values valid)
+
+    {"metadata": {"hello": "world"}}
+    --0b34a3c50d3c02dd804a172329a0b2aa               <-- Switch to next part, file part
+    Content-Disposition: form-data; name="bin"; filename="name_of_the_file_to_scan.bin"
+
+    <BINARY DATA OF THE FILE TO SCAN... DOES NOT NEED TO BE ENCODDED>
+
+    --0b34a3c50d3c02dd804a172329a0b2aa--             <-- End of HTTP transmission
+
     Result example:
-    # Submission message object as a json dictionary
+    <Submission message object as a json dictionary>
     """
     user = kwargs['user']
     check_submission_quota(user)
@@ -384,11 +211,25 @@ def submit(**kwargs):
 
     with forge.get_filestore() as f_transport:
         try:
-            data = request.json
+            # Get data block and binary blob
+            if 'multipart/form-data' in request.content_type:
+                data = json.loads(request.values['json'])
+                binary = request.files['bin']
+                name = data.get("name", binary.filename)
+                sha256 = None
+                url = None
+            elif 'application/json' in request.content_type:
+                data = request.json
+                binary = None
+                sha256 = data.get('sha256', None)
+                url = data.get('url', None)
+                name = data.get("name", None)
+            else:
+                return make_api_response({}, "Invalid content type", 400)
+
             if not data:
                 return make_api_response({}, "Missing data block", 400)
 
-            name = data.get("name", None)
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
@@ -396,23 +237,21 @@ def submit(**kwargs):
             if not name:
                 return make_api_response({}, "Invalid filename", 400)
 
-            out_file = os.path.join(out_dir, name)
-
+            # Prepare the output directory
             try:
                 os.makedirs(out_dir)
             except Exception:
                 pass
+            out_file = os.path.join(out_dir, name)
 
-            binary = data.get("binary", None)
+            # Get the output file
             if not binary:
-                sha256 = data.get('sha256', None)
                 if sha256:
                     if f_transport.exists(sha256):
                         f_transport.download(sha256, out_file)
                     else:
                         return make_api_response({}, "SHA256 does not exist in our datastore", 404)
                 else:
-                    url = data.get('url', None)
                     if url:
                         if not config.ui.allow_url_submissions:
                             return make_api_response({}, "URL submissions are disabled in this system", 400)
@@ -429,7 +268,7 @@ def submit(**kwargs):
                         return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
             else:
                 with open(out_file, "wb") as my_file:
-                    my_file.write(base64.b64decode(binary))
+                    my_file.write(binary.read())
 
             # Create task object
             if "ui_params" in data:
@@ -458,6 +297,7 @@ def submit(**kwargs):
             except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
 
+            # Submit the task to the system
             try:
                 result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                           config=config).submit(submission_obj, local_files=[out_file], cleanup=False)
