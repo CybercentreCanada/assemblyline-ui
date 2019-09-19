@@ -153,17 +153,26 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis
-    
+
+        Note 1:
+            If you are submitting a sh256 or a URL, you must use the application/json encoding
+
+        Note 2:
+            If you are submitting a file directly, you have to use multipart/form-data encoding this
+            was done to reduce the memory footprint and speedup file transfers
+             ** Read documentation of mime multipart standard if your library does not support it**
+
+            The multipart/form-data for sending binary has two parts:
+                - The first part contains a JSON dump of the optional params and uses the name 'json'
+                - The last part conatins the file binary, uses the name 'bin' and includes a filename
+
     Variables:
     None
     
     Arguments: 
     None
     
-    Data Block (REQUIRED):
-    ---------
-    The following data block submitting hashes or urls using application/json content encoding:
-    ---------
+    Data Block (SHA256 or URL):
     {
       // REQUIRED: One of the two following
       "sha256": "123...DEF",      # SHA256 hash of the file already in the datastore
@@ -181,14 +190,7 @@ def submit(**kwargs):
       },                            # Default params can be fetch at /api/v3/user/submission_params/<user>/
     }
 
-    ---------
-    File binary submissions are now done via multipart/form-data encoding to reduce memory footprint
-     and to prevent the client to have to base64 encode the file.
-     ** Read documentation of mime multipart standard if your library does not support it **
-
-    The json data block will be transmitted in a form-data block with the name 'json' and the file binary
-     will be transmitted in a file form-data block with the name 'bin'.
-    ---------
+    Data Block (Binary):
 
     --0b34a3c50d3c02dd804a172329a0b2aa               <-- Randomly generated boundary for this http request
     Content-Disposition: form-data; name="json"      <-- JSON data blob part (only previous optional values valid)
@@ -200,6 +202,7 @@ def submit(**kwargs):
     <BINARY DATA OF THE FILE TO SCAN... DOES NOT NEED TO BE ENCODDED>
 
     --0b34a3c50d3c02dd804a172329a0b2aa--             <-- End of HTTP transmission
+
 
     Result example:
     <Submission message object as a json dictionary>
@@ -213,7 +216,10 @@ def submit(**kwargs):
         try:
             # Get data block and binary blob
             if 'multipart/form-data' in request.content_type:
-                data = json.loads(request.values['json'])
+                if 'json' in request.values:
+                    data = json.loads(request.values['json'])
+                else:
+                    data = {}
                 binary = request.files['bin']
                 name = data.get("name", binary.filename)
                 sha256 = None
@@ -223,11 +229,11 @@ def submit(**kwargs):
                 binary = None
                 sha256 = data.get('sha256', None)
                 url = data.get('url', None)
-                name = data.get("name", None)
+                name = data.get("name", None) or sha256 or os.path.basename(url) or None
             else:
                 return make_api_response({}, "Invalid content type", 400)
 
-            if not data:
+            if data is None:
                 return make_api_response({}, "Missing data block", 400)
 
             if not name:
