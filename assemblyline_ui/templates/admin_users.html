@@ -66,7 +66,7 @@
 											<span ng-hide="current_user.is_active">Account Disabled</span>
 										</span>
 									</div>
-									<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
+									<div ng-hide="is_admin()" style="display: block" class="text-large">
 										<span id="user_active" class="label label-default classification" ng-class="{'label-primary': user.is_active}">Active</span>
 									</div>
 								</div>
@@ -113,13 +113,13 @@
 
 								<div class="form-group">
 									<label class="control-label">User access types</label>
-									<div ng-hide="user.type.indexOf('admin')==-1" style="display: block" class="text-large">
+									<div ng-hide="!is_admin()" style="display: block" class="text-large">
 										<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('user')" ng-class="{'label-highlight': current_user.type.indexOf('user')!=-1}">Normal User</span>
 										<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('admin')" ng-class="{'label-highlight': current_user.type.indexOf('admin')!=-1}">Administrator</span>
 										<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_manager')" ng-class="{'label-highlight': current_user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
 										<span style="cursor: pointer" class="label label-nolight label-tag" ng-click="toggle_type('signature_importer')" ng-class="{'label-highlight': current_user.type.indexOf('signature_importer')!=-1}">Signature Importer</span>
 									</div>
-									<div ng-hide="user.type.indexOf('admin')!=-1" style="display: block" class="text-large">
+									<div ng-hide="is_admin()" style="display: block" class="text-large">
 										<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('user')!=-1}">Normal User</span>
 										<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('admin')!=-1}">Administrator</span>
 										<span class="label label-default label-tag" ng-class="{'label-primary': current_user.type.indexOf('signature_manager')!=-1}">Signature Manager</span>
@@ -128,21 +128,21 @@
 								</div>
 								<div class="form-group">
 									<label class="control-label">API quota</label>
-									<input type="number" class="form-control input-sm" ng-model="current_user.api_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
+									<input type="number" class="form-control input-sm" ng-model="current_user.api_quota" ng-disabled="!is_admin()" min="0" max="1024">
 								</div>
                                 <div class="form-group">
 									<label class="control-label">Submission quota</label>
-									<input type="number" class="form-control input-sm" ng-model="current_user.submission_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
+									<input type="number" class="form-control input-sm" ng-model="current_user.submission_quota" ng-disabled="!is_admin()" min="0" max="1024">
 								</div>
 
 							</div>
-							<div class="col-md-12 text-center text-muted pad" ng-show="current_user.agrees_with_tos">
+							<div class="col-sm-12 text-center text-muted pad" ng-show="current_user.agrees_with_tos">
 								<span class="glyphicon glyphicon-check"></span>&nbsp;&nbsp;Agreed to Terms of Service on: {{ current_user.agrees_with_tos | date:"yyyy-MM-dd HH:mm:ss" }}
 							</div>
-							<div class="col-md-12 text-center text-muted pad" ng-show="current_user.2fa_enabled&&user.allow_2fa">
+							<div class="col-sm-12 text-center text-muted pad" ng-show="current_user.2fa_enabled&&user.allow_2fa">
 								<span class="glyphicon glyphicon-lock"></span>&nbsp;&nbsp;2-Factor Authentication enabled on this account
 							</div>
-							<div class="col-md-12 text-center text-muted pad" ng-show="current_user.u2f_enabled&&user.allow_u2f">
+							<div class="col-sm-12 text-center text-muted pad" ng-show="current_user.u2f_enabled&&user.allow_u2f">
 								<span class="icon-lock">&nbsp;&nbsp;</span>A security token is configured on this account
 							</div>
 						</section>

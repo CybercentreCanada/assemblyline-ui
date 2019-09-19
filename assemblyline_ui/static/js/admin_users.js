@@ -51,6 +51,10 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
         $("#myModal").modal('show');
     };
 
+    $scope.is_admin = function(){
+        return $scope.user.type.indexOf('admin') !== -1
+    };
+
     $scope.maximum_classification = true;
     $scope.receiveClassification = function (classification) {
         $scope.current_user.classification = classification;
