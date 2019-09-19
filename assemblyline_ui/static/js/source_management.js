@@ -203,8 +203,13 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         val: ""
     };
 
-    $scope.remove_header = function (key) {
-        delete $scope.current_source.headers[key];
+    $scope.remove_header = function (key, val) {
+        for (let i in $scope.current_source.headers){
+            if ($scope.current_source.headers[i].name === key && $scope.current_source.headers[i].value === val){
+                $scope.current_source.headers.splice(i, 1);
+                return;
+            }
+        }
     };
 
     $scope.add_header = function () {
@@ -213,13 +218,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         $scope.conf_temp_error = null;
 
         if (!("headers" in $scope.current_source)){
-            $scope.current_source.headers = {};
-        }
-
-        if ($scope.conf_temp.key in $scope.current_source.headers) {
-            $scope.conf_temp_error = "This header name already exists.";
-            $("#new_conf_temp_key").addClass("has-error");
-            return
+            $scope.current_source.headers = [];
         }
 
         if ($scope.conf_temp.key === "" || $scope.conf_temp.key == null) {
@@ -235,7 +234,10 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             $("#new_conf_temp_val").addClass("has-error");
             return;
         }
-        $scope.current_source.headers[$scope.conf_temp.key] = $scope.conf_temp.val;
+        $scope.current_source.headers.push({
+            name: $scope.conf_temp.key,
+            value: $scope.conf_temp.val
+        });
 
         $scope.conf_temp = {
             key: "",

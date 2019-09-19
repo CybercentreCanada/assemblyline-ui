@@ -32,25 +32,25 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.enable_field = function(field) {
-            if (field in $scope.current_service){
+            if ($scope.current_service !== null && $scope.current_service !== undefined && field in $scope.current_service){
                 $scope.current_service[field] = true
             }
-            else if (field in $scope.current_docker_config){
+            else if ($scope.current_docker_config !== null && $scope.current_docker_config !== undefined && field in $scope.current_docker_config){
                 $scope.current_docker_config[field] = true
             }
-            else{
+            else if ($scope.current_service.update_config !== null && $scope.current_service.update_config !== undefined){
                 $scope.current_service.update_config[field] = true
             }
         };
 
         $scope.disable_field = function(field) {
-            if (field in $scope.current_service){
+            if ($scope.current_service !== null && $scope.current_service !== undefined && field in $scope.current_service){
                 $scope.current_service[field] = false
             }
-            else if (field in $scope.current_docker_config){
+            else if ($scope.current_docker_config !== null && $scope.current_docker_config !== undefined && field in $scope.current_docker_config){
                 $scope.current_docker_config[field] = false
             }
-            else{
+            else if ($scope.current_service.update_config !== null && $scope.current_service.update_config !== undefined){
                 $scope.current_service.update_config[field] = false
             }
         };
@@ -239,8 +239,13 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             };
         };
 
-        $scope.remove_header = function (key) {
-            delete $scope.current_source.headers[key];
+        $scope.remove_header = function (key, val) {
+            for (let i in $scope.current_source.headers){
+                if ($scope.current_source.headers[i].name === key && $scope.current_source.headers[i].value === val){
+                    $scope.current_source.headers.splice(i, 1);
+                    return;
+                }
+            }
         };
 
         $scope.add_header = function () {
@@ -249,13 +254,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $scope.conf_temp_error = null;
 
             if (!("headers" in $scope.current_source)){
-                $scope.current_source.headers = {};
-            }
-
-            if ($scope.conf_temp.key in $scope.current_source.headers) {
-                $scope.conf_temp_error = "This header name already exists.";
-                $("#new_conf_temp_key").addClass("has-error");
-                return
+                $scope.current_source.headers = [];
             }
 
             if ($scope.conf_temp.key === "" || $scope.conf_temp.key == null) {
@@ -271,7 +270,10 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 $("#new_conf_temp_val").addClass("has-error");
                 return;
             }
-            $scope.current_source.headers[$scope.conf_temp.key] = $scope.conf_temp.val;
+            $scope.current_source.headers.push({
+                name: $scope.conf_temp.key,
+                value: $scope.conf_temp.val
+            });
 
             $scope.conf_temp = {
                 key: "",
