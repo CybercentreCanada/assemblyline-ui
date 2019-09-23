@@ -1,22 +1,22 @@
 import concurrent.futures
 import os
 import re
+import tempfile
 
 from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.attack_map import attack_map
+from assemblyline.common.codec import encode_file
 from assemblyline.common.hexdump import hexdump
 from assemblyline.common.str_utils import safe_str
-from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
 Classification = forge.get_classification()
 config = forge.get_config()
-context = forge.get_ui_context()
-encode_file = context.encode_file
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
@@ -133,8 +133,7 @@ def download_file(sha256, **kwargs):
     Variables: 
     sha256       => A resource locator for the file (sha256)
     
-    Arguments: 
-    encoding    => Format to encode the file in
+    Arguments:
     name        => Name of the file to download
 
     Data Block:
@@ -160,23 +159,31 @@ def download_file(sha256, **kwargs):
         name = safe_str(name)
 
         encoding = request.args.get('encoding', params['download_encoding'])
+        if encoding not in ['raw', 'cart']:
+            return make_api_response({}, f"{encoding.upper()} is not in the valid encoding types: [raw, cart]", 403)
+
         if encoding == "raw" and not ALLOW_RAW_DOWNLOADS:
             return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
 
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        _, download_path = tempfile.mkstemp()
+        try:
+            with forge.get_filestore() as f_transport:
+                downloaded_from = f_transport.download(sha256, download_path)
 
-        if not data:
-            return make_api_response({}, "The file was not found in the system.", 404)
+            if not downloaded_from:
+                return make_api_response({}, "The file was not found in the system.", 404)
 
-        data, error, already_encoded = encode_file(data, encoding, name)
-        if error:
-            return make_api_response({}, error['text'], error['code'])
-
-        if encoding != "raw" and not already_encoded:
-            name = "%s.%s" % (name, encoding)
-    
-        return make_file_response(data, name, len(data))
+            target_path, name = encode_file(download_path, name)
+            try:
+                return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
+            finally:
+                if target_path:
+                    if os.path.exists(target_path):
+                        os.unlink(target_path)
+        finally:
+            if download_path:
+                if os.path.exists(download_path):
+                    os.unlink(download_path)
     else:
         return make_api_response({}, "You are not allowed to download this file.", 403)
 
