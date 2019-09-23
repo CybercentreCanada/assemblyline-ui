@@ -2,7 +2,6 @@
 from u2flib_server.u2f import complete_authentication
 
 from assemblyline.common import forge
-from assemblyline.common.codec import encode_file
 from assemblyline.common.security import verify_password, get_totp_token
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.config import config, APP_ID
@@ -370,6 +369,5 @@ context = {
     'TEMPLATE_PREFIX': TEMPLATE_PREFIX,
     'APP_NAME': APP_NAME,
     'create_menu': create_menu,
-    'encode_file': encode_file,
     'register_site_specific_routes': register_site_specific_routes,
 }

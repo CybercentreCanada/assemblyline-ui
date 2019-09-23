@@ -239,6 +239,7 @@ def stream_file_response(reader, name, size, status_code=200):
             if not data:
                 break
             yield data
+        reader.close()
 
     headers = {"Content-Type": 'application/octet-stream',
                "Content-Length": size,
