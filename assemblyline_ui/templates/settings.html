@@ -83,12 +83,12 @@
 				<div class="form-group">
 					<label>Minimum verdict that a service needs to auto-expand its section</label>
 					<select id="auto_expend" class="form-control" ng-model="params.expand_min_score">
-						<option class="text-success" value="-10000">Safe :: Negative score</option>
-						<option class="text-muted" value="0">Non-Malicious :: Score between 0-100</option>
-						<option class="text-info" value="100">Suspicious :: Score between 100-500</option>
-						<option class="text-warning2" value="500">Highly Suspicious :: Score between 500-2000</option>
+						<option class="text-success" value="-1000000">Safe :: Any score without restrictions</option>
+						<option class="text-muted" value="0">Non-Malicious :: Score bigger then 0</option>
+						<option class="text-info" value="100">Suspicious :: Score bigger then 100</option>
+						<option class="text-warning2" value="500">Highly Suspicious :: Score bigger then 500</option>
 						<option class="text-danger" value="2000">Malicious :: Score bigger then 2000</option>
-						<option value="100000000">Never auto-expend service sections</option>
+						<option value="100000000">Never auto-expand service sections</option>
 					</select>
 				</div>
 			{% endraw %}
