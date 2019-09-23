@@ -740,9 +740,10 @@ def get_report(submission_id, **kwargs):
             return make_api_response("", f"It is too early to generate the report. "
                                          f"Submission ID {submission_id} is incomplete.", 425)
 
-        submission.pop('errors', None)
         tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth)
         submission['file_tree'] = tree
+
+        submission.pop('errors', None)
 
         def recurse_get_names(data):
             output = {}
