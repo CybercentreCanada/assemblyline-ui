@@ -109,7 +109,7 @@ def test_submit_url(datastore, login_session):
     assert msg.submission.sid == resp['sid']
 
 
-# noinspection PyUnusedLocal,PyBroadException
+# noinspection PyUnusedLocal
 def test_submit_binary(datastore, login_session):
     _, session = login_session
 
@@ -139,6 +139,7 @@ def test_submit_binary(datastore, login_session):
         assert msg.submission.sid == resp['sid']
 
     finally:
+        # noinspection PyBroadException
         try:
             os.unlink(temp_path)
         except Exception:

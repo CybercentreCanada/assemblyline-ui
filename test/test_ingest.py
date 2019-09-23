@@ -1,7 +1,9 @@
-import base64
 import json
+import os
 import random
+import tempfile
 
+import hashlib
 import pytest
 
 from base import HOST, login_session, get_api_data
@@ -99,17 +101,37 @@ def test_ingest_binary(datastore, login_session):
     _, session = login_session
 
     iq.delete()
-    data = {
-        'binary': base64.b64encode(get_random_phrase(wmin=15, wmax=30).encode()).decode(),
-        'name': 'text.txt',
-        'metadata': {'test': 'ingest_binary'},
-        'notification_queue': TEST_QUEUE
-    }
-    resp = get_api_data(session, f"{HOST}/api/v4/ingest/", method="POST", data=json.dumps(data))
-    assert isinstance(resp['ingest_id'], str)
 
-    msg = Submission(iq.pop(blocking=False))
-    assert msg.metadata['ingest_id'] == resp['ingest_id']
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    fd, temp_path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(byte_str)
+
+        with open(temp_path, 'rb') as fh:
+            sha256 = hashlib.sha256(byte_str).hexdigest()
+            json_data = {
+                'name': 'text.txt',
+                'metadata': {'test': 'ingest_binary'},
+                'notification_queue': TEST_QUEUE
+            }
+            data = {'json': json.dumps(json_data)}
+            resp = get_api_data(session, f"{HOST}/api/v4/ingest/", method="POST", data=data,
+                                files={'bin': fh}, headers={})
+
+        assert isinstance(resp['ingest_id'], str)
+
+        msg = Submission(iq.pop(blocking=False))
+        assert msg.metadata['ingest_id'] == resp['ingest_id']
+        assert msg.files[0].sha256 == sha256
+        assert msg.files[0].name == json_data['name']
+
+    finally:
+        # noinspection PyBroadException
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass
 
 
 # noinspection PyUnusedLocal

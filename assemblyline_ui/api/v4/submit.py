@@ -155,7 +155,8 @@ def submit(**kwargs):
     Submit a single file, sha256 or url for analysis
 
         Note 1:
-            If you are submitting a sh256 or a URL, you must use the application/json encoding
+            If you are submitting a sh256 or a URL, you must use the application/json encoding and one of
+            sha256 or url parameters must be included in the data block.
 
         Note 2:
             If you are submitting a file directly, you have to use multipart/form-data encoding this

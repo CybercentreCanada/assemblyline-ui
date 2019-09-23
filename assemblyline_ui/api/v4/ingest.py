@@ -1,5 +1,5 @@
+import json
 import os
-import base64
 import shutil
 
 from flask import request
@@ -96,13 +96,22 @@ def get_all_messages(notification_queue, **kwargs):
 @api_login(required_priv=['W'], allow_readonly=False)
 def ingest_single_file(**kwargs):
     """
-    Ingest a single file in the system
+    Ingest a single file, sha256 or URL in the system
 
-        Note:
-            * Binary, sha256 and url fields are optional but at least one of them has to be there
-            * notification_queue, notification_threshold and generate_alert fields are optional
+        Note 1:
+            If you are submitting a sha256 or a URL, you must use the application/json encoding and one of
+            sha256 or url parameters must be included in the data block.
 
         Note 2:
+            If you are submitting a file directly, you have to use multipart/form-data encoding this
+            was done to reduce the memory footprint and speedup file transfers
+             ** Read documentation of mime multipart standard if your library does not support it**
+
+            The multipart/form-data for sending binary has two parts:
+                - The first part contains a JSON dump of the optional params and uses the name 'json'
+                - The last part conatins the file binary, uses the name 'bin' and includes a filename
+
+        Note 3:
             The ingest API uses the user's default settings to submit files to the system
             unless these settings are overridden in the 'params' field. Although, there are
             exceptions to that rule. Fields deep_scan, ignore_filtering, ignore_cache are
@@ -114,12 +123,14 @@ def ingest_single_file(**kwargs):
     Arguments:
     None
 
-    Data Block:
+    Data Block (SHA256 or URL):
     {
-     "name": "file.exe",             # Name of the file
-     "binary": "A24AB..==",          # Base64 encoded file binary
+     //REQUIRED VALUES: One of the following
      "sha256": "1234...CDEF"         # SHA256 hash of the file
      "url": "http://...",            # Url to fetch the file from
+
+     //OPTIONAL VALUES
+     "name": "file.exe",             # Name of the file
 
      "metadata": {                   # Submission Metadata
          "key": val,                    # Key/Value pair for metadata parameters
@@ -134,15 +145,45 @@ def ingest_single_file(**kwargs):
      "notification_threshold": None, # Threshold for notification
     }
 
+    Data Block (Binary):
+
+    --0b34a3c50d3c02dd804a172329a0b2aa               <-- Randomly generated boundary for this http request
+    Content-Disposition: form-data; name="json"      <-- JSON data blob part (only previous optional values valid)
+
+    {"params": {"ignore_cache": true}, "generate_alert": true}
+    --0b34a3c50d3c02dd804a172329a0b2aa               <-- Switch to next part, file part
+    Content-Disposition: form-data; name="bin"; filename="name_of_the_file_to_scan.bin"
+
+    <BINARY DATA OF THE FILE TO SCAN... DOES NOT NEED TO BE ENCODDED>
+
+    --0b34a3c50d3c02dd804a172329a0b2aa--             <-- End of HTTP transmission
+
     Result example:
-    { "success": true }
+    { "ingest_id": <ID OF THE INGESTED FILE> }
     """
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
     with forge.get_filestore() as f_transport:
         try:
-            # Get data block
-            data = request.json
+            # Get data block and binary blob
+            if 'multipart/form-data' in request.content_type:
+                if 'json' in request.values:
+                    data = json.loads(request.values['json'])
+                else:
+                    data = {}
+                binary = request.files['bin']
+                name = data.get("name", binary.filename)
+                sha256 = None
+                url = None
+            elif 'application/json' in request.content_type:
+                data = request.json
+                binary = None
+                sha256 = data.get('sha256', None)
+                url = data.get('url', None)
+                name = data.get("name", None) or sha256 or os.path.basename(url) or None
+            else:
+                return make_api_response({}, "Invalid content type", 400)
+
             if not data:
                 return make_api_response({}, "Missing data block", 400)
 
@@ -161,7 +202,6 @@ def ingest_single_file(**kwargs):
                 return make_api_response({}, "generate_alert should be a boolean", 400)
 
             # Get file name
-            name = data.get("name", None)
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
@@ -169,24 +209,21 @@ def ingest_single_file(**kwargs):
             if not name:
                 return make_api_response({}, "Invalid filename", 400)
 
-            out_file = os.path.join(out_dir, name)
-
             try:
                 os.makedirs(out_dir)
             except Exception:
                 pass
+            out_file = os.path.join(out_dir, name)
+
 
             # Load file
-            binary = data.get("binary", None)
             if not binary:
-                sha256 = data.get('sha256', None)
                 if sha256:
                     if f_transport.exists(sha256):
                         f_transport.download(sha256, out_file)
                     else:
                         return make_api_response({}, "SHA256 does not exist in our datastore", 404)
                 else:
-                    url = data.get('url', None)
                     if url:
                         if not config.ui.allow_url_submissions:
                             return make_api_response({}, "URL submissions are disabled in this system", 400)
@@ -203,7 +240,7 @@ def ingest_single_file(**kwargs):
                         return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
             else:
                 with open(out_file, "wb") as my_file:
-                    my_file.write(base64.b64decode(binary))
+                    my_file.write(binary.read())
 
             # Load default user params
             s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
@@ -272,6 +309,7 @@ def ingest_single_file(**kwargs):
             # Send submission object for processing
             ingest.push(submission_obj.as_primitives())
             return make_api_response({"ingest_id": ingest_id})
+
         finally:
             try:
                 # noinspection PyUnboundLocalVariable
