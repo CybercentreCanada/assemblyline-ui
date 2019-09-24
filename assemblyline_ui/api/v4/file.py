@@ -173,7 +173,11 @@ def download_file(sha256, **kwargs):
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
 
-            target_path, name = encode_file(download_path, name)
+            if encoding == 'raw':
+                target_path = download_path
+            else:
+                target_path, name = encode_file(download_path, name)
+
             try:
                 return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
             finally:
