@@ -87,7 +87,7 @@ def list_file_parents(sha256, access_control=None):
 
 
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
-@api_login()
+@api_login(required_priv=['R'])
 def get_file_ascii(sha256, **kwargs):
     """
     Return the ascii values for a file where ascii chars are replaced by DOTs.
@@ -189,7 +189,7 @@ def download_file(sha256, **kwargs):
 
 
 @file_api.route("/hex/<sha256>/", methods=["GET"])
-@api_login()
+@api_login(required_priv=['R'])
 def get_file_hex(sha256, **kwargs):
     """
     Returns the file hex representation
@@ -228,7 +228,7 @@ def get_file_hex(sha256, **kwargs):
 
 
 @file_api.route("/strings/<sha256>/", methods=["GET"])
-@api_login()
+@api_login(required_priv=['R'])
 def get_file_strings(sha256, **kwargs):
     """
     Return all strings in a given file
