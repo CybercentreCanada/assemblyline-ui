@@ -189,9 +189,6 @@ def ingest_single_file(**kwargs):
 
             # Get notification queue parameters
             notification_queue = data.get('notification_queue', None)
-            if notification_queue:
-                notification_queue = "nq-%s" % notification_queue
-
             notification_threshold = data.get('notification_threshold', None)
             if not isinstance(notification_threshold, int) and notification_threshold:
                 return make_api_response({}, "notification_threshold should be and int", 400)

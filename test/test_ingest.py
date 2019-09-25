@@ -59,7 +59,6 @@ def datastore(request):
     return ds
 
 
-
 # noinspection PyUnusedLocal
 def test_ingest_hash(datastore, login_session):
     _, session = login_session
