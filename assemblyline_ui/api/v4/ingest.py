@@ -212,7 +212,6 @@ def ingest_single_file(**kwargs):
                 pass
             out_file = os.path.join(out_dir, name)
 
-
             # Load file
             if not binary:
                 if sha256:
@@ -269,8 +268,10 @@ def ingest_single_file(**kwargs):
 
             # Calculate file digest and save it to filestore
             digests = identify.get_digests_for_file(out_file)
-            sha256 = digests['sha256']
+            if digests['size'] == 0:
+                return make_api_response("", err="File empty. Submission failed", status_code=400)
 
+            sha256 = digests['sha256']
             if not f_transport.exists(sha256):
                 f_transport.upload(out_file, sha256, location='far')
 
