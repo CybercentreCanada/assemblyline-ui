@@ -82,7 +82,7 @@ app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
 app.register_blueprint(user_v3_api)
 app.register_blueprint(views)
-app.register_blueprint(vm_api)
+# app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
 
 register_site_specific_routes(app)

@@ -14,6 +14,7 @@ NUM_VMS = 10
 ds = forge.get_datastore()
 vm_list = []
 
+
 def purge_vm():
     wipe_users(ds)
     wipe_services(ds)
@@ -88,6 +89,7 @@ def test_remove_virtual_machine(datastore, login_session):
     ds.vm.commit()
 
     assert ds.vm.get(vm_name) is None
+
 
 # noinspection PyUnusedLocal
 def test_set_virtual_machine(datastore, login_session):
