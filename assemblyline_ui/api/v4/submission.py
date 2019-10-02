@@ -743,7 +743,8 @@ def get_report(submission_id, **kwargs):
         tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth)
         submission['file_tree'] = tree
 
-        submission.pop('errors', None)
+        errors = submission.pop('errors', None)
+        submission['params']['services']['errors'] = list(set([x.split('.')[1] for x in errors]))
 
         def recurse_get_names(data):
             output = {}
