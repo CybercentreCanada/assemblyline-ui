@@ -85,8 +85,8 @@ def login(uname, path=None):
                                    path.startswith("/admin/") or path.startswith("/dashboard.html") or
                                    path.startswith("/kibana-dash.html"))
             user["admin_menu"] = [
-                {"icon": None, "active": path.startswith("/admin/documentation.html"),
-                 "link": "/admin/documentation.html", "title": "Documentation"},
+                # {"icon": None, "active": path.startswith("/admin/documentation.html"),
+                #  "link": "/admin/documentation.html", "title": "Documentation"},
                 {"icon": None, "active": path.startswith("/admin/errors.html"),
                  "link": "/admin/errors.html", "title": "Errors viewer"}]
             if not config.ui.read_only:
