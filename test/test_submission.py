@@ -95,6 +95,23 @@ def test_get_submission_full(datastore, login_session):
     assert isinstance(resp['file_tree'], dict)
     assert isinstance(resp['file_infos'], dict)
 
+
+# noinspection PyUnusedLocal
+def test_get_submission_report(datastore, login_session):
+    _, session = login_session
+
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    resp = get_api_data(session, f"{HOST}/api/v4/submission/report/{submission['sid']}/")
+    assert resp['sid'] == submission['sid']
+    assert resp['params']['description'] == submission['params']['description']
+    assert isinstance(resp['attack_matrix'], dict)
+    assert isinstance(resp['file_info'], dict)
+    assert isinstance(resp['file_tree'], dict)
+    assert isinstance(resp['files'], list)
+    assert isinstance(resp['heuristics'], dict)
+    assert isinstance(resp['tags'], dict)
+
+
 # noinspection PyUnusedLocal
 def test_get_submission_summary(datastore, login_session):
     _, session = login_session
