@@ -385,10 +385,10 @@ def unsupported():
     return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"])
 
 
-@views.route("/yara_standard.html")
-@protected_renderer(audit=False, allow_readonly=False)
-def yara_help(**kwargs):
-    return custom_render("yara_standard.html", **kwargs)
+# @views.route("/yara_standard.html")
+# @protected_renderer(audit=False, allow_readonly=False)
+# def yara_help(**kwargs):
+#     return custom_render("yara_standard.html", **kwargs)
 
 
 @views.route("/workflows.html")
