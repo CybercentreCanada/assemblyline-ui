@@ -60,14 +60,14 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@alert_api.route("/<alert_key>/", methods=["GET"])
+@alert_api.route("/<alert_id>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_alert(alert_key, **kwargs):
+def get_alert(alert_id, **kwargs):
     """
     Get the alert details for a given alert key
     
     Variables:
-    alert_key         => Alert key to get the details for
+    alert_id         => ID of the alert to get the details for
     
     Arguments: 
     None
@@ -84,7 +84,7 @@ def get_alert(alert_key, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.alert.get(alert_key, as_obj=False)
+    data = STORAGE.alert.get(alert_id, as_obj=False)
 
     if not data:
         return make_api_response("", "This alert does not exists...", 404)
