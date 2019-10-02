@@ -471,7 +471,7 @@ def admin_user(**kwargs):
     return custom_render("admin_users.html", **kwargs)
 
 
-@views.route("/admin/virtual_machines.html")
-@protected_renderer(require_type=['admin'], audit=False, allow_readonly=False)
-def admin_vm(**kwargs):
-    return custom_render("admin_virtual_machines.html", **kwargs)
+# @views.route("/admin/virtual_machines.html")
+# @protected_renderer(require_type=['admin'], audit=False, allow_readonly=False)
+# def admin_vm(**kwargs):
+#     return custom_render("admin_virtual_machines.html", **kwargs)

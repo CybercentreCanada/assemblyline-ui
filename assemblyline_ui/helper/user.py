@@ -97,9 +97,9 @@ def login(uname, path=None):
                                         "link": "/admin/site_map.html", "title": "Site Map"},
                                        {"icon": None, "active": path.startswith("/admin/users.html"),
                                         "link": "/admin/users.html", "title": "Users"}])
-            if not config.ui.read_only:
-                user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/virtual_machines.html"),
-                                            "link": "/admin/virtual_machines.html", "title": "Virtual Machines"}])
+#            if not config.ui.read_only:
+#                user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/virtual_machines.html"),
+#                                            "link": "/admin/virtual_machines.html", "title": "Virtual Machines"}])
         else:
             user['menu_active'] = (path.startswith("/settings.html") or path.startswith("/account.html") or
                                    path.startswith("/dashboard.html"))
