@@ -1,6 +1,6 @@
 
 options:
-  max-time: 6
+  max-time: 10
 
 pipelines:
   default:
