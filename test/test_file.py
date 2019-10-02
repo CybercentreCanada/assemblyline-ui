@@ -54,6 +54,7 @@ def datastore(request):
     request.addfinalizer(purge_file)
     return ds
 
+
 # noinspection PyUnusedLocal
 def test_download(datastore, login_session):
     _, session = login_session

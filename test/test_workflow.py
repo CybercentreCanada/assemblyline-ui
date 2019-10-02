@@ -15,6 +15,7 @@ NUM_WORKFLOWS = 10
 ds = forge.get_datastore()
 workflow_list = []
 
+
 def purge_workflow():
     wipe_users(ds)
     wipe_services(ds)
@@ -97,6 +98,7 @@ def test_remove_workflow(datastore, login_session):
     ds.workflow.commit()
 
     assert ds.workflow.get(workflow_id) is None
+
 
 # noinspection PyUnusedLocal
 def test_set_workflow(datastore, login_session):

@@ -26,7 +26,6 @@ def datastore(request):
     return ds
 
 
-
 # noinspection PyUnusedLocal
 def test_get_versions(datastore, login_session):
     _, session = login_session
@@ -92,6 +91,7 @@ def test_delete_service(datastore, login_session):
         assert svc['id'] != service
 
     SERVICES.pop(service, None)
+
 
 # noinspection PyUnusedLocal
 def test_edit_service(datastore, login_session):

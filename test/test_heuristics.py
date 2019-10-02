@@ -1,6 +1,5 @@
 
 import random
-
 import pytest
 
 from base import HOST, login_session, get_api_data

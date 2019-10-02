@@ -70,7 +70,6 @@ def test_get_submission(datastore, login_session):
     assert resp['params']['description'] == submission['params']['description']
 
 
-
 # noinspection PyUnusedLocal
 def test_get_submission_is_completed(datastore, login_session):
     _, session = login_session

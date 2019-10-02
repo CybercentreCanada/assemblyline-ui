@@ -1,8 +1,6 @@
-
 import json
-import random
-
 import pytest
+import random
 
 from assemblyline.odm.models.service import UpdateSource
 from base import HOST, login_session, get_api_data, APIError
@@ -51,7 +49,7 @@ def test_add_signature_source(datastore, login_session):
     data['name'] = "_NEW_added_SOURCE_"
 
     invalid_service = random.choice(ds.service.search("NOT _exists_:update_config.generates_signatures",
-                                              rows=100, as_obj=False)['items'])
+                                                      rows=100, as_obj=False)['items'])
     with pytest.raises(APIError):
         resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/{invalid_service['name']}/",
                             data=json.dumps(data), method="PUT")
@@ -103,7 +101,7 @@ def test_delete_signature_source(datastore, login_session):
     _, session = login_session
 
     invalid_service = random.choice(ds.service.search("NOT _exists_:update_config.generates_signatures",
-                                              rows=100, as_obj=False)['items'])
+                                                      rows=100, as_obj=False)['items'])
     with pytest.raises(APIError):
         resp = get_api_data(session,
                             f"{HOST}/api/v4/signature/sources/{invalid_service['name']}/TEST_SOURCE/",
@@ -156,6 +154,7 @@ def test_get_signature_source(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/")
     for service in services:
         assert service['name'] in resp
+
 
 # noinspection PyUnusedLocal
 def test_set_signature(datastore, login_session):
@@ -213,6 +212,7 @@ def test_set_signature_source(datastore, login_session):
             break
 
     assert found
+
 
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):

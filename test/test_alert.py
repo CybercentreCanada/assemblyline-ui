@@ -1,5 +1,4 @@
 import json
-
 import pytest
 
 from assemblyline.common import forge
@@ -13,6 +12,7 @@ NUM_ALERTS = 10
 test_alert = None
 ds = forge.get_datastore()
 fs = forge.get_filestore()
+
 
 def purge_alert():
     wipe_users(ds)
@@ -38,6 +38,7 @@ def datastore(request):
 
     request.addfinalizer(purge_alert)
     return ds
+
 
 # noinspection PyUnusedLocal
 def test_get_labels(datastore, login_session):

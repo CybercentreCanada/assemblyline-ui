@@ -3,6 +3,7 @@ import requests
 import socketio
 import time
 
+from base import get_api_data
 
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
@@ -19,14 +20,13 @@ from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
-from base import get_api_data
-
 config = forge.get_config()
 ds = forge.get_datastore()
 
 
 def purge_socket():
     wipe_users(ds)
+
 
 @pytest.fixture(scope='function')
 def login_session():
@@ -35,11 +35,13 @@ def login_session():
                         params={'user': 'admin', 'password': 'admin'})
     return data, session
 
+
 @pytest.fixture(scope="module")
 def datastore(request):
     create_users(ds)
     request.addfinalizer(purge_socket)
     return ds
+
 
 @pytest.fixture(scope="function")
 def sio(login_session):
@@ -158,7 +160,7 @@ def test_live_namespace(datastore, sio):
 
 
 # noinspection PyUnusedLocal
-def test_status(datastore, sio):
+def test_status_namspace(datastore, sio):
     status_queue = CommsQueue('status', private=True)
     monitoring = get_random_id()
 
@@ -226,7 +228,7 @@ def test_status(datastore, sio):
 
 
 # noinspection PyUnusedLocal
-def test_submission(datastore, sio):
+def test_submission_namespace(datastore, sio):
     submission_queue = CommsQueue('submissions', private=True)
     monitoring = get_random_id()
 

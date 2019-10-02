@@ -21,7 +21,6 @@ def datastore(request):
     return ds
 
 
-
 # noinspection PyUnusedLocal
 def test_classification_definition(datastore, login_session):
     _, session = login_session
@@ -31,7 +30,7 @@ def test_classification_definition(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_classification_configuration(datastore, login_session):
+def test_configuration(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/help/configuration/")
@@ -39,7 +38,7 @@ def test_classification_configuration(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_classification_constants(datastore, login_session):
+def test_constants(datastore, login_session):
     _, session = login_session
 
     resp = get_api_data(session, f"{HOST}/api/v4/help/constants/")

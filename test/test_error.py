@@ -33,6 +33,7 @@ def datastore(request):
     request.addfinalizer(purge_error)
     return ds
 
+
 # noinspection PyUnusedLocal
 def test_get_error(datastore, login_session):
     _, session = login_session
@@ -40,6 +41,7 @@ def test_get_error(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/error/{test_error.build_key()}/")
     err = Error(resp)
     assert err == test_error
+
 
 # noinspection PyUnusedLocal
 def test_list_error(datastore, login_session):

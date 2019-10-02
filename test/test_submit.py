@@ -1,10 +1,10 @@
 import hashlib
 import json
 import os
+import pytest
 import random
 import tempfile
 
-import pytest
 from base import HOST, login_session, get_api_data
 
 from assemblyline.common import forge
@@ -19,6 +19,7 @@ fs = forge.get_filestore(config)
 sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
 submission = None
+
 
 def purge_submit():
     wipe_users(ds)

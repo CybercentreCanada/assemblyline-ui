@@ -1,7 +1,6 @@
 import json
-import random
-
 import pytest
+import random
 
 from base import HOST, login_session, get_api_data
 
@@ -62,8 +61,8 @@ def test_get_result(datastore, login_session):
     sha256, service, version, _ = result_key.split('.')
     resp = get_api_data(session, f"{HOST}/api/v4/result/{result_key}/")
     assert resp['sha256'] == sha256 \
-           and resp['response']['service_name'] == service \
-           and resp['response']['service_version'] == version[1:].replace("_", ".")
+        and resp['response']['service_name'] == service \
+        and resp['response']['service_version'] == version[1:].replace("_", ".")
 
 
 # noinspection PyUnusedLocal
@@ -74,8 +73,8 @@ def test_get_result_error(datastore, login_session):
     sha256, service, version, _, _ = error_key.split('.')
     resp = get_api_data(session, f"{HOST}/api/v4/result/error/{error_key}/")
     assert resp['sha256'] == sha256 \
-           and resp['response']['service_name'] == service \
-           and resp['response']['service_version'] == version[1:].replace("_", ".")
+        and resp['response']['service_name'] == service \
+        and resp['response']['service_version'] == version[1:].replace("_", ".")
 
 
 # noinspection PyUnusedLocal
@@ -89,4 +88,4 @@ def test_get_multiple_keys(datastore, login_session):
 
     resp = get_api_data(session, f"{HOST}/api/v4/result/multiple_keys/", method="POST", data=json.dumps(data))
     assert sorted(list(resp['error'].keys())) == sorted(error_key_list) \
-           and sorted(list(resp['result'].keys())) == sorted(result_key_list)
+        and sorted(list(resp['result'].keys())) == sorted(result_key_list)

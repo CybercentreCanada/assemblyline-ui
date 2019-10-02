@@ -1,7 +1,6 @@
 import json
-import random
-
 import pytest
+import random
 
 from base import APIError, HOST, login_session, get_api_data
 
@@ -90,6 +89,7 @@ def test_add_user(datastore, login_session):
     new_user = ds.user.get(u.uname)
     assert new_user == u
 
+
 # noinspection PyUnusedLocal
 def test_agree_to_tos(datastore, login_session):
     _, session = login_session
@@ -116,6 +116,7 @@ def test_get_user(datastore, login_session):
     assert '2fa_enabled' in resp
     assert 'u2f_enabled' in resp
     assert sorted(resp['u2f_devices']) == sorted(list(new_user['u2f_devices'].keys()))
+
 
 # noinspection PyUnusedLocal
 def test_get_user_avatar(datastore, login_session):
@@ -155,6 +156,7 @@ def test_get_user_submission_params(datastore, login_session):
     assert not {'download_encoding'}.issubset(set(resp.keys()))
     assert {'deep_scan', 'groups', 'ignore_cache', 'submitter'}.issubset(set(resp.keys()))
     assert resp['submitter'] == username
+
 
 # noinspection PyUnusedLocal
 def test_list_users(datastore, login_session):
@@ -226,6 +228,7 @@ def test_set_user(datastore, login_session):
     for k in u.keys():
         assert u[k] == new_user[k]
 
+
 # noinspection PyUnusedLocal
 def test_set_user_avatar(datastore, login_session):
     _, session = login_session
@@ -266,5 +269,3 @@ def test_set_user_settings(datastore, login_session):
 
     ds.user_settings.commit()
     assert uset == load_user_settings({'uname': username})
-
-

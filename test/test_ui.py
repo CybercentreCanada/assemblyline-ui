@@ -3,10 +3,9 @@ import json
 import pytest
 import random
 
-from io import BytesIO
-
 # noinspection PyUnresolvedReferences
 from base import APIError, HOST, login_session, get_api_data
+from io import BytesIO
 
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 from assemblyline.common import forge
@@ -27,7 +26,6 @@ def datastore(request):
     create_services(ds)
     request.addfinalizer(purge_ui)
     return ds
-
 
 
 # noinspection PyUnusedLocal

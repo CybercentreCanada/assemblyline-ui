@@ -1,10 +1,9 @@
+import hashlib
 import json
 import os
+import pytest
 import random
 import tempfile
-
-import hashlib
-import pytest
 
 from base import HOST, login_session, get_api_data
 
