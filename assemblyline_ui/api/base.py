@@ -19,8 +19,7 @@ from assemblyline.common.uid import get_random_id
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
-# TODO: When testing is done XSRF should be turned back on
-XSRF_ENABLED = False
+XSRF_ENABLED = True
 
 
 def make_subapi_blueprint(name, api_version=3):
