@@ -13,7 +13,6 @@ config = forge.get_config()
 Classification = forge.get_classification()
 
 persistent = {
-    'db': config.core.redis.persistent.db,
     'host': config.core.redis.persistent.host,
     'port': config.core.redis.persistent.port,
 }

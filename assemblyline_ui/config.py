@@ -41,20 +41,17 @@ TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 RATE_LIMITER = Counters(prefix="quota",
                         host=config.core.redis.nonpersistent.host,
                         port=config.core.redis.nonpersistent.port,
-                        db=config.core.redis.nonpersistent.db,
                         track_counters=True)
 
 KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
-                  port=config.core.redis.nonpersistent.port,
-                  db=config.core.redis.nonpersistent.db)
+                  port=config.core.redis.nonpersistent.port)
 
 
 def get_reset_queue(key):
     return ExpiringSet("reset_id_%s" % key,
                        host=config.core.redis.nonpersistent.host,
                        port=config.core.redis.nonpersistent.port,
-                       db=config.core.redis.nonpersistent.db,
                        ttl=60 * 15)
 
 
@@ -62,7 +59,6 @@ def get_signup_queue(key):
     return ExpiringSet("signup_id_%s" % key,
                        host=config.core.redis.nonpersistent.host,
                        port=config.core.redis.nonpersistent.port,
-                       db=config.core.redis.nonpersistent.db,
                        ttl=60 * 15)
 
 

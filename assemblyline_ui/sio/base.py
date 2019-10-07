@@ -15,8 +15,7 @@ datastore = forge.get_datastore()
 
 KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
-                  port=config.core.redis.nonpersistent.port,
-                  db=config.core.redis.nonpersistent.db)
+                  port=config.core.redis.nonpersistent.port)
 LOGGER = logging.getLogger('assemblyline.ui.socketio')
 
 class AuthenticationFailure(Exception):

@@ -17,7 +17,7 @@ config = forge.get_config()
 ds = forge.get_datastore(config)
 fs = forge.get_filestore(config)
 sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.host,
-                port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
+                port=config.core.redis.persistent.port)
 submission = None
 
 

@@ -22,8 +22,7 @@ ingest_api._doc = "Ingest files for large volume processing"
 ingest = NamedQueue(
     "m-ingest",
     host=config.core.redis.persistent.host,
-    port=config.core.redis.persistent.port,
-    db=config.core.redis.persistent.db)
+    port=config.core.redis.persistent.port)
 
 
 # noinspection PyUnusedLocal
@@ -47,8 +46,7 @@ def get_message(notification_queue, **kwargs):
     """
     u = NamedQueue("nq-%s" % notification_queue,
                    host=config.core.redis.persistent.host,
-                   port=config.core.redis.persistent.port,
-                   db=config.core.redis.persistent.db)
+                   port=config.core.redis.persistent.port)
 
     msg = u.pop(blocking=False)
 
@@ -77,8 +75,7 @@ def get_all_messages(notification_queue, **kwargs):
     resp_list = []
     u = NamedQueue("nq-%s" % notification_queue,
                    host=config.core.redis.persistent.host,
-                   port=config.core.redis.persistent.port,
-                   db=config.core.redis.persistent.db)
+                   port=config.core.redis.persistent.port)
 
     while True:
         msg = u.pop(blocking=False)

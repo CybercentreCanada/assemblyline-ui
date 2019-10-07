@@ -20,9 +20,9 @@ config = forge.get_config()
 ds = forge.get_datastore(config)
 fs = forge.get_filestore(config)
 nq = NamedQueue(f"nq-{TEST_QUEUE}", host=config.core.redis.persistent.host,
-                port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
+                port=config.core.redis.persistent.port)
 iq = NamedQueue("m-ingest", host=config.core.redis.persistent.host,
-                port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
+                port=config.core.redis.persistent.port)
 file_hashes = []
 
 

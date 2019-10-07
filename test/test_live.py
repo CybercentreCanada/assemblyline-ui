@@ -14,7 +14,7 @@ ds = forge.get_datastore()
 test_submission = None
 wq_id = "D-test_watch_queue-WQ"
 wq = NamedQueue(wq_id, host=config.core.redis.persistent.host,
-                port=config.core.redis.persistent.port, db=config.core.redis.persistent.db)
+                port=config.core.redis.persistent.port)
 
 
 def purge_live():

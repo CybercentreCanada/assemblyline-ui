@@ -15,7 +15,6 @@ basic_dn_parser = None
 nonpersistent_config = {
     'host': config.core.redis.nonpersistent.host,
     'port': config.core.redis.nonpersistent.port,
-    'db': config.core.redis.nonpersistent.db,
     'ttl': config.auth.internal.failure_ttl
 }
 
