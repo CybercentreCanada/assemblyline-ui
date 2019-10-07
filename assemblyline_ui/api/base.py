@@ -2,7 +2,7 @@
 import elasticapm
 import functools
 
-from flask import current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response
+from flask import current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response, abort
 from sys import exc_info
 from traceback import format_tb
 
@@ -43,6 +43,7 @@ class api_login(BaseSecurityRenderer):
         uname = request.environ.get('HTTP_X_USER', None)
 
         if apikey is not None and uname is not None:
+            ip = request.headers.get("X-Forwarded-For", request.remote_addr)
             with elasticapm.capture_span(name=f"@api_login:auto_auth_check()", span_type="authentication"):
                 try:
                     # TODO: apikey_handler is slow to verify the password (bcrypt's fault)
@@ -51,12 +52,17 @@ class api_login(BaseSecurityRenderer):
                     #       sub-sequent calls...
                     validated_user, priv = apikey_handler(uname, apikey, STORAGE)
                 except AuthenticationException:
-                    raise AccessDeniedException("Invalid user or APIKey")
+                    msg = "Invalid user or APIKey"
+                    LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{msg}]")
+                    abort(401, msg)
+                    return
 
                 if validated_user:
+                    LOGGER.info(f"Login successful. (U:{uname} - IP:{ip})")
                     if not set(self.required_priv).intersection(set(priv)):
-                        raise AccessDeniedException("The method you've used to login "
-                                                    "does not give you access to this API.")
+                        abort(403, "The method you've used to login does not give you access to this API.")
+                        return
+
                     return validated_user
 
         return None
@@ -164,10 +170,9 @@ class api_login(BaseSecurityRenderer):
                                 (quota_user, count, quota))
                     raise QuotaExceededException("You've exceeded your maximum quota of %s " % quota)
                 else:
-                    LOGGER.info("Quota exceeded for user %s. [%s/%s]" % (quota_user, count, quota))
+                    LOGGER.debug("Quota exceeded for user %s. [%s/%s]" % (quota_user, count, quota))
             else:
-                if DEBUG:
-                    LOGGER.info("%s's quota is under or equal its limit. [%s/%s]" % (quota_user, count, quota))
+                LOGGER.debug("%s's quota is under or equal its limit. [%s/%s]" % (quota_user, count, quota))
 
             return func(*args, **kwargs)
         base.protected = True

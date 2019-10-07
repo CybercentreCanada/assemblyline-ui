@@ -13,7 +13,7 @@ from assemblyline.common.isotime import now
 from assemblyline.common.security import generate_random_secret, get_totp_token, \
     check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue
+from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.site_specific import default_authenticator
 
@@ -214,6 +214,8 @@ def login(**_):
             'apikey': apikey
         }
 
+        logged_in_uname = None
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         try:
             logged_in_uname, priv = default_authenticator(auth, request, flsk_session, STORAGE)
             session_duration = config.ui.session_duration
@@ -221,7 +223,7 @@ def login(**_):
             xsrf_token = generate_random_secret()
             current_session = {
                 'duration': session_duration,
-                'ip': request.headers.get("X-Forwarded-For", request.remote_addr),
+                'ip': ip,
                 'privileges': priv,
                 'time': int(cur_time) - (int(cur_time) % session_duration),
                 'user_agent': request.headers.get("User-Agent", "Unknown user agent"),
@@ -238,7 +240,12 @@ def login(**_):
                 "session_duration": session_duration
             }, cookies={'XSRF-TOKEN': xsrf_token})
         except AuthenticationException as wpe:
-            return make_api_response("", str(wpe), 401)
+            uname = auth.get('username', '(None)')
+            LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{wpe}]")
+            return make_api_response("", err=str(wpe), status_code=401)
+        finally:
+            if logged_in_uname:
+                LOGGER.info(f"Login successful. (U:{logged_in_uname} - IP:{ip})")
 
     return make_api_response("", "Not enough information to proceed with authentication", 401)
 

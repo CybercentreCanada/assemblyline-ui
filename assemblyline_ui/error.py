@@ -1,11 +1,13 @@
 
-from flask import Blueprint, render_template, request, redirect
+from flask import Blueprint, render_template, request, redirect, session as flsk_session
 from sys import exc_info
 from traceback import format_tb
 from urllib.parse import quote
 
+from werkzeug.exceptions import Forbidden, Unauthorized
+
 from assemblyline_ui.api.base import make_api_response
-from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config
+from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config, KV_SESSION
 from assemblyline_ui.helper.views import redirect_helper
 from assemblyline_ui.http_exceptions import AccessDeniedException, QuotaExceededException
 from assemblyline_ui.logger import log_with_traceback
@@ -25,27 +27,37 @@ def handle_400(e):
 
 
 @errors.app_errorhandler(401)
-def handle_401(_):
+def handle_401(e):
+    if isinstance(e, Unauthorized):
+        msg = e.description
+    else:
+        msg = str(e)
+
     if request.path.startswith("/api/"):
-        return make_api_response("", "Authentication required", 401)
+        return make_api_response("", msg, 401)
     else:
         return redirect(redirect_helper("/login.html?next=%s" % quote(request.full_path)))
 
 
-@errors.app_errorhandler(404)
-def handle_404(_):
-    if request.path.startswith("/api/"):
-        return make_api_response("", "Api does not exist (%s)" % request.path, 404)
-    else:
-        return render_template('404.html', url=request.path), 404
-
-
 @errors.app_errorhandler(403)
 def handle_403(e):
-    error_message = str(e)
+    if isinstance(e, Forbidden):
+        error_message = e.description
+    else:
+        error_message = str(e)
+
     trace = exc_info()[2]
     if AUDIT:
-        log_with_traceback(AUDIT_LOG, trace, "Access Denied")
+        uname = "(None)"
+        ip = request.remote_addr
+        session_id = flsk_session.get("session_id", None)
+        if session_id:
+            session = KV_SESSION.get(session_id)
+            if session:
+                uname = session.get("username", uname)
+                ip = session.get("ip", ip)
+
+        log_with_traceback(AUDIT_LOG, trace, f"Access Denied. (U:{uname} - IP:{ip})")
 
     if request.path.startswith("/api/"):
         return make_api_response("", "Access Denied (%s) [%s]" % (request.path, error_message), 403)
@@ -55,6 +67,14 @@ def handle_403(e):
                                    email=config.ui.get("email", "")), 403
         else:
             return render_template('403.html', exception=error_message), 403
+
+
+@errors.app_errorhandler(404)
+def handle_404(_):
+    if request.path.startswith("/api/"):
+        return make_api_response("", "Api does not exist (%s)" % request.path, 404)
+    else:
+        return render_template('404.html', url=request.path), 404
 
 
 @errors.app_errorhandler(500)

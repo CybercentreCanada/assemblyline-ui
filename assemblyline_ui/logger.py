@@ -40,10 +40,13 @@ def get_traceback_info(tb):
 
 def dumb_log(log, msg, is_exception=False):
     args = request.query_string
-    if args:
-        args = "?%s" % args
+    if isinstance(args, bytes):
+        args = args.decode()
 
-    message = "%s - %s%s" % (msg, request.path, args)
+    if args:
+        args = f"?{args}"
+
+    message = f"{msg} - {request.path}{args}"
     if is_exception:
         log.exception(message)
     else:
