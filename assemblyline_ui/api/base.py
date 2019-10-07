@@ -8,9 +8,9 @@ from traceback import format_tb
 
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline_ui.site_specific import apikey_handler
-from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, DEBUG, LOGGER, RATE_LIMITER, CLASSIFICATION, STORAGE
+from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, RATE_LIMITER, CLASSIFICATION, STORAGE
 from assemblyline_ui.helper.user import login, add_access_control
-from assemblyline_ui.http_exceptions import AccessDeniedException, QuotaExceededException, AuthenticationException
+from assemblyline_ui.http_exceptions import QuotaExceededException, AuthenticationException
 from assemblyline_ui.config import config, DN_PARSER
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
@@ -60,7 +60,7 @@ class api_login(BaseSecurityRenderer):
                 if validated_user:
                     LOGGER.info(f"Login successful. (U:{uname} - IP:{ip})")
                     if not set(self.required_priv).intersection(set(priv)):
-                        abort(403, "The method you've used to login does not give you access to this API.")
+                        abort(403, "The method you've used to login does not give you access to this API")
                         return
 
                     return validated_user
@@ -69,11 +69,13 @@ class api_login(BaseSecurityRenderer):
 
     def extra_session_checks(self, session):
         if not set(self.required_priv).intersection(set(session.get("privileges", []))):
-            raise AccessDeniedException("The method you've used to login does not give you access to this API.")
+            abort(403, "The method you've used to login does not give you access to this API")
+            return
 
         if "E" in session.get("privileges", []) and self.check_xsrf_token and \
                 session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN', ""):
-            raise AccessDeniedException("Invalid XSRF token.")
+            abort(403, "Invalid XSRF token")
+            return
 
     def __call__(self, func):
         @functools.wraps(func)
@@ -82,7 +84,8 @@ class api_login(BaseSecurityRenderer):
                 if kwargs['user'].get('authenticated', False):
                     return func(*args, **kwargs)
                 else:
-                    raise AccessDeniedException("Invalid pre-authenticated user")
+                    abort(403, "Invalid pre-authenticated user")
+                    return
 
             self.test_readonly("API")
             logged_in_uname = self.get_logged_in_user()
@@ -94,7 +97,8 @@ class api_login(BaseSecurityRenderer):
             # Terms of Service
             if not request.path == "/api/v4/user/tos/%s/" % logged_in_uname \
                     and not temp_user.get('agrees_with_tos', False) and config.ui.tos is not None:
-                raise AccessDeniedException("Agree to Terms of Service before you can make any API calls.")
+                abort(403, "Agree to Terms of Service before you can make any API calls")
+                return
 
             if requestor:
                 user = None
@@ -110,8 +114,9 @@ class api_login(BaseSecurityRenderer):
                 for as_uname in requestor_chain:
                     user = login(as_uname)
                     if not user:
-                        raise AccessDeniedException("One of the entity in the proxied "
-                                                    "chain does not exist in our system.")
+                        abort(403, "One of the entity in the proxied chain does not exist in our system")
+                        return
+
                     user['classification'] = CLASSIFICATION.intersect_user_classification(user['classification'],
                                                                                           merged_classification)
                     merged_classification = user['classification']
@@ -120,7 +125,8 @@ class api_login(BaseSecurityRenderer):
                 if user:
                     logged_in_uname = "%s(on behalf of %s)" % (impersonator['uname'], user['uname'])
                 else:
-                    raise AccessDeniedException("Invalid proxied entities chain received.")
+                    abort(403, "Invalid proxied entities chain received")
+                    return
             else:
                 impersonator = {}
                 user = temp_user
