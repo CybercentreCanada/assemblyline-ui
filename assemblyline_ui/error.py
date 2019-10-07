@@ -57,7 +57,7 @@ def handle_403(e):
                 uname = session.get("username", uname)
                 ip = session.get("ip", ip)
 
-        log_with_traceback(AUDIT_LOG, trace, f"Access Denied. (U:{uname} - IP:{ip})")
+        log_with_traceback(AUDIT_LOG, trace, f"Access Denied. (U:{uname} - IP:{ip}) [{error_message}]")
 
     if request.path.startswith("/api/"):
         return make_api_response("", "Access Denied (%s) [%s]" % (request.path, error_message), 403)
