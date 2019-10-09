@@ -14,8 +14,6 @@ core:
       port: 6379
 
 datastore:
-  elasticsearch:
-    nodes: [localhost]
   hosts: [localhost]
 
 filestore:
