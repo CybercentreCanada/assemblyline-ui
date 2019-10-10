@@ -25,7 +25,7 @@
 						<td>{{s.version}}</td>
 						<td>{{s.category}}</td>
 						<td>{{s.stage}}</td>
-						<td>{{s.accepts}}</td>
+						<td>{{s.accepts | breakableStr}}</td>
 						<td class="text-muted">
 							<span ng-show="s.enabled" class="glyphicon glyphicon-ok text-success"></span>
 							<span ng-hide="s.enabled" class="glyphicon glyphicon-remove text-danger"></span>
