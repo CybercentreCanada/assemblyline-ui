@@ -115,7 +115,6 @@ def get_service(servicename, **_):
        'name': 'continue_after_extract',
        'type': 'bool',
        'value': False}],
-     'supported_platforms': ['Linux'],
      'timeout': 60}
     """
     version = request.args.get('version', None)
@@ -230,7 +229,6 @@ def set_service(servicename, **_):
        'name': 'continue_after_extract',
        'type': 'bool',
        'value': False}],
-     'supported_platforms': ['Linux'],
      'timeout': 60}
     
     Result example:
