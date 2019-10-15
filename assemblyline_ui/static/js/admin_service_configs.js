@@ -494,18 +494,6 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 });
         };
 
-        //Toggle os on or off
-        $scope.toggleOS = function toggleOS(osName) {
-            let idx = $scope.current_service.supported_platforms.indexOf(osName);
-
-            if (idx > -1) {
-                $scope.current_service.supported_platforms.splice(idx, 1);
-            }
-            else {
-                $scope.current_service.supported_platforms.push(osName);
-            }
-        };
-
         //Service Specific functions/vars
         $scope.spec_temp = {
             type: "bool",
