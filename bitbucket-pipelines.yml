@@ -32,26 +32,26 @@ pipelines:
             - cd $BITBUCKET_CLONE_DIR && pwd
             - pip install -r test/requirements.txt
             - pip install -e .
-            - python3 -m assemblyline_ui.app &
-            - python3 -m assemblyline_ui.socketsrv &
+            - python -m assemblyline_ui.app &
+            - python -m assemblyline_ui.socketsrv &
             - pytest -rsx -vv
           services: &services
             - elasticsearch
             - redis
             - nginx
             - minio
-#      - step:
-#          name: Build & Test 3.8
-#          image: python:3.8-rc
-#          caches: *caches
-#          script: *build_test
-#          services: *services
+      - step:
+          name: Build & Test 3.8
+          image: python:3.8
+          caches: *caches
+          script: *build_test
+          services: *services
 
   tags:
     v*:
       - step:
           name: Build Package
-          image: python:3.7
+          image: python:3.8
           script:
             - pip install wheel
             - python setup.py bdist_wheel
@@ -73,17 +73,17 @@ pipelines:
               - mkdir -p /var/lib/assemblyline/
               - cp test/bitbucket/config.yml /etc/assemblyline
               - pip install -r test/requirements.txt
-              - python3 -m assemblyline_ui.app &
-              - python3 -m assemblyline_ui.socketsrv &
+              - python -m assemblyline_ui.app &
+              - python -m assemblyline_ui.socketsrv &
               - pytest -rsx -vv
-#        - step:
-#            name: Test 3.8
-#            image: python:3.8-rc
-#            services: *services
-#            script: *deploy_test
+        - step:
+            name: Test 3.8
+            image: python:3.8
+            services: *services
+            script: *deploy_test
       - step:
           name: Deploy to Test PyPI
-          image: python:3.7
+          image: python:3.8
           deployment: test-pypi
           script:
             - pip install twine
@@ -91,7 +91,7 @@ pipelines:
             - twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
       - step:
           name: Deploy to PyPI
-          image: python:3.7
+          image: python:3.8
           deployment: pypi
           script:
             - pip install twine
@@ -99,7 +99,7 @@ pipelines:
             - twine upload --skip-existing dist/*
       - step:
           name: Deploy to Docker Hub
-          image: python:3.7
+          image: python:3.8
           services: [docker]
           deployment: container
           script:
