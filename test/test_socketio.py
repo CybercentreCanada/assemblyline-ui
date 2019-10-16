@@ -13,7 +13,6 @@ from assemblyline.odm.messages.dispatcher_heartbeat import DispatcherMessage
 from assemblyline.odm.messages.expiry_heartbeat import ExpiryMessage
 from assemblyline.odm.messages.ingest_heartbeat import IngestMessage
 from assemblyline.odm.messages.service_heartbeat import ServiceMessage
-from assemblyline.odm.messages.service_timing_heartbeat import ServiceTimingMessage
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
@@ -169,7 +168,6 @@ def test_status_namspace(datastore, sio):
     expiry_hb_msg = random_model_obj(ExpiryMessage).as_primitives()
     ingest_hb_msg = random_model_obj(IngestMessage).as_primitives()
     service_hb_msg = random_model_obj(ServiceMessage).as_primitives()
-    service_timing_msg = random_model_obj(ServiceTimingMessage).as_primitives()
 
     test_res_array = []
 
@@ -198,10 +196,6 @@ def test_status_namspace(datastore, sio):
     def on_service_heartbeat(data):
         test_res_array.append(('on_service_heartbeat', data == service_hb_msg['msg']))
 
-    @sio.on('ServiceTimingHeartbeat', namespace='/status')
-    def on_service_timing_heartbeat(data):
-        test_res_array.append(('on_service_timing_heartbeat', data == service_timing_msg['msg']))
-
     try:
         sio.emit('monitor', monitoring, namespace='/status')
         sio.sleep(1)
@@ -211,14 +205,13 @@ def test_status_namspace(datastore, sio):
         status_queue.publish(expiry_hb_msg)
         status_queue.publish(ingest_hb_msg)
         status_queue.publish(service_hb_msg)
-        status_queue.publish(service_timing_msg)
 
         start_time = time.time()
 
-        while len(test_res_array) < 7 and time.time() - start_time < 5:
+        while len(test_res_array) < 6 and time.time() - start_time < 5:
             sio.sleep(0.1)
 
-        assert len(test_res_array) == 7
+        assert len(test_res_array) == 6
 
         for test, result in test_res_array:
             if not result:
