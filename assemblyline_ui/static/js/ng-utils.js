@@ -712,6 +712,22 @@ utils.directive('splitArray', function () {
     }
 });
 
+utils.directive('kvSection', function () {
+    return {
+        link: function (scope, elem, attrs) {
+            let kv_body = JSON.parse(attrs.kvData);
+
+            for (let key in kv_body) {
+                let div = document.createElement('div');
+                let value = kv_body[key];
+
+                div.innerHTML = "<span class='strong'>" + key + ":&nbsp;&nbsp;</span><span>" + value + "</span>";
+                elem[0].appendChild(div);
+            }
+        }
+    }
+});
+
 utils.directive('urlSection', function () {
     return {
         link: function (scope, elem, attrs) {
