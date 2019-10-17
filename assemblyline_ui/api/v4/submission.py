@@ -654,7 +654,8 @@ def list_submissions_for_group(group, **kwargs):
         group_query = f"params.groups:{group}"
     try:
         return make_api_response(STORAGE.submission.search(group_query, offset=offset, rows=rows, filters=filters,
-                                                           access_control=user['access_control'], as_obj=False))
+                                                           access_control=user['access_control'],
+                                                           sort='times.submitted desc',as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -706,7 +707,7 @@ def list_submissions_for_user(username, **kwargs):
     try:
         return make_api_response(STORAGE.submission.search(f"params.submitter:{username}", offset=offset, rows=rows,
                                                            filters=query, access_control=user['access_control'],
-                                                           as_obj=False))
+                                                           sort='times.submitted desc', as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
