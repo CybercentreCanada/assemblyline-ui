@@ -640,3 +640,37 @@ def update_available(**_):
     last_modified = iso_to_epoch(STORAGE.get_signature_last_modified(sig_type))
 
     return make_api_response({"update_available": last_modified > last_update})
+
+
+@signature_api.route("/add_update/", methods=["POST"])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
+def add_update_signature(**_):
+    """
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block (REQUIRED): # Signature block
+    {"name": "sig_name",           # Signature name
+     "type": "yara",               # One of yara, suricata or tagcheck
+     "data": "rule sample {...}",  # Data of the rule to be added
+     "source": "yara_signatures"   # Source from where the signature has been gathered
+    }
+
+    Result example:
+    {"success": true,      #If saving the rule was a success or not
+     "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
+    """
+    data = request.json
+
+    if data.get('type', None) is None or data['name'] is None or data['data'] is None:
+        return make_api_response("", f"Signature id, name, type and data are mandatory fields.", 400)
+
+    # Compute signature ID if missing
+    data['signature_id'] = data.get('signature_id', f"{data['source']}_{data['name']}")
+
+    # Save the signature
+    return make_api_response({"success": STORAGE.signature.save(data['signature_id'], data),
+                              "id": data['signature_id']})
