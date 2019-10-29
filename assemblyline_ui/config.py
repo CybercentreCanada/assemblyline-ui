@@ -116,7 +116,7 @@ LOGGER.debug('Logger ready!')
 
 #################################################################
 # Global instances
-STORAGE = forge.get_datastore()
+STORAGE = forge.get_datastore(multi=True)
 
 DN_PARSER = forge.get_dn_parser()
 # End global
