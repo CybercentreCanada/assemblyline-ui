@@ -135,7 +135,7 @@ def test_histogram_search(datastore, login_session):
     }
 
     for collection in collections:
-        hist_field = date_hist_map.get(collection, 'expiry_ts')
+        hist_field = date_hist_map.get(collection, 'archive_ts')
         if not hist_field:
             continue
 
@@ -154,7 +154,7 @@ def test_histogram_search(datastore, login_session):
     }
 
     for collection in collections:
-        hist_field = int_hist_map.get(collection, 'expiry_ts')
+        hist_field = int_hist_map.get(collection, 'archive_ts')
         if not hist_field:
             continue
 

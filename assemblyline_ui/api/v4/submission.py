@@ -2,6 +2,7 @@
 import json
 import time
 
+from assemblyline.common.isotime import now_as_iso
 from flask import request
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -496,7 +497,7 @@ def get_summary(sid, **kwargs):
             summary_cache = {
                 "attack_matrix": json.dumps(summary['attack_matrix']),
                 "tags": json.dumps(summary['tags']),
-                "expiry_ts": submission['expiry_ts'],
+                "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
                 "heuristics": json.dumps(summary['heuristics'])
             }
             STORAGE.submission_summary.save(sid, summary_cache)
@@ -774,7 +775,7 @@ def get_report(submission_id, **kwargs):
             summary_cache = {
                 "attack_matrix": json.dumps(summary['attack_matrix']),
                 "tags": json.dumps(summary['tags']),
-                "expiry_ts": submission['expiry_ts'],
+                "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
                 "heuristics": json.dumps(summary['heuristics'])
             }
             STORAGE.submission_summary.save(submission_id, summary_cache)
