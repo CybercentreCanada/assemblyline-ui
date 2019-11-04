@@ -62,6 +62,8 @@ services:
 
   nginx:
     image: sgaroncse/nginx-ssl:1.17.5
+    environment:
+      KIBANA_HOST: localhost
     ports:
       - '443:443'
       - '80:80'
