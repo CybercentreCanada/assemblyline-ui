@@ -124,7 +124,12 @@ definitions:
       memory: 256
 
     nginx:
-      image: sgaroncse/nginx-ssl-bitbucket:1.15.10-1
+      image: sgaroncse/nginx-ssl:1.17.5
+      environment:
+        UI_HOST: localhost
+        SOCKET_HOST: localhost
+        KIBANA_HOST: localhost
+        FQDN: localhost
       memory: 256
 
     minio:
