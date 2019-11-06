@@ -684,42 +684,43 @@ section.container{
 .label-nolight,
 .label-heur-info{
 	-webkit-print-color-adjust: exact;
+    color: #FFF !important;
 	background-color: #999 !important;
 }
 
 .label-nolight:hover,
 .label-heur-info:hover{
-	-webkit-print-color-adjust: exact;
+	color: #FFF !important;
 	background-color: #777 !important;
 }
 
 .label-heur-suspicious{
 	-webkit-print-color-adjust: exact;
-    background-color: #f0ad4e; !important
+    color: #FFF !important;
+    background-color: #f0ad4e !important;
 }
 
 .label-heur-suspicious:hover{
-	-webkit-print-color-adjust: exact;
+	color: #FFF !important;
     background-color: #b77a47 !important;
 }
 
 .label-heur-malicious{
 	-webkit-print-color-adjust: exact;
+    color: #FFF !important;
     background-color: #d37a7a !important;
 }
 
 .label-heur-malicious:hover{
-	-webkit-print-color-adjust: exact;
+	color: #FFF !important;
     background-color: #ae4e4e !important;
 }
 
 .label-highlight{
-	-webkit-print-color-adjust: exact;
 	background-color: #428bca !important;
 }
 
 .label-highlight:hover{
-	-webkit-print-color-adjust: exact;
 	background-color: #226baa !important;
 }
 
@@ -1882,4 +1883,16 @@ figure.front{
 	width: 0.5em;
 	background-color: #f2dede !important;
 	#border-left: 1px solid #d9534f !important;
+}
+
+.rpt_row_info {}
+
+.rpt_row_suspicious {
+  	-webkit-print-color-adjust: exact;
+    background-color: #fff9f1 !important;
+}
+
+.rpt_row_malicious {
+	-webkit-print-color-adjust: exact;
+    background-color: #fff0f0 !important;
 }

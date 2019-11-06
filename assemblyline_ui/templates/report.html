@@ -160,10 +160,10 @@
 				<div id="attack_matrix" class="row make-columns">
 					<div class="report_block col-item" ng-repeat="(category, attack_patterns) in data.attack_matrix | orderBy:category">
 						<h4 class="text-muted">{{category | titleCase}}</h4>
-						<div ng-repeat="(attack_name, files) in attack_patterns | orderBy:attack_name">
-							<label style="display: inline;">{{attack_name}}</label>
+						<div ng-repeat="(attack_name, a_item) in attack_patterns | orderBy:attack_name">
+							<label style="display: inline;"><span style="cursor: default" class="text-fixed label label-tag label-heur-{{a_item.h_type}}" title="{{a_item.h_type}}">{{a_item.h_type | limitTo:1  | uppercase}}</span>&nbsp;{{attack_name}}</label>
 							<ul>
-								<li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+								<li ng-repeat="file in a_item.files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
 							</ul>
 						</div>
 					</div>
@@ -213,14 +213,15 @@
 				</div>
 				<div class="table-responsive">
 					<table class="table table-condensed table-light-border">
-						<thead><tr class="active"><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
+						<thead><tr class="active"><th></th><th>Type</th><th>Value</th><th>Related files</th></tr></thead>
 						<tbody ng-repeat="(tag_type, values) in category_values | orderBy:tag_type">
-							<tr ng-repeat="(value, files) in values | orderBy:value">
+							<tr ng-repeat="(value, t_item) in values | orderBy:value">
+								<td style="width: 1em"><span style="cursor: default" class="text-fixed label label-tag label-heur-{{t_item.h_type}}" title="{{t_item.h_type}}">{{t_item.h_type | limitTo:1  | uppercase}}</span></td>
 								<td nowrap><label class="text-muted">{{tag_type | shortTagType | titleCase}}</label></td>
 								<td><strong>{{value | breakableStr}}</strong></td>
 								<td class="text-smaller text-fixed">
 									<ul class="list-non-indented">
-										<li ng-repeat="file in files" class="text-info" title="{{file[1]}}">{{file[0] | breakableStr}}</li>
+										<li ng-repeat="file in t_item.files" class="text-info" title="{{file[1]}}">{{file[0] | breakableStr}}</li>
 									</ul>
 								</td>
 							</tr>
