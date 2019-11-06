@@ -127,6 +127,7 @@ def test_result_for_service(datastore, login_session):
     result_dict = resp['results'][0]
     for s in result_dict['result']['sections']:
         s['heuristic'].pop('attack_pattern', None)
+        s['heuristic'].pop('name', None)
         s['tags'] = unflatten(tag_list_to_dict(s['tags']))
     res_data = Result(result_dict)
     assert res_data.build_key() in file_res_list
