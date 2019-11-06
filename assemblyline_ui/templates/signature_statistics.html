@@ -60,7 +60,7 @@
 					<tr ng-click="viewSignature(s.type, s.sid, s.rev)" ng-repeat="s in stats_output" style="cursor: pointer;">
 						<td>{{s.type}}</td>
 						<td>{{s.sid}} r.{{s.rev}}</td>
-						<td>{{s.name | maxLength:45}}</td>
+						<td>{{s.name | maxLength:50 | breakableStr}}</td>
 						<td>{{s.count}}</td>
 						<td>{{s.min}}</td>
                         <td>{{s.avg}}</td>
@@ -77,14 +77,14 @@
         <div ng-show="stats_output.length == 0 && searchText == ''" >
 			<div class="jumbotron text-center">
 				<h2 class="text-muted">
-					There are no statistics in the system.
+					There are no signatures in the system.
 				</h2>
 			</div>
 		</div>
 		<div ng-show="total == 0 && searchText != ''" >
 			<div class="jumbotron text-center">
 				<h2 class="text-muted">
-					There are no matching statistics found.
+					There are no matching signatures found.
 				</h2>
 			</div>
 		</div>

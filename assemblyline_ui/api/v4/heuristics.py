@@ -13,12 +13,13 @@ heuristics_api = make_subapi_blueprint(SUB_API, api_version=4)
 heuristics_api._doc = "View the different heuristics of the system"
 
 
-def get_stat_for_heuristic(p_id, p_classification):
+def get_stat_for_heuristic(p_id, p_name, p_classification):
     stats = STORAGE.result.stats("result.score",
                                  query=f"result.sections.heuristic.heur_id:{p_id}")
     if stats['count'] == 0:
         return {
             'heur_id': p_id,
+            'name': p_name,
             'classification': p_classification,
             'count': stats['count'],
             'min': 0,
@@ -28,6 +29,7 @@ def get_stat_for_heuristic(p_id, p_classification):
     else:
         return {
             'heur_id': p_id,
+            'name': p_name,
             'classification': p_classification,
             'count': stats['count'],
             'min': int(stats['min']),
@@ -65,7 +67,7 @@ def get_heuristic(heuristic_id, **kwargs):
         return make_api_response("", "Heuristic not found", 404)
 
     if user and Classification.is_accessible(user['classification'], h['classification']):
-        h.update(get_stat_for_heuristic(h['heur_id'], h['classification']))
+        h.update(get_stat_for_heuristic(h['heur_id'], h['name'], h['classification']))
         return make_api_response(h)
     else:
         return make_api_response("", "You are not allowed to see this heuristic...", 403)
@@ -97,12 +99,12 @@ def heuritics_statistics(**kwargs):
 
     user = kwargs['user']
 
-    heur_list = sorted([(x['heur_id'], x['classification'])
-                       for x in STORAGE.heuristic.stream_search("heur_id:*", fl="heur_id,classification",
+    heur_list = sorted([(x['heur_id'], x['name'], x['classification'])
+                       for x in STORAGE.heuristic.stream_search("heur_id:*", fl="heur_id,name,classification",
                                                                 access_control=user['access_control'], as_obj=False)])
 
     with concurrent.futures.ThreadPoolExecutor(max(min(len(heur_list), 20), 1)) as executor:
-        res = [executor.submit(get_stat_for_heuristic, heur_id, classification)
-               for heur_id, classification in heur_list]
+        res = [executor.submit(get_stat_for_heuristic, heur_id, name, classification)
+               for heur_id, name, classification in heur_list]
 
     return make_api_response(sorted([r.result() for r in res], key=lambda i: i['heur_id']))

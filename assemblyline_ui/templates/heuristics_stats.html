@@ -21,19 +21,22 @@
 				<thead>
 					<tr class="active" style="cursor: pointer;">
 						<th class="hover" ng-click="sort_stats('heur_id')">ID
-                        <span ng-show="sort.column=='heur_id' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span><span ng-show="sort.column=='heur_id' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
+                        	<span ng-show="sort.column=='heur_id' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span><span ng-show="sort.column=='heur_id' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
                         </th>
-                        <th ng-click="sort_stats('count')">Hit Count
-                        <span ng-show="sort.column=='count' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='count' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
+                        <th ng-click="sort_stats('name')">Name
+                        	<span ng-show="sort.column=='name' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='name' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
                         </th>
-                        <th ng-click="sort_stats('min')">Min Section Score
-                        <span ng-show="sort.column=='min' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='min' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
+                        <th ng-click="sort_stats('count')">Count
+                        	<span ng-show="sort.column=='count' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='count' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
                         </th>
-                        <th ng-click="sort_stats('avg')">Average Section Score
-                        <span ng-show="sort.column=='avg' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='avg' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
+                        <th ng-click="sort_stats('min')">Min Score
+                        	<span ng-show="sort.column=='min' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='min' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
                         </th>
-                        <th ng-click="sort_stats('max')">Max Section Score
-                        <span ng-show="sort.column=='max' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='max' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
+                        <th ng-click="sort_stats('avg')">Average Score
+                        	<span ng-show="sort.column=='avg' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='avg' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
+                        </th>
+                        <th ng-click="sort_stats('max')">Max Score
+                        	<span ng-show="sort.column=='max' && sort.order" class="glyphicon glyphicon-sort-by-attributes"></span><span ng-show="sort.column=='max' && !sort.order" class="glyphicon glyphicon-sort-by-attributes-alt"></span>
                         </th>
                         <th ng-if="c12n_enforcing" ng-click="sort_stats('classification')">
                             Classification
@@ -43,15 +46,16 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-click="viewHeuristic(u.heur_id)" ng-repeat="u in heuristics_output" style="cursor: pointer;">
-						<td>{{u.heur_id}}</td>
-						<td>{{u.count}}</td>
-						<td>{{u.min}}</td>
-                        <td>{{u.avg}}</td>
-                        <td>{{u.max}}</td>
+					<tr ng-click="viewHeuristic(h.heur_id)" ng-repeat="h in heuristics_output" style="cursor: pointer;">
+						<td>{{h.heur_id}}</td>
+						<td>{{h.name | maxLength:50 | breakableStr}}</td>
+						<td>{{h.count}}</td>
+						<td>{{h.min}}</td>
+                        <td>{{h.avg}}</td>
+                        <td>{{h.max}}</td>
                         <td ng-if="c12n_enforcing">
-                            <label class="label classification  {{u.classification | class_label_color}}">
-                                {{u.classification | class_sm}}
+                            <label class="label classification  {{h.classification | class_label_color}}">
+                                {{h.classification | class_sm}}
                             </label>
                         </td>
 					</tr>
@@ -61,14 +65,14 @@
         <div ng-show="heuristics_list.length == 0 && searchText == ''" >
 			<div class="jumbotron text-center">
 				<h2 class="text-muted">
-					There are no statistics in the system.
+					There are no heuristics in the system.
 				</h2>
 			</div>
 		</div>
 		<div ng-show="total == 0 && searchText != ''" >
 			<div class="jumbotron text-center">
 				<h2 class="text-muted">
-					There are no matching statistics found.
+					There are no matching heuristics found.
 				</h2>
 			</div>
 		</div>
