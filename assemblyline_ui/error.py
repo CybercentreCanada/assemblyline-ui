@@ -84,10 +84,12 @@ def handle_500(e):
     if isinstance(e.original_exception, QuotaExceededException):
         return make_api_response("", str(e.original_exception), 503)
 
+    oe = e.original_exception or e
+
     trace = exc_info()[2]
     log_with_traceback(LOGGER, trace, "Exception", is_exception=True)
 
-    message = ''.join(['\n'] + format_tb(exc_info()[2]) + ['%s: %s\n' % (e.__class__.__name__, str(e))]).rstrip('\n')
+    message = ''.join(['\n'] + format_tb(exc_info()[2]) + ['%s: %s\n' % (oe.__class__.__name__, str(oe))]).rstrip('\n')
     if request.path.startswith("/api/"):
         return make_api_response("", message, 500)
     else:
