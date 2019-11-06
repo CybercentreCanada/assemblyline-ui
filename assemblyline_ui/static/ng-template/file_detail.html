@@ -146,7 +146,7 @@
                 <div class="row" ng-repeat="(category, attack_patterns) in current_file.attack_matrix | orderBy:category">
                     <div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
                     <div class="col-xs-6 col-sm-8 col-md-9">
-                        <span id="file_{{item[0]}}_{{item[1]}}" class="label label-tag" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-nolight': !isHighlighted('attack_pattern', item[0]), 'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.attack_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+                        <span id="file_{{item[0]}}_{{item[1]}}" class="label label-tag label-heur-{{item[2]}}" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.attack_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
                     </div>
                 </div>
 			</div>
@@ -162,7 +162,7 @@
 				<div class="row" ng-repeat="(category, heuristics_list) in current_file.heuristics | orderBy:category">
 					<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
 					<div class="col-xs-6 col-sm-8 col-md-9">
-						<span id="{{item[0]}}_{{item[1]}}" class="label label-tag" style="cursor: pointer;" ng-repeat="item in heuristics_list | orderBy:item[1]" ng-class="{'label-nolight': !isHighlighted('heuristic', item[0]), 'label-highlight': isHighlighted('heuristic', item[0])}" ng-click="trigger_highlight('heuristic', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.heur_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+						<span id="{{item[0]}}_{{item[1]}}" class="label label-tag label-heur-{{category}}" style="cursor: pointer;" ng-repeat="item in heuristics_list | orderBy:item[1]" ng-class="{'label-highlight': isHighlighted('heuristic', item[0])}" ng-click="trigger_highlight('heuristic', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.heur_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 					</div>
 				</div>
 			</div>
@@ -178,7 +178,7 @@
 					<div class="row" ng-repeat="(tagType, values) in current_file.tags | orderBy:tagType">
 						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tagType}}</strong></div>
 						<div class="col-xs-6 col-sm-8 col-md-9">
-							<span id="file_{{tagType}}__{{value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="value in values | orderBy:value" ng-class="{'label-nolight': !isHighlighted(tagType, value), 'label-highlight': isHighlighted(tagType, value)}" ng-click="trigger_highlight(tagType, value);" >{{value | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tagType}}:"{{uri_encode(value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+							<span id="file_{{tagType}}__{{value}}" class="label label-tag label-heur-{{value[1]}}" style="cursor: pointer;" ng-repeat="value in values | orderBy:value[0]" ng-class="{'label-highlight': isHighlighted(tagType, value[0])}" ng-click="trigger_highlight(tagType, value[0]);" >{{value[0] | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tagType}}:"{{uri_encode(value[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 						</div>
 					</div>
 				</div>

@@ -681,28 +681,46 @@ section.container{
 	display: inline-flex;
 }
 
-.label-nolight{
-	background-color: #999;
+.label-nolight,
+.label-heur-info{
+	-webkit-print-color-adjust: exact;
+	background-color: #999 !important;
 }
 
-.label-nolight:hover{
-	background-color: #777;
+.label-nolight:hover,
+.label-heur-info:hover{
+	-webkit-print-color-adjust: exact;
+	background-color: #777 !important;
+}
+
+.label-heur-suspicious{
+	-webkit-print-color-adjust: exact;
+    background-color: #f0ad4e; !important
+}
+
+.label-heur-suspicious:hover{
+	-webkit-print-color-adjust: exact;
+    background-color: #b77a47 !important;
+}
+
+.label-heur-malicious{
+	-webkit-print-color-adjust: exact;
+    background-color: #d37a7a !important;
+}
+
+.label-heur-malicious:hover{
+	-webkit-print-color-adjust: exact;
+    background-color: #ae4e4e !important;
 }
 
 .label-highlight{
-	background-color: #428bca;
+	-webkit-print-color-adjust: exact;
+	background-color: #428bca !important;
 }
 
 .label-highlight:hover{
-	background-color: #226baa;
-}
-
-.label-context{
-    background-color: #d37a7a;
-}
-
-.label-context:hover{
-    background-color: #ae4e4e;
+	-webkit-print-color-adjust: exact;
+	background-color: #226baa !important;
 }
 
 .back-to-top{
@@ -1216,11 +1234,12 @@ figure.front{
 .card .section {
 	border-radius: 4px;
 	margin-bottom: 2px;
+	display: flex;
+	flex-wrap: nowrap;
 }
 
 .card .section.highlight {
 	background: aliceblue;
-	border: 1px solid #DDD;
 }
 
 .card .result_title.highlight:hover {
@@ -1332,7 +1351,7 @@ figure.front{
 .result_body{
 	font-size: 90%;
 	margin-bottom: 1em;
-    margin-left: 4em;
+    margin-left: 2.5em;
 	margin-right: .5em;
 	white-space: pre-wrap;
 
@@ -1824,25 +1843,43 @@ figure.front{
 
 .indent,
 .indent_1 {
-	padding-left: 2.5em;
+	padding-left: 2em;
 }
 
 .indent_2 {
-	padding-left: 5em;
+	padding-left: 4em;
 }
 
 .indent_3 {
-	padding-left: 7.5em;
+	padding-left: 6em;
 }
 
 .indent_4 {
-	padding-left: 10em;
+	padding-left: 8em;
 }
 
 .indent_5 {
-	padding-left: 12.5em;
+	padding-left: 10em;
 }
 
 .indent_6 {
-	padding-left: 15em;
+	padding-left: 12em;
+}
+
+.section_info{
+	width: 0.5em;
+	background-color: #f5f5f5 !important;
+	#border-left: 1px solid #ddd !important;
+}
+
+.section_suspicious{
+	width: 0.5em;
+	background-color: #fdf2e2 !important;
+	#border-left: 1px solid #f0ad4e !important;
+}
+
+.section_malicious{
+	width: 0.5em;
+	background-color: #f2dede !important;
+	#border-left: 1px solid #d9534f !important;
 }

@@ -1117,6 +1117,21 @@ utils.filter('score_color', function () {
     }
 });
 
+utils.filter('section_color', function () {
+    return function (score) {
+        if (score === undefined || score == null) return "section_info";
+        if (score >= 1000) {
+            return "section_malicious";
+        }
+        else if (score >= 100) {
+            return "section_suspicious";
+        }
+        else {
+            return "section_info";
+        }
+    }
+});
+
 utils.filter('verdict_text_color', function () {
     return function (score) {
         if (score === undefined || score == null) return "text-muted";

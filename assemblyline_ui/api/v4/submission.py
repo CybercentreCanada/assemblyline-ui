@@ -136,7 +136,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         heuristics = STORAGE.get_all_heuristics()
         for res in output['results']:
             for sec in res.get('result', {}).get('sections', []):
-
+                h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
                     h = heuristics.get(sec['heuristic']['heur_id'], None)
@@ -163,7 +163,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                         if attack_pattern_def:
                             for cat in attack_pattern_def['categories']:
                                 output['attack_matrix'].setdefault(cat, [])
-                                item = (attack_id, attack_pattern_def['name'])
+                                item = (attack_id, attack_pattern_def['name'], h_type)
                                 if item not in output['attack_matrix'][cat]:
                                     output['attack_matrix'][cat].append(item)
                         else:
@@ -173,8 +173,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
-                    if t['value'] not in output["tags"][t['type']]:
-                        output["tags"][t['type']].append(t['value'])
+                    t_item = (t['value'], h_type)
+                    if t_item not in output["tags"][t['type']]:
+                        output["tags"][t['type']].append(t_item)
 
         return make_api_response(output)
     else:
@@ -523,8 +524,8 @@ def get_summary(sid, **kwargs):
                     output['map'][sha256].append(key)
 
                 output['attack_matrix'].setdefault(cat, [])
-                if (attack_id, item['name']) not in output['attack_matrix'][cat]:
-                    output['attack_matrix'][cat].append((attack_id, item['name']))
+                if (attack_id, item['name'], item['h_type']) not in output['attack_matrix'][cat]:
+                    output['attack_matrix'][cat].append((attack_id, item['name'], item['h_type']))
 
         # Process heuristics
         for cat, items in heuristics.items():
@@ -575,8 +576,8 @@ def get_summary(sid, **kwargs):
 
             # Tags
             output['tags'][summary_type].setdefault(t['type'], [])
-            if t['value'] not in output['tags'][summary_type][t['type']]:
-                output['tags'][summary_type][t['type']].append(t['value'])
+            if (t['value'], t['h_type']) not in output['tags'][summary_type][t['type']]:
+                output['tags'][summary_type][t['type']].append((t['value'], t['h_type']))
 
         return make_api_response(output)
     else:

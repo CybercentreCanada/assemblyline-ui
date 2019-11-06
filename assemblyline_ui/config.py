@@ -2,6 +2,7 @@ import logging
 import os
     
 from assemblyline.common import version
+from assemblyline.common.forge import CachedObject
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
 from assemblyline.remote.datatypes.counters import Counters
@@ -117,6 +118,7 @@ LOGGER.debug('Logger ready!')
 #################################################################
 # Global instances
 STORAGE = forge.get_datastore(archive_access=True)
+HEURISTICS = CachedObject(STORAGE.get_all_heuristics, refresh=300)
 
 DN_PARSER = forge.get_dn_parser()
 # End global
