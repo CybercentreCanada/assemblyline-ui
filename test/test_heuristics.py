@@ -43,4 +43,4 @@ def test_heuristic_stats(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/heuristics/stats/")
     assert len(resp) == heuristic_count
     for sig_stat in resp:
-        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'heur_id', 'max', 'min']
+        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'heur_id', 'max', 'min', 'name']
