@@ -12,7 +12,8 @@ apiv3._doc = "Version 3 Api Documentation"
 # API DOCUMENTATION
 # noinspection PyProtectedMember,PyBroadException
 @apiv3.route("/")
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False, required_priv=['R', 'W'],
+           require_type=["user", "signature_importer", "signature_manager", "admin"])
 def get_api_documentation(**kwargs):
     """
     Full documentation off the v4 APIs

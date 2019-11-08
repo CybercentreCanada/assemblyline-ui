@@ -294,10 +294,10 @@ def stream_binary_response(reader, status_code=200):
 
 #####################################
 # API list API (API inception)
-# noinspection PyUnusedLocal
 @api.route("/")
-@api_login(audit=False, required_priv=['R', 'W'])
-def api_version_list(**kwargs):
+@api_login(audit=False, required_priv=['R', 'W'],
+           require_type=["user", "signature_importer", "signature_manager", "admin"])
+def api_version_list(**_):
     """
     List all available API versions.
     
@@ -330,7 +330,7 @@ def api_version_list(**kwargs):
 
 @api.route("/site_map/")
 @api_login(require_type=['admin'], audit=False)
-def site_map(**kwargs):
+def site_map(**_):
     """
     Check if all pages have been protected by a login decorator
     

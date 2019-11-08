@@ -12,7 +12,8 @@ apiv4._doc = "Version 4 Api Documentation"
 # API DOCUMENTATION
 # noinspection PyProtectedMember,PyBroadException
 @apiv4.route("/")
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False, required_priv=['R', 'W'],
+           require_type=["user", "signature_importer", "signature_manager", "admin"])
 def get_api_documentation(**kwargs):
     """
     Full API doc.
