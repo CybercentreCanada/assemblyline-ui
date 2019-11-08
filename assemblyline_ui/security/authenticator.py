@@ -73,7 +73,7 @@ class BaseSecurityRenderer(object):
             else:
                 session['expire_at'] = cur_time + session.get('duration', 3600)
 
-        if request.headers.get("X-Forwarded-For", None) != session.get('ip', None):
+        if request.headers.get("X-Forwarded-For", request.remote_addr) != session.get('ip', None):
             current_app.logger.debug(f'[{session_id}] X-Forwarded-For does not match session IP '
                                      f'{request.headers.get("X-Forwarded-For", None)} != {session.get("ip", None)}')
             abort(401)

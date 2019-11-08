@@ -226,7 +226,7 @@ def login(**_):
                 'ip': ip,
                 'privileges': priv,
                 'time': int(cur_time) - (int(cur_time) % session_duration),
-                'user_agent': request.headers.get("User-Agent", "Unknown user agent"),
+                'user_agent': request.headers.get("User-Agent", None),
                 'username': logged_in_uname,
                 'xsrf_token': xsrf_token
             }
