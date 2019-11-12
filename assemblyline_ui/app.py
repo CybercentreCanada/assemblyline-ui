@@ -1,5 +1,6 @@
 
 import logging
+import os
 import os.path
 
 from elasticapm.contrib.flask import ElasticAPM
@@ -38,6 +39,7 @@ from assemblyline_ui.views import views
 from assemblyline_ui import config
 from assemblyline.common import forge
 
+AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 context = forge.get_ui_context()
 register_site_specific_routes = context.register_site_specific_routes
 
@@ -50,11 +52,18 @@ app = Flask(
     template_folder=os.path.join(current_directory, 'templates'),
 )
 app.logger.setLevel(60)  # This completely turns off the flask logger
-app.config.update(
-    SESSION_COOKIE_SECURE=True,
-    SECRET_KEY=config.SECRET_KEY,
-    PREFERRED_URL_SCHEME='https'
-)
+if AL_UNSECURED_UI:
+    app.config.update(
+        SESSION_COOKIE_SECURE=False,
+        SECRET_KEY=config.SECRET_KEY,
+        PREFERRED_URL_SCHEME='http'
+    )
+else:
+    app.config.update(
+        SESSION_COOKIE_SECURE=True,
+        SECRET_KEY=config.SECRET_KEY,
+        PREFERRED_URL_SCHEME='https'
+    )
 
 app.register_blueprint(api)
 app.register_blueprint(apiv3)
