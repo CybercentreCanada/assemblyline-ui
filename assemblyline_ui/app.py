@@ -1,6 +1,5 @@
 
 import logging
-import os
 import os.path
 
 from elasticapm.contrib.flask import ElasticAPM
@@ -31,7 +30,6 @@ from assemblyline_ui.api.v4.u2f import u2f_api
 from assemblyline_ui.api.v4.ui import ui_api
 from assemblyline_ui.api.v3.user import user_api as user_v3_api
 from assemblyline_ui.api.v4.user import user_api
-from assemblyline_ui.api.v4.vm import vm_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
 from assemblyline_ui.views import views
