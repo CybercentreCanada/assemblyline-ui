@@ -65,6 +65,8 @@ def add_user_account(username, **_):
 
         # Data's username as to match the API call username
         data['uname'] = username
+        if not data['name']:
+            data['name'] = data['uname']
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
