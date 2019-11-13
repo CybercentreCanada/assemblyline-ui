@@ -5,6 +5,7 @@ import shutil
 
 from flask import request
 
+from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from assemblyline_ui.helper.service import ui_to_submission_params
@@ -298,7 +299,7 @@ def submit(**kwargs):
             try:
                 submission_obj = Submission({
                     "files": [],
-                    "metadata": data.get('metadata', {}),
+                    "metadata": flatten(data.get('metadata', {})),
                     "params": s_params
                 })
             except (ValueError, KeyError) as e:

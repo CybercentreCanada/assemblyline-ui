@@ -220,7 +220,7 @@
 					<div id="metadata" class="collapse in">
 						
 						<div class="row" ng-repeat="(key, val) in data.metadata | orderBy:key">
-							<div class="col-xs-5 col-sm-3 col-md-2"><strong>{{key | titleCase }}</strong></div>
+							<div class="col-xs-5 col-sm-3 col-md-2"><strong>{{key}}</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10" style="white-space: pre-wrap">{{val | stripNull | joinBy:' | ' | objectViewer | iso_to_utc:true}}</div>
 						</div>
 					</div>

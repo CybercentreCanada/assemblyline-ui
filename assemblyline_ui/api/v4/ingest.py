@@ -4,6 +4,7 @@ import shutil
 
 from flask import request
 
+from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
 from assemblyline_ui.helper.service import ui_to_submission_params
@@ -283,7 +284,7 @@ def ingest_single_file(**kwargs):
 
             # Load metadata and setup some default values if they are missing
             ingest_id = get_random_id()
-            metadata = data.get("metadata", {})
+            metadata = flatten(data.get("metadata", {}))
             metadata['ingest_id'] = ingest_id
             metadata['type'] = s_params['type']
             if 'ts' not in metadata:
