@@ -301,7 +301,8 @@ def _get_cached_signatures(signature_cache, query_hash):
 
 
 @signature_api.route("/download/", methods=["GET"])
-@api_login(required_priv=['R'], check_xsrf_token=False, allow_readonly=False)
+@api_login(required_priv=['R'], check_xsrf_token=False, allow_readonly=False,
+           require_type=['signature_importer', 'user'])
 def download_signatures(**kwargs):
     """
     Download signatures from the system.
@@ -617,7 +618,8 @@ def signature_statistics(**kwargs):
 
 
 @signature_api.route("/update_available/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
+@api_login(required_priv=['R'], allow_readonly=False,
+           require_type=['signature_importer', 'user'])
 def update_available(**_):
     """
     Check if updated signatures are.
