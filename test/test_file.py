@@ -56,17 +56,28 @@ def datastore(request):
 
 
 # noinspection PyUnusedLocal
-def test_download(datastore, login_session):
+def test_download_cart(datastore, login_session):
     _, session = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/download/{rand_hash}/", raw=True)
+    resp = get_api_data(session, f"{HOST}/api/v4/file/download/{rand_hash}/?encoding=cart", raw=True)
+    assert resp.startswith(b'CART')
+
     out = BytesIO()
     unpack_stream(BytesIO(resp), out)
     out.flush()
     out.seek(0)
     dl_hash = out.read().decode()
     assert dl_hash == rand_hash
+
+
+# noinspection PyUnusedLocal
+def test_download_raw(datastore, login_session):
+    _, session = login_session
+
+    rand_hash = random.choice(file_res_list)[:64]
+    resp = get_api_data(session, f"{HOST}/api/v4/file/download/{rand_hash}/?encoding=raw", raw=True)
+    assert resp.decode() == rand_hash
 
 
 # noinspection PyUnusedLocal
