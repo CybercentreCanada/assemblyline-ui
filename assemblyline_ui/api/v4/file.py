@@ -161,6 +161,7 @@ def download_file(sha256, **kwargs):
         name = safe_str(name)
 
         sid = request.args.get('sid', None) or None
+        submission = {}
         submission_meta = {}
         if sid is not None:
             submission = STORAGE.submission.get(sid, as_obj=False)
@@ -175,8 +176,11 @@ def download_file(sha256, **kwargs):
 
             if Classification.is_accessible(user['classification'], submission['classification']):
                 submission_meta.update(unflatten(submission['metadata']))
-                if Classification.enforce:
-                    submission_meta['classification'] = submission['classification']
+
+        if Classification.enforce:
+            submission_classification = submission.get('classification', file_obj['classification'])
+            submission_meta['classification'] = Classification.max_classification(submission_classification,
+                                                                                  file_obj['classification'])
 
         encoding = request.args.get('encoding', params['download_encoding'])
         if encoding not in ['raw', 'cart']:
