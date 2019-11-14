@@ -8,6 +8,7 @@ from flask import request
 from assemblyline.common import forge
 from assemblyline.common.attack_map import attack_map
 from assemblyline.common.codec import encode_file
+from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
@@ -133,8 +134,9 @@ def download_file(sha256, **kwargs):
     Variables: 
     sha256       => A resource locator for the file (sha256)
     
-    Arguments:
-    name        => Name of the file to download
+    Arguments (optional):
+    name         => Name of the file to download
+    sid          => Submission ID where the file is from
 
     Data Block:
     None
@@ -158,6 +160,24 @@ def download_file(sha256, **kwargs):
         name = os.path.basename(name)
         name = safe_str(name)
 
+        sid = request.args.get('sid', None) or None
+        submission_meta = {}
+        if sid is not None:
+            submission = STORAGE.submission.get(sid, as_obj=False)
+            if submission is None:
+                submission = {}
+            hash_list = [submission.get('files', [])[0].get('sha256', None)]
+            hash_list.extend([x[:64] for x in submission.get('errors', [])])
+            hash_list.extend([x[:64] for x in submission.get('results', [])])
+
+            if sha256 not in hash_list:
+                return make_api_response({}, f"File {sha256} is not associated to submission {sid}.", 403)
+
+            if Classification.is_accessible(user['classification'], submission['classification']):
+                submission_meta.update(unflatten(submission['metadata']))
+                if Classification.enforce:
+                    submission_meta['classification'] = submission['classification']
+
         encoding = request.args.get('encoding', params['download_encoding'])
         if encoding not in ['raw', 'cart']:
             return make_api_response({}, f"{encoding.upper()} is not in the valid encoding types: [raw, cart]", 403)
@@ -176,7 +196,7 @@ def download_file(sha256, **kwargs):
             if encoding == 'raw':
                 target_path = download_path
             else:
-                target_path, name = encode_file(download_path, name)
+                target_path, name = encode_file(download_path, name, submission_meta)
 
             try:
                 return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
