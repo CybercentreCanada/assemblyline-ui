@@ -1351,7 +1351,7 @@ figure.front{
 
 .result_body{
 	font-size: 90%;
-	margin-bottom: 1em;
+	margin-bottom: .25em;
     margin-left: 2.5em;
 	margin-right: .5em;
 	white-space: pre-wrap;

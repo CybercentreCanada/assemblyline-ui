@@ -301,7 +301,7 @@ utils.directive('fileDetail', function () {
 
 utils.directive('graphSection', function ($window, $timeout) {
     return {
-        template: "<svg width='100%' height='40'></svg>",
+        template: "<svg width='100%' height='70'></svg>",
         link: function (scope, elem, attrs) {
             let graph_obj = JSON.parse(attrs.graphData);
             if (graph_obj.type === "colormap") {
@@ -345,7 +345,7 @@ utils.directive('graphSection', function ($window, $timeout) {
                         .text(": " + graph_obj.data.domain[graph_obj.data.domain.length - 1]);
 
                     rect_offset = 30;
-                    svg.attr("height", 100);
+                    svg.attr("height", 70);
                 }
 
                 for (let x in graph_obj.data.values) {
@@ -504,6 +504,9 @@ utils.directive('replaceTags', function ($compile) {
     return {
         scope: true,
         link: function (scope, elem, attr) {
+            if (scope.$eval(attr.data) == null){
+                return null;
+            }
             let data = escapeHTML(scope.$eval(attr.data));
             let tags = scope.$eval(attr.tags);
 
