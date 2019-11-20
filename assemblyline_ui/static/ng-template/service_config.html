@@ -9,7 +9,7 @@
 <ul class="nav nav-tabs" id="tabContent">
     <li id="genaral_tab" class="active"><a href="#general" data-toggle="tab">General</a></li>
     <li id="docker_tab"><a href="#docker" data-toggle="tab">Docker</a></li>
-    <li id="update_tab"><a href="#updater" data-toggle="tab">Updater</a></li>
+    <li ng-if="current_service.update_config" id="update_tab"><a href="#updater" data-toggle="tab">Updater</a></li>
     <li id="params_tab"><a href="#params" data-toggle="tab">Params</a></li>
 </ul>
 
@@ -108,7 +108,7 @@
         <span class="btn btn-sm btn-success" ng-click="add_dependency();" style="margin-top: 15px">Add dependency&nbsp;&nbsp;<span class="glyphicon glyphicon-plus"></span></span>
 
     </section>
-    <section class="row tab-pane" id="updater">
+    <section ng-if="current_service.update_config" class="row tab-pane" id="updater">
         <div class="col-xs-12">
             <h4><strong>Update configuration</strong></h4>
         </div>
