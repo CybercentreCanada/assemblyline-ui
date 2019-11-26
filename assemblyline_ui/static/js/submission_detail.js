@@ -1077,6 +1077,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.file_tree[key]['children'] = {};
                     $scope.file_tree[key]['name'] = [fname];
                     $scope.file_tree[key]['score'] = 0;
+                    $scope.file_tree[key]['type'] = "N/A";
                     $scope.num_files += 1;
                     to_update.push($scope.file_tree[key]);
                 } else {
@@ -1086,12 +1087,14 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         $scope.file_tree["TBD"]['children'] = {};
                         $scope.file_tree["TBD"]['name'] = "Undertermined Parent";
                         $scope.file_tree["TBD"]['score'] = 0;
+                        $scope.file_tree["TBD"]['type'] = "N/A";
                     }
 
                     $scope.file_tree["TBD"]['children'][key] = {};
                     $scope.file_tree["TBD"]['children'][key]['children'] = {};
                     $scope.file_tree["TBD"]['children'][key]['name'] = [fname];
                     $scope.file_tree["TBD"]['children'][key]['score'] = 0;
+                    $scope.file_tree["TBD"]['children'][key]['type'] = "N/A";
                     $scope.num_files += 1;
 
                     to_update.push($scope.file_tree["TBD"]['children'][key]);
@@ -1119,6 +1122,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             item['children'][sha256]['children'] = {};
                             item['children'][sha256]['name'] = [name];
                             item['children'][sha256]['score'] = 0;
+                            item['children'][sha256]['type'] = 'N/A';
                             $scope.num_files += 1;
                         }
                     } else {
