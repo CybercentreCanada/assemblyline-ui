@@ -1,17 +1,17 @@
 {% extends base_template %}
 {% block html_param %}ng-app="app"{% endblock %}
-{% block title_page %}AL - Signature detail [{{sid}} r.{{rev}}]{% endblock %}
+{% block title_page %}AL - Signature detail [{{sid}}]{% endblock %}
 {% block js_import %}
 	<script src="/static/js/signature_detail.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';rev='{{rev}}';organisation='{{organisation}}';settings={{settings}};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};sid='{{sid}}';organisation='{{organisation}}';settings={{settings}};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
 	<section id="appContent" class="container" ng-show="current_signature">
 		<div class="header_title text-right">
 			<h1>Signature Detail</h1>
-			<h4 class="text-muted">:: [{{current_signature.type}}] {{current_signature.signature_id}} r.{{current_signature.revision}}::</h4>
+			<h4 class="text-muted">:: {{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}} ::</h4>
 		</div>
 		<div>
 		    <div signature-detail></div>

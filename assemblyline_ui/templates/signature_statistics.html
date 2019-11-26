@@ -25,9 +25,9 @@
                             <span ng-show="sort.column=='type' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
                             <span ng-show="sort.column=='type' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
                         </th>
-                        <th class="hover" ng-click="sort_stats('sid')">ID
-                            <span ng-show="sort.column=='sid' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
-                            <span ng-show="sort.column=='sid' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
+                        <th class="hover" ng-click="sort_stats('source')">Source
+                            <span ng-show="sort.column=='source' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
+                            <span ng-show="sort.column=='source' && !sort.order" class="glyphicon glyphicon-sort-by-alphabet-alt"></span>
                         </th>
                         <th class="hover" ng-click="sort_stats('name')">Name
                             <span ng-show="sort.column=='name' && sort.order" class="glyphicon glyphicon-sort-by-alphabet"></span>
@@ -57,9 +57,9 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-click="viewSignature(s.type, s.sid, s.rev)" ng-repeat="s in stats_output" style="cursor: pointer;">
+					<tr ng-click="viewSignature(s.id)" ng-repeat="s in stats_output" style="cursor: pointer;">
 						<td>{{s.type}}</td>
-						<td>{{s.sid}} r.{{s.rev}}</td>
+						<td>{{s.source}}</td>
 						<td>{{s.name | maxLength:50 | breakableStr}}</td>
 						<td>{{s.count}}</td>
 						<td>{{s.min}}</td>
@@ -97,7 +97,7 @@
 					<div class="modal-header">
 						<section class="row">
 							<div class="col-md-9">
-								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Signature Details:: {{current_signature.type}}_{{current_signature.signature_id}}_{{current_signature.revision}}</h4>
+								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Signature Details:: {{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}}</h4>
 							</div>
                             <div ng-if="user.c12n_enforcing" class="col-md-3">
                                 <label class="control-label">

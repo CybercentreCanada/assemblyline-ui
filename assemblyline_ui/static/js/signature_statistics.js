@@ -60,7 +60,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             }
         });
 
-        $scope.viewSignature = function (sig_type, signature, rev) {
+        $scope.viewSignature = function (signature_id) {
             $scope.editmode = true;
 
             $scope.error = '';
@@ -69,7 +69,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
             $http({
                 method: 'GET',
-                url: "/api/v4/signature/" + sig_type + "_" + signature + "_" + rev + "/"
+                url: "/api/v4/signature/" + signature_id + "/"
             })
                 .success(function (data) {
                     $scope.loading_extra = false;

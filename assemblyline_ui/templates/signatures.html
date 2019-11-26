@@ -23,15 +23,16 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active">
-						<th>Type</th><th nowrap>ID</th><th>Name</th><th>Source</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
+						<th>Type</th><th>Name</th><th>Source</th><th nowrap>ID</th><th>Rev</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr ng-click="editSignature(s.id)" ng-repeat="s in signature_list" style="cursor: pointer;">
 						<td nowrap>{{s.type}}</td>
-						<td nowrap>{{s.signature_id}} r.{{s.revision}}</td>
-						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
 						<td nowrap>{{s.source}}</td>
+						<td nowrap>{{s.signature_id}}</td>
+						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
+						<td nowrap>{{s.revision}}</td>
 						<td nowrap ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_long}}</label></td>
 						<td nowrap>
 							<span ng-show="s.status=='DEPLOYED'" class="label classification label-success">{{s.status}}</span>
@@ -67,7 +68,7 @@
 						<div class="pull-right text-large">
 							<button ng_if="user.type.indexOf('admin')!=-1||user.type.indexOf('signature_manager')==-1" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
-						<h4 class="modal_title" id="myModalLabel">Signature detail :: [{{current_signature.type}}] {{current_signature.signature_id}} r.{{current_signature.revision}}</h4>
+						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}}</h4>
 					</div>
 					<div class="modal-body">
 						<div signature-detail></div>

@@ -214,15 +214,16 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Signature ID</th><th>Name</th><th>Source</th><th>Type</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
+									<th>Type</th><th>Source</th><th nowrap>ID</th><th>Name</th><th>Rev</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="s in signature_list.items">
-									<td nowrap><a href="/signature_detail.html?sid={{s.id}}">{{s.id}}</a></td>
-									<td width="100%"><a href="/signature_detail.html?sid={{s.id}}">{{s.name | breakableStr}}</a></td>
-									<td><a href="/signature_detail.html?sid={{s.id}}">{{s.source}}</a></td>
 									<td><a href="/signature_detail.html?sid={{s.id}}">{{s.type}}</a></td>
+									<td><a href="/signature_detail.html?sid={{s.id}}">{{s.source}}</a></td>
+									<td nowrap><a href="/signature_detail.html?sid={{s.id}}">{{s.signature_id}}</a></td>
+									<td width="100%"><a href="/signature_detail.html?sid={{s.id}}">{{s.name | breakableStr}}</a></td>
+									<td nowrap><a href="/signature_detail.html?sid={{s.id}}">{{s.revision}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/signature_detail.html?sid={{s.id}}"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_sm}}</label></a></td>
 									<td>
 										<a href="/signature_detail.html?sid={{s.id}}">

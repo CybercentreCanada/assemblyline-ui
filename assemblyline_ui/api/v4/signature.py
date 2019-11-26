@@ -577,13 +577,13 @@ def signature_statistics(**kwargs):
 
     user = kwargs['user']
 
-    def get_stat_for_signature(p_sid, p_rev, p_name, p_type, p_classification):
+    def get_stat_for_signature(p_id, p_source, p_name, p_type, p_classification):
         stats = STORAGE.result.stats("result.score",
-                                     query=f'result.sections.tags.file.rule.{type}:"{p_name}"')
+                                     query=f'result.sections.tags.file.rule.{p_type}:"{p_source}.{p_name}"')
         if stats['count'] == 0:
             return {
-                'sid': p_sid,
-                'rev': int(p_rev),
+                'id': p_id,
+                'source': p_source,
                 'name': p_name,
                 'type': p_type,
                 'classification': p_classification,
@@ -594,8 +594,8 @@ def signature_statistics(**kwargs):
             }
         else:
             return {
-                'sid': p_sid,
-                'rev': int(p_rev),
+                'id': p_id,
+                'source': p_source,
                 'name': p_name,
                 'type': p_type,
                 'classification': p_classification,
@@ -605,16 +605,16 @@ def signature_statistics(**kwargs):
                 'avg': int(stats['avg']),
             }
 
-    sig_list = sorted([(x['signature_id'], x['revision'], x['name'], x['type'], x['classification'])
+    sig_list = sorted([(x['id'], x['source'], x['name'], x['type'], x['classification'])
                        for x in STORAGE.signature.stream_search("name:*",
-                                                                fl="name,type,signature_id,revision,classification",
+                                                                fl="id,name,type,source,classification",
                                                                 access_control=user['access_control'], as_obj=False)])
 
     with concurrent.futures.ThreadPoolExecutor(max(min(len(sig_list), 20), 1)) as executor:
-        res = [executor.submit(get_stat_for_signature, sid, rev, name, sig_type, classification)
-               for sid, rev, name, sig_type, classification in sig_list]
+        res = [executor.submit(get_stat_for_signature, sid, source, name, sig_type, classification)
+               for sid, source, name, sig_type, classification in sig_list]
 
-    return make_api_response(sorted([r.result() for r in res], key=lambda i: (i['sid'], i['rev'])))
+    return make_api_response(sorted([r.result() for r in res], key=lambda i: i['type']))
 
 
 @signature_api.route("/update_available/", methods=["GET"])
