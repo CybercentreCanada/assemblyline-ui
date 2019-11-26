@@ -671,8 +671,9 @@ def add_update_signature(**_):
         return make_api_response("", f"Signature id, name, type and data are mandatory fields.", 400)
 
     # Compute signature ID if missing
-    data['signature_id'] = data.get('signature_id', f"{data['source']}.{data['name']}")
+    data['signature_id'] = data.get('signature_id', data['name'])
+
+    key = f"{data['type']}_{data['source']}_{data['signature_id']}"
 
     # Save the signature
-    return make_api_response({"success": STORAGE.signature.save(data['signature_id'], data),
-                              "id": data['signature_id']})
+    return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
