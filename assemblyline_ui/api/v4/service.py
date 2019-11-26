@@ -155,7 +155,17 @@ def list_all_services(**_):
          ...
      ]
     """
-    return make_api_response(STORAGE.list_all_services(full=True, as_obj=False))
+    resp = [{'accepts': x.get('accepts', None),
+             'category': x.get('category', None),
+             'description': x.get('description', None),
+             'enabled': x.get('enabled', False),
+             'name': x.get('name', None),
+             'rejects': x.get('rejects', None),
+             'stage': x.get('stage', None),
+             'version': x.get('version', None)}
+            for x in STORAGE.list_all_services(full=True, as_obj=False)]
+
+    return make_api_response(resp)
 
 
 @service_api.route("/<servicename>/", methods=["DELETE"])
