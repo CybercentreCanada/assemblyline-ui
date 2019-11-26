@@ -223,8 +223,8 @@ def test_signature_stats(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/signature/stats/")
     assert len(resp) == signature_count
     for sig_stat in resp:
-        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'max',
-                                                 'min', 'name', 'rev', 'sid', 'type']
+        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'id',
+                                                 'max', 'min', 'name', 'source', 'type']
 
 
 # noinspection PyUnusedLocal
