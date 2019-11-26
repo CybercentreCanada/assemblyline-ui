@@ -181,7 +181,7 @@
                         <div class="item" ng-repeat="(b_name, files) in data.heuristics.malicious | orderBy:b_name">
                             <label style="display: inline;">{{b_name}}</label>
                             <ul>
-                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0] | breakableStr}}</span></li>
                             </ul>
                         </div>
                     </div>
@@ -190,7 +190,7 @@
                         <div class="item" ng-repeat="(b_name, files) in data.heuristics.suspicious | orderBy:b_name">
                             <label style="display: inline;">{{b_name}}</label>
                             <ul>
-                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0] | breakableStr}}</span></li>
                             </ul>
                         </div>
                     </div>
@@ -199,7 +199,7 @@
                         <div class="item" ng-repeat="(b_name, files) in data.heuristics.info | orderBy:b_name">
                             <label style="display: inline;">{{b_name}}</label>
                             <ul>
-                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0]}}</span></li>
+                                <li ng-repeat="file in files"><span class="text-info text-smaller text-fixed" title="{{file[1]}}">{{file[0] | breakableStr}}</span></li>
                             </ul>
                         </div>
                     </div>
