@@ -991,6 +991,18 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             for (let section_id in result['result']['sections']) {
                 let section = result['result']['sections'][section_id];
+                let h_type = "info";
+
+                if (section.heuristic.score < 100) {
+                    h_type = 'info';
+                }
+                else if (section.heuristic.score < 1000){
+                    h_type = "suspicious";
+                }
+                else{
+                    h_type = "malicious";
+                }
+
                 for (let tag_id in section['tags']){
                     let tag = section['tags'][tag_id];
                     let summary_type = null;
@@ -1017,15 +1029,16 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
 
                     let exists = false;
+                    let tag_val = [tag.value, h_type];
                     for (let i in $scope.summary[summary_type][tag.type]) {
-                        if ($scope.summary[summary_type][tag.type][i] === tag.value) {
+                        if ($scope.summary[summary_type][tag.type][i] === tag_val) {
                             exists = true;
                             break;
                         }
                     }
 
                     if (!exists) {
-                        $scope.summary[summary_type][tag.type].push(tag.value);
+                        $scope.summary[summary_type][tag.type].push(tag_val);
                     }
 
                     let tag_key = tag.type + $scope.splitter + tag.value;
