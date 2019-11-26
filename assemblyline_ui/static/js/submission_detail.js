@@ -755,7 +755,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         listed: $scope.relevant_errors($scope.data.errors),
                         aggregated: $scope.futile_errors($scope.data.errors)
                     };
-                    if ($scope.data.state === "completed") {
+                    if ($scope.data.state === "completed" || $scope.data.state === "failed") {
                         $scope.get_summary();
                         $scope.get_file_tree();
                         $scope.temp_data = null;
