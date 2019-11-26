@@ -992,15 +992,16 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             for (let section_id in result['result']['sections']) {
                 let section = result['result']['sections'][section_id];
                 let h_type = "info";
-
-                if (section.heuristic.score < 100) {
-                    h_type = 'info';
-                }
-                else if (section.heuristic.score < 1000){
-                    h_type = "suspicious";
-                }
-                else{
-                    h_type = "malicious";
+                if (section.heuristic !== null && section.heuristic !== undefined){
+                    if (section.heuristic.score < 100) {
+                        h_type = 'info';
+                    }
+                    else if (section.heuristic.score < 1000){
+                        h_type = "suspicious";
+                    }
+                    else{
+                        h_type = "malicious";
+                    }
                 }
 
                 for (let tag_id in section['tags']){
