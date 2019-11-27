@@ -17,7 +17,8 @@
 			<div ng-if="user.c12n_enforcing" class="pad">
 				<div class="label classification {{current_signature.classification | class_label_color}}">{{current_signature.classification | class_long}}</div>
 			</div>
-			<pre class="rule_preview">{{current_signature.data}}</pre>
+			<pre style="white-space: pre-wrap" class="hidden-xs rule_preview">{{current_signature.data}}</pre>
+			<pre class="hidden-sm hidden-md hidden-lg rule_preview">{{current_signature.data}}</pre>
 		</div>
 		<div ng-if="user.type.indexOf('admin')!=-1||user.type.indexOf('signature_manager')!=-1" class="tab-pane" id="state">
 			<div class="pad">

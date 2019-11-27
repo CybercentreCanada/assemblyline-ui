@@ -49,7 +49,8 @@
 						<div class="pull-right text-large" ng-show="editmode">
 							<button style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();"><span class="glyphicon glyphicon-remove"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Remove</span></button>
 						</div>
-						<h4 class="modal_title" id="myModalLabel">{{current_service}} :: Signature Source<span ng-show="editmode"> :: [{{current_source.name}}]</span></h4>
+						<div class="text-larger modal_title" id="myModalLabel">{{current_service}} :: Signature Source</div>
+						<div class="text-muted breakable">{{current_source.name}}</div>
 					</div>
 					<div class="modal-body">
 						<div signature-source></div>

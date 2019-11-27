@@ -52,7 +52,9 @@
 							<button type="button" class="btn btn-danger" ng-click="delUser(current_user);">Remove</button>
 						</div>
 						<h4 ng-if="!editmode" class="modal_title" id="myModalLabel">Adding User</h4>
-						<h4 ng-if="editmode" class="modal_title" id="myModalLabel">User Settings :: {{current_user.uname}}</h4>
+						<div ng-if="editmode" class="text-larger modal_title" id="myModalLabel">User Settings</div>
+						<div ng-if="editmode" class="text-muted breakable">{{current_user.uname}}</div>
+
 					</div>
 					<div class="modal-body">
 						<section class="row">

@@ -64,8 +64,8 @@
                         <div ng-show="cur_workflow.workflow_id" class="pull-right" style="padding-top: 5px;">
 							<button type="button" class="btn btn-danger" ng-click="delWorkflow(cur_workflow);">Remove</button>
 						</div>
-						<h3 ng-hide="!cur_workflow.workflow_id" class="modal_title" id="myModalLabel">Edit workflow filter</h3>
-                        <h3 ng-hide="cur_workflow.workflow_id" class="modal_title" id="myModalLabel">Adding workflow filter</h3>
+						<h4 ng-hide="!cur_workflow.workflow_id" class="modal_title" id="myModalLabel">Edit workflow filter</h4>
+                        <h4 ng-hide="cur_workflow.workflow_id" class="modal_title" id="myModalLabel">Adding workflow filter</h4>
                     </div>
                     <div class="modal-body">
                         <div class="text-danger text-center text-large">{{ last_error }}</div>

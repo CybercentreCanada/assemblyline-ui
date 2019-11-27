@@ -97,7 +97,8 @@
 					<div class="modal-header">
 						<section class="row">
 							<div class="col-md-9">
-								<h4 ng-if="editmode" class="modal_title" id="myModalLabel">Signature Details:: {{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}}</h4>
+								<div class="text-larger modal_title" id="myModalLabel">Signature details</div>
+								<div class="text-muted breakable">{{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}}</div>
 							</div>
                             <div ng-if="user.c12n_enforcing" class="col-md-3">
                                 <label class="control-label">

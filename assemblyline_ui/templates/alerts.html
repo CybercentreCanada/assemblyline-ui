@@ -47,7 +47,7 @@
             <div class="modal-dialog modal-resize">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3 class="modal_title" id="statsModalLabel">Alert statistics</h3>
+                        <h4 class="modal_title" id="statsModalLabel">Alert statistics</h4>
                     </div>
                     <div class="modal-body">
                         <div ng-show="getKeys(val).length>0" ng-repeat="(key, val) in statistics">
@@ -71,8 +71,8 @@
             <div class="modal-dialog modal-resize">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3 class="pull-right text-muted text-big">{{ related_ids.length }} alert<span ng-show="related_ids.length>1">s</span></h3>
-                        <h3 class="modal_title" id="related_id_label">Listing of all related Alert IDs</h3>
+                        <h4 class="pull-right text-muted">{{ related_ids.length }} alert<span ng-show="related_ids.length>1">s</span></h4>
+                        <h4 class="modal_title" id="related_id_label">Listing of all related Alert IDs</h4>
                     </div>
                     <div class="modal-body">
                         <div class="pad">All IDs listed bellow match the following parameters:</div>
@@ -97,7 +97,7 @@
             <div class="modal-dialog modal-resize">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3 class="modal_title" id="worflow_action_lbl">Workflow action</h3>
+                        <h4 class="modal_title" id="worflow_action_lbl">Workflow action</h4>
                     </div>
                     <div class="modal-body">
                         <h4 ng-if="current_alert&&!current_alert.group_count">The workflow action will be applied to a single alert with the following alert ID: {{ current_alert.event_id }}</h4>
@@ -158,13 +158,13 @@
                         <div class="modal-header">
                             <div class="pull-right form-group">
                                 <label class="control-label">Favorite type</label>
-                                <select class="form-control input" ng-model="cur_favorite.type" ng-hide="edit_mode">
+                                <select class="form-control input input-sm" ng-model="cur_favorite.type" ng-hide="edit_mode">
                                     <option>private</option>
                                     <option>global</option>
                                 </select>
                                 <input type="text" id="status" class="form-control" ng-model="cur_favorite.type" disabled ng-show="edit_mode">
                             </div>
-                            <h3 class="modal_title" id="myModalLabel">Adding filter to favorites</h3>
+                            <h4 class="modal_title" id="myModalLabel">Adding filter to favorites</h4>
                         </div>
                         <div class="modal-body">
                             <div class="text-danger text-center text-large">{{ last_error }}</div>

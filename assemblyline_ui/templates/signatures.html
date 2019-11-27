@@ -68,7 +68,8 @@
 						<div class="pull-right text-large">
 							<button ng_if="user.type.indexOf('admin')!=-1||user.type.indexOf('signature_manager')==-1" style="margin-left: 10px" type="button" class="btn btn-danger" ng-click="del();">Remove</button>
 						</div>
-						<h4 class="modal_title" id="myModalLabel">Signature detail :: {{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}}</h4>
+						<div class="text-larger modal_title" id="myModalLabel">Signature details</div>
+						<div class="text-muted breakable">{{current_signature.type}}_{{current_signature.source}}_{{current_signature.signature_id}}</div>
 					</div>
 					<div class="modal-body">
 						<div signature-detail></div>

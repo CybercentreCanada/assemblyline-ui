@@ -70,7 +70,8 @@
             <div class="modal-dialog modal-resize">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h4 class="modal_title" id="myModalLabel">Signature Source<span ng-show="editmode"> :: [{{current_source.name}}]</span></h4>
+						<div class="text-larger modal_title" id="myModalLabel">Signature Source</div>
+						<div class="text-muted breakable" ng-show="editmode">{{current_source.name}}</div>
                     </div>
                     <div class="modal-body">
                         <div signature-source></div>
