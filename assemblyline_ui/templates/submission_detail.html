@@ -17,7 +17,7 @@
 {% block content %}
 	{%raw%}
 	<div id="slider" class="menuslide" ng-class={menushow:showslider}>
-		<a class="close btn" ng-click="hide_slider();">x</a>
+		<a class="slider_close btn btn-default" ng-click="hide_slider();">x</a>
 		<section id="appContent" class="container">
 			<label ng-if="user.c12n_enforcing" ng-show="current_file" style="margin-top: 8px;" class="label classification {{current_file.file_info.classification | class_label_color}}">{{current_file.file_info.classification | class_long}}</label>
 			<div id="fd-view" file-detail ng-model="current_file"></div>
