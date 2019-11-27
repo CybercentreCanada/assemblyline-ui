@@ -46,7 +46,6 @@ def test_add_workflow(datastore, login_session):
     workflow['query'] = "sha256:[1 AND 'This is invalid!'"
     workflow['creator'] = 'admin'
     workflow['edited_by'] = 'admin'
-    workflow_list.append(workflow['workflow_id'])
 
     with pytest.raises(APIError):
         resp = get_api_data(session, f"{HOST}/api/v4/workflow/",
@@ -56,10 +55,12 @@ def test_add_workflow(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/workflow/",
                         method="PUT", data=json.dumps(workflow))
     assert resp['success']
+    workflow['workflow_id'] = resp['workflow_id']
+    workflow_list.append(resp['workflow_id'])
 
     ds.workflow.commit()
 
-    new_workflow = ds.workflow.get(workflow['workflow_id'], as_obj=False)
+    new_workflow = ds.workflow.get(resp['workflow_id'], as_obj=False)
     assert new_workflow == workflow
 
 

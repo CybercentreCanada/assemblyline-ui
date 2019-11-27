@@ -64,11 +64,10 @@ def add_workflow(**kwargs):
     if not verify_query(query):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
 
-    uname = kwargs['user']['uname']
     data.update({
         "workflow_id": get_random_id(),
-        "creator": uname,
-        "edited_by": uname,
+        "creator": kwargs['user']['uname'],
+        "edited_by": kwargs['user']['uname'],
         "priority": data['priority'] or None,
         "status": data['status'] or None
     })
