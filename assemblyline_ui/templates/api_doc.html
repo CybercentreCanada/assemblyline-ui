@@ -30,15 +30,15 @@
 					</div>
 					<div id="{{function.id}}" class="collapse data">
 						<div class="row" ng-show="function.ui_only||function.protected">
-							<div class="col-xs-12 col-sm-3 col-md-2"><strong>Requirements:</strong></div>
-							<div class="col-xs-12 col-sm-9 col-md-10">
+							<div class="col-xs-6 col-sm-3 col-md-2"><strong>Requirements:</strong></div>
+							<div class="col-xs-6 col-sm-9 col-md-10">
 								<span class="label label-warning label-tag" ng-show="function.ui_only">Reserved for UI</span>
 								<span class="label label-info label-tag" ng-show="function.protected">Require Login</span>
 							</div>
 						</div>
                         <div class="row" ng-show="function.require_type">
-							<div class="col-xs-12 col-sm-3 col-md-2"><strong>Allowed user types:</strong></div>
-							<div class="col-xs-12 col-sm-9 col-md-10">
+							<div class="col-xs-6 col-sm-3 col-md-2"><strong>Allowed user types:</strong></div>
+							<div class="col-xs-6 col-sm-9 col-md-10">
 								<span class="label label-default label-tag" ng-show="function.require_type.indexOf('user') != -1">User</span>
 								<span class="label label-info label-tag" ng-show="function.require_type.indexOf('signature_manager') != -1">Signature Manager</span>
 								<span class="label label-primary label-tag" ng-show="function.require_type.indexOf('signature_importer') != -1">Signature Importer</span>
@@ -46,8 +46,8 @@
 							</div>
 						</div>
                         <div class="row" ng-show="function.required_priv">
-							<div class="col-xs-12 col-sm-3 col-md-2"><strong>APIKey Requirements:</strong></div>
-							<div class="col-xs-12 col-sm-9 col-md-10">
+							<div class="col-xs-6 col-sm-3 col-md-2"><strong>APIKey Requirements:</strong></div>
+							<div class="col-xs-6 col-sm-9 col-md-10">
 								<span class="label label-danger label-tag" ng-show="function.required_priv.indexOf('E') != -1">Unavailable</span>
 								<span class="label label-success label-tag" ng-show="function.required_priv.indexOf('R') != -1">Read</span>
 								<span class="label label-warning label-tag" ng-show="function.required_priv.indexOf('W') != -1">Write</span>
