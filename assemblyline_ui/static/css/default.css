@@ -16,6 +16,11 @@ a:hover {
 	text-decoration: none;
 }
 
+.breakable {
+	word-break: break-all;
+	word-wrap: break-word;
+}
+
 .row.make-columns {
 	-webkit-column-width: 21em;
 	   -moz-column-width: 21em;

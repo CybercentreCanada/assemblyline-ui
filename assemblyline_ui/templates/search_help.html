@@ -66,7 +66,7 @@
 						</thead>
 						<tbody>
 							{% for field, val in fields%}
-							<tr><td width="50%">{{ field }}</td><td>{{ val.type }}</td><td>{% if val.stored %}<span title="Values will be returned during searches" class="label label-tag label-info">stored</span>&nbsp;{% endif %}{% if val.default %}<span title="Values will be search during non-field specific searches" class="label label-tag label-primary">default</span>&nbsp;{% endif %}{% if val.list %}<span title="Field hosts multiple values" class="label label-tag label-warning">list</span>{% endif %}</td></tr>
+							<tr><td width="50%" class="breakable">{{ field }}</td><td>{{ val.type }}</td><td>{% if val.stored %}<span title="Values will be returned during searches" class="label label-tag label-info">stored</span>&nbsp;{% endif %}{% if val.default %}<span title="Values will be search during non-field specific searches" class="label label-tag label-primary">default</span>&nbsp;{% endif %}{% if val.list %}<span title="Field hosts multiple values" class="label label-tag label-warning">list</span>{% endif %}</td></tr>
 							{% endfor %}
 						</tbody>
 					</table>
