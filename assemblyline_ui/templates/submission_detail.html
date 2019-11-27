@@ -61,8 +61,8 @@
 						<div>
 							<svg height="15" width="170">
 								<rect height="15" width="170" style="fill: transparent;stroke: lightgrey"></rect>
-								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="13" fill="#d9534f"></rect>
-								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="13" fill="#5cb85c"></rect>
+								<rect x="{{85 - (data.verdict.malicious.length * 5)}}" width="{{(data.verdict.malicious.length * 5)}}" y="1" height="13" fill="#d9534f"></rect>
+								<rect x="85" width="{{(data.verdict.non_malicious.length * 5)}}" y="1" height="13" fill="#5cb85c"></rect>
 								<rect x="85" y="0" height="15" width="1" fill="lightgrey"></rect>
 							</svg>
 						</div>
@@ -86,8 +86,8 @@
 						<div>
 							<svg height="15" width="170">
 								<rect height="15" width="170" style="fill: transparent;stroke: lightgrey"></rect>
-								<rect ng-style="{ x: 85 - (data.verdict.malicious.length * 5), width: (data.verdict.malicious.length * 5)}" y="1" height="13" fill="#d9534f"></rect>
-								<rect ng-style="{ x: 85, width: (data.verdict.non_malicious.length * 5)}" y="1" height="13" fill="#5cb85c"></rect>
+								<rect x="{{85 - (data.verdict.malicious.length * 5)}}" width="{{(data.verdict.malicious.length * 5)}}" y="1" height="13" fill="#d9534f"></rect>
+								<rect x="85" width="{{(data.verdict.non_malicious.length * 5)}}" y="1" height="13" fill="#5cb85c"></rect>
 								<rect x="85" y="0" height="15" width="1" fill="lightgrey"></rect>
 							</svg>
 						</div>
