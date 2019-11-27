@@ -350,6 +350,67 @@ section.container{
 #appContent > .container {
 	min-width: 300px;
 }
+
+#appMenu {
+	position: fixed;
+	top: 0;
+	width: 0px;
+	height: auto;
+	min-height: 100%;
+	background-color: #222;
+	padding: 49px 0em 0.5em;
+	color: #999;
+	text-shadow: 0 -1px 0 rgba(0,0,0,.25);
+	overflow: none;
+	z-index: 998;
+
+
+	-webkit-transition: all 0.4s ease;
+	-moz-transition: all 0.4s ease;
+	-ms-transition: all 0.4s ease;
+	-o-transition: all 0.4s ease;
+	transition: all 0.4s ease;
+}
+
+#appMenu.collapse.in,
+#appMenu.collapsing {
+	box-shadow: rgba(0, 0, 0, 0.4) 0px 3px 10px 4px;
+}
+
+#appMenu .nav{
+	width: 280px;
+	float: left;
+	overflow-y: auto;
+	max-height: 90%;
+	max-height: calc(100% - 65px);
+}
+
+#appMenu .navbar-nav{
+	margin: 0px;
+}
+
+#appMenu .divider{
+	display: block;
+	height: 1px;
+	margin: 9px 0;
+	overflow: hidden;
+	background-color: #525252;
+}
+
+.navbar-inverse .navbar-nav > .open > a,
+.navbar-inverse .navbar-nav > .open > a:hover,
+.navbar-inverse .navbar-nav > .open > a:focus {
+    background-color: #151515;
+    color: #fff;
+}
+
+.navbar-inverse .navbar-nav > .active > a,
+.navbar-inverse .navbar-nav > .active > a:hover,
+.navbar-inverse .navbar-nav > .active > a:focus {
+    color: #fff;
+    background-color: #121212;
+}
+
 #searchMenu {
 	background: #f6f6f6;
 	border-radius: 0px 0px 4px 4px;
