@@ -184,6 +184,14 @@ section.container{
 	z-index: 1;
 }
 
+.pager_search {
+    margin-bottom: 10px;
+}
+
+.pager_add_button {
+    float: left;
+}
+
 @media (min-width: 768px){
 	.pager_count{
 		padding-right: 0px;
@@ -192,7 +200,16 @@ section.container{
 	.pager_pages{
         padding-left: 0px;
     }
+
+    .pager_add_button {
+        float: none;
+    }
+
+    .pager_search {
+        margin-bottom: 0px;
+    }
 }
+
 
 .centered_boxed_content{
     margin-left: auto;
