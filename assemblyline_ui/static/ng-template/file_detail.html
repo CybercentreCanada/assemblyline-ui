@@ -16,56 +16,56 @@
 			</div>
 			<div id="file_meta" class="collapse in">
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>MD5</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10 text-fixed">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>MD5</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10 text-fixed">
 						{{current_file.file_info.md5}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>SHA1</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10 text-fixed">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>SHA1</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10 text-fixed">
 						{{current_file.file_info.sha1}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>SHA256</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10 text-fixed">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>SHA256</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10 text-fixed">
 						{{current_file.file_info.sha256}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>SSDEEP</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10 text-fixed">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>SSDEEP</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10 text-fixed">
 						{{current_file.file_info.ssdeep}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Size</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Size</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.size}} ({{current_file.file_info.size | fileSize}})
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Type</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Type</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.type}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Mimetype</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Mimetype</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.mime}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Magic</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Magic</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.magic}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Entropy</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Entropy</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.entropy}}
 					</div>
 				</div>
@@ -77,20 +77,20 @@
 			</div>
 			<div id="sub_freq" class="collapse in">
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>First seen</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>First seen</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.seen.first | date:"yyyy-MM-dd HH:mm:ss"}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Last seen</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Last seen</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.seen.last | date:"yyyy-MM-dd HH:mm:ss"}}
 					</div>
 				</div>
 				<div class="row">
-					<div class="col-xs-5 col-sm-3 col-md-2"><strong>Count</strong></div>
-					<div class="col-xs-7 col-sm-9 col-md-10">
+					<div class="col-xs-4 col-sm-3 col-md-2"><strong>Count</strong></div>
+					<div class="col-xs-8 col-sm-9 col-md-10">
 						{{current_file.file_info.seen.count}}
 					</div>
 				</div>
@@ -104,8 +104,8 @@
 			<div id="sub_meta" class="collapse in">
 				<div ng-repeat="(key, val) in current_file.metadata">
                     <div class="row">
-                        <div class="col-xs-5 col-sm-3 col-md-2"><strong>{{key | titleCase}}</strong></div>
-                        <div class="col-xs-7 col-sm-9 col-md-10">
+                        <div class="col-xs-12 col-sm-3 col-md-2"><strong>{{key | titleCase}}</strong></div>
+                        <div class="col-xs-12 col-sm-9 col-md-10">
                             <span class="label label-tag label-nolight" style="cursor: default;" ng-repeat="(meta_name, count) in val">{{count}}x {{meta_name}}</span>
                         </div>
                     </div>
@@ -144,8 +144,8 @@
 
 			<div id="file_attack_matrix" class="collapse in">
                 <div class="row" ng-repeat="(category, attack_patterns) in current_file.attack_matrix | orderBy:category">
-                    <div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
-                    <div class="col-xs-6 col-sm-8 col-md-9">
+                    <div class="col-xs-12 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
+                    <div class="col-xs-12 col-sm-8 col-md-9">
                         <span id="file_{{item[0]}}_{{item[1]}}" class="label label-tag label-heur-{{item[2]}}" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.attack_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
                     </div>
                 </div>
@@ -160,8 +160,8 @@
 
 			<div id="heuristics" class="collapse in">
 				<div class="row" ng-repeat="(category, heuristics_list) in current_file.heuristics | orderBy:category">
-					<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
-					<div class="col-xs-6 col-sm-8 col-md-9">
+					<div class="col-xs-12 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
+					<div class="col-xs-12 col-sm-8 col-md-9">
 						<span id="{{item[0]}}_{{item[1]}}" class="label label-tag label-heur-{{category}}" style="cursor: pointer;" ng-repeat="item in heuristics_list | orderBy:item[1]" ng-class="{'label-highlight': isHighlighted('heuristic', item[0])}" ng-click="trigger_highlight('heuristic', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?query=result.sections.heuristic.heur_id:"{{uri_encode(item[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 					</div>
 				</div>
@@ -176,8 +176,8 @@
 			<div id="file_tags" class="collapse in">
 				<div ng-if="obj_len(current_file.tags) != 0">
 					<div class="row" ng-repeat="(tagType, values) in current_file.tags | orderBy:tagType">
-						<div class="col-xs-6 col-sm-4 col-md-3"><strong>{{tagType}}</strong></div>
-						<div class="col-xs-6 col-sm-8 col-md-9">
+						<div class="col-xs-12 col-sm-4 col-md-3"><strong>{{tagType}}</strong></div>
+						<div class="col-xs-12 col-sm-8 col-md-9">
 							<span id="file_{{tagType}}__{{value}}" class="label label-tag label-heur-{{value[1]}}" style="cursor: pointer;" ng-repeat="value in values | orderBy:value[0]" ng-class="{'label-highlight': isHighlighted(tagType, value[0])}" ng-click="trigger_highlight(tagType, value[0]);" >{{value[0] | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tagType}}:"{{uri_encode(value[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 						</div>
 					</div>
