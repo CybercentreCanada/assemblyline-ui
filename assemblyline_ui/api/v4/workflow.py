@@ -2,6 +2,7 @@
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.common.uid import get_random_id
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION
 from assemblyline.odm.models.workflow import Workflow
@@ -65,8 +66,11 @@ def add_workflow(**kwargs):
 
     uname = kwargs['user']['uname']
     data.update({
+        "workflow_id": get_random_id(),
         "creator": uname,
-        "edited_by": uname
+        "edited_by": uname,
+        "priority": data['priority'] or None,
+        "status": data['status'] or None
     })
     try:
         workflow_data = Workflow(data)

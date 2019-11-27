@@ -233,9 +233,15 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                         } else if (data.api_error_message.startsWith("Query")) {
                             ctrl = $("#query");
                         }
-                        ctrl.addClass("has-error");
-                        ctrl.find("input").select();
-                        ctrl.find("error").text("* This field is required");
+                        if (ctrl !== null && ctrl !== undefined){
+                            ctrl.addClass("has-error");
+                            ctrl.find("input").select();
+                            ctrl.find("error").text("* This field is required");
+                        }
+                        else {
+                            $scope.error = data.api_error_message;
+                        }
+
                         return;
                     }
 
