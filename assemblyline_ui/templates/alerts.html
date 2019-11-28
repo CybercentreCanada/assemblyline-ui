@@ -175,7 +175,7 @@
                     </div>
                     <span class="input-group-btn">
                         <a href="/alerts.html?filter={{query}}&tc={{tc}}&view_type={{view_type}}&group_by={{group_by}}{{forced_filter}}" class="btn btn-primary" >Filter</a>
-                        <div ng-disabled="total == 0" class="btn btn-primary" ng-click="show_statistics()"><span class="glyphicon glyphicon-stats" title="Show alerts statistics"></span></div>
+                        <span style="max-height: 34px" ng-disabled="total == 0" class="btn btn-primary" ng-click="show_statistics()"><span class="glyphicon glyphicon-stats" title="Show alerts statistics"></span></span>
                         <span class="btn btn-primary" data-toggle="collapse" data-target="#searchMenu">
                             <span class="caret"></span>
                         </span>

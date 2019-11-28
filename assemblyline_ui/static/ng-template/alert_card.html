@@ -31,10 +31,11 @@
                 </div>
             </div>
             <div class="col-sm-10 col-lg-11">
-                <div ng-if="user.c12n_enforcing" class="pull-right">
-                    <label class="label classification {{alert.classification | class_label_color}}">&nbsp;&nbsp;{{alert.classification | class_sm}}&nbsp;&nbsp;</label>
-                </div>
-                <div><b>{{alert.type}}</b><span ng-if="alert.ts" class="text-muted">&nbsp;&nbsp;::&nbsp;&nbsp;{{alert.ts | iso_to_utc}}&nbsp;(UTC)</span></div>
+                <div class="row" style="padding-bottom: 10px;"><label class="col-xs-3 col-sm-2">{{alert.type}}</label><div class="col-xs-9 col-sm-10"><div ng-if="user.c12n_enforcing" class="hidden-xs pull-right"><label class="label classification {{alert.classification | class_label_color}}">&nbsp;&nbsp;{{alert.classification | class_sm}}&nbsp;&nbsp;</label></div><span ng-if="alert.ts">{{alert.ts | iso_to_utc}}&nbsp;(UTC)</span></div></div>
+                <div ng-if="alert.group_count" class="hidden-sm hidden-md hidden-lg row"><label class="col-xs-3 col-sm-2">Count:</label><div class="col-xs-9 col-sm-10"><b><a href="/alerts.html?tc_start={{tc_start}}&tc={{tc}}&view_type=list&group_by={{group_by}}&fq={{group_by}}:&quot;{{get_object_value(alert, group_by) | quote}}&quot;&fq={{filter}}{{forced_filter}}">{{alert.group_count}}x</a></b></div></div>
+                <div ng-if="user.c12n_enforcing" class="hidden-sm hidden-md hidden-lg row"><label class="col-xs-3 col-sm-2">Classification:</label><div class="col-xs-9 col-sm-10""><label class="{{alert.classification | class_text_color}}">{{alert.classification | class_long}}</label></div></div>
+                <div class="hidden-sm hidden-md hidden-lg row"><label class="col-xs-3 col-sm-2">Score:</label><div class="col-xs-9 col-sm-10 {{alert.al.score | score_color}}"><b>{{alert.al.score}}</b></div></div>
+                <div class="hidden-sm hidden-md hidden-lg row" style="padding-bottom: 10px;"><label class="col-xs-3 col-sm-2">Status:</label><div class="col-xs-9 col-sm-10">{{alert.extended_scan}}</div></div>
                 <div class="row" ng-if="alert.label"><label class="col-xs-3 col-sm-2">Labels:</label><div class="col-xs-9 col-sm-10"><label ng-repeat="l in alert.label track by $index" class="label label-tag label-default">{{l}}</label></div></div>
                 <div class="row" ng-if="alert.priority"><label class="col-xs-3 col-sm-2">Priority:</label><div class="col-xs-9 col-sm-10"><label class="label label-tag label-default">{{alert.priority}}</label></div></div>
                 <div class="row" ng-if="alert.status"><label class="col-xs-3 col-sm-2">Status:</label><div class="col-xs-9 col-sm-10"><label class="label label-tag label-default">{{alert.status}}</label></div></div>
