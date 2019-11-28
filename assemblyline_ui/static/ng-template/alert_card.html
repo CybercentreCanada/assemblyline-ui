@@ -1,17 +1,17 @@
 <div>
-    <div id="alert_idx" class="alert_card" ng-class="{success: alert.owner||alert.hint_owner, danger: alert.al.attrib.length>0}">
+    <div id="{{alert_idx}}" class="alert_card" ng-class="{success: alert.owner||alert.hint_owner, danger: alert.al.attrib.length>0}">
         <div class="row">
-            <div class="col-xs-3 col-sm-2 col-lg-1 text-center">
-                <div class="pad " style="font-size: 110%;"><span style="width: 100%; min-width: 70px; text-align: center; display: inline-table" class="label label-tag {{alert.al.score | verdict_color}}">{{alert.al.score | verdict}}</span></div>
-                <div class="{{alert.al.score | score_color}}" style="font-size: 110%;"><b>{{alert.al.score}}</b></div>
-                <div ng-if="alert.group_count" class="bigger" style="padding-top: 15px;"><h4><b><a href="/alerts.html?tc_start={{tc_start}}&tc={{tc}}&view_type=list&group_by={{group_by}}&fq={{group_by}}:&quot;{{get_object_value(alert, group_by) | quote}}&quot;&fq={{filter}}{{forced_filter}}">{{alert.group_count}}x</a></b></h4></div>
-                <div ng-if="alert.extended_scan" class="bigpad text-large">
+            <div class="col-xs-12 col-sm-2 col-lg-1 text-center">
+                <div class="pad ac_pl ac_auto_up" style="font-size: 110%;"><span style="width: 100%; min-width: 70px; text-align: center; display: inline-table" class="label label-tag {{alert.al.score | verdict_color}}">{{alert.al.score | verdict}}</span></div>
+                <div class="ac_auto_up hidden-xs {{alert.al.score | score_color}}" style="font-size: 110%;"><b>{{alert.al.score}}</b></div>
+                <div ng-if="alert.group_count" class="hidden-xs bigger ac_auto_up" style="padding-top: 15px;"><h4><b><a href="/alerts.html?tc_start={{tc_start}}&tc={{tc}}&view_type=list&group_by={{group_by}}&fq={{group_by}}:&quot;{{get_object_value(alert, group_by) | quote}}&quot;&fq={{filter}}{{forced_filter}}">{{alert.group_count}}x</a></b></h4></div>
+                <div ng-if="alert.extended_scan" class="hidden-xs bigpad text-large ac_auto_up" >
                     <span ng-if="alert.extended_scan=='completed'" class="text-success icon icon-ok-circle" title="Extended Scan completed successfully"></span>
                     <span ng-if="alert.extended_scan=='incomplete'" class="text-danger icon icon-remove-circle" title="Extended Scan completed with errors that where not present in original scan"></span>
                     <span ng-if="alert.extended_scan=='submitted'" class="icon icon-circleselection" title="Waiting on extended scan to be completed"></span>
                     <span ng-if="alert.extended_scan=='skipped'" class="text-warning icon icon-ban-circle" title="Extended Scan was skipped for this alert"></span>
                 </div>
-                <div title="Malicious: {{alert.verdict.malicious.length}} / Non-Malicious: {{alert.verdict.non_malicious.length}}">
+                <div class="ac_pr ac_auto_up" title="Malicious: {{alert.verdict.malicious.length}} / Non-Malicious: {{alert.verdict.non_malicious.length}}">
                     <div>
                         <svg height="10" width="100%">
                             <rect height="10" width="100%" style="fill: transparent;stroke: lightgrey"></rect>
@@ -30,31 +30,31 @@
                     </div>
                 </div>
             </div>
-            <div class="col-xs-9 col-sm-10 col-lg-11">
+            <div class="col-sm-10 col-lg-11">
                 <div ng-if="user.c12n_enforcing" class="pull-right">
                     <label class="label classification {{alert.classification | class_label_color}}">&nbsp;&nbsp;{{alert.classification | class_sm}}&nbsp;&nbsp;</label>
                 </div>
-                <div><b>{{alert.type}}<span ng-if="alert.ts">&nbsp;&nbsp;::&nbsp;&nbsp;{{alert.ts | iso_to_utc}}&nbsp;(UTC)</span></b></div>
-                <div class="row" ng-if="alert.label"><div class="col-sm-2">Labels:</div><div class="col-sm-10"><label ng-repeat="l in alert.label track by $index" class="label label-tag label-default">{{l}}</label></div></div>
-                <div class="row" ng-if="alert.priority"><div class="col-sm-2">Priority:</div><div class="col-sm-10"><label class="label label-tag label-default">{{alert.priority}}</label></div></div>
-                <div class="row" ng-if="alert.status"><div class="col-sm-2">Status:</div><div class="col-sm-10"><label class="label label-tag label-default">{{alert.status}}</label></div></div>
-                <div class="row" style="padding-top: 10px"><div class="col-sm-2">File info:</div><div class="col-sm-10"><span class="text-primary"><b>{{alert.file.name}}</b></span><span ng-if="alert.file.type"> :: {{alert.file.type}}</span> :: <b>{{alert.file.size}}</b> ({{alert.file.size | fileSize}})</div></div>
-                <div class="row text-fixed"><div class="col-sm-2">MD5:</div><div class="col-sm-10 small">{{alert.file.md5}}</div></div>
-                <div class="row text-fixed"><div class="col-sm-2">SHA1:</div><div class="col-sm-10 small">{{alert.file.sha1}}</b></div></div>
-                <div class="row text-fixed" style="padding-bottom: 10px"><div class="col-sm-2">SHA256:</div><div class="col-sm-10 small">{{alert.file.sha256}}</div></div>
-                <div class="row" ng-show="alert.owner"><div class="col-sm-2">Ownership:</div><div class="col-sm-10"><b>{{alert.owner}}</b></div></div>
-                <div class="row" ng-show="alert.hint_owner"><div class="col-sm-2">Ownership:</div><div class="col-sm-10"><b>There are owners for previous alerts in the group</b></div></div>
+                <div><b>{{alert.type}}</b><span ng-if="alert.ts" class="text-muted">&nbsp;&nbsp;::&nbsp;&nbsp;{{alert.ts | iso_to_utc}}&nbsp;(UTC)</span></div>
+                <div class="row" ng-if="alert.label"><label class="col-xs-3 col-sm-2">Labels:</label><div class="col-xs-9 col-sm-10"><label ng-repeat="l in alert.label track by $index" class="label label-tag label-default">{{l}}</label></div></div>
+                <div class="row" ng-if="alert.priority"><label class="col-xs-3 col-sm-2">Priority:</label><div class="col-xs-9 col-sm-10"><label class="label label-tag label-default">{{alert.priority}}</label></div></div>
+                <div class="row" ng-if="alert.status"><label class="col-xs-3 col-sm-2">Status:</label><div class="col-xs-9 col-sm-10"><label class="label label-tag label-default">{{alert.status}}</label></div></div>
+                <div class="row" style="padding-top: 10px"><label class="col-xs-3 col-sm-2">File info:</label><div class="col-xs-9 col-sm-10"><div class="text-primary"><b>{{alert.file.name}}</b></div><div ng-if="alert.file.type">{{alert.file.type}}</div><div><b>{{alert.file.size}}</b> ({{alert.file.size | fileSize}})</div></div>
+                <div class="row text-fixed"><label class="col-xs-3 col-sm-2">MD5:</label><div class="col-xs-9 col-sm-10 small">{{alert.file.md5}}</div></div>
+                <div class="row text-fixed"><label class="col-xs-3 col-sm-2">SHA1:</label><div class="col-xs-9 col-sm-10 small">{{alert.file.sha1}}</b></div></div>
+                <div class="row text-fixed" style="padding-bottom: 10px"><label class="col-xs-3 col-sm-2">SHA256:</label><div class="col-xs-9 col-sm-10 small">{{alert.file.sha256}}</div></div>
+                <div class="row" ng-show="alert.owner"><label class="col-xs-3 col-sm-2">Ownership:</label><div class="col-xs-9 col-sm-10"><b>{{alert.owner}}</b></div></div>
+                <div class="row" ng-show="alert.hint_owner"><label class="col-xs-3 col-sm-2">Ownership:</label><div class="col-xs-9 col-sm-10"><b>There are owners for previous alerts in the group</b></div></div>
                 <div ng-if="has_meta(alert)" style="padding-top: 10px; padding-bottom: 10px;">
-                    <div ng-repeat="(k,v) in alert.metadata" class="row"><div ng-if="v" class="col-sm-2">{{ k | titleCase }}:</div><div ng-if="v" class="col-sm-10">{{ v | joinBy }}</div></div>
+                    <div ng-if="k != 'type' && k != 'ts'" ng-repeat="(k,v) in alert.metadata" class="row"><label ng-if="v" class="col-xs-3 col-sm-2">{{ k | titleCase }}:</label><div ng-if="v" class="col-xs-9 col-sm-10">{{ v | joinBy }}</div></div>
                 </div>
-                <div class="row" ng-if="alert.al.behavior"><div class="col-sm-2">Behaviors:</div><div class="col-sm-10 small"><span class="text-info">{{alert.al.behavior | split}}</span></div></div>
-                <div class="row" ng-if="alert.al.attrib"><div class="col-sm-2">Attribution:</div><div class="col-sm-10"><b class="text-danger">{{alert.al.attrib | split}}</b></div></div>
-                <div class="row" ng-if="alert.al.av"><div class="col-sm-2">AV Hits:</div><div class="col-sm-10"><b class="text-warning">{{alert.al.av | split}}</b></div></div>
-                <div class="row" ng-if="has_items(alert.al.ip)&&!has_items(alert.al.ip_static)&&!has_items(alert.al.ip_dynamic)"><div class="col-sm-2">IPs:</div><div class="col-sm-10 small"><span class="text-success">{{alert.al.ip | split}}</span></div></div>
-                <div class="row" ng-if="has_items(alert.al.ip_static)||has_items(alert.al.ip_dynamic)"><div class="col-sm-2">IPs:</div><div class="col-sm-10 small"><span class="text-success"><b>{{alert.al.ip_dynamic | split}}</b></span><span ng-if="has_items(alert.al.ip_dynamic)&&has_items(alert.al.ip_static)"> | </span><span class="text-success">{{alert.al.ip_static | split}}</span></div></div>
-                <div class="row" ng-if="has_items(alert.al.domain)&&!has_items(alert.al.domain_static)&&!has_items(alert.al.domain_dynamic)"><div class="col-sm-2">Domains:</div><div class="col-sm-10 small"><span class="text-success">{{alert.al.domain | split}}</span></div></div>
-                <div class="row" ng-if="has_items(alert.al.domain_static)||has_items(alert.al.domain_dynamic)"><div class="col-sm-2">Domains:</div><div class="col-sm-10 small"><span class="text-success"><b>{{alert.al.domain_dynamic | split}}</b></span><span ng-if="has_items(alert.al.domain_dynamic)&&has_items(alert.al.domain_static)"> | </span><span class="text-success">{{alert.al.domain_static | split}}</span></div></div>
-                <div class="row" ng-if="alert.al.yara"><div class="col-sm-2">Yara hits:</div><div class="col-sm-10 small">{{alert.al.yara | split}}</div></div>
+                <div class="row" ng-if="alert.al.behavior"><label class="col-xs-3 col-sm-2">Behaviors:</label><div class="col-xs-9 col-sm-10 small"><span class="text-info">{{alert.al.behavior | split}}</span></div></div>
+                <div class="row" ng-if="alert.al.attrib"><label class="col-xs-3 col-sm-2">Attribution:</label><div class="col-xs-9 col-sm-10"><b class="text-danger">{{alert.al.attrib | split}}</b></div></div>
+                <div class="row" ng-if="alert.al.av"><label class="col-xs-3 col-sm-2">AV Hits:</label><div class="col-xs-9 col-sm-10"><b class="text-warning">{{alert.al.av | split}}</b></div></div>
+                <div class="row" ng-if="has_items(alert.al.ip)&&!has_items(alert.al.ip_static)&&!has_items(alert.al.ip_dynamic)"><label class="col-xs-3 col-sm-2">IPs:</label><div class="col-xs-9 col-sm-10 small"><span class="text-success">{{alert.al.ip | split}}</span></div></div>
+                <div class="row" ng-if="has_items(alert.al.ip_static)||has_items(alert.al.ip_dynamic)"><label class="col-xs-3 col-sm-2">IPs:</label><div class="col-xs-9 col-sm-10 small"><span class="text-success"><b>{{alert.al.ip_dynamic | split}}</b></span><span ng-if="has_items(alert.al.ip_dynamic)&&has_items(alert.al.ip_static)"> | </span><span class="text-success">{{alert.al.ip_static | split}}</span></div></div>
+                <div class="row" ng-if="has_items(alert.al.domain)&&!has_items(alert.al.domain_static)&&!has_items(alert.al.domain_dynamic)"><label class="col-xs-3 col-sm-2">Domains:</label><div class="col-xs-9 col-sm-10 small"><span class="text-success">{{alert.al.domain | split}}</span></div></div>
+                <div class="row" ng-if="has_items(alert.al.domain_static)||has_items(alert.al.domain_dynamic)"><label class="col-xs-3 col-sm-2">Domains:</label><div class="col-xs-9 col-sm-10 small"><span class="text-success"><b>{{alert.al.domain_dynamic | split}}</b></span><span ng-if="has_items(alert.al.domain_dynamic)&&has_items(alert.al.domain_static)"> | </span><span class="text-success">{{alert.al.domain_static | split}}</span></div></div>
+                <div class="row" ng-if="alert.al.yara"><label class="col-xs-3 col-sm-2">Yara hits:</label><div class="col-xs-9 col-sm-10 small">{{alert.al.yara | split}}</div></div>
                 <div class="row" style="padding-top: 5px">
                     <div class="col-md-2"></div>
                     <div class="col-lg-10 small form-inline">
@@ -67,7 +67,7 @@
                     </div>
                 </div>
                 <div style="padding-top: 3px">
-                    <div class="text-smaller text-muted text-right">{{alert.alert_id}} @ <a class="text-muted" href="" ng-click="lock_in_timestamp(alert)">{{alert.reporting_ts | iso_to_utc}} (UTC)</a></div>
+                    <div class="text-smaller text-muted text-right">{{alert.alert_id}} :: <a class="text-muted nowrap" href="" ng-click="lock_in_timestamp(alert)">{{alert.reporting_ts | iso_to_utc }} (UTC)</a></div>
                 </div>
             </div>
         </div>

@@ -8,7 +8,6 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
     .controller('ALController', function ($scope, $http, $timeout) {
         //Parameters vars
         $scope.user = null;
-        $scope.loading = false;
         $scope.loading_extra = false;
         $scope.alert_list = null;
         $scope.started = false;

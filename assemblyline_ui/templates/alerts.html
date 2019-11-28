@@ -22,16 +22,6 @@
     		<h4 class="text-muted">:: {{total}}<span ng-show="total_instances">/{{total_instances}}</span> alert<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4>
 		</div>
 
-        <div class="pad">
-            <div ng-if="filter_queries.length > 0">
-                <b>Post filters :</b> <span class="text-muted">{{filter_queries | split}}</span>
-            </div>
-            <div ng-if="view_type == 'list' && tc_start && tc">
-                <b>Time restiction :</b> <span class="text-muted"> reporting_ts:[{{ tc_start }}{{ time_separator }}-{{ tc }} TO {{ tc_start }}]</span>
-            </div>
-            <div ng-if="(view_type=='list'&&tc)||(view_type=='list'&&tc_start)||filter_queries.length>1||(view_type=='grouped'&&filter_queries.length>0)"><a href="" ng-click="clear_forced_filter()" class="btn btn-default btn-xs">Clear extra filters</a></div>
-        </div>
-
         <div class="modal fade" id="statsModal" tabindex="-1" role="dialog" aria-labelledby="statsModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-resize">
                 <div class="modal-content">
@@ -186,27 +176,39 @@
                     <span class="input-group-btn">
                         <a href="/alerts.html?filter={{query}}&tc={{tc}}&view_type={{view_type}}&group_by={{group_by}}{{forced_filter}}" class="btn btn-primary" >Filter</a>
                         <div ng-disabled="total == 0" class="btn btn-primary" ng-click="show_statistics()"><span class="glyphicon glyphicon-stats" title="Show alerts statistics"></span></div>
-                        <span ng-if="view_type!='list'" class="btn btn-primary" data-toggle="collapse" data-target="#searchMenu">
+                        <span class="btn btn-primary" data-toggle="collapse" data-target="#searchMenu">
                             <span class="caret"></span>
                         </span>
                     </span>
                 </form>
 
-                <div ng-if="view_type!='list'" id="searchMenu" class="collapse">
+                <div id="searchMenu" class="collapse">
                     <section id="section_global_filters" class="row menudata">
-                        <div ng-show="view_type!='list'">
-                            <div class="col-sm-6 col-lg-8"></div>
-                            <div class="col-sm-3 col-lg-2">
-                                <label>Time constraint</label>
-                                <select class="form-control input-sm" ng-model="tc" ng-change="filterData(filter)" ng-options="option.value as option.name for option in tc_array"></select>
-                            </div>
-                            <div class="col-sm-3 col-lg-2">
-                                <label>Group By</label>
-                                <select class="form-control input-sm" ng-model="group_by" ng-change="filterData(filter)" ng-options="grp for grp in possible_group_by"></select>
+                        <div class="col-sm-12">
+                            <div class="row" >
+                                <div ng-class="{'col-sm-6': view_type!='list', 'col-lg-8': view_type!='list', 'col-sm-12': view_type=='list'}">
+                                    <div ng-if="filter_queries.length > 0" style="margin-bottom: 5px">
+                                        <label style="margin-bottom: 0">Post filters :</label>
+                                        <div class="text-muted">{{filter_queries | split}}</div>
+                                    </div>
+                                    <div ng-if="view_type == 'list' && tc_start && tc" style="margin-bottom: 5px">
+                                        <label style="margin-bottom: 0">Time restiction :</label>
+                                        <div class="text-muted"> reporting_ts:[{{ tc_start }}{{ time_separator }}-{{ tc }} TO {{ tc_start }}]</div>
+                                    </div>
+                                    <div ng-if="(view_type=='list'&&tc)||(view_type=='list'&&tc_start)||filter_queries.length>1||(view_type=='grouped'&&filter_queries.length>0)"><a href="" ng-click="clear_forced_filter()" class="btn btn-default btn-xs">Clear extra filters</a></div>
+                                </div>
+                                <div ng-show="view_type!='list'" class="col-sm-3 col-lg-2">
+                                    <label>Time constraint</label>
+                                    <select class="form-control input-sm" ng-model="tc" ng-change="filterData(filter)" ng-options="option.value as option.name for option in tc_array"></select>
+                                </div>
+                                <div ng-show="view_type!='list'" class="col-sm-3 col-lg-2">
+                                    <label>Group By</label>
+                                    <select class="form-control input-sm" ng-model="group_by" ng-change="filterData(filter)" ng-options="grp for grp in possible_group_by"></select>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="col-sm-6 pad">
+                        <div ng-if="view_type!='list'" class="col-sm-6 pad">
                             <div class="menuheader" data-toggle="collapse" data-target="#statuses">
                                 <span class="text-big">Status</span>
                             </div>
@@ -216,7 +218,7 @@
                             </div>
                         </div>
 
-                        <div class="col-sm-6 pad">
+                        <div ng-if="view_type!='list'" class="col-sm-6 pad">
                             <div class="menuheader" data-toggle="collapse" data-target="#priorities">
                                 <span class="text-big">Priority</span>
                             </div>
@@ -226,7 +228,7 @@
                             </div>
                         </div>
 
-                        <div class="col-sm-12 pad">
+                        <div ng-if="view_type!='list'" class="col-sm-12 pad">
                             <div class="menuheader" data-toggle="collapse" data-target="#labels">
                                 <span class="text-big">Labels</span>
                             </div>
@@ -236,7 +238,7 @@
                             </div>
                         </div>
 
-                        <div class="col-sm-6 pad">
+                        <div ng-if="view_type!='list'" class="col-sm-6 pad">
                             <div class="menuheader" data-toggle="collapse" data-target="#personal_filters">
                                 <span class="text-big">Personal filters</span>
                             </div>
@@ -251,7 +253,7 @@
                             </div>
                         </div>
 
-                        <div class="col-sm-6 pad">
+                        <div ng-if="view_type!='list'" class="col-sm-6 pad">
                             <div class="menuheader" data-toggle="collapse" data-target="#global_filters">
                                 <span class="text-big">Global filters</span>
                             </div>
@@ -312,4 +314,4 @@
 	</section>
 	{%endraw%}
 {% endblock %}				
-{% block loading_jumbo %}ng-hide="alert_list != null && !loading_extra"{% endblock %}
+{% block loading_jumbo %}ng-hide="alert_list != null && started"{% endblock %}
