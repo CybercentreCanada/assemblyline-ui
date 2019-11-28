@@ -182,25 +182,25 @@ def change_status(sid, status, **kwargs):
                                      f"You cannot change the status of signature {sid} from "
                                      f"{data['status']} to {status}.", 403)
 
-        query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{sid}"
         today = now_as_iso()
         uname = user['uname']
 
         if status not in ['DISABLED', 'INVALID', 'TESTING']:
-            keys = [k['id']
-                    for k in STORAGE.signature.search(query, fl="id", as_obj=False)['items']]
-            for other in STORAGE.signature.multiget(keys, as_obj=False, as_dictionary=False):
-                other['state_change_date'] = today
-                other['state_change_user'] = uname
-                other['status'] = 'DISABLED'
+            query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{sid}"
+            others_operations = [
+                ('SET', 'state_change_date', today),
+                ('SET', 'state_change_user', uname),
+                ('SET', 'status', 'DISABLED')
+            ]
+            STORAGE.signature.update_by_query(query, others_operations)
 
-                STORAGE.signature.save(f"{other['meta']['rule_id']}r.{other['meta']['rule_version']}", other)
+        operations = [
+            ('SET', 'state_change_date', today),
+            ('SET', 'state_change_user', uname),
+            ('SET', 'status', status)
+        ]
 
-        data['state_change_date'] = today
-        data['state_change_user'] = uname
-        data['status'] = status
-
-        return make_api_response({"success": STORAGE.signature.save(sid, data)})
+        return make_api_response({"success": STORAGE.signature.update(sid, operations)})
     else:
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
