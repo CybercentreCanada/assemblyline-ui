@@ -11,7 +11,7 @@
                     <span ng-if="alert.extended_scan=='submitted'" class="icon icon-circleselection" title="Waiting on extended scan to be completed"></span>
                     <span ng-if="alert.extended_scan=='skipped'" class="text-warning icon icon-ban-circle" title="Extended Scan was skipped for this alert"></span>
                 </div>
-                <div class="ac_pr ac_auto_up" title="Malicious: {{alert.verdict.malicious.length}} / Non-Malicious: {{alert.verdict.non_malicious.length}}">
+                <div class="ac_pr ac_auto_up pad" title="Malicious: {{alert.verdict.malicious.length}} / Non-Malicious: {{alert.verdict.non_malicious.length}}">
                     <div>
                         <svg height="10" width="100%">
                             <rect height="10" width="100%" style="fill: transparent;stroke: lightgrey"></rect>
@@ -30,8 +30,8 @@
                     </div>
                 </div>
             </div>
-            <div class="col-sm-10 col-lg-11">
-                <div class="row" style="padding-bottom: 10px;"><label class="col-xs-3 col-sm-2">{{alert.type}}</label><div class="col-xs-9 col-sm-10"><div ng-if="user.c12n_enforcing" class="hidden-xs pull-right"><label class="label classification {{alert.classification | class_label_color}}">&nbsp;&nbsp;{{alert.classification | class_sm}}&nbsp;&nbsp;</label></div><span ng-if="alert.ts">{{alert.ts | iso_to_utc}}&nbsp;(UTC)</span></div></div>
+            <div class="col-xs-12 col-sm-10 col-lg-11">
+                <div class="row pad" ><label class="col-xs-3 col-sm-2" style="font-size: 110%">{{alert.type}}</label><div class="col-xs-9 col-sm-10"><div ng-if="user.c12n_enforcing" class="hidden-xs pull-right" style="margin-right: 10px"><label class="label classification {{alert.classification | class_label_color}}">&nbsp;&nbsp;{{alert.classification | class_sm}}&nbsp;&nbsp;</label></div><span ng-if="alert.ts">{{alert.ts | iso_to_utc}}&nbsp;(UTC)</span></div></div>
                 <div ng-if="alert.group_count" class="hidden-sm hidden-md hidden-lg row"><label class="col-xs-3 col-sm-2">Count:</label><div class="col-xs-9 col-sm-10"><b><a href="/alerts.html?tc_start={{tc_start}}&tc={{tc}}&view_type=list&group_by={{group_by}}&fq={{group_by}}:&quot;{{get_object_value(alert, group_by) | quote}}&quot;&fq={{filter}}{{forced_filter}}">{{alert.group_count}}x</a></b></div></div>
                 <div ng-if="user.c12n_enforcing" class="hidden-sm hidden-md hidden-lg row"><label class="col-xs-3 col-sm-2">Classification:</label><div class="col-xs-9 col-sm-10""><label class="{{alert.classification | class_text_color}}">{{alert.classification | class_long}}</label></div></div>
                 <div class="hidden-sm hidden-md hidden-lg row"><label class="col-xs-3 col-sm-2">Score:</label><div class="col-xs-9 col-sm-10 {{alert.al.score | score_color}}"><b>{{alert.al.score}}</b></div></div>
@@ -67,7 +67,7 @@
                         <a ng-if="!user.read_only" id="{{alert_idx}}_workflow" href="" class="btn btn-xs btn-default" ng-click="prompt_workflow_action(alert, alert_idx);">Workflow action</a>
                     </div>
                 </div>
-                <div style="padding-top: 3px">
+                <div style="padding-top: 3px; padding-bottom: 5px; margin-right: 10px">
                     <div class="text-smaller text-muted text-right">{{alert.alert_id}} :: <a class="text-muted nowrap" href="" ng-click="lock_in_timestamp(alert)">{{alert.reporting_ts | iso_to_utc }} (UTC)</a></div>
                 </div>
             </div>
