@@ -856,10 +856,10 @@ def set_verdict(alert_id, verdict, **kwargs):
         ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
     ])
 
-    propagate_resp = STORAGE.submission.update(document['sid'], [
+    STORAGE.submission.update(document['sid'], [
         ('REMOVE', f'verdict.{verdict}', user['uname']),
         ('APPEND', f'verdict.{verdict}', user['uname']),
         ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
     ])
 
-    return make_api_response({"success": resp is not False and propagate_resp})
+    return make_api_response({"success": resp != 0})
