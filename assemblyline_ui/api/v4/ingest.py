@@ -265,13 +265,15 @@ def ingest_single_file(**kwargs):
             })
 
             # Calculate file digest and save it to filestore
-            digests = identify.get_digests_for_file(out_file)
-            if digests['size'] == 0:
+            fileinfo = identify.fileinfo(out_file)
+            if fileinfo['size'] == 0:
                 return make_api_response("", err="File empty. Submission failed", status_code=400)
 
-            sha256 = digests['sha256']
+            sha256 = fileinfo['sha256']
             if not f_transport.exists(sha256):
                 f_transport.upload(out_file, sha256, location='far')
+                expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
+                STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
 
             # Setup notification queue if needed
             if notification_queue:
@@ -294,7 +296,7 @@ def ingest_single_file(**kwargs):
             try:
                 submission_obj = Submission({
                     "sid": ingest_id,
-                    "files": [{'name': name, 'sha256': sha256, 'size': digests['size']}],
+                    "files": [{'name': name, 'sha256': sha256, 'size': fileinfo['size']}],
                     "notification": notification_params,
                     "metadata": metadata,
                     "params": s_params
