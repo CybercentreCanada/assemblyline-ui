@@ -31,7 +31,7 @@
                     <div class="modal-body">
                         <div ng-show="getKeys(val).length>0" ng-repeat="(key, val) in statistics">
                             <div class="row hint_row">
-                                <div class="col-xs-4 col-sm-3 col-md-2"><strong style="font-size: 110%;">{{key | titleCase}}</strong></div>
+                                <div class="col-xs-4 col-sm-3 col-md-2"><strong style="font-size: 110%;">{{key}}</strong></div>
                                 <div id='{{safe_key(key)}}' class="col-xs-8 col-sm-9 col-md-10 expandable-tags">
                                     <div id='{{safe_key(key)}}_expand' class="clickable pull-right" ng-click="expand(safe_key(key));">&nbsp;<span class="glyphicon glyphicon-chevron-right"></span></div>
                                     <a href="/alerts.html?filter={{filter}}&tc={{tc}}&fq={{key}}:&quot;{{meta | quote}}&quot;{{forced_filter}}" class="label label-tag label-nolight" style="font-size: 85%;" ng-repeat="(meta, count) in val">{{count}}x {{meta}}</a>
