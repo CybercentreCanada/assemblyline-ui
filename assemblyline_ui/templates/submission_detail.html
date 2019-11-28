@@ -58,11 +58,11 @@
 					<div ng-show="started && !data.times.completed"><div class="throbber"></div></div>
 					<div title="Malicious: {{data.verdict.malicious.length}} / Non-Malicious: {{data.verdict.non_malicious.length}}" class="hidden-xs" ng-show="data.times.completed">
 						<div class="pad"><span style="width: 170px; display: block;" class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span></div>
-						<div>
+						<div ng-if="data.verdict">
 							<svg height="15" width="170">
 								<rect height="15" width="170" style="fill: transparent;stroke: lightgrey"></rect>
-								<rect x="{{85 - (data.verdict.malicious.length * 5)}}" width="{{(data.verdict.malicious.length * 5)}}" y="1" height="13" fill="#d9534f"></rect>
-								<rect x="85" width="{{(data.verdict.non_malicious.length * 5)}}" y="1" height="13" fill="#5cb85c"></rect>
+								<rect ng-attr-x="{{85 - (data.verdict.malicious.length * 5)}}" ng-attr-width="{{(data.verdict.malicious.length * 5)}}" y="1" height="13" fill="#d9534f"></rect>
+								<rect x="85" ng-attr-width="{{(data.verdict.non_malicious.length * 5)}}" y="1" height="13" fill="#5cb85c"></rect>
 								<rect x="85" y="0" height="15" width="1" fill="lightgrey"></rect>
 							</svg>
 						</div>
@@ -83,11 +83,11 @@
 					</p>
 					<div title="Malicious: {{data.verdict.malicious.length}} / Non-Malicious: {{data.verdict.non_malicious.length}}" class="hidden-sm hidden-md hidden-lg" ng-show="data.times.completed">
 						<div class="pad" style="display: inline-table;"><span style="width: 170px; display: block;" class="text-large label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span></div>
-						<div>
+						<div ng-if="data.verdict">
 							<svg height="15" width="170">
 								<rect height="15" width="170" style="fill: transparent;stroke: lightgrey"></rect>
-								<rect x="{{85 - (data.verdict.malicious.length * 5)}}" width="{{(data.verdict.malicious.length * 5)}}" y="1" height="13" fill="#d9534f"></rect>
-								<rect x="85" width="{{(data.verdict.non_malicious.length * 5)}}" y="1" height="13" fill="#5cb85c"></rect>
+								<rect ng-attr-x="{{85 - (data.verdict.malicious.length * 5)}}" ng-attr-width="{{(data.verdict.malicious.length * 5)}}" y="1" height="13" fill="#d9534f"></rect>
+								<rect x="85" ng-attr-width="{{(data.verdict.non_malicious.length * 5)}}" y="1" height="13" fill="#5cb85c"></rect>
 								<rect x="85" y="0" height="15" width="1" fill="lightgrey"></rect>
 							</svg>
 						</div>

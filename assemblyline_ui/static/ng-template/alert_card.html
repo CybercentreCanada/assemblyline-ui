@@ -15,8 +15,8 @@
                     <div>
                         <svg height="10" width="100%">
                             <rect height="10" width="100%" style="fill: transparent;stroke: lightgrey"></rect>
-                            <rect x="{{50 - (alert.verdict.malicious.length * 5)}}%" width="{{(alert.verdict.malicious.length * 5)}}%" y="1" height="13" fill="#d9534f"></rect>
-                            <rect x="50%" width="{{(alert.verdict.non_malicious.length * 5)}}%" y="1" height="13" fill="#5cb85c"></rect>
+                            <rect ng-attr-x="{{50 - (alert.verdict.malicious.length * 5)}}%" ng-attr-width="{{(alert.verdict.malicious.length * 5)}}%" y="1" height="13" fill="#d9534f"></rect>
+                            <rect x="50%" ng-attr-width="{{(alert.verdict.non_malicious.length * 5)}}%" y="1" height="13" fill="#5cb85c"></rect>
                             <rect x="50%" y="0" height="10" width="1%" fill="lightgrey"></rect>
                         </svg>
                     </div>
