@@ -20,17 +20,6 @@
 			<h1>{{ app_name }} Alerts</h1>
 	{%raw%}
     		<h4 class="text-muted">:: {{total}}<span ng-show="total_instances">/{{total_instances}}</span> alert<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4>
-            <div class="row" ng-show="view_type!='list'">
-				<div class="col-sm-6 col-md-8"></div>
-				<div class="col-sm-3 col-md-2">
-                    <label>Time constraint</label>
-                    <select class="form-control" ng-model="tc" ng-change="filterData(filter)" ng-options="option.value as option.name for option in tc_array"></select>
-            	</div>
-                <div class="col-sm-3 col-md-2">
-                    <label>Group By</label>
-                    <select class="form-control" ng-model="group_by" ng-change="filterData(filter)" ng-options="grp for grp in possible_group_by"></select>
-            	</div>
-			</div>
 		</div>
 
         <div class="pad">
@@ -205,6 +194,18 @@
 
                 <div ng-if="view_type!='list'" id="searchMenu" class="collapse">
                     <section id="section_global_filters" class="row menudata">
+                        <div ng-show="view_type!='list'">
+                            <div class="col-sm-6 col-lg-8"></div>
+                            <div class="col-sm-3 col-lg-2">
+                                <label>Time constraint</label>
+                                <select class="form-control input-sm" ng-model="tc" ng-change="filterData(filter)" ng-options="option.value as option.name for option in tc_array"></select>
+                            </div>
+                            <div class="col-sm-3 col-lg-2">
+                                <label>Group By</label>
+                                <select class="form-control input-sm" ng-model="group_by" ng-change="filterData(filter)" ng-options="grp for grp in possible_group_by"></select>
+                            </div>
+                        </div>
+
                         <div class="col-sm-6 pad">
                             <div class="menuheader" data-toggle="collapse" data-target="#statuses">
                                 <span class="text-big">Status</span>

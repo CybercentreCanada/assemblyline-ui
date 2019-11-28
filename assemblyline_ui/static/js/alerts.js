@@ -504,7 +504,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.invalid_query = "";
 
         $scope.filterData = function (searchText) {
-            let url = "/alerts.html?filter=" + encodeURIComponent(searchText) + "&tc=" + $scope.tc + "&view_type=" + $scope.view_type + "&group_by=" + $scope.group_by;
+            let url = "/alerts.html?filter=" + encodeURIComponent(searchText) + "&tc=" + this.tc + "&view_type=" + $scope.view_type + "&group_by=" + this.group_by;
             for (let key in $scope.filter_queries) {
                 let fq = $scope.filter_queries[key];
                 url += "&fq=" + fq;
