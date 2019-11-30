@@ -153,7 +153,7 @@
 			</section>
 
 			<section ng-show="data.attack_matrix && obj_len(data.attack_matrix) != 0" class="report_section">
-				<div class="menureport">
+				<div class="menureport" style="margin-bottom: 0">
 					<span class="text-big">Att&ck Matrix</span>
 				</div>
 
@@ -170,13 +170,13 @@
 				</div>
 			</section>
 
-			<section ng-show="data.heuristics && obj_len(data.heuristics) != 0" class="report_section">
+			<section ng-show="data.heuristics && (obj_len(data.heuristics.malicious) != 0 || obj_len(data.heuristics.suspicious) != 0 || obj_len(data.heuristics.info) != 0)" class="report_section">
 				<div class="menureport">
 					<span class="text-big">Heuristics</span>
 				</div>
 
                 <div class="box-container">
-					<div class="box">
+					<div ng-show="obj_len(data.heuristics.malicious) != 0" class="box">
                         <div class="danger header">Malicious</div>
                         <div class="item" ng-repeat="(b_name, files) in data.heuristics.malicious | orderBy:b_name">
                             <label style="display: inline;">{{b_name}}</label>
@@ -185,7 +185,7 @@
                             </ul>
                         </div>
                     </div>
-					<div class="box">
+					<div ng-show="obj_len(data.heuristics.suspicious) != 0" class="box">
                         <div class="warning header">Suspicious</div>
                         <div class="item" ng-repeat="(b_name, files) in data.heuristics.suspicious | orderBy:b_name">
                             <label style="display: inline;">{{b_name}}</label>
@@ -194,7 +194,7 @@
                             </ul>
                         </div>
                     </div>
-					<div class="box">
+					<div ng-show='obj_len(data.heuristics.info) != 0' class="box">
                         <div class="info header">Info</div>
                         <div class="item" ng-repeat="(b_name, files) in data.heuristics.info | orderBy:b_name">
                             <label style="display: inline;">{{b_name}}</label>
