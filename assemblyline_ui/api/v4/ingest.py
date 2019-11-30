@@ -4,6 +4,7 @@ import shutil
 
 from flask import request
 
+from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
@@ -24,6 +25,7 @@ ingest = NamedQueue(
     "m-ingest",
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
+MAX_SIZE = config.submission.max_file_size
 
 
 # noinspection PyUnusedLocal
@@ -161,6 +163,7 @@ def ingest_single_file(**kwargs):
     """
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
+    extracted_path = original_file = None
     with forge.get_filestore() as f_transport:
         try:
             # Get data block and binary blob
@@ -208,7 +211,7 @@ def ingest_single_file(**kwargs):
                 os.makedirs(out_dir)
             except Exception:
                 pass
-            out_file = os.path.join(out_dir, name)
+            original_file = out_file = os.path.join(out_dir, name)
 
             # Load file
             if not binary:
@@ -256,7 +259,6 @@ def ingest_single_file(**kwargs):
 
             # Override final parameters
             s_params.update({
-                'description': "[%s] Inspection of file: %s" % (s_params['type'], name),
                 'generate_alert': generate_alert,
                 'max_extracted': config.core.ingester.default_max_extracted,
                 'max_supplementary': config.core.ingester.default_max_supplementary,
@@ -264,16 +266,29 @@ def ingest_single_file(**kwargs):
                 'submitter': user['uname']
             })
 
-            # Calculate file digest and save it to filestore
+            # Calculate file digest
             fileinfo = identify.fileinfo(out_file)
-            if fileinfo['size'] == 0:
-                return make_api_response("", err="File empty. Submission failed", status_code=400)
 
+            # Validate file size
+            if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
+                msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
+                return make_api_response("", err=msg, status_code=400)
+            elif fileinfo['size'] == 0:
+                return make_api_response("", err="File empty. Ingestion failed", status_code=400)
+
+            # Decode cart if needed
+            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
+            if extracted_path:
+                out_file = extracted_path
+
+            # Save the file to the filestore if needs be
             sha256 = fileinfo['sha256']
             if not f_transport.exists(sha256):
                 f_transport.upload(out_file, sha256, location='far')
-                expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
-                STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
+
+            # Freshen file object
+            expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
+            STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
 
             # Setup notification queue if needed
             if notification_queue:
@@ -284,13 +299,18 @@ def ingest_single_file(**kwargs):
             else:
                 notification_params = {}
 
-            # Load metadata and setup some default values if they are missing
+            # Load metadata, setup some default values if they are missing and append the cart metadata
             ingest_id = get_random_id()
             metadata = flatten(data.get("metadata", {}))
             metadata['ingest_id'] = ingest_id
             metadata['type'] = s_params['type']
+            name = al_meta.pop('name', name)
+            metadata.update(al_meta)
             if 'ts' not in metadata:
                 metadata['ts'] = now_as_iso()
+
+            # Set description if it does not exists
+            s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of file: {name}"
 
             # Create submission object
             try:
@@ -309,13 +329,21 @@ def ingest_single_file(**kwargs):
             return make_api_response({"ingest_id": ingest_id})
 
         finally:
+            # Cleanup files on disk
             try:
-                # noinspection PyUnboundLocalVariable
-                os.unlink(out_file)
+                if original_file and os.path.exists(original_file):
+                    os.unlink(original_file)
             except Exception:
                 pass
 
             try:
-                shutil.rmtree(out_dir, ignore_errors=True)
+                if extracted_path and os.path.exists(extracted_path):
+                    os.unlink(extracted_path)
+            except Exception:
+                pass
+
+            try:
+                if os.path.exists(out_dir):
+                    shutil.rmtree(out_dir, ignore_errors=True)
             except Exception:
                 pass
