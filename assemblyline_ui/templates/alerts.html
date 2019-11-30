@@ -19,7 +19,7 @@
 		<div class="header_title text-right">
 			<h1>{{ app_name }} Alerts</h1>
 	{%raw%}
-    		<h4 class="text-muted">:: {{total}}<span ng-show="total_instances">/{{total_instances}}</span> alert<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4>
+    		<h5 class="text-muted">{{total}}<span ng-show="total_instances">/{{total_instances}}</span> alert<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
 
         <div class="modal fade" id="statsModal" tabindex="-1" role="dialog" aria-labelledby="statsModalLabel" aria-hidden="true">

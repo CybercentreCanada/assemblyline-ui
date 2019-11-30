@@ -184,6 +184,10 @@ section.container{
 	z-index: 1;
 }
 
+.header_title h5{
+	padding-bottom: 20px;
+}
+
 .pager_search {
     margin-bottom: 10px;
 }

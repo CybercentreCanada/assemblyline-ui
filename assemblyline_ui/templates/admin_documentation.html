@@ -4,7 +4,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Assemblyline Documentation</h1>
-			<h4 class="text-muted">:: {% if fname %}{{fname}}{% else %}Available documentation files{% endif %} ::</h4>
+			<h4 class="text-muted">{% if fname %}{{fname}}{% else %}Available documentation files{% endif %}</h4>
 			{% if fname %}
 				<a href="/admin/documentation.html">[ back to documentation list ]</a>
 			{% else %}

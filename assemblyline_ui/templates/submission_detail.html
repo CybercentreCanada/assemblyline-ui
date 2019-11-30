@@ -75,7 +75,7 @@
 				</div>
 				<div class="col-sm-8 header_title text-right">
 					<h1>Submission Details</h1>
-					<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
+					<h5 class="text-muted" ng-hide="!sid">{{sid}}</h5>
 					<p ng-show="started" ng-if="!user.read_only">
 						<a ng-click="resubmit_submission();" class="btn btn-default btn-sm" title="Resubmit current submission"><span class="glyphicon glyphicon-repeat"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Resubmit</span></a>&nbsp;
 						<a ng-show="data.state==='completed'" href="report.html?sid={{sid}}" class="btn btn-primary btn-sm" title="Show report"><span class="glyphicon glyphicon-book"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Show report</span></a>&nbsp;

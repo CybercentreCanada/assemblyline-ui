@@ -11,8 +11,8 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Signature Statistics</h1>
-			<h4 class="text-muted">:: {{total}} signature<span ng-show="total > 1 || total < 1">s have</span><span ng-show="total == 1"> has</span> statistics<span ng-show="filtered"> (filtered)</span> ::</h4>
-            <h4 class="text-muted"><span ng-hide="timestamp == null"> Last update: {{timestamp}}</span></h4>
+			<h5 class="text-muted">{{total}} signature<span ng-show="total > 1 || total < 1">s have</span><span ng-show="total == 1"> has</span> statistics<span ng-show="filtered"> (filtered)</span></h5>
+            <h5 class="text-muted"><span ng-hide="timestamp == null"> Last update: {{timestamp}}</span></h5>
 		</div>
 		<div>
 			<div ng-controller="pagerCtrl" ng-init="stop_loading=true" pager></div>

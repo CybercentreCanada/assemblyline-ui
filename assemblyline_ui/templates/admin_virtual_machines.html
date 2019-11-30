@@ -10,7 +10,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Virtual Machines Management</h1>
-			<h4 ng-hide="vm_list == null" class="text-muted">:: {{vm_list.length}} Virtual Machine<span ng-show="vm_list.length > 1">s</span> ::</h4>
+			<h5 ng-hide="vm_list == null" class="text-muted">{{vm_list.length}} Virtual Machine<span ng-show="vm_list.length > 1">s</span></h5>
             <button ng-hide="vm_list == null || vm_list.length == 0" type="button" class="btn btn-success btn-sm" ng-click="add_vm_modal()">
                 <span class="glyphicon glyphicon-plus"><span class="hidden-sm">&nbsp;</span></span>
                 <span class="hidden-sm ng-binding">Add VirtualMachine</span>

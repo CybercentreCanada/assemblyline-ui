@@ -1,7 +1,7 @@
 <div>
 	<div class="header_title text-right">
 		<h1>File Details</h1>
-		<h4 ng-show="current_file.name" class="text-muted">:: {{current_file.name | split}} ::</h4>
+		<h5 ng-show="current_file.name" class="text-muted">{{current_file.name | split}}</h5>
 		<p ng-show="current_file" style="font-size: 120%;">
 			<a href="/search.html?query=files.sha256:{{current_file.file_info.sha256}} OR results:{{current_file.file_info.sha256}}*" class="btn btn-default btn-sm" title="Related submissions"><span class="glyphicon glyphicon-tasks"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Related Submissions</span></a>
 			<a href="/api/v4/file/download/{{current_file.file_info.sha256}}/?name={{current_file.name}}&sid={{sid}}" class="btn btn-default btn-sm" title="Download file"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download File</span></a>
@@ -115,7 +115,7 @@
 
 		<section class="header_title" ng-if="current_file.parents">
 			<div class="menuheader " data-toggle="collapse" data-target="#sub_parents">
-				<span class="text-big">Possible parent files</span><span ng-show="current_file.parents.length == 10" class="text-muted">&nbsp;&nbsp;::&nbsp;&nbsp;Last 10</span>
+				<span class="text-big">Possible parent files</span><span ng-show="current_file.parents.length == 10" class="text-muted">&nbsp;&nbsp;(Last 10)</span>
 			</div>
 			<div id="sub_parents" class="collapse in">
 				<div ng-repeat="parent in current_file.parents">

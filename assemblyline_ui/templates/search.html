@@ -11,7 +11,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Search</h1>
-			<h4 ng-show="query" class="text-muted">:: {{query}} ::</h4>
+			<h5 ng-show="query" class="text-muted">{{query}}</h5>
 		</div>
 		<div ng-controller="SearchController" ng-init="page='search';load_favorites=true;load_global_favorites=false" class="bigpad">
             <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">

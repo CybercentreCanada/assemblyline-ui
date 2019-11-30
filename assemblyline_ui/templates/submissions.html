@@ -11,11 +11,11 @@
 	<section id="appContent" class="container">
 		<div ng-show="group" class="header_title text-right">
 			<h1>Group Submissions</h1>
-			<h4 ng-hide="submission_list == null || (total == 0 && !filtered)" class="text-muted">:: {{group}} - {{total}} total submission<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4>
+			<h5 ng-hide="submission_list == null || (total == 0 && !filtered)" class="text-muted">{{group}} - {{total}} total submission<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
 		<div ng-show="uname" class="header_title text-right">
 			<h1>User Submissions</h1>
-			<h4 ng-hide="submission_list == null || (total == 0 && !filtered)" class="text-muted">:: {{uname}} - {{total}} total submission<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span> ::</h4>
+			<h5 ng-hide="submission_list == null || (total == 0 && !filtered)" class="text-muted">{{uname}} - {{total}} total submission<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
 		
 		<div ng-hide="submission_list == null || (!filtered && submission_list.length == 0)">

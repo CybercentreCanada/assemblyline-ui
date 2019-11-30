@@ -17,12 +17,12 @@
 			</div>
 			<div class="col-xs-8 header_title text-right">
 				<h1>Submission Report</h1>
-				<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
+				<h5 class="text-muted" ng-hide="!sid">{{sid}}</h5>
 			</div>
 		</div>
-		<div class="hidden-print text-right">
+		<div class="header_title hidden-print text-right">
 			<h1>Submission Report</h1>
-			<h4 class="text-muted" ng-hide="!sid">:: {{sid}} ::</h4>
+			<h5 class="text-muted" ng-hide="!sid">{{sid}}</h5>
 			<a ng-click="do_print();" class="btn btn-default btn-sm" title="Print page"><span class="glyphicon glyphicon-print"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Print report</span></a>&nbsp;
 			<a href="submission_detail.html?sid={{sid}}" class="btn btn-primary btn-sm" title="View submission details"><span style="vertical-align: middle;" class="icon-details"><span class="hidden-sm hidden-xs">&nbsp;&nbsp;&nbsp;</span></span><span class="hidden-sm hidden-xs">View submission details</span></a>
 		</div>

@@ -10,7 +10,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Service Listing</h1>
-            <h4 ng-hide="service_list == null" class="text-muted">:: {{service_list.length}} Service<span ng-show="service_list.length > 1">s</span>  ::</h4>
+            <h5 ng-hide="service_list == null" class="text-muted">{{service_list.length}} Service<span ng-show="service_list.length > 1">s</span></h5>
 		</div>
         <div class="row">
             <div ng-repeat="srv in service_list" class="col-md-6">
