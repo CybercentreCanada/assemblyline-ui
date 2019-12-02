@@ -15,6 +15,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         mySocket.forward('DispatcherHeartbeat');
         mySocket.forward('AlerterHeartbeat');
         mySocket.forward('ExpiryHeartbeat');
+        mySocket.forward('ArchiveHeartbeat');
         mySocket.forward('IngestHeartbeat');
         mySocket.forward('ServiceHeartbeat');
         mySocket.forward('monitoring');
@@ -68,6 +69,18 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     submission_summary: 0,
                 },
                 metrics: {
+                    alert: 0,
+                    cached_file: 0,
+                    emptyresult: 0,
+                    error: 0,
+                    file: 0,
+                    filescore: 0,
+                    result: 0,
+                    submission: 0,
+                    submission_tree: 0,
+                    submission_summary: 0,
+                },
+                archive: {
                     alert: 0,
                     cached_file: 0,
                     emptyresult: 0,
@@ -231,6 +244,17 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             }
             catch (e) {
                 console.log('Socket-IO::ExpiryHeartbeat [ERROR] Invalid message', data, e);
+            }
+
+        });
+
+        $scope.$on('socket:ArchiveHeartbeat', function (event, data) {
+            try {
+                console.log('Socket-IO::ArchiveHeartbeat message', data);
+                $scope.data.expiry.archive = data.metrics;
+            }
+            catch (e) {
+                console.log('Socket-IO::ArchiveHeartbeat [ERROR] Invalid message', data, e);
             }
 
         });
