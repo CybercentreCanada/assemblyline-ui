@@ -10,7 +10,7 @@
 		<span ng-show="current_signature.status=='STAGING'" class="signature_status label label-primary">{{current_signature.status}}</span>
 		<span ng-show="current_signature.status=='INVALID'" class="signature_status label label-default">{{current_signature.status}}</span>
 	</div>
-	<ul class="nav nav-tabs" id="tabContent">
+    <ul class="nav nav-tabs" id="tabContent">
 		<li id="preview_tab" class="active"><a href="#preview" data-toggle="tab">Preview</a></li>
 		<li ng-if="user.type.indexOf('admin')!=-1||user.type.indexOf('signature_manager')!=-1" ng-show="editmode" id="state_tab"><a href="#state" data-toggle="tab">Change State</a></li>
 	</ul>
