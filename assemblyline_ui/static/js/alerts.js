@@ -8,6 +8,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
     .controller('ALController', function ($scope, $http, $timeout) {
         //Parameters vars
         $scope.user = null;
+        $scope.loading = false;
         $scope.loading_extra = false;
         $scope.alert_list = null;
         $scope.started = false;
@@ -603,7 +604,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
         $scope.load_data = function () {
             let url = null;
             let url_params = "?offset=" + $scope.offset + "&rows=" + $scope.rows + "&q=" + encodeURIComponent($scope.filter);
-            $scope.loading_extra = true;
+            $scope.loading = true;
             if ($scope.view_type === "list") {
                 url = "/api/v4/alert/list/";
             } else {
@@ -630,7 +631,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 url: url
             })
                 .success(function (data) {
-                    $scope.loading_extra = false;
+                    $scope.loading = false;
 
                     if (!$scope.started) {
                         $scope.alert_list = []
@@ -648,7 +649,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.filtered = (($scope.filter !== "*" && $scope.filter !== "") || $scope.tc !== "" || $scope.forced_filter !== "" || $scope.filtering_group_by.indexOf($scope.group_by) !== -1);
                 })
                 .error(function (data, status, headers, config) {
-                    $scope.loading_extra = false;
+                    $scope.loading = false;
 
                     if (data === "") return;
 
