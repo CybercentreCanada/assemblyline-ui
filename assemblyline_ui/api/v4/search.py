@@ -1,7 +1,7 @@
 
 from flask import request
 
-from assemblyline_ui.helper.search import BUCKET_MAP, list_all_fields
+from assemblyline_ui.helper.search import BUCKET_MAP, list_all_fields, BUCKET_ORDER_MAP
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
@@ -75,7 +75,7 @@ def search(bucket, **kwargs):
         return make_api_response("", "There was no search query.", 400)
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].search(query, **params))
+        return make_api_response(BUCKET_MAP[bucket].search(query, **params, sort=BUCKET_ORDER_MAP[bucket]))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
