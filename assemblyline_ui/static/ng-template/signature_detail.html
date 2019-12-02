@@ -1,4 +1,7 @@
 <div>
+	<div ng-if="user.c12n_enforcing" style="padding-bottom: 20px">
+		<div class="label classification {{current_signature.classification | class_label_color}}">{{current_signature.classification | class_long}}</div>
+	</div>
 	<div class="pull-right">
 		<span ng-show="current_signature.status=='DEPLOYED'" class="signature_status label label-success">{{current_signature.status}}</span>
 		<span ng-show="current_signature.status=='NOISY'" class="signature_status label label-info">{{current_signature.status}}</span>
@@ -14,9 +17,6 @@
 				
 	<div class="tab-content">
 		<div class="tab-pane active" id="preview">
-			<div ng-if="user.c12n_enforcing" class="pad">
-				<div class="label classification {{current_signature.classification | class_label_color}}">{{current_signature.classification | class_long}}</div>
-			</div>
 			<pre style="white-space: pre-wrap" class="hidden-xs rule_preview">{{current_signature.data}}</pre>
 			<pre class="hidden-sm hidden-md hidden-lg rule_preview">{{current_signature.data}}</pre>
 		</div>
