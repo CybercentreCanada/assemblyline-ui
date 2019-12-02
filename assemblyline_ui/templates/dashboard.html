@@ -169,7 +169,7 @@
                 <div ng-if="data.services.up.indexOf(service_name) != -1" class="col-lg-2 col-md-3 col-sm-6 col-xs-12">
                     <div class="dashboard_card" ng-class="{error: has_errors(service), ok: !has_errors(service)}">
                         <div class="pull-right"><span ng-show="has_errors(service)" class="text-danger text-icon icon-erroralt">&nbsp;&nbsp;</span></div>
-                        <div class="title" style="padding-bottom: 10px">{{service_name}} :: x{{service.instances}}</div>
+                        <div class="title" style="padding-bottom: 10px">{{service_name}} :: {{service.instances}} / {{service.scaler.target}}</div>
                         <div class="row">
                             <div ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.max/4)}" class="col-xs-6" title="Number of items in the service's queue"><span ng-class="{'text-danger': service.queue>(data.dispatcher.inflight.max/4), 'text-muted': service.queue<=(data.dispatcher.inflight.max/4)}" class="text-icon icon-squareq"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.queue}}</span></div>
                             <div class="col-xs-6" title="Number of currently busy services"><span class="text-muted text-icon icon-squareb"></span>&nbsp;<span style="vertical-align: top; font-size: 11pt;">{{service.activity.busy}}</span></div>

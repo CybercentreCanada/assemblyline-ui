@@ -16,6 +16,8 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         mySocket.forward('AlerterHeartbeat');
         mySocket.forward('ExpiryHeartbeat');
         mySocket.forward('ArchiveHeartbeat');
+        mySocket.forward('ScalerHeartbeat');
+        mySocket.forward('ScalerStatusHeartbeat');
         mySocket.forward('IngestHeartbeat');
         mySocket.forward('ServiceHeartbeat');
         mySocket.forward('monitoring');
@@ -129,6 +131,12 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                     low: 0
                 }
             },
+            scaler: {
+                memory_total: 0,
+                memory_free: 0,
+                cpu_total: 0,
+                cpu_free: 0
+            },
             services: {
                 up: [],
                 down: [],
@@ -149,6 +157,16 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
                 fail_nonrecoverable: 0,
                 scored: 0,
                 not_scored: 0
+            },
+            scaler: {
+                running: 0,
+                target: 0,
+                minimum: 0,
+                maximum: 0,
+                dynamic_maximum: 0,
+                queue: 0,
+                pressure: 0.0,
+                duty_cycle: 0.0
             },
             queue: 0,
             activity: {
@@ -255,6 +273,32 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             }
             catch (e) {
                 console.log('Socket-IO::ArchiveHeartbeat [ERROR] Invalid message', data, e);
+            }
+
+        });
+
+        $scope.$on('socket:ScalerHeartbeat', function (event, data) {
+            try {
+                console.log('Socket-IO::ScalerHeartbeat message', data);
+                $scope.data.scaler = data.metrics;
+            }
+            catch (e) {
+                console.log('Socket-IO::ScalerHeartbeat [ERROR] Invalid message', data, e);
+            }
+
+        });
+
+        $scope.$on('socket:ScalerStatusHeartbeat', function (event, data) {
+            try {
+                console.log('Socket-IO::ScalerStatusHeartbeat message', data);
+                if (!$scope.data.services.metrics.hasOwnProperty(data.service_name)){
+                    $scope.data.services.metrics[data.service_name] = JSON.parse(JSON.stringify($scope.service_defaults));
+                }
+                $scope.data.services.metrics[data.service_name].service_name = data.service_name;
+                $scope.data.services.metrics[data.service_name].scaler = data.metrics;
+            }
+            catch (e) {
+                console.log('Socket-IO::ScalerStatusHeartbeat [ERROR] Invalid message', data, e);
             }
 
         });
