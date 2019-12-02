@@ -142,7 +142,8 @@ def group_search(bucket, group_field, **kwargs):
         return make_api_response("", "The field to group on was not specified.", 400)
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params))
+        return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params,
+                                                                   sort=BUCKET_ORDER_MAP[bucket]))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
