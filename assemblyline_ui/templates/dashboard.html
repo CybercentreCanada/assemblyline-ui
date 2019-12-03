@@ -7,12 +7,40 @@
 	<script src="/static/js/socket.io/ng-socket.js"></script>
 	<script src="/static/js/dashboard.js"></script>
 {% endblock %}
+{% block css_import %}
+    <style type="text/css">
+        .gauge {
+            width: 140px;
+            height: 75px;
+            padding-left: 5px;
+        }
 
+        .chart-filled-cpu {
+            fill: #357ebd;
+        }
+
+        .chart-filled-ram {
+            fill: #31708f;
+        }
+
+        .chart-empty {
+            fill: #b7b7b752;
+        }
+
+        .needle, .needle-center {
+            fill: #464A4F;
+        }
+
+        svg {
+            font: 10px sans-serif;
+        }
+    </style>
+{% endblock %}
 {% block section %}
 	<div class="table" style="padding-top: 80px; width: 99%;">
     {%raw%}
         <div class="row" style="margin: 0;">
-            <div class="col-lg-6 col-sm-12">
+            <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
                 <div class="dashboard_card dashboard_card_big" ng-class="{disabled: data.ingester.instances==0,ok: data.ingester.instances!=0&&!ingester_in_error(data.ingester), error: data.ingester.instances!=0&&ingester_in_error(data.ingester)}">
                     <div ng-show="data.ingester.instances!=0&&ingester_in_error(data.ingester)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
                     <div class="title">Ingester :: x{{data.ingester.instances}}</div>
@@ -62,7 +90,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6 col-sm-12 ">
+            <div class="col-lg-6 col-md-12 col-sm-12 col-xs-12">
                 <div class="dashboard_card dashboard_card_big" ng-class="{ok: !dispatcher_in_error(data.dispatcher), error: dispatcher_in_error(data.dispatcher), disabled: data.dispatcher.instances==0}">
                     <div ng-show="dispatcher_in_error(data.dispatcher)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
                     <div class="title">Dispatcher :: x{{data.dispatcher.instances}}</div>
@@ -99,31 +127,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6 col-sm-12 ">
-                <div class="dashboard_card dashboard_card_big" ng-class="{ok: !alerter_in_error(data.alerter), error: alerter_in_error(data.alerter), disabled: data.alerter.instances==0}">
-                    <div ng-show="alerter_in_error(data.alerter)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
-                    <div class="title">Alerter :: x{{data.alerter.instances}}</div>
-
-                    <div class="row">
-                        <div class="col-sm-4 col-xs-12">
-                            <div><label>Queues:</label></div>
-                            <div>
-                                <span title="Alert queue" class="text-muted text-icon icon-squarea"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.queues.alert}}&nbsp;</span>
-                            </div>
-                        </div>
-                        <div class="col-sm-8 col-xs-12">
-                            <div><label>Throughput: (for the last minute)</label></div>
-                            <div>
-                                <span title="Created alerts" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.created}}&nbsp;</span>&nbsp;
-                                <span title="Errors" ng-class="{'text-danger': data.alerter.metrics.error>0&&data.alerter.instances>0, 'text-muted': data.alerter.metrics.error==0||data.alerter.instances==0}" class="text-icon icon-squaree"></span><span ng-class="{'text-danger': data.alerter.metrics.error>0&&data.alerter.instances>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.error}}&nbsp;</span>&nbsp;
-                                <span title="Received alert creation requests" class="text-muted text-icon icon-squarer"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.received}}&nbsp;</span>&nbsp;
-                                <span title="Updated alerts" class="text-muted text-icon icon-squareu"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.updated}}&nbsp;</span>&nbsp;
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6 col-sm-12 ">
+            <div class="col-lg-5 col-md-12 col-sm-12 col-xs-12">
                 <div class="dashboard_card dashboard_card_big" ng-class="{ok: !expiry_in_error(data.expiry), error: expiry_in_error(data.expiry), disabled: data.expiry.instances==0}">
                     <div ng-show="expiry_in_error(data.expiry)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
                     <div class="title">Expiry :: x{{data.expiry.instances}}</div>
@@ -159,6 +163,60 @@
                                 <span title="Results" class="text-muted text-icon icon-squarer"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.archive.emptyresult + data.expiry.archive.result}}&nbsp;</span>&nbsp;
                                 <span title="Submissions" class="text-muted text-icon icon-squares"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.expiry.archive.submission + data.expiry.archive.submission_summary + data.expiry.archive.submission_tree}}&nbsp;</span>&nbsp;
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-8 col-sm-12 col-xs-12">
+                <div class="dashboard_card dashboard_card_big" ng-class="{ok: !alerter_in_error(data.alerter), error: alerter_in_error(data.alerter), disabled: data.alerter.instances==0}">
+                    <div ng-show="alerter_in_error(data.alerter)" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
+                    <div class="title">Alerter :: x{{data.alerter.instances}}</div>
+
+                    <div class="row">
+                        <div class="col-sm-4 col-xs-12">
+                            <div><label>Queues:</label></div>
+                            <div>
+                                <span title="Alert queue" class="text-muted text-icon icon-squarea"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.queues.alert}}&nbsp;</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-8 col-xs-12">
+                            <div><label>Throughput: (for the last minute)</label></div>
+                            <div>
+                                <span title="Created alerts" class="text-muted text-icon icon-squarec"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.created}}&nbsp;</span>&nbsp;
+                                <span title="Errors" ng-class="{'text-danger': data.alerter.metrics.error>0&&data.alerter.instances>0, 'text-muted': data.alerter.metrics.error==0||data.alerter.instances==0}" class="text-icon icon-squaree"></span><span ng-class="{'text-danger': data.alerter.metrics.error>0&&data.alerter.instances>0}" style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.error}}&nbsp;</span>&nbsp;
+                                <span title="Received alert creation requests" class="text-muted text-icon icon-squarer"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.received}}&nbsp;</span>&nbsp;
+                                <span title="Updated alerts" class="text-muted text-icon icon-squareu"></span><span style="vertical-align: top; font-size: 11pt;">&nbsp;{{data.alerter.metrics.updated}}&nbsp;</span>&nbsp;
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-4 col-sm-12 col-xs-12">
+                <div class="dashboard_card dashboard_card_big" ng-class="{error: data.scaler.cpu_free/data.scaler.cpu_total.total<0.1||data.scaler.memory_free/data.scaler.memory_total<0.1, ok: data.scaler.cpu_free/data.scaler.cpu_total>=0.1&&data.scaler.memory_free/data.scaler.memory_total>=0.1, disabled:data.scaler.cpu_free==0&&data.scaler.memory_free==0&&data.scaler.cpu_total==0&&data.scaler.memory_total==0}">
+                    <div ng-show="data.scaler.cpu_free/data.scaler.cpu_total<0.1||data.scaler.memory_free/data.scaler.memory_total<0.1" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
+                    <div class="title">Resources</div>
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <center>
+                                <div class="gauge chart-gauge-cpu"></div>
+                            </center>
+                        </div>
+                        <div class="col-xs-6">
+                            <center>
+                                <div class="gauge chart-gauge-ram"></div>
+                            </center>
+                        </div>
+                        <div class="col-xs-6">
+                            <div class="text-center" style="font-weight: bold" ng-class="{'text-danger': data.scaler.cpu_free/data.scaler.cpu_total<0.1}">CPU ({{( 100-(data.scaler.cpu_free / data.scaler.cpu_total)*100) | number: 1}} %)</div>
+                        </div>
+                        <div class="col-xs-6">
+                            <div class="text-center" style="font-weight: bold" ng-class="{'text-danger': data.scaler.memory_free/data.scaler.memory_total<0.1}">Ram ({{( 100-(data.scaler.memory_free / data.scaler.memory_total)*100) | number: 1}} %)</div>
+                        </div>
+                        <div class="col-xs-6">
+                            <div class="text-center text-smaller">{{ data.scaler.cpu_total-data.scaler.cpu_free | number: 1 }} / {{data.scaler.cpu_total | number: 0 }} cores</div>
+                        </div>
+                        <div class="col-xs-6">
+                            <div class="text-center text-smaller">{{ (data.scaler.memory_total-data.scaler.memory_free) / (1024  * 1024) | number: 1 }} / {{data.scaler.memory_total / (1024 * 1024) | number: 1 }} GBs</div>
                         </div>
                     </div>
                 </div>

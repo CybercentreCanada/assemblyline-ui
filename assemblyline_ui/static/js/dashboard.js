@@ -281,6 +281,9 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
             try {
                 console.log('Socket-IO::ScalerHeartbeat message', data);
                 $scope.data.scaler = data.metrics;
+
+                $scope.cpu_gauge.moveTo(Math.min(1-($scope.data.scaler.cpu_free/$scope.data.scaler.cpu_total), 1));
+                $scope.ram_gauge.moveTo(Math.min(1-($scope.data.scaler.memory_free/$scope.data.scaler.memory_total), 1));
             }
             catch (e) {
                 console.log('Socket-IO::ScalerHeartbeat [ERROR] Invalid message', data, e);
@@ -368,6 +371,13 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         //Startup
         $scope.start = function () {
             console.log("STARTED!");
+
+            $scope.cpu_gauge = create_gauge('cpu');
+            $scope.cpu_gauge.render();
+            $scope.cpu_gauge.moveTo(0);
+            $scope.ram_gauge = create_gauge('ram');
+            $scope.ram_gauge.render();
+            $scope.ram_gauge.moveTo(0);
         };
     });
 
