@@ -192,7 +192,7 @@
                 </div>
             </div>
             <div class="col-lg-3 col-md-4 col-sm-12 col-xs-12">
-                <div class="dashboard_card dashboard_card_big" ng-class="{error: data.scaler.cpu_free/data.scaler.cpu_total.total<0.1||data.scaler.memory_free/data.scaler.memory_total<0.1, ok: data.scaler.cpu_free/data.scaler.cpu_total>=0.1&&data.scaler.memory_free/data.scaler.memory_total>=0.1, disabled:data.scaler.cpu_free==0&&data.scaler.memory_free==0&&data.scaler.cpu_total==0&&data.scaler.memory_total==0}">
+                <div class="dashboard_card dashboard_card_big" ng-class="{error: data.scaler.cpu_free/data.scaler.cpu_total<0.1||data.scaler.memory_free/data.scaler.memory_total<0.1, ok: data.scaler.cpu_free/data.scaler.cpu_total>=0.1&&data.scaler.memory_free/data.scaler.memory_total>=0.1, disabled:data.scaler.cpu_free==0&&data.scaler.memory_free==0&&data.scaler.cpu_total==0&&data.scaler.memory_total==0}">
                     <div ng-show="data.scaler.cpu_free/data.scaler.cpu_total<0.1||data.scaler.memory_free/data.scaler.memory_total<0.1" class="pull-right"><span class="text-danger text-icon icon-erroralt"></span></div>
                     <div class="title">Resources</div>
                     <div class="row">
@@ -213,10 +213,10 @@
                             <div class="text-center" style="font-weight: bold" ng-class="{'text-danger': data.scaler.memory_free/data.scaler.memory_total<0.1}">Ram ({{( 100-(data.scaler.memory_free / data.scaler.memory_total)*100) | number: 1}} %)</div>
                         </div>
                         <div class="col-xs-6">
-                            <div class="text-center text-smaller">{{ data.scaler.cpu_total-data.scaler.cpu_free | number: 1 }} / {{data.scaler.cpu_total | number: 0 }} cores</div>
+                            <div class="text-center text-smaller">{{ data.scaler.cpu_total-data.scaler.cpu_free | number: 0 }} / {{data.scaler.cpu_total | number: 0 }} cores</div>
                         </div>
                         <div class="col-xs-6">
-                            <div class="text-center text-smaller">{{ (data.scaler.memory_total-data.scaler.memory_free) / (1024  * 1024) | number: 1 }} / {{data.scaler.memory_total / (1024 * 1024) | number: 1 }} GBs</div>
+                            <div class="text-center text-smaller">{{ (data.scaler.memory_total-data.scaler.memory_free) / 1024 | number: 1 }} / {{data.scaler.memory_total / 1024 | number: 1 }} GBs</div>
                         </div>
                     </div>
                 </div>
