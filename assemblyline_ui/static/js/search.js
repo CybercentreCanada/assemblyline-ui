@@ -39,6 +39,15 @@ function SearchBaseCtrl($scope, $http, $timeout) {
         }
     };
 
+    $scope.get_default_view = function(){
+        if ($scope.settings.submission_view === "report"){
+            return 'report';
+        }
+        else{
+            return 'submission_detail';
+        }
+    };
+
     //Error handling
     $scope.error = '';
 
