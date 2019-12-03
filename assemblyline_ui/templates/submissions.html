@@ -31,7 +31,7 @@
 				<tbody>
 					<tr ng-repeat="submission in submission_list | orderBy:'times.submitted':true">
 						<td nowrap><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-						<td ><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'" class="label classification {{submission.max_score | verdict_color}}">{{submission.max_score | verdict}}</span><span class='text-muted' ng-show="submission.state=='failed'">N/A</span></a></td>
+						<td><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'" class="label classification {{submission.max_score | verdict_color}}">{{submission.max_score | verdict}}</span><span class='text-muted' ng-show="submission.state=='failed'">N/A</span></a></td>
 						<td class="{{submission.max_score | score_color}}"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'"><strong>{{submission.max_score}}</strong></span><span class='text-muted' ng-show="submission.state=='failed'">N/A</span></a></td>
 						<td width="100%"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.description | maxLength:120 | breakableStr}}</a></td>
 						<td nowrap><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.submitter}}</a></td>
