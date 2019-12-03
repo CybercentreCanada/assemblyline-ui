@@ -213,7 +213,7 @@
                             <div class="text-center" style="font-weight: bold" ng-class="{'text-danger': data.scaler.memory_free/data.scaler.memory_total<0.1}">Ram ({{( 100-(data.scaler.memory_free / data.scaler.memory_total)*100) | number: 1}} %)</div>
                         </div>
                         <div class="col-xs-6">
-                            <div class="text-center text-smaller">{{ data.scaler.cpu_total-data.scaler.cpu_free | number: 0 }} / {{data.scaler.cpu_total | number: 0 }} cores</div>
+                            <div class="text-center text-smaller">{{ data.scaler.cpu_total-data.scaler.cpu_free | number: 1 }} / {{data.scaler.cpu_total | number: 1 }} cores</div>
                         </div>
                         <div class="col-xs-6">
                             <div class="text-center text-smaller">{{ (data.scaler.memory_total-data.scaler.memory_free) / 1024 | number: 1 }} / {{data.scaler.memory_total / 1024 | number: 1 }} GBs</div>
