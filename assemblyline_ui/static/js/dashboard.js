@@ -258,7 +258,9 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         $scope.$on('socket:ExpiryHeartbeat', function (event, data) {
             try {
                 console.log('Socket-IO::ExpiryHeartbeat message', data);
+                let old_archive = $scope.data.expiry.archive;
                 $scope.data.expiry = data;
+                $scope.data.expiry.archive = old_archive;
             }
             catch (e) {
                 console.log('Socket-IO::ExpiryHeartbeat [ERROR] Invalid message', data, e);
