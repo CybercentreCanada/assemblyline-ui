@@ -70,12 +70,13 @@ def search(bucket, **kwargs):
         query = request.args.get('query', None)
 
     params.update({'access_control': user['access_control'], 'as_obj': False})
+    params.setdefault('sort', BUCKET_ORDER_MAP[bucket])
 
     if not query:
         return make_api_response("", "There was no search query.", 400)
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].search(query, **params, sort=BUCKET_ORDER_MAP[bucket]))
+        return make_api_response(BUCKET_MAP[bucket].search(query, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -137,13 +138,13 @@ def group_search(bucket, group_field, **kwargs):
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     params.update({'access_control': user['access_control'], 'as_obj': False})
+    params.setdefault('sort', BUCKET_ORDER_MAP[bucket])
 
     if not group_field:
         return make_api_response("", "The field to group on was not specified.", 400)
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params,
-                                                                   sort=BUCKET_ORDER_MAP[bucket]))
+        return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
