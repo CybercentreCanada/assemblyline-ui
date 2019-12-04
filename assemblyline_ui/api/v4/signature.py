@@ -94,7 +94,7 @@ def add_signature_source(service, **_):
       "header": {                             # Header sent during the request to the URI
         "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
       },
-      "public_key": null,                     # Public key used to get to the URI
+      "private_key": null,                    # Private key used to get to the URI
       "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
     }
 
@@ -421,7 +421,7 @@ def get_signature_sources(**_):
           "header": {                             # Header sent during the request to the URI
             "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
           },
-          "public_key": null,                     # Public key used to get to the URI
+          "private_key": null,                    # Private key used to get to the URI
           "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
         }, ...
       }, ...
@@ -496,7 +496,7 @@ def update_signature_source(service, name, **_):
       "header": {                             # Header sent during the request to the URI
         "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
       },
-      "public_key": null,                     # Public key used to get to the URI
+      "private_key": null,                    # Private key used to get to the URI
       "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
     }
 
