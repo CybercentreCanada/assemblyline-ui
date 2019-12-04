@@ -17,7 +17,7 @@
 		<div class="header_title text-right">
 			<h1>Workflow filters</h1>
 	{%raw%}
-			<h5 ng-hide="workflow_list == null || (total == 0 && !filtered)" class="text-muted">{{total}} Workflow filter<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
+			<h5 ng-hide="workflow_list == null || (total == 0 && !filtered)" class="text-muted">{{total}}<span ng-show="total==10000">+</span> Workflow filter<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
         <div ng-hide="workflow_list == null || (total == 0 && !filtered)">
 			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='workflow'" pager></div>

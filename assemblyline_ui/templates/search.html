@@ -64,17 +64,17 @@
 		</div>
 		<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null && alert_list.items == null && signature_list.items == null">
 			<ul class="nav nav-tabs" id="tabContent">
-				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{(submission_list.total === undefined) ? "..." : submission_list.total}})</a></li>
-				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{(file_list.total === undefined) ? "..." : file_list.total}})</a></li>
-				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{(result_list.total === undefined) ? "..." : result_list.total}})</a></li>
+				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{(submission_list.total === undefined) ? "..." : submission_list.total}}<span ng-show="submission_list.total==10000">+</span>)</a></li>
+				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{(file_list.total === undefined) ? "..." : file_list.total}}<span ng-show="file_list.total==10000">+</span>)</a></li>
+				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{(result_list.total === undefined) ? "..." : result_list.total}}<span ng-show="result_list.total==10000">+</span>)</a></li>
 				{% endraw %}
                 {% if not is_readonly %}
 	            {%raw%}
-                    <li id="signature_tab"><a href="#signature" data-toggle="tab" ng-click="page_switch(signature_list);show_export_btn(total>0)">Signatures ({{(signature_list.total === undefined) ? "..." : signature_list.total}})</a></li>
+                    <li id="signature_tab"><a href="#signature" data-toggle="tab" ng-click="page_switch(signature_list);show_export_btn(total>0)">Signatures ({{(signature_list.total === undefined) ? "..." : signature_list.total}}<span ng-show="signature_list.total==10000">+</span>)</a></li>
 				{% endraw %}
                 {% endif %}
 	            {%raw%}
-                <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{(alert_list.total === undefined) ? "..." : alert_list.total}})</a></li>
+                <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{(alert_list.total === undefined) ? "..." : alert_list.total}}<span ng-show="alert_list.total==10000">+</span>)</a></li>
 			</ul>
 						
 			<div class="tab-content">

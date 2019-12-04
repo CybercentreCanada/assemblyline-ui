@@ -12,7 +12,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Errors Viewer</h1>
-			<h5 ng-hide="error_list == null || (total == 0 && !filtered)" class="text-muted">{{total}} total error<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
+			<h5 ng-hide="error_list == null || (total == 0 && !filtered)" class="text-muted">{{total}}<span ng-show="total==10000">+</span> total error<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
 		<div ng-controller="SearchController" ng-init="page='error';bucket='error';query=searchText">
             <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">

@@ -10,7 +10,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>User Management</h1>
-			<h5 ng-hide="user_list == null || (total == 0 && !filtered)" class="text-muted">{{total}} User<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
+			<h5 ng-hide="user_list == null || (total == 0 && !filtered)" class="text-muted">{{total}}<span ng-show="total==10000">+</span> User<span ng-show="total > 1">s</span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
 		<div ng-hide="user_list == null || (total == 0 && !filtered)">
 			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='user'" pager></div>

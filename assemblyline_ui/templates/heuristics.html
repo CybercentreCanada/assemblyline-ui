@@ -11,7 +11,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Heuristics</h1>
-			<h5 class="text-muted">{{total}} total heuristics<span ng-show="total > 1"></span><span ng-show="filtered"> (filtered)</span></h5>
+			<h5 class="text-muted">{{total}}<span ng-show="total==10000">+</span> total heuristics<span ng-show="total > 1"></span><span ng-show="filtered"> (filtered)</span></h5>
 		</div>
 		<div>
 			<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='heuristic'" pager></div>
