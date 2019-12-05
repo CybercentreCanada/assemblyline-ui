@@ -3,7 +3,7 @@ import requests
 import socketio
 import time
 
-from base import get_api_data
+from conftest import get_api_data
 
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id

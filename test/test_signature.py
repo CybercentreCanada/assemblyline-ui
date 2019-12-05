@@ -3,7 +3,7 @@ import pytest
 import random
 
 from assemblyline.odm.models.service import UpdateSource
-from base import HOST, login_session, get_api_data, APIError
+from conftest import HOST, get_api_data, APIError
 
 from assemblyline.common import forge
 from assemblyline.odm.models.signature import Signature

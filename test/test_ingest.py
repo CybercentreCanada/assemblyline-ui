@@ -5,7 +5,7 @@ import pytest
 import random
 import tempfile
 
-from base import HOST, login_session, get_api_data
+from conftest import HOST, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission

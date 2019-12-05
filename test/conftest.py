@@ -8,6 +8,7 @@ import warnings
 
 HOST = "https://localhost:443"
 
+
 class InvalidRequestMethod(Exception):
     pass
 

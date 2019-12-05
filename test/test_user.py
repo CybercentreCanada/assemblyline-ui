@@ -2,7 +2,7 @@ import json
 import pytest
 import random
 
-from base import APIError, HOST, login_session, get_api_data
+from conftest import APIError, HOST, get_api_data
 
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.common import forge

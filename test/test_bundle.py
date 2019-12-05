@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from base import HOST, login_session, get_api_data
+from conftest import HOST, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle, BUNDLE_MAGIC

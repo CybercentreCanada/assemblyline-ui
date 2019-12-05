@@ -3,8 +3,7 @@ import json
 import pytest
 import random
 
-# noinspection PyUnresolvedReferences
-from base import APIError, HOST, login_session, get_api_data
+from conftest import APIError, HOST, get_api_data
 from io import BytesIO
 
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services

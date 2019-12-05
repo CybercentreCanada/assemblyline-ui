@@ -3,7 +3,7 @@ import pytest
 
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.heuristic import Heuristic
-from base import HOST, login_session, get_api_data
+from conftest import HOST, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.alert import Alert

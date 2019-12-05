@@ -2,7 +2,7 @@ import json
 import pytest
 import random
 
-from base import HOST, login_session, get_api_data
+from conftest import HOST, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.service import Service

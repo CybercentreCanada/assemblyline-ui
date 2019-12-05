@@ -2,7 +2,7 @@ import json
 import pytest
 import random
 
-from base import APIError, HOST, login_session, get_api_data
+from conftest import APIError, HOST, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso

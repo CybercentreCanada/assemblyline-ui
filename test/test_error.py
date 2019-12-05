@@ -6,7 +6,7 @@ from assemblyline.odm.models.error import Error
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
-from base import HOST, login_session, get_api_data
+from conftest import HOST, get_api_data
 
 NUM_ERRORS = 10
 test_error = None
