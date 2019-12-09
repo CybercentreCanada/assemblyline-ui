@@ -22,9 +22,50 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         //Error handling
         $scope.error = '';
         $scope.success = '';
+        $scope.yaml = '';
 
         $scope.typeOf = function (val) {
             return typeof val;
+        };
+
+        $scope.show_add_service = function () {
+            $scope.yaml = '';
+            $("#serviceAddModal").modal('show');
+        };
+
+        $scope.add_service = function () {
+            $scope.loading_extra = true;
+            $scope.error = '';
+            $scope.success = '';
+
+            $http({
+                method: 'PUT',
+                url: "/api/v4/service/",
+                data: $scope.yaml
+            })
+                .success(function (data) {
+                    $scope.loading_extra = false;
+                    $("#serviceAddModal").modal('hide');
+                    $scope.success = "Service " + data.api_response.service_name + " successfully added!";
+                    $timeout(function () {
+                        $scope.success = "";
+                        $scope.load_data();
+                    }, 2000);
+                })
+                .error(function (data, status, headers, config) {
+                    $scope.loading_extra = false;
+                    if (data === "" || data === null) {
+                        return;
+                    }
+
+                    if (data.api_error_message) {
+                        $scope.error = data.api_error_message;
+                    }
+                    else {
+                        $scope.error = config.url + " (" + status + ")";
+                    }
+                    scroll(0, 0);
+                });
         };
 
         $scope.toggle_field = function(field) {

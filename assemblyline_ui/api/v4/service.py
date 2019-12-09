@@ -1,16 +1,82 @@
 
+import yaml
+
 from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.dict_utils import get_recursive_delta
+from assemblyline.odm.models.heuristic import Heuristic
+from assemblyline.odm.models.service import Service
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE
+from assemblyline_ui.config import STORAGE, BUILD_MASTER, BUILD_LOWER
 
 config = forge.get_config()
 
 SUB_API = 'service'
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
 service_api._doc = "Manage the different services"
+
+
+@service_api.route("/", methods=["PUT"])
+@api_login(require_type=['admin'], allow_readonly=False)
+def add_service(**_):
+    """
+    Add a service using its yaml manifest
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <service_manifest.yml content>
+
+    Result example:
+    { "success": true }  # Return true is the service was added
+    """
+    data = request.data
+
+    try:
+        service = yaml.safe_load(data)
+        # Pop the data not part of service model
+        service.pop('tool_version', None)
+        service.pop('file_required', None)
+        heuristics = service.pop('heuristics', [])
+        service['version'] = f"{BUILD_MASTER}.{BUILD_LOWER}.{service.get('version', 1)}"
+
+        service = Service(service)
+
+        # Save service if it doesn't already exist
+        if not STORAGE.service.get_if_exists(f'{service.name}_{service.version}'):
+            STORAGE.service.save(f'{service.name}_{service.version}', service)
+            STORAGE.service.commit()
+
+        # Save service delta if it doesn't already exist
+        if not STORAGE.service_delta.get_if_exists(service.name):
+            STORAGE.service_delta.save(service.name, {'version': service.version})
+            STORAGE.service_delta.commit()
+
+        new_heuristics = []
+        if heuristics:
+            for index, heuristic in enumerate(heuristics):
+                try:
+                    # Append service name to heuristic ID
+                    heuristic['heur_id'] = f"{service.name.upper()}.{str(heuristic['heur_id'])}"
+
+                    heuristic = Heuristic(heuristic)
+                    if not STORAGE.heuristic.get_if_exists(heuristic.heur_id):
+                        STORAGE.heuristic.save(heuristic.heur_id, heuristic)
+                        STORAGE.heuristic.commit()
+                        new_heuristics.append(heuristic.heur_id)
+                except Exception as e:
+                    raise ValueError("Error parsing heuristics")
+
+        return make_api_response(dict(
+            service_name=service.name
+        ))
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=e, status_code=400)
 
 
 @service_api.route("/constants/", methods=["GET"])
