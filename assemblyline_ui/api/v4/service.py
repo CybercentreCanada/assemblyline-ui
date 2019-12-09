@@ -76,7 +76,7 @@ def add_service(**_):
             service_name=service.name
         ))
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
-        return make_api_response("", err=e, status_code=400)
+        return make_api_response("", err=str(e), status_code=400)
 
 
 @service_api.route("/constants/", methods=["GET"])
