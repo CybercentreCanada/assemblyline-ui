@@ -18,7 +18,7 @@ def filter_sections(sections, user_classification, min_classification):
         except InvalidClassification:
             continue
 
-        if section['body_format'] == "JSON" and isinstance(section['body'], str):
+        if section['body_format'] in ["GRAPH_DATA", "URL", "JSON", "KEY_VALUE"] and isinstance(section['body'], str):
             try:
                 section['body'] = json.loads(section['body'])
             except ValueError:

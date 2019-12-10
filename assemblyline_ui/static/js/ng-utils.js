@@ -301,91 +301,99 @@ utils.directive('fileDetail', function () {
 
 utils.directive('graphSection', function ($window, $timeout) {
     return {
+        restrict: 'A',
+        require:"ngModel",
         template: "<svg width='100%' height='70'></svg>",
-        link: function (scope, elem, attrs) {
-            let graph_obj = JSON.parse(attrs.graphData);
-            if (graph_obj.type === "colormap") {
-                let d3 = $window.d3;
-                let show_legend = graph_obj.data.show_legend;
-                if (show_legend === undefined) {
-                    show_legend = true;
-                }
+        link: function (scope, elem, attrs, ngModel) {
+            scope.render = function () {
+                let graph_obj = ngModel.$modelValue;
                 let rawSVG = elem.find("svg")[0];
-                let svg = d3.select(rawSVG);
-                let item_width = parseInt(svg.style("width")) / graph_obj.data.values.length;
-                let rect_offset = 0;
 
-                // Color scale
-                let color_range = ["#87c6fb", "#111920"];
-                let blue_scale = d3.scale.linear().domain(graph_obj.data.domain).range(color_range);
-
-                if (show_legend) {
-                    svg.append("rect")
-                        .attr("y", 10)
-                        .attr("x", 0)
-                        .attr("width", 15)
-                        .attr("height", 15)
-                        .attr("fill", color_range[0]);
-
-                    svg.append("text")
-                        .attr("y", 22)
-                        .attr("x", 20)
-                        .text(": " + graph_obj.data.domain[0]);
-
-                    svg.append("rect")
-                        .attr("y", 10)
-                        .attr("x", 80)
-                        .attr("width", 15)
-                        .attr("height", 15)
-                        .attr("fill", color_range[1]);
-
-                    svg.append("text")
-                        .attr("y", 22)
-                        .attr("x", 100)
-                        .text(": " + graph_obj.data.domain[graph_obj.data.domain.length - 1]);
-
-                    rect_offset = 30;
-                    svg.attr("height", 70);
+                while (rawSVG.firstChild){
+                    rawSVG.removeChild(rawSVG.firstChild)
                 }
 
-                for (let x in graph_obj.data.values) {
-                    let value = graph_obj.data.values[x];
-                    svg.append("rect")
-                        .attr("class", "chart_data")
-                        .attr("y", rect_offset)
-                        .attr("x", x * item_width)
-                        .attr("width", item_width + 1)
-                        .attr("height", 40)
-                        .attr("fill", blue_scale(value));
-                }
+                if (graph_obj.type === "colormap") {
+                    let d3 = $window.d3;
+                    let show_legend = graph_obj.data.show_legend;
+                    if (show_legend === undefined) {
+                        show_legend = true;
+                    }
+                    let svg = d3.select(rawSVG);
+                    let item_width = parseInt(svg.style("width")) / graph_obj.data.values.length;
+                    let rect_offset = 0;
 
-                let w = angular.element($window);
+                    // Color scale
+                    let color_range = ["#87c6fb", "#111920"];
+                    let blue_scale = d3.scale.linear().domain(graph_obj.data.domain).range(color_range);
 
-                let resizeObj = function () {
-                    $timeout(function () {
-                        let width = parseInt($window.getComputedStyle(elem[0]).width, 10);
+                    if (show_legend) {
+                        svg.append("rect")
+                            .attr("y", 10)
+                            .attr("x", 0)
+                            .attr("width", 15)
+                            .attr("height", 15)
+                            .attr("fill", color_range[0]);
 
-                        if (width) {
-                            let targetWidth = width / graph_obj.data.values.length;
-                            svg.selectAll(".chart_data").each(function (d, i) {
-                                let item = d3.select(this);
-                                item.attr("x", i * targetWidth);
-                                item.attr("width", targetWidth + 1)
-                            });
-                        }
-                        else {
-                            resizeObj();
-                        }
-                    }, 100);
-                };
+                        svg.append("text")
+                            .attr("y", 22)
+                            .attr("x", 20)
+                            .text(": " + graph_obj.data.domain[0]);
 
-                w.bind('resize', function () {
+                        svg.append("rect")
+                            .attr("y", 10)
+                            .attr("x", 80)
+                            .attr("width", 15)
+                            .attr("height", 15)
+                            .attr("fill", color_range[1]);
+
+                        svg.append("text")
+                            .attr("y", 22)
+                            .attr("x", 100)
+                            .text(": " + graph_obj.data.domain[graph_obj.data.domain.length - 1]);
+
+                        rect_offset = 30;
+                        svg.attr("height", 70);
+                    }
+
+                    for (let x in graph_obj.data.values) {
+                        let value = graph_obj.data.values[x];
+                        svg.append("rect")
+                            .attr("class", "chart_data")
+                            .attr("y", rect_offset)
+                            .attr("x", x * item_width)
+                            .attr("width", item_width + 1)
+                            .attr("height", 40)
+                            .attr("fill", blue_scale(value));
+                    }
+
+                    let w = angular.element($window);
+
+                    let resizeObj = function () {
+                        $timeout(function () {
+                            let width = parseInt($window.getComputedStyle(elem[0]).width, 10);
+
+                            if (width) {
+                                let targetWidth = width / graph_obj.data.values.length;
+                                svg.selectAll(".chart_data").each(function (d, i) {
+                                    let item = d3.select(this);
+                                    item.attr("x", i * targetWidth);
+                                    item.attr("width", targetWidth + 1)
+                                });
+                            } else {
+                                resizeObj();
+                            }
+                        }, 100);
+                    };
+
+                    w.bind('resize', function () {
+                        resizeObj();
+                    });
+
                     resizeObj();
-                });
-
-                resizeObj();
-            }
-
+                }
+            };
+            scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
         }
     }
 });
@@ -717,53 +725,68 @@ utils.directive('splitArray', function () {
 
 utils.directive('kvSection', function () {
     return {
-        link: function (scope, elem, attrs) {
-            let kv_body = JSON.parse(attrs.kvData);
+        restrict: 'A',
+        require:"ngModel",
+        link: function (scope, elem, attrs, ngModel) {
+            scope.render = function () {
+                let kv_body = ngModel.$viewValue;
 
-            for (let key in kv_body) {
-                let div = document.createElement('div');
-                let value = kv_body[key];
+                while (elem[0].firstChild){
+                    elem[0].removeChild(elem[0].firstChild)
+                }
 
-                div.innerHTML = "<span class='strong'>" + key + ":&nbsp;&nbsp;</span><span>" + value + "</span>";
-                elem[0].appendChild(div);
-            }
+                for (let key in kv_body) {
+                    let div = document.createElement('div');
+                    let value = kv_body[key];
+
+                    div.innerHTML = "<span class='strong'>" + key + ":&nbsp;&nbsp;</span><span>" + value + "</span>";
+                    elem[0].appendChild(div);
+                }
+            };
+            scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
         }
     }
 });
 
 utils.directive('urlSection', function () {
     return {
-        link: function (scope, elem, attrs) {
-            let url_body = JSON.parse(attrs.urlData);
+        restrict: 'A',
+        require:"ngModel",
+        link: function (scope, elem, attrs, ngModel) {
+            scope.render = function () {
+                let url_body = ngModel.$modelValue;
 
-            if (Object.prototype.toString.call(url_body) === '[object Array]') {
-                for (let idx in url_body) {
-                    let div = document.createElement('div');
-                    let cur_url_body = url_body[idx];
+                while (elem[0].firstChild){
+                    elem[0].removeChild(elem[0].firstChild)
+                }
 
-                    let a_array = document.createElement('a');
-                    a_array.href = cur_url_body.url;
-                    if (cur_url_body.name !== undefined) {
-                        a_array.text = cur_url_body.name;
+                if (Object.prototype.toString.call(url_body) === '[object Array]') {
+                    for (let idx in url_body) {
+                        let div = document.createElement('div');
+                        let cur_url_body = url_body[idx];
+
+                        let a_array = document.createElement('a');
+                        a_array.href = cur_url_body.url;
+                        if (cur_url_body.name !== undefined) {
+                            a_array.text = cur_url_body.name;
+                        } else {
+                            a_array.text = cur_url_body.url;
+                        }
+                        div.appendChild(a_array);
+                        elem[0].appendChild(div);
                     }
-                    else {
-                        a_array.text = cur_url_body.url;
+                } else {
+                    let a = document.createElement('a');
+                    a.href = url_body.url;
+                    if (url_body.name !== undefined) {
+                        a.text = url_body.name;
+                    } else {
+                        a.text = url_body.url;
                     }
-                    div.appendChild(a_array);
-                    elem[0].appendChild(div);
+                    elem[0].appendChild(a);
                 }
-            }
-            else {
-                let a = document.createElement('a');
-                a.href = url_body.url;
-                if (url_body.name !== undefined) {
-                    a.text = url_body.name;
-                }
-                else {
-                    a.text = url_body.url;
-                }
-                elem[0].appendChild(a);
-            }
+            };
+            scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
         }
     }
 });
