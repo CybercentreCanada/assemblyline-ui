@@ -118,7 +118,6 @@ LOGGER.debug('Logger ready!')
 #################################################################
 # Global instances
 STORAGE = forge.get_datastore(archive_access=True)
-HEURISTICS = CachedObject(STORAGE.get_all_heuristics, refresh=300)
 
 DN_PARSER = forge.get_dn_parser()
 # End global
