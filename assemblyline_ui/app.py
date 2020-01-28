@@ -7,10 +7,8 @@ from flask import Flask
 from flask.logging import default_handler
 
 from assemblyline_ui.api.base import api
-from assemblyline_ui.api.v3 import apiv3
 from assemblyline_ui.api.v4 import apiv4
 from assemblyline_ui.api.v4.alert import alert_api
-from assemblyline_ui.api.v3.authentication import auth_api as auth_v3_api
 from assemblyline_ui.api.v4.authentication import auth_api
 from assemblyline_ui.api.v4.bundle import bundle_api
 from assemblyline_ui.api.v4.error import error_api
@@ -28,7 +26,6 @@ from assemblyline_ui.api.v4.submission import submission_api
 from assemblyline_ui.api.v4.submit import submit_api
 from assemblyline_ui.api.v4.u2f import u2f_api
 from assemblyline_ui.api.v4.ui import ui_api
-from assemblyline_ui.api.v3.user import user_api as user_v3_api
 from assemblyline_ui.api.v4.user import user_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
@@ -64,10 +61,8 @@ else:
     )
 
 app.register_blueprint(api)
-app.register_blueprint(apiv3)
 app.register_blueprint(apiv4)
 app.register_blueprint(auth_api)
-app.register_blueprint(auth_v3_api)
 app.register_blueprint(alert_api)
 app.register_blueprint(bundle_api)
 app.register_blueprint(errors)
@@ -87,7 +82,6 @@ app.register_blueprint(submit_api)
 app.register_blueprint(u2f_api)
 app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
-app.register_blueprint(user_v3_api)
 app.register_blueprint(views)
 # app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
