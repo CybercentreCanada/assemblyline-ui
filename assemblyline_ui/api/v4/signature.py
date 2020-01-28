@@ -6,7 +6,6 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
-from assemblyline.common.uid import get_id_from_data, SHORT
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
@@ -21,20 +20,18 @@ signature_api._doc = "Perform operations on signatures"
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
 
 
-@signature_api.route("/add/", methods=["PUT"])
+@signature_api.route("/add_update/", methods=["POST", "PUT"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
-def add_signature(**_):
+def add_update_signature(**_):
     """
-    Add a signature to the system and assigns it a new ID
-        WARNING: If two person call this method at exactly the
-                 same time, they might get the same ID.
-       
+    Add or Update the signature based on the signature ID, type and source.
+
     Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block (REQUIRED): # Signature block
     {"name": "sig_name",           # Signature name
      "type": "yara",               # One of yara, suricata or tagcheck
@@ -43,23 +40,24 @@ def add_signature(**_):
     }
 
     Result example:
-    {"success": true,            #If saving the rule was a success or not
+    {"success": true,      #If saving the rule was a success or not
      "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
     """
     data = request.json
 
     if data.get('type', None) is None or data['name'] is None or data['data'] is None:
-        return make_api_response("", f"Signature name, type and data are mandatory fields.", 400)
+        return make_api_response("", f"Signature id, name, type and data are mandatory fields.", 400)
 
     # Compute signature ID if missing
-    data['signature_id'] = data.get('signature_id', get_id_from_data(data['data'], SHORT))
-    key = f"{data['type']}_{data['signature_id']}_{data['revision']}"
+    data['signature_id'] = data.get('signature_id', data['name'])
+
+    key = f"{data['type']}_{data['source']}_{data['signature_id']}"
 
     # Test signature name
     check_name_query = f"name:{data['name']} " \
                        f"AND type:{data['type']} " \
                        f"AND source:{data['source']} " \
-                       f"AND NOT id:{data['signature_id']}*"
+                       f"AND NOT id:{key}*"
     other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
     if other['total'] > 0:
         return make_api_response(
@@ -68,9 +66,17 @@ def add_signature(**_):
             400
         )
 
+    old = STORAGE.signature.get(key, as_obj=False)
+    if old:
+        if old['data'] == data['data']:
+            return make_api_response({"success": True, "id": key})
+
+        data['status'] = old['status']
+        data['state_change_date'] = old['state_change_date']
+        data['state_change_user'] = old['state_change_user']
+
     # Save the signature
-    return make_api_response({"success": STORAGE.signature.save(key, data),
-                              "id": key})
+    return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
@@ -438,42 +444,6 @@ def get_signature_sources(**_):
     return make_api_response(out)
 
 
-@signature_api.route("/<sid>/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
-def update_signature(sid, **_):
-    """
-    Update a signature defined by a sid and a rev.
-       NOTE: The API will compare the old signature
-             with the new one and will make the decision
-             to increment the revision number or not. 
-    
-    Variables:
-    sid    =>     Signature ID
-
-    Arguments: 
-    None
-    
-    Data Block (REQUIRED): # Signature block
-    {"name": "sig_name",           # Signature name
-     "type": "yara",               # One of yara, suricata or tagcheck
-     "data": "rule sample {...}",  # Data of the rule to be added
-     "source": "yara_signatures"   # Source from where the signature has been gathered
-    }
-
-    Result example:
-    {"success": true,      #If saving the rule was a success or not
-     "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
-    """
-    # Get old signature
-    old_data = STORAGE.signature.get(sid, as_obj=False)
-    if old_data:
-        data = request.json
-        return make_api_response({"success": STORAGE.signature.save(sid, data),
-                                  "sid": sid})
-    else:
-        return make_api_response({"success": False}, "Signature not found. %s" % sid, 404)
-
-
 @signature_api.route("/sources/<service>/<name>/", methods=["POST"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def update_signature_source(service, name, **_):
@@ -642,49 +612,3 @@ def update_available(**_):
     last_modified = iso_to_epoch(STORAGE.get_signature_last_modified(sig_type))
 
     return make_api_response({"update_available": last_modified > last_update})
-
-
-@signature_api.route("/add_update/", methods=["POST"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
-def add_update_signature(**_):
-    """
-    Add or Update the signature based on the signature ID, type and source.
-
-    Variables:
-    None
-
-    Arguments:
-    None
-
-    Data Block (REQUIRED): # Signature block
-    {"name": "sig_name",           # Signature name
-     "type": "yara",               # One of yara, suricata or tagcheck
-     "data": "rule sample {...}",  # Data of the rule to be added
-     "source": "yara_signatures"   # Source from where the signature has been gathered
-    }
-
-    Result example:
-    {"success": true,      #If saving the rule was a success or not
-     "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
-    """
-    data = request.json
-
-    if data.get('type', None) is None or data['name'] is None or data['data'] is None:
-        return make_api_response("", f"Signature id, name, type and data are mandatory fields.", 400)
-
-    # Compute signature ID if missing
-    data['signature_id'] = data.get('signature_id', data['name'])
-
-    key = f"{data['type']}_{data['source']}_{data['signature_id']}"
-
-    old = STORAGE.signature.get(key, as_obj=False)
-    if old:
-        if old['data'] == data['data']:
-            return make_api_response({"success": True, "id": key})
-
-        data['status'] = old['status']
-        data['state_change_date'] = old['state_change_date']
-        data['state_change_user'] = old['state_change_user']
-
-    # Save the signature
-    return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
