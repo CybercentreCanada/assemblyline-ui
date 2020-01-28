@@ -31,17 +31,6 @@ def datastore(request):
 
 
 # noinspection PyUnusedLocal
-def test_add_signature(datastore, login_session):
-    _, session = login_session
-
-    data = random_model_obj(Signature).as_primitives()
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/add/", data=json.dumps(data), method="PUT")
-    ds.signature.commit()
-
-    assert resp == {'id': f'{data["type"]}_{data["signature_id"]}_{data["revision"]}', 'success': True}
-
-
-# noinspection PyUnusedLocal
 def test_add_signature_source(datastore, login_session):
     _, session = login_session
 
@@ -71,11 +60,55 @@ def test_add_signature_source(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
+def test_add_update_signature(datastore, login_session):
+    _, session = login_session
+
+    # Insert a dummy signature
+    data = random_model_obj(Signature).as_primitives()
+    data['status'] = "DEPLOYED"
+    key = f'{data["type"]}_{data["source"]}_{data["signature_id"]}'
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/add_update/", data=json.dumps(data), method="PUT")
+    assert resp == {'id': key, 'success': True}
+
+    # Test the signature data
+    ds.signature.commit()
+    added_sig = ds.signature.get(key, as_obj=False)
+    assert data == added_sig
+
+    # Change the signature status
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/change_status/{key}/DISABLED/")
+    ds.signature.commit()
+    assert resp['success']
+
+    # Update signature data
+    new_sig_data = "NEW SIGNATURE DATA"
+    data['data'] = new_sig_data
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/add_update/", data=json.dumps(data), method="POST")
+    assert resp == {'id': key, 'success': True}
+
+    # Remove state change data
+    data.pop('status', None)
+    data.pop('state_change_date', None)
+    data.pop('state_change_user', None)
+
+    # Test the signature data
+    ds.signature.commit()
+    modded_sig = ds.signature.get(key, as_obj=False)
+
+    modded_sig.pop('state_change_date')
+    # Was state kept?
+    assert "DISABLED" == modded_sig.pop('status')
+    # Was state_change_user kept?
+    assert "admin" == modded_sig.pop('state_change_user')
+    assert data == modded_sig
+
+
+# noinspection PyUnusedLocal
 def test_change_status(datastore, login_session):
     _, session = login_session
 
     signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
+    sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
     status = "DISABLED"
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/change_status/{sid}/{status}/")
@@ -83,13 +116,18 @@ def test_change_status(datastore, login_session):
 
     assert resp['success']
 
+    # Check if the status actually changed
+    ds.signature.commit()
+    modded_sig = ds.signature.get(sid, as_obj=False)
+    assert "DISABLED" == modded_sig.pop('status')
+
 
 # noinspection PyUnusedLocal
 def test_delete_signature(datastore, login_session):
     _, session = login_session
 
     signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
+    sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/", method="DELETE")
     ds.signature.commit()
@@ -139,10 +177,10 @@ def test_get_signature(datastore, login_session):
     _, session = login_session
 
     signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
+    sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/")
-    assert sid == f"{resp['type']}_{resp['signature_id']}_{resp['revision']}" and signature['name'] == resp['name']
+    assert sid == f"{resp['type']}_{resp['source']}_{resp['signature_id']}" and signature['name'] == resp['name']
 
 
 # noinspection PyUnusedLocal
@@ -154,30 +192,6 @@ def test_get_signature_source(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/")
     for service in services:
         assert service['name'] in resp
-
-
-# noinspection PyUnusedLocal
-def test_set_signature(datastore, login_session):
-    _, session = login_session
-
-    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
-    sid = f"{signature['type']}_{signature['signature_id']}_{signature['revision']}"
-
-    # Non revision bumping changes
-    data = ds.signature.get(sid, as_obj=False)
-    data['order'] = 9999
-    data['state_change_user'] = "BOB"
-
-    resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/", data=json.dumps(data), method="POST")
-    ds.signature.commit()
-
-    assert resp == {'sid': sid, 'success': True}
-
-    # Revision bumping changes
-    new_data = ds.signature.get(sid, as_obj=False)
-
-    assert new_data['order'] == 9999
-    assert new_data['state_change_user'] == "BOB"
 
 
 # noinspection PyUnusedLocal
