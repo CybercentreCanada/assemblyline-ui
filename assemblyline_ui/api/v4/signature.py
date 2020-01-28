@@ -648,6 +648,8 @@ def update_available(**_):
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
 def add_update_signature(**_):
     """
+    Add or Update the signature based on the signature ID, type and source.
+
     Variables:
     None
 
@@ -674,6 +676,15 @@ def add_update_signature(**_):
     data['signature_id'] = data.get('signature_id', data['name'])
 
     key = f"{data['type']}_{data['source']}_{data['signature_id']}"
+
+    old = STORAGE.signature.get(key, as_obj=False)
+    if old:
+        if old['data'] == data['data']:
+            return make_api_response({"success": True, "id": key})
+
+        data['status'] = old['status']
+        data['state_change_date'] = old['state_change_date']
+        data['state_change_user'] = old['state_change_user']
 
     # Save the signature
     return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
