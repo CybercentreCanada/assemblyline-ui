@@ -30,7 +30,8 @@ def add_update_signature(**_):
     None
 
     Arguments:
-    None
+    dedup_name      ->      Should the signature manager check if the signature name already exists
+                            Default: true
 
     Data Block (REQUIRED): # Signature block
     {"name": "sig_name",           # Signature name
@@ -44,6 +45,7 @@ def add_update_signature(**_):
      "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
     """
     data = request.json
+    dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
 
     if data.get('type', None) is None or data['name'] is None or data['data'] is None:
         return make_api_response("", f"Signature id, name, type and data are mandatory fields.", 400)
@@ -54,17 +56,18 @@ def add_update_signature(**_):
     key = f"{data['type']}_{data['source']}_{data['signature_id']}"
 
     # Test signature name
-    check_name_query = f"name:{data['name']} " \
-                       f"AND type:{data['type']} " \
-                       f"AND source:{data['source']} " \
-                       f"AND NOT id:{key}*"
-    other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
-    if other['total'] > 0:
-        return make_api_response(
-            {"success": False},
-            "A signature with that name already exists",
-            400
-        )
+    if dedup_name:
+        check_name_query = f"name:\"{data['name']}\" " \
+                           f"AND type:\"{data['type']}\" " \
+                           f"AND source:\"{data['source']}\" " \
+                           f"AND NOT id:\"{key}\""
+        other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
+        if other['total'] > 0:
+            return make_api_response(
+                {"success": False},
+                "A signature with that name already exists",
+                400
+            )
 
     old = STORAGE.signature.get(key, as_obj=False)
     if old:
