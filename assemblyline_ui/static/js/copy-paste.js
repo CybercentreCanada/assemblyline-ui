@@ -16,7 +16,7 @@ function alter_copy() {
     newDiv.style.left = '-99999px';
 
     body_element.appendChild(newDiv);
-    newDiv.innerHTML = sel_text;
+    newDiv.innerText = sel_text;
     selection.selectAllChildren(newDiv);
     window.setTimeout(function () {
         body_element.removeChild(newDiv);
