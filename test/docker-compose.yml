@@ -36,7 +36,7 @@ services:
         condition: service_started
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.0
     environment:
       - discovery.type=single-node
       - logger.level=WARN
