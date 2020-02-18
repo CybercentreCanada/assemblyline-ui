@@ -5,6 +5,8 @@ ARG version
 # Switch to root to install dependancies
 USER root
 
+RUN apt install libldap2-dev libsasl2-dev
+
 # Install assemblyline UI
 RUN pip3 install assemblyline-ui==$version
 

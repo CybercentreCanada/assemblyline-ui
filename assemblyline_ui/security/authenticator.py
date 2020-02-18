@@ -6,6 +6,7 @@ from assemblyline_ui.config import AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, KV_SESSION
 from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.apikey_auth import validate_apikey
+from assemblyline_ui.security.ldap_auth import validate_ldapuser
 from assemblyline_ui.security.second_factor_auth import validate_2fa
 from assemblyline_ui.security.userpass_auth import validate_userpass
 
@@ -147,10 +148,16 @@ def default_authenticator(auth, req, ses, storage):
         if validated_user:
             return validated_user, priv
 
+        validated_user, priv = validate_ldapuser(uname, password, storage)
+        if validated_user:
+            validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
+            return validated_user, priv
+
         validated_user, priv = validate_userpass(uname, password, storage)
         if validated_user:
             validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
             return validated_user, priv
+
 
         # TODO: Add more modules somehow... To be firgured out later
         # validated_user, priv = validate_dn(dn, storage)

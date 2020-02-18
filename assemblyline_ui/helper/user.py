@@ -6,7 +6,8 @@ from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_ui.config import LOGGER, STORAGE, CLASSIFICATION
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
-from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, QuotaExceededException
+from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, QuotaExceededException, \
+    AuthenticationException
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "groups", "password"]
 config = forge.get_config()
@@ -233,7 +234,7 @@ def create_menu(user, path):
 def login(uname, path=None):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
-        raise AccessDeniedException("User %s does not exists" % uname)
+        raise AuthenticationException("User %s does not exists" % uname)
     
     if not user['is_active']:
         raise AccessDeniedException("User %s is disabled" % uname)
