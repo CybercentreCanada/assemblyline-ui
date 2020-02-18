@@ -144,21 +144,28 @@ def validate_ldapuser(username, password, storage):
         ldap_obj = BasicLDAPWrapper(config.auth.ldap)
         ldap_info = ldap_obj.login(username, password)
         if ldap_info:
-            # Make sure the user exists in AL
-            if storage.user.get(username) is None:
+            cur_user = storage.user.get(username, as_obj=False) or {}
+
+            # Make sure the user exists in AL and is in sync
+            if not cur_user or config.auth.ldap.auto_sync:
+                # Generate user data from ldap
                 data = dict(
                     uname=username,
                     name=get_attribute(ldap_info, config.auth.ldap.name_field) or username,
                     email=get_attribute(ldap_info, config.auth.ldap.email_field),
                     password="__LDAP__"
                 )
-                user_data = User(data).as_primitives()
-                storage.user.save(username, user_data)
+
+                # Save the user avatar avatar from ldap
                 img_data = get_attribute(ldap_info, config.auth.ldap.image_field, safe=False)
                 if img_data:
                     b64_img = base64.b64encode(img_data).decode()
                     avatar = f'data:image/{config.auth.ldap.image_format};base64,{b64_img}'
                     storage.user_avatar.save(username, avatar)
+
+                # Save the updated user
+                cur_user.update(data)
+                storage.user.save(username, cur_user)
 
             return username.lower(), ["R", "W", "E"]
         elif config.auth.internal.enabled:
