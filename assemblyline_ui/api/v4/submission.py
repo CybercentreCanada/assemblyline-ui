@@ -657,7 +657,7 @@ def list_submissions_for_group(group, **kwargs):
     try:
         return make_api_response(STORAGE.submission.search(group_query, offset=offset, rows=rows, filters=filters,
                                                            access_control=user['access_control'],
-                                                           sort='times.submitted desc',as_obj=False))
+                                                           sort='times.submitted desc', as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 

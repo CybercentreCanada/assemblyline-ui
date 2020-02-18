@@ -2,7 +2,6 @@ import logging
 import os
     
 from assemblyline.common import version
-from assemblyline.common.forge import CachedObject
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
 from assemblyline.remote.datatypes.counters import Counters
@@ -18,6 +17,7 @@ CLASSIFICATION = forge.get_classification()
 
 ALLOW_RAW_DOWNLOADS = config.ui.allow_raw_downloads
 APP_ID = "https://%s" % config.ui.fqdn
+APP_NAME = "Assemblyline"
 AUDIT = config.ui.audit
 
 SECRET_KEY = config.ui.secret_key
@@ -118,11 +118,5 @@ LOGGER.debug('Logger ready!')
 #################################################################
 # Global instances
 STORAGE = forge.get_datastore(archive_access=True)
-
-DN_PARSER = forge.get_dn_parser()
 # End global
 #################################################################
-
-
-def get_template_prefix(context, name):
-    return context['TEMPLATE_PREFIX'].get(name, "")

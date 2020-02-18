@@ -70,7 +70,7 @@ def add_service(**_):
                         STORAGE.heuristic.commit()
                         new_heuristics.append(heuristic.heur_id)
                 except Exception as e:
-                    raise ValueError("Error parsing heuristics")
+                    raise ValueError(f"Error parsing heuristics: {str(e)}")
 
         return make_api_response(dict(
             service_name=service.name

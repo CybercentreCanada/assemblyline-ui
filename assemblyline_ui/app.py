@@ -32,11 +32,8 @@ from assemblyline_ui.error import errors
 from assemblyline_ui.views import views
 
 from assemblyline_ui import config
-from assemblyline.common import forge
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
-context = forge.get_ui_context()
-register_site_specific_routes = context.register_site_specific_routes
 
 ##########################
 # App settings
@@ -85,8 +82,6 @@ app.register_blueprint(user_api)
 app.register_blueprint(views)
 # app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
-
-register_site_specific_routes(app)
 
 # Setup logging
 app.logger.setLevel(config.LOGGER.getEffectiveLevel())

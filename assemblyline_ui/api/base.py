@@ -6,12 +6,12 @@ from flask import current_app, Blueprint, jsonify, make_response, request, sessi
 from sys import exc_info
 from traceback import format_tb
 
+from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
-from assemblyline_ui.site_specific import apikey_handler
-from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, RATE_LIMITER, CLASSIFICATION, STORAGE
-from assemblyline_ui.helper.user import login, add_access_control
+from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, RATE_LIMITER, STORAGE
+from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import QuotaExceededException, AuthenticationException
-from assemblyline_ui.config import config, DN_PARSER
+from assemblyline_ui.config import config
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
@@ -50,7 +50,7 @@ class api_login(BaseSecurityRenderer):
                     #       We could fix this by saving the hash of the combinaison of the
                     #       APIkey and the username in an ExpiringSet and looking it up for
                     #       sub-sequent calls...
-                    validated_user, priv = apikey_handler(uname, apikey, STORAGE)
+                    validated_user, priv = validate_apikey(uname, apikey, STORAGE)
                 except AuthenticationException:
                     msg = "Invalid user or APIKey"
                     LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{msg}]")
@@ -90,8 +90,8 @@ class api_login(BaseSecurityRenderer):
             self.test_readonly("API")
             logged_in_uname = self.get_logged_in_user()
 
-            # Impersonation
-            requestor = request.environ.get("HTTP_X_PROXIEDENTITIESCHAIN", None)
+            # TODO: Impersonation
+            # requestor = request.environ.get("HTTP_X_PROXIEDENTITIESCHAIN", None)
             temp_user = login(logged_in_uname)
 
             # Terms of Service
@@ -100,36 +100,39 @@ class api_login(BaseSecurityRenderer):
                 abort(403, "Agree to Terms of Service before you can make any API calls")
                 return
 
-            if requestor:
-                user = None
-                if ("C=" in requestor or "c=" in requestor) and DN_PARSER:
-                    requestor_chain = [DN_PARSER(x.replace("<", "").replace(">", ""))
-                                       for x in requestor.split("><")]
-                    requestor_chain.reverse()
-                else:
-                    requestor_chain = [requestor]
+            # if requestor:
+            #     user = None
+            #     if ("C=" in requestor or "c=" in requestor) and DN_PARSER:
+            #         requestor_chain = [DN_PARSER(x.replace("<", "").replace(">", ""))
+            #                            for x in requestor.split("><")]
+            #         requestor_chain.reverse()
+            #     else:
+            #         requestor_chain = [requestor]
+            #
+            #     impersonator = temp_user
+            #     merged_classification = impersonator['classification']
+            #     for as_uname in requestor_chain:
+            #         user = login(as_uname)
+            #         if not user:
+            #             abort(403, "One of the entity in the proxied chain does not exist in our system")
+            #             return
+            #
+            #         user['classification'] = CLASSIFICATION.intersect_user_classification(user['classification'],
+            #                                                                               merged_classification)
+            #         merged_classification = user['classification']
+            #         add_access_control(user)
+            #
+            #     if user:
+            #         logged_in_uname = "%s(on behalf of %s)" % (impersonator['uname'], user['uname'])
+            #     else:
+            #         abort(403, "Invalid proxied entities chain received")
+            #         return
+            # else:
+            #     impersonator = {}
+            #     user = temp_user
 
-                impersonator = temp_user
-                merged_classification = impersonator['classification']
-                for as_uname in requestor_chain:
-                    user = login(as_uname)
-                    if not user:
-                        abort(403, "One of the entity in the proxied chain does not exist in our system")
-                        return
-
-                    user['classification'] = CLASSIFICATION.intersect_user_classification(user['classification'],
-                                                                                          merged_classification)
-                    merged_classification = user['classification']
-                    add_access_control(user)
-
-                if user:
-                    logged_in_uname = "%s(on behalf of %s)" % (impersonator['uname'], user['uname'])
-                else:
-                    abort(403, "Invalid proxied entities chain received")
-                    return
-            else:
-                impersonator = {}
-                user = temp_user
+            impersonator = {}
+            user = temp_user
             self.test_require_type(user, "API")
 
             #############################################

@@ -1,11 +1,5 @@
-import codecs
-import fnmatch
 import json
 import markdown
-import os
-import re
-
-from collections import OrderedDict
 
 from flask import Blueprint, render_template, request, abort, redirect, Markup
 
@@ -18,7 +12,6 @@ from assemblyline.odm.models.user import User
 
 config = forge.get_config()
 
-context = forge.get_ui_context()
 Classification = forge.get_classification()
 
 views = Blueprint("views", __name__, template_folder="templates")

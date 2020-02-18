@@ -36,6 +36,7 @@ def get_classification_definition(**_):
     return make_api_response(forge.get_classification().get_parsed_classification_definition())
 
 
+# noinspection PyUnresolvedReferences
 @help_api.route("/configuration/")
 @api_login(audit=False, allow_readonly=False)
 def get_system_configuration(**_):

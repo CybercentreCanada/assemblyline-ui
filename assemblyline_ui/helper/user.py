@@ -55,6 +55,181 @@ def check_submission_quota(user, num=1):
         raise QuotaExceededException("You've exceeded your maximum submission quota of %s " % quota)
         
 
+def create_menu(user, path):
+    user['groups'].insert(0, "ALL")
+
+    submission_submenu = [{"class": "dropdown-header",
+                           "active": False,
+                           "link": None,
+                           "title": "Personal"},
+                          {"class": "",
+                           "active": (path == "/submissions.html?user=%s" % user['uname']),
+                           "link": "/submissions.html?user=%s" % user['uname'],
+                           "title": "My Submissions"},
+                          {"class": "divider",
+                           "active": False,
+                           "link": None,
+                           "title": None},
+                          {"class": "dropdown-header",
+                           "active": False,
+                           "link": None,
+                           "title": "Groups"}]
+
+    submission_submenu.extend([{"class": "",
+                                "active": (path == "/submissions.html?group=%s" % x),
+                                "link": "/submissions.html?group=%s" % x,
+                                "title": x} for x in user['groups']])
+
+    help_submenu = [{"class": "dropdown-header",
+                     "active": False,
+                     "link": None,
+                     "title": "Documentation"},
+                    {"class": "",
+                     "active": path.startswith("/api_doc.html"),
+                     "link": "/api_doc.html",
+                     "title": "API Documentation"}]
+
+    if forge.get_classification().enforce:
+        help_submenu.extend([{"class": "",
+                              "active": path.startswith("/classification_help.html"),
+                              "link": "/classification_help.html",
+                              "title": "Classification Help"}])
+
+    if not config.ui.read_only:
+        help_submenu.extend([{"class": "",
+                              "active": path.startswith("/configuration.html"),
+                              "link": "/configuration.html",
+                              "title": "Configuration Settings"}])
+
+    help_submenu.extend([
+        {"class": "",
+         "active": path.startswith("/search_help.html"),
+         "link": "/search_help.html",
+         "title": "Search Help"}])
+
+    if not config.ui.read_only:
+        help_submenu.extend([
+            {"class": "",
+             "active": path.startswith("/services.html"),
+             "link": "/services.html",
+             "title": "Service Listing"},
+            # {"class": "",
+            #  "active": path.startswith("/yara_standard.html"),
+            #  "link": "/yara_standard.html",
+            #  "title": "Yara Malware Standard"},
+            {"class": "divider",
+             "active": False,
+             "link": None,
+             "title": None},
+            {"class": "dropdown-header",
+             "active": False,
+             "link": None,
+             "title": "Heuristics"},
+            {"class": "",
+             "active": path.startswith("/heuristics.html"),
+             "link": "/heuristics.html",
+             "title": "Malware Heuristics"},
+            {"class": "divider",
+             "active": False,
+             "link": None,
+             "title": None},
+            {"class": "dropdown-header",
+             "active": False,
+             "link": None,
+             "title": "Statistics"},
+            {"class": "",
+             "active": path.startswith("/heuristics_stats.html"),
+             "link": "/heuristics_stats.html",
+             "title": "Heuristic Statistics"},
+            {"class": "",
+             "active": path.startswith("/signature_statistics.html"),
+             "link": "/signature_statistics.html",
+             "title": "Signature Statistics"}
+        ])
+
+    alerting_submenu = [
+        {"class": "",
+         "active": path.startswith("/alerts.html"),
+         "link": "/alerts.html",
+         "title": "View Alerts",
+         "has_submenu": False},
+        {"class": "",
+         "active": path.startswith("/workflows.html"),
+         "link": "/workflows.html",
+         "title": "Workflow filters",
+         "has_submenu": False}
+    ]
+
+    menu = [{"class": "",
+             "active": path.split("?")[0] == "/" or path.startswith("/submit.html"),
+             "link": "/submit.html",
+             "title": "Submit",
+             "has_submenu": False},
+            {"class": "",
+             "active": path.startswith("/submissions.html"),
+             "link": "#",
+             "title": "Submissions",
+             "has_submenu": True,
+             "submenu": submission_submenu},
+            {"class": "",
+             "active": path.startswith("/alerts.html") or path.startswith("/workflows.html"),
+             "link": "#",
+             "title": "Alerts",
+             "has_submenu": True,
+             "submenu": alerting_submenu}]
+
+    if not config.ui.read_only:
+        if 'admin' in user['type'] or 'signature_manager' in user['type']:
+            signature_submenu = [
+                {"class": "",
+                 "active": path.startswith("/signatures.html"),
+                 "link": "/signatures.html",
+                 "title": "Signature management",
+                 "has_submenu": False},
+                {"class": "",
+                 "active": path.startswith("/source_management.html"),
+                 "link": "/source_management.html",
+                 "title": "Source management",
+                 "has_submenu": False}
+            ]
+
+            menu.extend([{"class": "",
+                          "active": path.startswith("/signatures.html") or path.startswith("/source_management.html"),
+                          "link": "#",
+                          "title": "Signatures",
+                          "has_submenu": True,
+                          "submenu": signature_submenu}])
+        else:
+            menu.append({"class": "",
+                         "active": path.startswith("/signatures.html"),
+                         "link": "/signatures.html",
+                         "title": "Signatures",
+                         "has_submenu": False})
+
+    menu.extend([
+        {"class": "hidden-md hidden-lg",
+         "active": path.startswith("/search.html"),
+         "link": "/search.html",
+         "title": "Search",
+         "has_submenu": False},
+        {"class": "",
+         "active": path.startswith("/api_doc.html") or
+            path.startswith("/classification_help.html") or
+            path.startswith("/configuration.html") or
+            path.startswith("/heuristics.html") or
+            path.startswith("/heuristics_stats.html") or
+            path.startswith("/signature_statistics.html") or
+            path.startswith("/search_help.html") or
+            path.startswith("/services.html") or
+            path.startswith("/yara_standard.html"),
+         "link": "#",
+         "title": "Help",
+         "has_submenu": True,
+         "submenu": help_submenu}])
+
+    return menu
+
+
 def login(uname, path=None):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:

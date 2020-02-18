@@ -15,7 +15,7 @@ from assemblyline.common.security import generate_random_secret, get_totp_token,
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER
 from assemblyline_ui.http_exceptions import AuthenticationException
-from assemblyline_ui.site_specific import default_authenticator
+from assemblyline_ui.security.authenticator import default_authenticator
 
 Classification = forge.get_classification()
 API_PRIV_MAP = {

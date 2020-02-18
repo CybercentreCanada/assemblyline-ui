@@ -18,6 +18,7 @@ KV_SESSION = Hash("flask_sessions",
                   port=config.core.redis.nonpersistent.port)
 LOGGER = logging.getLogger('assemblyline.ui.socketio')
 
+
 class AuthenticationFailure(Exception):
     pass
 

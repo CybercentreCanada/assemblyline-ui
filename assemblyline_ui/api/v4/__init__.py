@@ -66,7 +66,8 @@ def get_api_documentation(**kwargs):
             for u_type in user_types:
                 if u_type in require_type:
                     doc_string = func.__doc__
-                    func_title = " ".join([x.capitalize() for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
+                    func_title = " ".join([x.capitalize()
+                                           for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
                     blueprint = rule.endpoint[rule.endpoint.index(".") + 1:rule.endpoint.rindex(".")]
                     if not blueprint:
                         blueprint = "documentation"

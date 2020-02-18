@@ -1,10 +1,19 @@
-
 from flask import abort, request, current_app, session as flsk_session
 
-from assemblyline_ui.config import AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, KV_SESSION
-from assemblyline_ui.http_exceptions import AccessDeniedException
-from assemblyline_ui.config import config
 from assemblyline.common.isotime import now
+from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_ui.config import AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, KV_SESSION
+from assemblyline_ui.config import config
+from assemblyline_ui.http_exceptions import AuthenticationException
+from assemblyline_ui.security.apikey_auth import validate_apikey
+from assemblyline_ui.security.second_factor_auth import validate_2fa
+from assemblyline_ui.security.userpass_auth import validate_userpass
+
+nonpersistent_config = {
+    'host': config.core.redis.nonpersistent.host,
+    'port': config.core.redis.nonpersistent.port,
+    'ttl': config.auth.internal.failure_ttl
+}
 
 
 class BaseSecurityRenderer(object):
@@ -13,7 +22,6 @@ class BaseSecurityRenderer(object):
             required_priv = ["E"]
         if require_type is None:
             require_type = ["user"]
-
 
         self.require_type = require_type
         self.audit = audit and AUDIT
@@ -31,9 +39,9 @@ class BaseSecurityRenderer(object):
                 json_blob = {}
 
             params_list = list(args) + \
-                          ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
-                          ["%s=%s" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET] + \
-                          ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
+                ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
+                ["%s=%s" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET] + \
+                ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
 
             if len(params_list) != 0:
                 AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname,
@@ -99,3 +107,65 @@ class BaseSecurityRenderer(object):
     def test_readonly(self, r_type):
         if not self.allow_readonly and config.ui.read_only:
             abort(403, f"{r_type} not allowed in read-only mode")
+
+
+# noinspection PyUnusedLocal
+def default_authenticator(auth, req, ses, storage):
+    # This is assemblyline authentication procedure
+    # It will try to authenticate the user in the following order until a method is successful
+    #    apikey
+    #    username/password
+    #    PKI DN
+    #
+    # During the authentication procedure the user/pass and DN methods will be subject to OTP challenge
+    # if OTP is allowed on the server and has been turned on by the user
+    #
+    # Apikey authentication procedure is not subject to OTP challenge but has limited functionality
+
+    apikey = auth.get('apikey', None)
+    dn = auth.get('dn', None)
+    otp = auth.get('otp', 0)
+    u2f_response = auth.get('u2f_response', None)
+    u2f_challenge = ses.pop('_u2f_challenge_', None)
+    password = auth.get('password', None)
+    uname = auth.get('username', None) or dn
+
+    if not uname:
+        raise AuthenticationException('No user specified for authentication')
+
+    # Bruteforce protection
+    auth_fail_queue = NamedQueue("ui-failed-%s" % uname, **nonpersistent_config)
+    if auth_fail_queue.length() >= config.auth.internal.max_failures:
+        # Failed 'max_failures' times, stop trying... This will timeout in 'failure_ttl' seconds
+        raise AuthenticationException("Maximum password retry of {retry} was reached. "
+                                      "This account is locked for the next {ttl} "
+                                      "seconds...".format(retry=config.auth.internal.max_failures,
+                                                          ttl=config.auth.internal.failure_ttl))
+
+    try:
+        validated_user, priv = validate_apikey(uname, apikey, storage)
+        if validated_user:
+            return validated_user, priv
+
+        validated_user, priv = validate_userpass(uname, password, storage)
+        if validated_user:
+            validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
+            return validated_user, priv
+
+        # TODO: Add more modules somehow... To be firgured out later
+        # validated_user, priv = validate_dn(dn, storage)
+        # if validated_user:
+        #     validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
+        #     return validated_user, priv
+
+    except AuthenticationException as ae:
+        # Failure appended, push failure parameters
+        auth_fail_queue.push({
+            'remote_addr': req.remote_addr,
+            'host': req.host,
+            'full_path': req.full_path
+        })
+
+        raise
+
+    raise AuthenticationException("None of the authentication methods succeeded")

@@ -20,5 +20,6 @@ BUCKET_ORDER_MAP = {
     'workflow': "last_seen desc"
 }
 
+
 def list_all_fields():
     return {k: BUCKET_MAP[k].fields() for k in BUCKET_MAP.keys()}

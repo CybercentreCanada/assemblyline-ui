@@ -6,17 +6,12 @@ from datetime import timedelta
 from flask import redirect, render_template, request, abort, current_app, make_response
 from functools import update_wrapper
 
-from assemblyline_ui.http_exceptions import AccessDeniedException
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
-from assemblyline.common.forge import get_ui_context, get_config
-from assemblyline_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, BUILD_NO, SYSTEM_TYPE, get_template_prefix
-from assemblyline_ui.helper.user import login
+from assemblyline.common.forge import get_config
+from assemblyline_ui.config import DEBUG, STORAGE, BUILD_MASTER, BUILD_LOWER, BUILD_NO, SYSTEM_TYPE, APP_NAME
+from assemblyline_ui.helper.user import login, create_menu
 
 config = get_config()
-context = get_ui_context()
-create_menu = context.create_menu
-APP_NAME = context.APP_NAME
-TEMPLATE_PREFIX = context.TEMPLATE_PREFIX
 
 
 #######################################
@@ -151,7 +146,4 @@ def crossdomain(origin=None, methods=None, headers=None, max_age=21600, attach_t
 
 
 def custom_render(template, **kwargs):
-    return render_template(get_template_prefix(context, template.replace(".html", "")) + template,
-                           app_name=APP_NAME,
-                           base_template=get_template_prefix(context, 'base') + "base.html",
-                           **kwargs)
+    return render_template(template, app_name=APP_NAME, base_template="base.html", **kwargs)

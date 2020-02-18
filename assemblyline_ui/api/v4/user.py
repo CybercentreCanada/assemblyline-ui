@@ -109,7 +109,7 @@ def get_user_account(username, **kwargs):
      "groups": ["TEST"]          # Groups the user is member of
     } 
     """
-    if username != kwargs['user']['uname'] and 'admin' not in  kwargs['user']['type']:
+    if username != kwargs['user']['uname'] and 'admin' not in kwargs['user']['type']:
         return make_api_response({}, "You are not allow to view other users then yourself.", 403)
 
     user = STORAGE.user.get(username, as_obj=False)
