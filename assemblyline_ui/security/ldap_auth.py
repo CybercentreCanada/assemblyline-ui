@@ -5,7 +5,6 @@ import logging
 import time
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import User
 from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
 
