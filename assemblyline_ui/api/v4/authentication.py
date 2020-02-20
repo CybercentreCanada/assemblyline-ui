@@ -3,7 +3,7 @@ import hashlib
 import pyqrcode
 import re
 
-from flask import request, session as flsk_session
+from flask import request, session as flsk_session, current_app
 from io import BytesIO
 from passlib.hash import bcrypt
 
@@ -193,6 +193,15 @@ def login(**_):
     password = data.get('password', None)
     apikey = data.get('apikey', None)
     u2f_response = data.get('u2f_response', None)
+    oauth_provider = data.get('oauth_provider', None)
+
+    if config.auth.oauth.enabled and oauth_provider:
+        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        provider = oauth.create_client(oauth_provider)
+
+        if provider:
+            redirect_uri = f'https://{request.host}/api/v4/auth/oauth_callback/{oauth_provider}/'
+            return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
         otp = int(data.get('otp', 0) or 0)
@@ -204,7 +213,7 @@ def login(**_):
     else:
         dn = None
 
-    if (user and password) or dn or (user and apikey):
+    if (user and password) or dn or (user and apikey) or oauth_provider:
         auth = {
             'username': user,
             'password': password,
@@ -251,7 +260,7 @@ def login(**_):
 
 
 @auth_api.route("/logout/", methods=["GET"])
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False, required_priv=['R', 'W'], check_xsrf_token=False)
 def logout(**_):
     """
     Logout from the system clearing the current session
@@ -276,6 +285,82 @@ def logout(**_):
         return make_api_response({"success": True})
     except ValueError:
         return make_api_response("", err="No user logged in?", status_code=400)
+
+
+# noinspection PyBroadException
+@auth_api.route("/oauth_callback/<oauth_provider>/", methods=["GET"])
+def oauth_callback(oauth_provider, **_):
+    """
+    Callback called from the oauth provider after authentication is successful
+
+    Variables:
+    oauth_provider     =>   OAuth provider
+
+    Arguments:
+    code               =>   Authorization code
+    state              =>   State of the authorization
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "success": true
+    }
+    """
+    if config.auth.oauth.enabled and oauth_provider:
+        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        provider = oauth.create_client(oauth_provider)
+
+        if provider:
+            provider.authorize_access_token()
+            resp = provider.get(provider.server_metadata['user_get'])
+            if resp.ok:
+                profile = resp.json()
+                users = STORAGE.user.search(f"email:{profile['upn']}", fl="id", as_obj=False)['items']
+                if users:
+                    cur_user = STORAGE.user.get(users[0]['id'])
+                else:
+                    cur_user = {}
+
+                # Make sure the user exists in AL and is in sync
+                if not cur_user:
+                    # Generate user data from ldap
+                    data = dict(
+                        uname=profile['upn'],
+                        name=profile['name'],
+                        email=profile['upn'],
+                        password="__LDAP__"
+                    )
+
+                    # Save the updated user
+                    cur_user.update(data)
+                    STORAGE.user.save(profile['upn'], cur_user)
+
+                priv = ["R", "W", "E"]
+                session_duration = config.ui.session_duration
+                cur_time = now()
+                xsrf_token = generate_random_secret()
+                current_session = {
+                    'duration': session_duration,
+                    'ip': request.headers.get("X-Forwarded-For", request.remote_addr),
+                    'privileges': priv,
+                    'time': int(cur_time) - (int(cur_time) % session_duration),
+                    'user_agent': request.headers.get("User-Agent", None),
+                    'username': cur_user['uname'],
+                    'xsrf_token': xsrf_token
+                }
+                session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
+                current_session['expire_at'] = cur_time + session_duration
+                flsk_session['session_id'] = session_id
+                KV_SESSION.add(session_id, current_session)
+                return make_api_response({
+                    "username": cur_user['uname'],
+                    "privileges": priv,
+                    "session_duration": session_duration
+                }, cookies={'XSRF-TOKEN': xsrf_token})
+
+    raise AuthenticationException('Authentication Failed')
 
 
 # noinspection PyBroadException

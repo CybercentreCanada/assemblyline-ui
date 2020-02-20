@@ -212,12 +212,17 @@ def login():
         except (KeyError, ValueError):
             pass
 
+    if config.auth.oauth.enabled:
+        providers = str([p.name for p in config.auth.oauth.providers])
+    else:
+        providers = str([])
+
     next_url = angular_safe(request.args.get('next', "/"))
     if "login.html" in next_url or "logout.html" in next_url:
         next_url = "/"
     return custom_render("login.html", next=next_url, avatar=avatar,
                          username=username, alternate_login=alternate_login,
-                         signup=config.auth.internal.signup.enabled)
+                         signup=config.auth.internal.signup.enabled, providers=providers)
 
 
 @views.route("/logout.html")

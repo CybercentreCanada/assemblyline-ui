@@ -15,6 +15,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.signup_mode = false;
     $scope.u2f_response = "";
     $scope.signed_up = false;
+    $scope.providers = [];
 
     $scope.switch_to_otp = function(){
         $scope.error = '';
@@ -61,7 +62,11 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     };
 
     //Login via API
-    $scope.login = function () {
+    $scope.login = function (oauth_provider) {
+        if (oauth_provider === undefined){
+            oauth_provider = "";
+        }
+
         $scope.error = '';
         $scope.loading = true;
         let password = $scope.password;
@@ -69,7 +74,13 @@ function LoginBaseCtrl($scope, $http, $timeout) {
         $http({
             method: 'POST',
             url: "/api/v4/auth/login/",
-            data: {user: $scope.username, password: password, otp: $scope.otp, u2f_response: $scope.u2f_response}
+            data: {
+                user: $scope.username,
+                password: password,
+                otp: $scope.otp,
+                u2f_response: $scope.u2f_response,
+                oauth_provider: oauth_provider
+            }
         })
         .success(function () {
             window.location = $scope.next;
@@ -137,3 +148,30 @@ function LoginBaseCtrl($scope, $http, $timeout) {
 
 let app = angular.module('app', []);
 app.controller('ALController', LoginBaseCtrl);
+
+String.prototype.toProperCase = function () {
+    return this.replace(/\w\S*/g, function (txt) {
+        let full_upper = ["ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid", 'ioc'];
+        let full_lower = ["to", "as", "use"];
+
+        if (full_upper.indexOf(txt.toLowerCase()) !== -1) {
+            return txt.toUpperCase();
+        }
+
+        if (full_lower.indexOf(txt.toLowerCase()) !== -1) {
+            return txt.toLowerCase();
+        }
+
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+};
+
+app.filter('titleCase', function () {
+    return function (input) {
+        if (input === null || input === undefined){
+            return input
+        }
+        input = input.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ");
+        return input.toProperCase();
+    }
+});

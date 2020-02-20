@@ -83,6 +83,16 @@ app.register_blueprint(views)
 # app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
 
+# Setup OAuth providers
+if config.config.auth.oauth.enabled:
+    from authlib.integrations.flask_client import OAuth
+    oauth = OAuth()
+    for p in config.config.auth.oauth.providers:
+        p = p.as_primitives()
+        oauth.register(**p)
+    oauth.init_app(app)
+    print(config.config.auth.oauth.providers)
+
 # Setup logging
 app.logger.setLevel(config.LOGGER.getEffectiveLevel())
 app.logger.removeHandler(default_handler)
