@@ -208,18 +208,12 @@ def login(**_):
     except Exception:
         raise AuthenticationException('Invalid OTP token')
 
-    if request.environ.get("HTTP_X_REMOTE_CERT_VERIFIED", "FAILURE") == "SUCCESS":
-        dn = request.environ.get("HTTP_X_REMOTE_DN")
-    else:
-        dn = None
-
-    if (user and password) or dn or (user and apikey) or oauth_provider:
+    if (user and password) or (user and apikey) or oauth_provider:
         auth = {
             'username': user,
             'password': password,
             'otp': otp,
             'u2f_response': u2f_response,
-            'dn': dn,
             'apikey': apikey
         }
 

@@ -11,7 +11,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.otp = "";
     $scope.error = "";
     $scope.otp_request = false;
-    $scope.alternate_login = true;
+    $scope.up_login = true;
     $scope.signup_mode = false;
     $scope.u2f_response = "";
     $scope.signed_up = false;
@@ -27,7 +27,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.switch_to_userpass = function(){
         $scope.error = '';
         $scope.username = "";
-        $scope.alternate_login=true;
+        $scope.up_login=true;
         $timeout(function(){$('#inputUser').focus()}, 100);
     };
 

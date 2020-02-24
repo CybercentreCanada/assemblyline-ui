@@ -174,11 +174,6 @@ def heuristics_stats(*_, **kwargs):
 def login():
     registration_key = request.args.get('registration_key', None)
 
-    if request.environ.get("HTTP_X_REMOTE_CERT_VERIFIED", "FAILURE") == "SUCCESS":
-        dn = ",".join(request.environ.get("HTTP_X_REMOTE_DN").split("/")[::-1][:-1])
-    else:
-        dn = None
-
     avatar = None
     username = ''
     alternate_login = 'true'
@@ -217,11 +212,8 @@ def login():
     else:
         providers = str([])
 
-    next_url = angular_safe(request.args.get('next', "/"))
-    if "login.html" in next_url or "logout.html" in next_url:
-        next_url = "/"
     return custom_render("login.html", next=next_url, avatar=avatar,
-                         username=username, alternate_login=alternate_login,
+                         username=username, up_login=str(not oauth_login).lower(),
                          signup=config.auth.internal.signup.enabled, providers=providers)
 
 

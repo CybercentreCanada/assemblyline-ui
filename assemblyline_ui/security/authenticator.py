@@ -124,12 +124,11 @@ def default_authenticator(auth, req, ses, storage):
     # Apikey authentication procedure is not subject to OTP challenge but has limited functionality
 
     apikey = auth.get('apikey', None)
-    dn = auth.get('dn', None)
     otp = auth.get('otp', 0)
     u2f_response = auth.get('u2f_response', None)
     u2f_challenge = ses.pop('_u2f_challenge_', None)
     password = auth.get('password', None)
-    uname = auth.get('username', None) or dn
+    uname = auth.get('username', None)
 
     if not uname:
         raise AuthenticationException('No user specified for authentication')
@@ -157,13 +156,6 @@ def default_authenticator(auth, req, ses, storage):
         if validated_user:
             validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
             return validated_user, priv
-
-
-        # TODO: Add more modules somehow... To be firgured out later
-        # validated_user, priv = validate_dn(dn, storage)
-        # if validated_user:
-        #     validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
-        #     return validated_user, priv
 
     except AuthenticationException as ae:
         # Failure appended, push failure parameters

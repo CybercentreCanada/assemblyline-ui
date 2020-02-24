@@ -13,7 +13,7 @@
     <script src="/static/js/angular/angular.js"></script>
     <script src="/static/js/login.js"></script>
 </head>
-<body ng-controller="ALController" ng-init="username='{{username}}';providers={{providers}};alternate_login={{alternate_login}};public_key='{{public_key}}';next='{{next}}';start();">
+<body ng-controller="ALController" ng-init="username='{{username}}';providers={{providers}};up_login={{up_login}};public_key='{{public_key}}';next='{{next}}';start();">
 <div class="container-fluid">
     <div class="row-fluid">
         <div class="centering text-center">
@@ -22,7 +22,7 @@
                     <a href="/">{% block banner %}<img class="banner-img" src="/static/images/banner.svg">{% endblock %}</a>
                     <form ng-show="!signup_mode && !signed_up" class="form-signin" ng-submit="login()">
                         {% if avatar %}
-                        <div ng-show="!u2f_request && !otp_request && !alternate_login" style="display: inline-block; text-align: center; width: 250px; height: 200px;">
+                        <div ng-show="!u2f_request && !otp_request && !up_login" style="display: inline-block; text-align: center; width: 250px; height: 200px;">
                             <img class="profile-img-card" id="avatar" src="{{ avatar }}"/>
                             <div class="profile-name-card">
                                 <b>{{ username }}</b>
@@ -30,9 +30,9 @@
                         </div>
                         {% endif %}
                         {% raw %}
-                        <div ng-show="!u2f_request && !otp_request && alternate_login">
-                            <input ng-disabled="!alternate_login" ng-model="username" id="inputUser" class="form-control" placeholder="Username" required autofocus>
-                            <input ng-disabled="!alternate_login" ng-model="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
+                        <div ng-show="!u2f_request && !otp_request && up_login">
+                            <input ng-disabled="!up_login" ng-model="username" id="inputUser" class="form-control" placeholder="Username" required autofocus>
+                            <input ng-disabled="!up_login" ng-model="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
                         </div>
 
                         <div ng-show="!u2f_request && otp_request">
@@ -47,12 +47,12 @@
 
                         <div class="text-danger"><b>{{error}}</b></div>
                         <button ng-show="!u2f_request" ng-disabled="loading==true" class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
-                        <div ng-show="!u2f_request && !otp_request && !alternate_login" style="margin-top: 15px">
+                        <div ng-show="!u2f_request && !otp_request && !up_login" style="margin-top: 15px">
                             <a style="cursor: hand;" ng-click="switch_to_userpass()">Or sign in as a different user...</a>
                         </div>
                         {% endraw %}
                         {% if signup %}
-                        <div style="margin-top: 15px" ng-show="!u2f_request && !otp_request && alternate_login">
+                        <div style="margin-top: 15px" ng-show="!u2f_request && !otp_request && up_login">
                             Do not have an account?
                             <a style="cursor: hand;" ng-click="switch_to_signup()">Sign up!</a>
                             <div style="margin-top: 10px">
@@ -62,7 +62,7 @@
                         </div>
                         {% endif %}
                         {% raw %}
-                        <div ng-show="!u2f_request && !otp_request && alternate_login">
+                        <div ng-show="!u2f_request && !otp_request && up_login">
                             <hr/>
                             Or sign in with:
                             <a ng-repeat="p in providers" ng-disabled="loading==true" style="margin-top: 10px" class="btn btn-primary btn-block" href="/api/v4/auth/login/?oauth_provider={{p}}">{{p | titleCase}}</a>

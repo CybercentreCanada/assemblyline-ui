@@ -90,49 +90,14 @@ class api_login(BaseSecurityRenderer):
             self.test_readonly("API")
             logged_in_uname = self.get_logged_in_user()
 
-            # TODO: Impersonation
-            # requestor = request.environ.get("HTTP_X_PROXIEDENTITIESCHAIN", None)
-            temp_user = login(logged_in_uname)
+            user = login(logged_in_uname)
 
             # Terms of Service
             if not request.path == "/api/v4/user/tos/%s/" % logged_in_uname \
-                    and not temp_user.get('agrees_with_tos', False) and config.ui.tos is not None:
+                    and not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                 abort(403, "Agree to Terms of Service before you can make any API calls")
                 return
 
-            # if requestor:
-            #     user = None
-            #     if ("C=" in requestor or "c=" in requestor) and DN_PARSER:
-            #         requestor_chain = [DN_PARSER(x.replace("<", "").replace(">", ""))
-            #                            for x in requestor.split("><")]
-            #         requestor_chain.reverse()
-            #     else:
-            #         requestor_chain = [requestor]
-            #
-            #     impersonator = temp_user
-            #     merged_classification = impersonator['classification']
-            #     for as_uname in requestor_chain:
-            #         user = login(as_uname)
-            #         if not user:
-            #             abort(403, "One of the entity in the proxied chain does not exist in our system")
-            #             return
-            #
-            #         user['classification'] = CLASSIFICATION.intersect_user_classification(user['classification'],
-            #                                                                               merged_classification)
-            #         merged_classification = user['classification']
-            #         add_access_control(user)
-            #
-            #     if user:
-            #         logged_in_uname = "%s(on behalf of %s)" % (impersonator['uname'], user['uname'])
-            #     else:
-            #         abort(403, "Invalid proxied entities chain received")
-            #         return
-            # else:
-            #     impersonator = {}
-            #     user = temp_user
-
-            impersonator = {}
-            user = temp_user
             self.test_require_type(user, "API")
 
             #############################################
@@ -163,7 +128,7 @@ class api_login(BaseSecurityRenderer):
                                             user_id=user.get('uname', None))
 
             # Check current user quota
-            quota_user = impersonator.get('uname', None) or user['uname']
+            quota_user = user['uname']
             quota_id = "%s [%s] => %s" % (quota_user, get_random_id(), request.path)
             count = int(RATE_LIMITER.inc(quota_user, track_id=quota_id))
             RATE_LIMITER.inc("__global__", track_id=quota_id)
