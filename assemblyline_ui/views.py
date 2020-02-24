@@ -1,11 +1,13 @@
+import hashlib
 import json
 import markdown
 
-from flask import Blueprint, render_template, request, abort, redirect, Markup
+from flask import Blueprint, render_template, request, abort, redirect, Markup, current_app, session as flsk_session
 
-from assemblyline.common.isotime import iso_to_local
+from assemblyline.common.isotime import iso_to_local, now
 from assemblyline.common import forge
-from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue
+from assemblyline.common.security import generate_random_secret
+from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, KV_SESSION
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
 from assemblyline.odm.models.user import User
@@ -176,20 +178,11 @@ def login():
 
     avatar = None
     username = ''
-    alternate_login = 'true'
-    if dn:
-        u_list = STORAGE.user.search(f'dn:"{dn}"', fl='id', as_obj=False)['items']
-        if len(u_list):
-            username = u_list[0]['id']
-            avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-            alternate_login = 'false'
-        else:
-            try:
-                username = dn.rsplit('CN=', 1)[1]
-            except IndexError:
-                username = dn
-            avatar = "/static/images/user_default.png"
-            alternate_login = 'false'
+    oauth_login = 'code' in request.args and 'state' in request.args
+    oauth_provider = request.args.get('provider', None)
+    next_url = angular_safe(request.args.get('next', "/"))
+    if "login.html" in next_url or "logout.html" in next_url:
+        next_url = "/"
 
     if registration_key and config.auth.internal.signup.enabled:
         try:
@@ -197,8 +190,6 @@ def login():
             members = signup_queue.members()
             signup_queue.delete()
             if members:
-                alternate_login = 'true'
-
                 user_info = members[0]
                 user = User(user_info)
                 username = user.uname
@@ -209,6 +200,71 @@ def login():
 
     if config.auth.oauth.enabled:
         providers = str([p.name for p in config.auth.oauth.providers])
+
+        if oauth_login:
+            oauth = current_app.extensions.get('authlib.integrations.flask_client')
+            provider = oauth.create_client(oauth_provider)
+
+            if provider:
+                # noinspection PyBroadException
+                try:
+                    # Test oauth access token
+                    provider.authorize_access_token()
+
+                    # Get user data
+                    resp = provider.get(provider.server_metadata['user_get'])
+                    if resp.ok:
+                        profile = resp.json()
+
+                        # Parse user data - TODO: This should be a function
+                        users = STORAGE.user.search(f"email:{profile['upn']}", fl="id", as_obj=False)['items']
+                        if users:
+                            cur_user = STORAGE.user.get(users[0]['id'])
+                        else:
+                            cur_user = {}
+
+                        # Make sure the user exists in AL and is in sync
+                        if not cur_user and provider.server_metadata['auto_create'] or \
+                                cur_user and provider.server_metadata['auto_sync']:
+                            # Generate user data from ldap
+                            data = dict(
+                                uname=profile['upn'],
+                                name=profile['name'],
+                                email=profile['upn'],
+                                password="__LDAP__"
+                            )
+
+                            # Save the updated user
+                            cur_user.update(data)
+                            STORAGE.user.save(profile['upn'], cur_user)
+
+                        if cur_user:
+                            # Prepare session
+                            priv = ["R", "W", "E"]
+                            session_duration = config.ui.session_duration
+                            cur_time = now()
+                            xsrf_token = generate_random_secret()
+                            current_session = {
+                                'duration': session_duration,
+                                'ip': request.headers.get("X-Forwarded-For", request.remote_addr),
+                                'privileges': priv,
+                                'time': int(cur_time) - (int(cur_time) % session_duration),
+                                'user_agent': request.headers.get("User-Agent", None),
+                                'username': cur_user['uname'],
+                                'xsrf_token': xsrf_token
+                            }
+                            session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
+                            current_session['expire_at'] = cur_time + session_duration
+                            flsk_session['session_id'] = session_id
+                            KV_SESSION.add(session_id, current_session)
+
+                            # Redirect to NEXT
+                            response = redirect(redirect_helper(next_url))
+                            response.set_cookie('XSRF-TOKEN', xsrf_token)
+                            return response
+
+                except Exception as e:
+                    oauth_login = False
     else:
         providers = str([])
 
