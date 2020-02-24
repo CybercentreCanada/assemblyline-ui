@@ -202,7 +202,8 @@ def login():
             pass
 
     if config.auth.oauth.enabled:
-        providers = str([name for name in config.auth.oauth.providers])
+        providers = str([name for name, p in config.auth.oauth.providers.items()
+                         if p['client_id'] and p['client_secret']])
 
         if oauth_login:
             oauth = current_app.extensions.get('authlib.integrations.flask_client')

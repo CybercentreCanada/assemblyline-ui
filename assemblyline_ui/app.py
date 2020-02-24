@@ -85,16 +85,22 @@ app.register_blueprint(workflow_api)
 
 # Setup OAuth providers
 if config.config.auth.oauth.enabled:
-    from authlib.integrations.flask_client import OAuth
-    oauth = OAuth()
+    providers = []
     for name, p in config.config.auth.oauth.providers.items():
         p = p.as_primitives()
         p.pop('auto_create', None)
         p.pop('auto_sync', None)
         p.pop('user_get', None)
         p['name'] = name
-        oauth.register(**p)
-    oauth.init_app(app)
+        if p['client_id'] and p['client_secret']:
+            providers.append(p)
+
+    if providers:
+        from authlib.integrations.flask_client import OAuth
+        oauth = OAuth()
+        for p in providers:
+            oauth.register(**p)
+        oauth.init_app(app)
 
 # Setup logging
 app.logger.setLevel(config.LOGGER.getEffectiveLevel())
