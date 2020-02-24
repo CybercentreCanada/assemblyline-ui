@@ -36,7 +36,10 @@ def handle_401(e):
     if request.path.startswith("/api/"):
         return make_api_response("", msg, 401)
     else:
-        return redirect(redirect_helper("/login.html?next=%s" % quote(request.full_path)))
+        resp = redirect(redirect_helper(f"/login.html?next={quote(request.full_path)}"))
+        resp.set_cookie('next_url', request.full_path)
+        resp.delete_cookie("XSRF-TOKEN")
+        return resp
 
 
 @errors.app_errorhandler(403)

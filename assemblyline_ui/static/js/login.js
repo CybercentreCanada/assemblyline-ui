@@ -151,7 +151,7 @@ app.controller('ALController', LoginBaseCtrl);
 
 String.prototype.toProperCase = function () {
     return this.replace(/\w\S*/g, function (txt) {
-        let full_upper = ["ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid", 'ioc'];
+        let full_upper = ["ad", "ip", "id", "al", "ts", "md5", "sha1", "sha256", "cc", "bcc", "smtp", "ftp", "http", "pe", "db", "ui", "ttl", "vm", "os", "uid", 'ioc'];
         let full_lower = ["to", "as", "use"];
 
         if (full_upper.indexOf(txt.toLowerCase()) !== -1) {

@@ -8,6 +8,7 @@ from assemblyline.common.isotime import iso_to_local, now
 from assemblyline.common import forge
 from assemblyline.common.security import generate_random_secret
 from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, KV_SESSION
+from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
 from assemblyline.odm.models.user import User
@@ -180,7 +181,8 @@ def login():
     username = ''
     oauth_login = 'code' in request.args and 'state' in request.args
     oauth_provider = request.args.get('provider', None)
-    next_url = angular_safe(request.args.get('next', "/"))
+
+    next_url = angular_safe(request.args.get('next', request.cookies.get('next_url', "/")))
     if "login.html" in next_url or "logout.html" in next_url:
         next_url = "/"
 
@@ -199,7 +201,7 @@ def login():
             pass
 
     if config.auth.oauth.enabled:
-        providers = str([p.name for p in config.auth.oauth.providers])
+        providers = str([name for name in config.auth.oauth.providers])
 
         if oauth_login:
             oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -209,34 +211,34 @@ def login():
                 # noinspection PyBroadException
                 try:
                     # Test oauth access token
-                    provider.authorize_access_token()
+                    _ = provider.authorize_access_token()
 
                     # Get user data
-                    resp = provider.get(provider.server_metadata['user_get'])
+                    resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
                     if resp.ok:
-                        profile = resp.json()
+                        data = parse_profile(resp.json())
+                        avatar = data.pop('avatar', None)
 
-                        # Parse user data - TODO: This should be a function
-                        users = STORAGE.user.search(f"email:{profile['upn']}", fl="id", as_obj=False)['items']
+                        # Find if user already exists
+                        users = STORAGE.user.search(f"email:{data['email']}", fl="id", as_obj=False)['items']
                         if users:
                             cur_user = STORAGE.user.get(users[0]['id'])
                         else:
                             cur_user = {}
 
                         # Make sure the user exists in AL and is in sync
-                        if not cur_user and provider.server_metadata['auto_create'] or \
-                                cur_user and provider.server_metadata['auto_sync']:
-                            # Generate user data from ldap
-                            data = dict(
-                                uname=profile['upn'],
-                                name=profile['name'],
-                                email=profile['upn'],
-                                password="__LDAP__"
-                            )
+                        if not cur_user and config.auth.oauth.providers[oauth_provider].auto_create or \
+                                cur_user and config.auth.oauth.providers[oauth_provider].auto_sync:
 
-                            # Save the updated user
+                            # Update the current user
                             cur_user.update(data)
-                            STORAGE.user.save(profile['upn'], cur_user)
+
+                            # Save avatar
+                            if avatar:
+                                STORAGE.user_avatar.save(cur_user['uname'], avatar)
+
+                            # Save updated user
+                            STORAGE.user.save(cur_user['uname'], cur_user)
 
                         if cur_user:
                             # Prepare session
@@ -261,6 +263,7 @@ def login():
                             # Redirect to NEXT
                             response = redirect(redirect_helper(next_url))
                             response.set_cookie('XSRF-TOKEN', xsrf_token)
+                            response.delete_cookie('next_url')
                             return response
 
                 except Exception as e:

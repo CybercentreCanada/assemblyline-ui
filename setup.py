@@ -45,7 +45,8 @@ setup(
         'python_u2flib_server',
         'pyqrcode',
         'markdown',
-        'python-ldap'
+        'python-ldap',
+        'authlib'
     ],
     package_data={
         'assemblyline_ui': [
