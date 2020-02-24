@@ -2,7 +2,7 @@ version: '2.4'
 
 services:
   al_ui:
-    image: cccs/assemblyline_dev:4.0.12
+    image: cccs/assemblyline_dev:4.0.13
     ports:
       - '5000:5000'
     volumes:
@@ -19,7 +19,7 @@ services:
         condition: service_started
 
   al_socketio:
-    image: cccs/assemblyline_dev:4.0.12
+    image: cccs/assemblyline_dev:4.0.13
     ports:
       - '5002:5002'
     volumes:
