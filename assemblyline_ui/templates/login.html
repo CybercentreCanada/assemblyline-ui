@@ -62,7 +62,7 @@
                         </div>
                         {% endif %}
                         {% raw %}
-                        <div ng-show="!u2f_request && !otp_request && up_login">
+                        <div ng-show="!u2f_request && !otp_request && up_login && providers.length!=0 ">
                             <hr/>
                             Or sign in with:
                             <a ng-repeat="p in providers" ng-disabled="loading==true" style="margin-top: 10px" class="btn btn-primary btn-block" href="/api/v4/auth/login/?oauth_provider={{p}}">{{p | titleCase}}</a>
