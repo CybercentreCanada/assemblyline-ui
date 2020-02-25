@@ -231,8 +231,8 @@ def login():
                             cur_user = {}
 
                         # Make sure the user exists in AL and is in sync
-                        if not cur_user and config.auth.oauth.providers[oauth_provider].auto_create or \
-                                cur_user and config.auth.oauth.providers[oauth_provider].auto_sync:
+                        if (not cur_user and config.auth.oauth.providers[oauth_provider].auto_create) or \
+                                (cur_user and config.auth.oauth.providers[oauth_provider].auto_sync):
 
                             # Update the current user
                             cur_user.update(data)
@@ -253,10 +253,10 @@ def login():
                         else:
                             avatar = None
                             username = ''
-                            oauth_error = "User does not exist, create it first"
+                            oauth_error = "User auto-creation is disabled"
 
                 except Exception:
-                    oauth_error = "Invalid oauth token, retry"
+                    oauth_error = "Invalid oAuth2 token, try again"
     else:
         providers = str([])
 
