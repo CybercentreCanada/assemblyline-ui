@@ -175,6 +175,6 @@ def validate_ldapuser(username, password, storage):
             # Fallback to internal auth
             pass
         else:
-            raise AuthenticationException("Wrong LDAP username or password")
+            raise AuthenticationException("Wrong username or password")
 
     return None, None
