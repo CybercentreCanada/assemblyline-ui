@@ -10,6 +10,8 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.password = "";
     $scope.otp = "";
     $scope.error = "";
+    $scope.oauth_error = "";
+    $scope.oauth_token = "";
     $scope.otp_request = false;
     $scope.up_login = true;
     $scope.signup_mode = false;
@@ -79,7 +81,8 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                 password: password,
                 otp: $scope.otp,
                 u2f_response: $scope.u2f_response,
-                oauth_provider: oauth_provider
+                oauth_provider: oauth_provider,
+                oauth_token: $scope.oauth_token
             }
         })
         .success(function () {

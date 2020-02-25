@@ -1,14 +1,12 @@
-import base64
 import hashlib
 import json
 import markdown
 
-from flask import Blueprint, render_template, request, abort, redirect, Markup, current_app, session as flsk_session
+from flask import Blueprint, render_template, request, abort, redirect, Markup, current_app
 
-from assemblyline.common.isotime import iso_to_local, now
+from assemblyline.common.isotime import iso_to_local
 from assemblyline.common import forge
-from assemblyline.common.security import generate_random_secret
-from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, KV_SESSION
+from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, get_token_store
 from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
@@ -179,9 +177,12 @@ def login():
     registration_key = request.args.get('registration_key', None)
 
     avatar = None
+    oauth_token = ''
+    oauth_error = ''
     username = ''
     oauth_login = 'code' in request.args and 'state' in request.args
     oauth_provider = request.args.get('provider', None)
+    up_login = True
 
     next_url = angular_safe(request.args.get('next', request.cookies.get('next_url', "/")))
     if "login.html" in next_url or "logout.html" in next_url:
@@ -213,12 +214,13 @@ def login():
                 # noinspection PyBroadException
                 try:
                     # Test oauth access token
-                    _ = provider.authorize_access_token()
+                    token = provider.authorize_access_token()
 
                     # Get user data
                     resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
                     if resp.ok:
                         data = parse_profile(resp.json())
+                        username = data['uname']
                         avatar = data.pop('avatar', None)
 
                         # Find if user already exists
@@ -237,45 +239,30 @@ def login():
 
                             # Save avatar
                             if avatar:
-                                STORAGE.user_avatar.save(cur_user['uname'], avatar)
+                                STORAGE.user_avatar.save(username, avatar)
 
                             # Save updated user
-                            STORAGE.user.save(cur_user['uname'], cur_user)
+                            STORAGE.user.save(username, cur_user)
 
                         if cur_user:
-                            # Prepare session
-                            priv = ["R", "W", "E"]
-                            session_duration = config.ui.session_duration
-                            cur_time = now()
-                            xsrf_token = generate_random_secret()
-                            current_session = {
-                                'duration': session_duration,
-                                'ip': request.headers.get("X-Forwarded-For", request.remote_addr),
-                                'privileges': priv,
-                                'time': int(cur_time) - (int(cur_time) % session_duration),
-                                'user_agent': request.headers.get("User-Agent", None),
-                                'username': cur_user['uname'],
-                                'xsrf_token': xsrf_token
-                            }
-                            session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
-                            current_session['expire_at'] = cur_time + session_duration
-                            flsk_session['session_id'] = session_id
-                            KV_SESSION.add(session_id, current_session)
+                            up_login = False
+                            if avatar is None:
+                                avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
+                            oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+                            get_token_store(username).add(oauth_token)
+                        else:
+                            avatar = None
+                            username = ''
+                            oauth_error = "User does not exist, create it first"
 
-                            # Redirect to NEXT
-                            response = redirect(redirect_helper(next_url))
-                            response.set_cookie('XSRF-TOKEN', xsrf_token)
-                            response.delete_cookie('next_url')
-                            return response
-
-                except Exception as e:
-                    oauth_login = False
+                except Exception:
+                    oauth_error = "Invalid oauth token, retry"
     else:
         providers = str([])
 
-    return custom_render("login.html", next=next_url, avatar=avatar,
-                         username=username, up_login=str(not oauth_login).lower(),
-                         signup=config.auth.internal.signup.enabled, providers=providers)
+    return custom_render("login.html", next=next_url, avatar=avatar, username=username, oauth_error=oauth_error,
+                         oauth_token=oauth_token, signup=config.auth.internal.signup.enabled,
+                         up_login=str(up_login).lower(), providers=providers)
 
 
 @views.route("/logout.html")

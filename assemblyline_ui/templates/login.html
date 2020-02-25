@@ -13,7 +13,7 @@
     <script src="/static/js/angular/angular.js"></script>
     <script src="/static/js/login.js"></script>
 </head>
-<body ng-controller="ALController" ng-init="username='{{username}}';providers={{providers}};up_login={{up_login}};public_key='{{public_key}}';next='{{next}}';start();">
+<body ng-controller="ALController" ng-init="username='{{username}}';providers={{providers}};up_login={{up_login}};oauth_token='{{oauth_token}}';oauth_error='{{oauth_error}}';next='{{next}}';start();">
 <div class="container-fluid">
     <div class="row-fluid">
         <div class="centering text-center">
@@ -63,9 +63,10 @@
                         {% endif %}
                         {% raw %}
                         <div ng-show="!u2f_request && !otp_request && up_login && providers.length!=0 ">
-                            <hr/>
-                            Or sign in with:
+                            <div class="divider"><div>OR</div></div>
+                            Sign in with:
                             <a ng-repeat="p in providers" ng-disabled="loading==true" style="margin-top: 10px" class="btn btn-primary btn-block" href="/api/v4/auth/login/?oauth_provider={{p}}">{{p | titleCase}}</a>
+                            <div class="text-danger" style="padding-top: 10px"><b>{{oauth_error}}</b></div>
                         </div>
                         {% endraw %}
                     </form>

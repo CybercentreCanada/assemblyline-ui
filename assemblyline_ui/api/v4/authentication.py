@@ -194,6 +194,7 @@ def login(**_):
     apikey = data.get('apikey', None)
     u2f_response = data.get('u2f_response', None)
     oauth_provider = data.get('oauth_provider', None)
+    oauth_token = data.get('oauth_token', None)
 
     if config.auth.oauth.enabled and oauth_provider:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -208,13 +209,14 @@ def login(**_):
     except Exception:
         raise AuthenticationException('Invalid OTP token')
 
-    if (user and password) or (user and apikey) or oauth_provider:
+    if (user and password) or (user and apikey) or (user and oauth_token):
         auth = {
             'username': user,
             'password': password,
             'otp': otp,
             'u2f_response': u2f_response,
-            'apikey': apikey
+            'apikey': apikey,
+            'oauth_token': oauth_token
         }
 
         logged_in_uname = None
