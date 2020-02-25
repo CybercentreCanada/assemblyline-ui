@@ -103,7 +103,7 @@ def bind(name, **kwargs):
     """
     uname = kwargs['user']['uname']
     data = request.json
-    if "errorCode" in data:
+    if "errorCode" in data and data['errorCode'] != 0:
         return make_api_response({'success': False}, err=U2F_CLIENT_ERROR_MAP[data['errorCode']], status_code=400)
 
     user = STORAGE.user.get(uname, as_obj=False)

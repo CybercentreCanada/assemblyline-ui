@@ -109,7 +109,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                     $scope.loading = false;
                     u2f.sign(data.api_response.appId, data.api_response.challenge, data.api_response.registeredKeys,
                         function(deviceResponse) {
-                            if (deviceResponse.errorCode === undefined){
+                            if (deviceResponse.errorCode === undefined || deviceResponse.errorCode === 0){
                                 $scope.u2f_response = deviceResponse;
                                 $timeout(function(){
                                     $scope.login();
