@@ -12,9 +12,11 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.error = "";
     $scope.oauth_error = "";
     $scope.oauth_token = "";
+    $scope.oauth_validation = false;
     $scope.otp_request = false;
     $scope.up_login = true;
     $scope.signup_mode = false;
+    $scope.u2f_request = false;
     $scope.u2f_response = "";
     $scope.signed_up = false;
     $scope.providers = [];
@@ -26,10 +28,11 @@ function LoginBaseCtrl($scope, $http, $timeout) {
         $timeout(function(){$('#inputOTP').focus()}, 100);
     };
 
-    $scope.switch_to_userpass = function(){
+    $scope.switch_user = function(){
         $scope.error = '';
+        $scope.oauth_error = '';
         $scope.username = "";
-        $scope.up_login=true;
+        $scope.oauth_validation=false;
         $timeout(function(){$('#inputUser').focus()}, 100);
     };
 

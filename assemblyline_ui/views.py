@@ -180,9 +180,9 @@ def login():
     oauth_token = ''
     oauth_error = ''
     username = ''
-    oauth_login = 'code' in request.args and 'state' in request.args
+    oauth_validation = 'code' in request.args and 'state' in request.args
     oauth_provider = request.args.get('provider', None)
-    up_login = True
+    up_login = config.auth.internal.enabled or config.auth.ldap.enabled
 
     next_url = angular_safe(request.args.get('next', request.cookies.get('next_url', "/")))
     if "login.html" in next_url or "logout.html" in next_url:
@@ -206,7 +206,7 @@ def login():
         providers = str([name for name, p in config.auth.oauth.providers.items()
                          if p['client_id'] and p['client_secret']])
 
-        if oauth_login:
+        if oauth_validation:
             oauth = current_app.extensions.get('authlib.integrations.flask_client')
             provider = oauth.create_client(oauth_provider)
 
@@ -245,24 +245,26 @@ def login():
                             STORAGE.user.save(username, cur_user)
 
                         if cur_user:
-                            up_login = False
                             if avatar is None:
                                 avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
                             oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
                             get_token_store(username).add(oauth_token)
                         else:
+                            oauth_validation = False
                             avatar = None
                             username = ''
                             oauth_error = "User auto-creation is disabled"
 
                 except Exception:
+                    oauth_validation = False
                     oauth_error = "Invalid oAuth2 token, try again"
     else:
         providers = str([])
 
     return custom_render("login.html", next=next_url, avatar=avatar, username=username, oauth_error=oauth_error,
-                         oauth_token=oauth_token, signup=config.auth.internal.signup.enabled,
-                         up_login=str(up_login).lower(), providers=providers)
+                         oauth_token=oauth_token, providers=providers,
+                         signup=config.auth.internal.enabled and config.auth.internal.signup.enabled,
+                         oauth_validation=str(oauth_validation).lower(), up_login=str(up_login).lower())
 
 
 @views.route("/logout.html")
