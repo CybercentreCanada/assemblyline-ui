@@ -220,15 +220,19 @@ def login():
                     resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
                     if resp.ok:
                         data = parse_profile(resp.json())
-                        username = data['uname']
-                        avatar = data.pop('avatar', None)
+                        oauth_avatar = data.pop('avatar', None)
 
                         # Find if user already exists
-                        users = STORAGE.user.search(f"email:{data['email']}", fl="id", as_obj=False)['items']
+                        users = STORAGE.user.search(f"email:{data['email']}", fl="uname", as_obj=False)['items']
                         if users:
-                            cur_user = STORAGE.user.get(users[0]['id'])
+                            cur_user = STORAGE.user.get(users[0]['uname'], as_obj=False) or {}
+                            # Do not update username and password from the current user
+                            data['uname'] = cur_user.get('uname', data['uname'])
+                            data['password'] = cur_user.get('password', data['password'])
                         else:
                             cur_user = {}
+
+                        username = data['uname']
 
                         # Make sure the user exists in AL and is in sync
                         if (not cur_user and config.auth.oauth.providers[oauth_provider].auto_create) or \
@@ -238,8 +242,8 @@ def login():
                             cur_user.update(data)
 
                             # Save avatar
-                            if avatar:
-                                STORAGE.user_avatar.save(username, avatar)
+                            if oauth_avatar:
+                                STORAGE.user_avatar.save(username, oauth_avatar)
 
                             # Save updated user
                             STORAGE.user.save(username, cur_user)
@@ -255,7 +259,7 @@ def login():
                             username = ''
                             oauth_error = "User auto-creation is disabled"
 
-                except Exception:
+                except Exception as _:
                     oauth_validation = False
                     oauth_error = "Invalid oAuth2 token, try again"
     else:
