@@ -62,6 +62,8 @@ def add_user_account(username, **_):
                 error_msg = get_password_requirement_message(**password_requirements)
                 return make_api_response({"success": False}, error_msg, 469)
             data['password'] = get_password_hash(new_pass)
+        else:
+            data['password'] = "__NO_PASSWORD__"
 
         # Data's username as to match the API call username
         data['uname'] = username

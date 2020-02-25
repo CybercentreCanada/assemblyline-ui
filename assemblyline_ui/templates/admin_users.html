@@ -97,9 +97,9 @@
 									<label class="control-label">Member of (space seperated)</label>
 									<input type="text" class="form-control input-sm" ng-model="current_user.groups" ng-disabled="user.type.indexOf('admin')==-1" split-array="{splitter: ' '}">
 								</div>
-                                <div class="form-group" ng-show="current_user.email">
+                                <div class="form-group">
                                     <label class="control-label">Client Email Address</label>
-                                    <input type="text" class="form-control input-sm" ng-model="current_user.email" disabled>
+                                    <input type="text" class="form-control input-sm" ng-model="current_user.email" ng-disabled="editmode">
                                 </div>
 								<div class="form-group" ng-show="current_user.dn">
 									<label class="control-label">Client Certificate DN</label>
