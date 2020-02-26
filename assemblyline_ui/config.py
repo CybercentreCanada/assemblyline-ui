@@ -49,15 +49,22 @@ KV_SESSION = Hash("flask_sessions",
                   port=config.core.redis.nonpersistent.port)
 
 
+def get_token_store(key):
+    return ExpiringSet(f"oauth_token_{key}",
+                       host=config.core.redis.nonpersistent.host,
+                       port=config.core.redis.nonpersistent.port,
+                       ttl=60 * 2)
+
+
 def get_reset_queue(key):
-    return ExpiringSet("reset_id_%s" % key,
+    return ExpiringSet(f"reset_id_{key}",
                        host=config.core.redis.nonpersistent.host,
                        port=config.core.redis.nonpersistent.port,
                        ttl=60 * 15)
 
 
 def get_signup_queue(key):
-    return ExpiringSet("signup_id_%s" % key,
+    return ExpiringSet(f"signup_id_{key}",
                        host=config.core.redis.nonpersistent.host,
                        port=config.core.redis.nonpersistent.port,
                        ttl=60 * 15)

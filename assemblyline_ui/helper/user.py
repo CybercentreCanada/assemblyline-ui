@@ -284,14 +284,14 @@ def login(uname, path=None):
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
-    user['allow_u2f'] = config.auth.allow_u2f
+    user['allow_security_tokens'] = config.auth.allow_security_tokens
     user['apikeys'] = list(user.get('apikeys', {}).keys())
     user['c12n_enforcing'] = CLASSIFICATION.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled
-    u2f_devices = user.get('u2f_devices', {})
-    user['u2f_devices'] = list(u2f_devices.keys())
-    user['u2f_enabled'] = len(u2f_devices) != 0
+    security_tokens = user.get('security_tokens', {})
+    user['security_tokens'] = list(security_tokens.keys())
+    user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
 
@@ -302,7 +302,7 @@ def save_user_account(username, data, user):
     # Clear non user account data
     avatar = data.pop('avatar', None)
     data.pop('2fa_enabled', None)
-    data.pop('u2f_enabled', None)
+    data.pop('security_token_enabled', None)
     data.pop('has_password', None)
 
     data = User(data).as_primitives()

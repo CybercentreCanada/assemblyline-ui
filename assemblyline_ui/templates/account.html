@@ -2,7 +2,7 @@
 {% block html_param %}ng-app="app"{% endblock %}
 {% block title_page %}AL - User account{% endblock %}
 {% block js_import %}
-    <script src="/static/js/u2f/u2f-api.js"></script>
+    <script src="/static/js/cbor/cbor.js"></script>
 	<script src="/static/js/account.js"></script>
 {% endblock %}
 {% block content %}
@@ -95,8 +95,8 @@
 				<div class="form-group" ng-if="current_user['2fa_enabled']&&user.allow_2fa">
 					<span class="btn btn-danger button" ng-click="disable_2fa();"><span class="glyphicon glyphicon-lock"></span> Disable 2-Factor Authentication</span>
                 </div>
-				<div class="form-group" ng-if="user.allow_u2f">
-					<span class="btn btn-primary button" ng-click="manage_u2f_devices();"><span class="icon-lock">&nbsp;&nbsp;</span>Manage U2F Security Tokens</span>
+				<div class="form-group" ng-if="user.allow_security_tokens">
+					<span class="btn btn-primary button" ng-click="manage_security_tokens();"><span class="icon-lock">&nbsp;&nbsp;</span>Manage Security Tokens</span>
                 </div>
                 <div class="form-group" ng-if="user.allow_apikeys">
 					<span class="btn btn-primary button" ng-click="manage_apikeys();"><span class="icon-authentication-keyalt">&nbsp;&nbsp;</span>Manage APIKeys</span>
@@ -219,11 +219,11 @@
 	</div>
 
 
-    <div class="modal fade" id="u2f_management" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal fade" id="security_token_management" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 		<div class="modal-dialog modal-resize">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h4 class="modal_title" id="myModalLabel">U2F Security Tokens</h4>
+					<h4 class="modal_title" id="myModalLabel">Security Tokens</h4>
 				</div>
 				<div class="modal-body">
 					<section>
@@ -234,22 +234,22 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr ng-repeat="name in current_user.u2f_devices">
+                                <tr ng-repeat="name in current_user.security_tokens">
                                     <td nowrap>{{ name }}</td>
                                     <td nowrap class="text-right">
-                                        <button class="btn btn-xs btn-danger" ng-click="disable_u2f_device(name)"><span class="glyphicon glyphicon-minus"></span></button>
+                                        <button class="btn btn-xs btn-danger" ng-click="disable_security_token(name)"><span class="glyphicon glyphicon-minus"></span></button>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
                         <div class="row pad">
-                            <form name="u2f_form">
-                                <div class="col-sm-10"><input placeholder="Enter key name" name="input_u2fkey" class="form-control input-sm" id="u2fkey_name" ng-model="u2fkey_name" ng-pattern="u2fkey_pattern" ng-required="true"/></div>
+                            <form name="security_token_form">
+                                <div class="col-sm-10"><input placeholder="Enter key name" name="input_security_token_key" class="form-control input-sm" id="security_token_key_name" ng-model="security_token_key_name" ng-pattern="security_token_key_pattern" ng-required="true"/></div>
                                 <div class="col-sm-2">
-                                    <button type="submit" class="btn btn-sm btn-success" ng-disabled="!u2f_form.input_u2fkey.$valid" ng-click="register_u2f_device()"><span class="glyphicon glyphicon-plus"><span>&nbsp;</span></span><span>Add Token</span></button>
+                                    <button type="submit" class="btn btn-sm btn-success" ng-disabled="!security_token_form.input_security_token_key.$valid" ng-click="register_security_token()"><span class="glyphicon glyphicon-plus"><span>&nbsp;</span></span><span>Add Token</span></button>
                                 </div>
-                                <div class="col-sm-12 pad"><span class="text-danger strong">{{ u2fkey_error }}</span></div>
+                                <div class="col-sm-12 pad"><span class="text-danger strong">{{ security_token_key_error }}</span></div>
                             </form>
                         </div>
 					</section>
@@ -262,20 +262,20 @@
 	</div>
 
 
-	<div class="modal fade" id="u2f_prompt" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+	<div class="modal fade" id="security_token_prompt" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 		<div class="modal-dialog modal-resize">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h4 class="modal_title" id="myModalLabel">Performing U2F action</h4>
+					<h4 class="modal_title" id="myModalLabel">Performing security token action</h4>
 				</div>
 				<div class="modal-body">
-                    <p>Please touch the flashing U2F device now.
+                    <p>Please touch the flashing security token now.
 
 You may be prompted to allow the site permission to access your security keys. After granting permission, the device will start to blink.</p>
-					<h4 class="text-danger" style="margin-top: 20px">{{ u2f_error }}</h4>
+					<h4 class="text-danger" style="margin-top: 20px">{{ security_token_error }}</h4>
 				</div>
 				<div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="cancel_u2f()">Abort</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="cancel_security_token()">Abort</button>
 				</div>
 			</div>
 		</div>

@@ -42,10 +42,11 @@ setup(
         'gunicorn',
         'gevent',
         'gevent-websocket',
-        'python_u2flib_server',
         'pyqrcode',
         'markdown',
-        'python-ldap'
+        'python-ldap',
+        'authlib',
+        'fido2'
     ],
     package_data={
         'assemblyline_ui': [
@@ -58,6 +59,7 @@ setup(
             "static/js/ace/snippets/*",
             "static/js/angular/*",
             "static/js/bootstrap/*",
+            "static/js/cbor/*",
             "static/js/d3/*",
             "static/js/flow/*",
             "static/js/flow/directives/*",
@@ -66,7 +68,6 @@ setup(
             "static/js/jsoneditor/*",
             "static/js/socket.io/*",
             "static/js/swal/*",
-            "static/js/u2f/*",
             "static/js/ui-select/*",
             "static/ng-template/*",
             "static/pdf/*"

@@ -79,6 +79,8 @@ body {
     text-align: center;
     margin: 10px 0 0;
     min-height: 1em;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .form-signin label{
@@ -165,4 +167,22 @@ body {
     float: none;
     margin: 0 auto;
     text-align: center;
+}
+
+.divider {
+    display: block;
+    text-align: center;
+    width: 100%;
+    margin: 30px 0;
+    position: relative;
+    border-top: 1px solid #AAAAAA;
+}
+
+.divider > div {
+    background-color: #FFFFFF;
+    left: 50%;
+    margin-left: -30px;
+    position: absolute;
+    top: -12px;
+    width: 60px;
 }

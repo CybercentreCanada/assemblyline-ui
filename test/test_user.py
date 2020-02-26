@@ -114,8 +114,8 @@ def test_get_user(datastore, login_session):
     assert resp['uname'] == new_user['uname']
     assert 'otp_sk' not in resp
     assert '2fa_enabled' in resp
-    assert 'u2f_enabled' in resp
-    assert sorted(resp['u2f_devices']) == sorted(list(new_user['u2f_devices'].keys()))
+    assert 'security_token_enabled' in resp
+    assert sorted(resp['security_tokens']) == sorted(list(new_user['security_tokens'].keys()))
 
 
 # noinspection PyUnusedLocal
@@ -221,7 +221,7 @@ def test_set_user(datastore, login_session):
     ds.user.commit()
 
     new_user = ds.user.get(username, as_obj=False)
-    for k in ['apikeys', 'otp_sk', 'password', 'u2f_devices']:
+    for k in ['apikeys', 'otp_sk', 'password', 'security_tokens']:
         u.pop(k)
         new_user.pop(k)
 

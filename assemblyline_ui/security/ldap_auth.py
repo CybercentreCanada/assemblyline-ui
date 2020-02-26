@@ -147,7 +147,7 @@ def validate_ldapuser(username, password, storage):
             cur_user = storage.user.get(username, as_obj=False) or {}
 
             # Make sure the user exists in AL and is in sync
-            if not cur_user or config.auth.ldap.auto_sync:
+            if (not cur_user and config.auth.ldap.auto_create) or (cur_user and config.auth.ldap.auto_sync):
                 # Generate user data from ldap
                 data = dict(
                     uname=username,
@@ -167,11 +167,15 @@ def validate_ldapuser(username, password, storage):
                 cur_user.update(data)
                 storage.user.save(username, cur_user)
 
-            return username.lower(), ["R", "W", "E"]
+            if cur_user:
+                return username, ["R", "W", "E"]
+            else:
+                raise AuthenticationException("User auto-creation is disabled")
+
         elif config.auth.internal.enabled:
             # Fallback to internal auth
             pass
         else:
-            raise AuthenticationException("Wrong LDAP username or password")
+            raise AuthenticationException("Wrong username or password")
 
     return None, None

@@ -7,6 +7,7 @@ from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser
+from assemblyline_ui.security.oauth_auth import validate_oauth
 from assemblyline_ui.security.second_factor_auth import validate_2fa
 from assemblyline_ui.security.userpass_auth import validate_userpass
 
@@ -124,12 +125,12 @@ def default_authenticator(auth, req, ses, storage):
     # Apikey authentication procedure is not subject to OTP challenge but has limited functionality
 
     apikey = auth.get('apikey', None)
-    dn = auth.get('dn', None)
     otp = auth.get('otp', 0)
-    u2f_response = auth.get('u2f_response', None)
-    u2f_challenge = ses.pop('_u2f_challenge_', None)
+    webauthn_auth_resp = auth.get('webauthn_auth_resp', None)
+    state = ses.pop('state', None)
     password = auth.get('password', None)
-    uname = auth.get('username', None) or dn
+    uname = auth.get('username', None)
+    oauth_token = auth.get('oauth_token', None)
 
     if not uname:
         raise AuthenticationException('No user specified for authentication')
@@ -148,22 +149,15 @@ def default_authenticator(auth, req, ses, storage):
         if validated_user:
             return validated_user, priv
 
-        validated_user, priv = validate_ldapuser(uname, password, storage)
+        validated_user, priv = validate_oauth(uname, oauth_token)
+        if not validated_user:
+            validated_user, priv = validate_ldapuser(uname, password, storage)
+        if not validated_user:
+            validated_user, priv = validate_userpass(uname, password, storage)
+
         if validated_user:
-            validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
+            validate_2fa(validated_user, otp, state, webauthn_auth_resp, storage)
             return validated_user, priv
-
-        validated_user, priv = validate_userpass(uname, password, storage)
-        if validated_user:
-            validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
-            return validated_user, priv
-
-
-        # TODO: Add more modules somehow... To be firgured out later
-        # validated_user, priv = validate_dn(dn, storage)
-        # if validated_user:
-        #     validate_2fa(validated_user, otp, u2f_challenge, u2f_response, storage)
-        #     return validated_user, priv
 
     except AuthenticationException as ae:
         # Failure appended, push failure parameters

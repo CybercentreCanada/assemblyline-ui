@@ -3,7 +3,7 @@ import hashlib
 import pyqrcode
 import re
 
-from flask import request, session as flsk_session
+from flask import request, session as flsk_session, current_app
 from io import BytesIO
 from passlib.hash import bcrypt
 
@@ -174,7 +174,7 @@ def login(**_):
      "password": <ENCRYPTED_PASSWORD>,
      "otp": <OTP_TOKEN>,
      "apikey": <ENCRYPTED_APIKEY>,
-     "u2f_response": <RESPONSE_TO_CHALLENGE_FROM_U2F_TOKEN>
+     "webauthn_auth_resp": <RESPONSE_TO_CHALLENGE_FROM_WEBAUTHN>
     }
 
     Result example:
@@ -192,26 +192,31 @@ def login(**_):
     user = data.get('user', None)
     password = data.get('password', None)
     apikey = data.get('apikey', None)
-    u2f_response = data.get('u2f_response', None)
+    webauthn_auth_resp = data.get('webauthn_auth_resp', None)
+    oauth_provider = data.get('oauth_provider', None)
+    oauth_token = data.get('oauth_token', None)
+
+    if config.auth.oauth.enabled and oauth_provider:
+        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        provider = oauth.create_client(oauth_provider)
+
+        if provider:
+            redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
+            return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
         otp = int(data.get('otp', 0) or 0)
     except Exception:
         raise AuthenticationException('Invalid OTP token')
 
-    if request.environ.get("HTTP_X_REMOTE_CERT_VERIFIED", "FAILURE") == "SUCCESS":
-        dn = request.environ.get("HTTP_X_REMOTE_DN")
-    else:
-        dn = None
-
-    if (user and password) or dn or (user and apikey):
+    if (user and password) or (user and apikey) or (user and oauth_token):
         auth = {
             'username': user,
             'password': password,
             'otp': otp,
-            'u2f_response': u2f_response,
-            'dn': dn,
-            'apikey': apikey
+            'webauthn_auth_resp': webauthn_auth_resp,
+            'apikey': apikey,
+            'oauth_token': oauth_token
         }
 
         logged_in_uname = None
@@ -251,7 +256,7 @@ def login(**_):
 
 
 @auth_api.route("/logout/", methods=["GET"])
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False, required_priv=['R', 'W'], check_xsrf_token=False)
 def logout(**_):
     """
     Logout from the system clearing the current session

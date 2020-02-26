@@ -1,11 +1,13 @@
+import hashlib
 import json
 import markdown
 
-from flask import Blueprint, render_template, request, abort, redirect, Markup
+from flask import Blueprint, render_template, request, abort, redirect, Markup, current_app
 
 from assemblyline.common.isotime import iso_to_local
 from assemblyline.common import forge
-from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue
+from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, get_token_store
+from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
 from assemblyline.odm.models.user import User
@@ -174,27 +176,17 @@ def heuristics_stats(*_, **kwargs):
 def login():
     registration_key = request.args.get('registration_key', None)
 
-    if request.environ.get("HTTP_X_REMOTE_CERT_VERIFIED", "FAILURE") == "SUCCESS":
-        dn = ",".join(request.environ.get("HTTP_X_REMOTE_DN").split("/")[::-1][:-1])
-    else:
-        dn = None
-
     avatar = None
+    oauth_token = ''
+    oauth_error = ''
     username = ''
-    alternate_login = 'true'
-    if dn:
-        u_list = STORAGE.user.search(f'dn:"{dn}"', fl='id', as_obj=False)['items']
-        if len(u_list):
-            username = u_list[0]['id']
-            avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-            alternate_login = 'false'
-        else:
-            try:
-                username = dn.rsplit('CN=', 1)[1]
-            except IndexError:
-                username = dn
-            avatar = "/static/images/user_default.png"
-            alternate_login = 'false'
+    oauth_validation = 'code' in request.args and 'state' in request.args
+    oauth_provider = request.args.get('provider', None)
+    up_login = config.auth.internal.enabled or config.auth.ldap.enabled
+
+    next_url = angular_safe(request.args.get('next', request.cookies.get('next_url', "/")))
+    if "login.html" in next_url or "logout.html" in next_url:
+        next_url = "/"
 
     if registration_key and config.auth.internal.signup.enabled:
         try:
@@ -202,8 +194,6 @@ def login():
             members = signup_queue.members()
             signup_queue.delete()
             if members:
-                alternate_login = 'true'
-
                 user_info = members[0]
                 user = User(user_info)
                 username = user.uname
@@ -212,12 +202,73 @@ def login():
         except (KeyError, ValueError):
             pass
 
-    next_url = angular_safe(request.args.get('next', "/"))
-    if "login.html" in next_url or "logout.html" in next_url:
-        next_url = "/"
-    return custom_render("login.html", next=next_url, avatar=avatar,
-                         username=username, alternate_login=alternate_login,
-                         signup=config.auth.internal.signup.enabled)
+    if config.auth.oauth.enabled:
+        providers = str([name for name, p in config.auth.oauth.providers.items()
+                         if p['client_id'] and p['client_secret']])
+
+        if oauth_validation:
+            oauth = current_app.extensions.get('authlib.integrations.flask_client')
+            provider = oauth.create_client(oauth_provider)
+
+            if provider:
+                # noinspection PyBroadException
+                try:
+                    # Test oauth access token
+                    token = provider.authorize_access_token()
+
+                    # Get user data
+                    resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
+                    if resp.ok:
+                        data = parse_profile(resp.json())
+                        oauth_avatar = data.pop('avatar', None)
+
+                        # Find if user already exists
+                        users = STORAGE.user.search(f"email:{data['email']}", fl="uname", as_obj=False)['items']
+                        if users:
+                            cur_user = STORAGE.user.get(users[0]['uname'], as_obj=False) or {}
+                            # Do not update username and password from the current user
+                            data['uname'] = cur_user.get('uname', data['uname'])
+                            data['password'] = cur_user.get('password', data['password'])
+                        else:
+                            cur_user = {}
+
+                        username = data['uname']
+
+                        # Make sure the user exists in AL and is in sync
+                        if (not cur_user and config.auth.oauth.providers[oauth_provider].auto_create) or \
+                                (cur_user and config.auth.oauth.providers[oauth_provider].auto_sync):
+
+                            # Update the current user
+                            cur_user.update(data)
+
+                            # Save avatar
+                            if oauth_avatar:
+                                STORAGE.user_avatar.save(username, oauth_avatar)
+
+                            # Save updated user
+                            STORAGE.user.save(username, cur_user)
+
+                        if cur_user:
+                            if avatar is None:
+                                avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
+                            oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+                            get_token_store(username).add(oauth_token)
+                        else:
+                            oauth_validation = False
+                            avatar = None
+                            username = ''
+                            oauth_error = "User auto-creation is disabled"
+
+                except Exception as _:
+                    oauth_validation = False
+                    oauth_error = "Invalid oAuth2 token, try again"
+    else:
+        providers = str([])
+
+    return custom_render("login.html", next=next_url, avatar=avatar, username=username, oauth_error=oauth_error,
+                         oauth_token=oauth_token, providers=providers,
+                         signup=config.auth.internal.enabled and config.auth.internal.signup.enabled,
+                         oauth_validation=str(oauth_validation).lower(), up_login=str(up_login).lower())
 
 
 @views.route("/logout.html")
