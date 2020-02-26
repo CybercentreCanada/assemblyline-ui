@@ -73,7 +73,7 @@ class BasicLDAPWrapper(object):
             try:
                 ldap_server = self.create_connection()
             except Exception as le:
-                return {"error": "Error connecting to ldapserver. Reason: %s" % (repr(le)),
+                return {"error": "Error connecting to ldap server. Reason: %s" % (repr(le)),
                         "ldap": None, "cached": False}
 
         try:
@@ -84,9 +84,9 @@ class BasicLDAPWrapper(object):
 
             return {"error": None, "ldap": res, "cached": False}
         except ldap.UNWILLING_TO_PERFORM:
-            return {"error": "Server is unwilling to perform the operation.", "ldap": None, "cached": False}
+            return {"error": "ldap server is unwilling to perform the operation.", "ldap": None, "cached": False}
         except ldap.LDAPError as le:
-            return {"error": "An error occured while talking to the server: %s" % repr(le), "ldap": None,
+            return {"error": "An error occurred while talking to the ldap server: %s" % repr(le), "ldap": None,
                     "cached": False}
 
     # noinspection PyBroadException
@@ -116,13 +116,14 @@ class BasicLDAPWrapper(object):
     # noinspection PyBroadException
     def get_details_from_uid(self, uid, ldap_server=None):
         res = self.get_object(self.uid_lookup % uid, ldap_server)
-        if not res['error']:
-            try:
-                return res['ldap'][0]
-            except Exception:
-                return None
+        if res['error']:
+            log.error(res['error'])
+            return None
 
-        return None
+        try:
+            return res['ldap'][0]
+        except Exception:
+            return None
 
 
 def get_attribute(ldap_login_info, key, safe=True):
