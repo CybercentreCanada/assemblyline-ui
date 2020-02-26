@@ -46,7 +46,7 @@ setup(
         'markdown',
         'python-ldap',
         'authlib',
-        'webauthn'
+        'fido2'
     ],
     package_data={
         'assemblyline_ui': [

@@ -4,45 +4,15 @@
 /**
  * Main App Module
  */
-function b64enc(buf) {
-    return base64js.fromByteArray(buf)
-                   .replace(/\+/g, "-")
-                   .replace(/\//g, "_")
-                   .replace(/=/g, "");
-};
 
-const transformCredentialCreateOptions = (credentialCreateOptionsFromServer) => {
-    let {challenge, user} = credentialCreateOptionsFromServer;
-    user.id = Uint8Array.from(
-        atob(credentialCreateOptionsFromServer.user.id), c => c.charCodeAt(0));
+function toArrayBuffer(data){
+    let uint8Array = new Uint8Array(data.length);
+    for (let i = 0; i < uint8Array.length; i++){
+        uint8Array[i] = data[i];
+    }
 
-    challenge = Uint8Array.from(
-        atob(credentialCreateOptionsFromServer.challenge), c => c.charCodeAt(0));
-
-    return Object.assign(
-        {}, credentialCreateOptionsFromServer,
-        {challenge, user});
-};
-
-const transformNewAssertionForServer = (newAssertion) => {
-    const attObj = new Uint8Array(
-        newAssertion.response.attestationObject);
-    const clientDataJSON = new Uint8Array(
-        newAssertion.response.clientDataJSON);
-    const rawId = new Uint8Array(
-        newAssertion.rawId);
-
-    const registrationClientExtensions = newAssertion.getClientExtensionResults();
-
-    return {
-        id: newAssertion.id,
-        rawId: b64enc(rawId),
-        type: newAssertion.type,
-        attObj: b64enc(attObj),
-        clientData: b64enc(clientDataJSON),
-        registrationClientExtensions: JSON.stringify(registrationClientExtensions)
-    };
-};
+    return uint8Array;
+}
 
 function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     //Parameters vars
@@ -126,22 +96,25 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         $scope.u2f_error = "";
         $scope.cancelled_u2f = false;
         $http({
-            method: 'GET',
-            url: "/api/v4/webauthn/begin_activate/"
+            method: 'POST',
+            url: "/api/v4/webauthn/register/begin/"
         }).success(function (data){
             $scope.loading_extra = false;
             $('#u2f_prompt').modal('show');
-            const publicKeyCredentialCreateOptions = transformCredentialCreateOptions(data.api_response);
-            navigator.credentials.create({
-                publicKey: publicKeyCredentialCreateOptions
-            }).then(
-                function(data){
-                    const newAssertionForServer = transformNewAssertionForServer(data);
+            let arrayData = toArrayBuffer(data.api_response);
+            const options = CBOR.decode(arrayData.buffer);
+            navigator.credentials.create(options).then(
+                function(attestation){
+                    let attestation_data = CBOR.encode({
+                        "attestationObject": new Uint8Array(attestation.response.attestationObject),
+                        "clientDataJSON": new Uint8Array(attestation.response.clientDataJSON)
+                    });
+                    //const newAssertionForServer = transformNewAssertionForServer(data);
                     $scope.loading_extra = true;
                     $http({
                         method: "POST",
-                        url: "/api/v4/webauthn/verify_credential_info/" + $scope.u2fkey_name + "/",
-                        data: newAssertionForServer
+                        url: "/api/v4/webauthn/register/complete/" + $scope.u2fkey_name + "/",
+                        data: Array.from(new Uint8Array(attestation_data))
                     }).success(
                         function(){
                             $scope.loading_extra = false;
@@ -155,7 +128,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                             $scope.u2fkey_name = "";
                         }
                     ).error(
-                        function(data, status){
+                        function(data, status, headers, config){
                             $scope.loading_extra = false;
                             if (data === "") {
                                 return;
@@ -170,12 +143,8 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                         }
                     )
                 }
-            ).catch(
-                function(err){
-                    return console.error("Error creating credential:", err);
-                }
-            );
-        }).error(function (data, status) {
+            )
+        }).error(function (data, status, headers, config) {
             $scope.loading_extra = false;
             if (data === "") {
                 return;
