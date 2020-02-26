@@ -22,39 +22,39 @@
                     <a href="/">{% block banner %}<img class="banner-img" src="/static/images/banner.svg">{% endblock %}</a>
                     <form ng-show="!signup_mode && !signed_up" class="form-signin" ng-submit="login()">
                         {% if avatar %}
-                        <div ng-show="!u2f_request && !otp_request && oauth_validation" style="display: inline-block; text-align: center; width: 250px; height: 200px;">
+                        <div ng-show="!security_token_request && !otp_request && oauth_validation" style="display: inline-block; text-align: center; width: 250px; height: 200px;">
                             <img class="profile-img-card" id="avatar" src="{{ avatar }}"/>
                             <div class="profile-name-card">
                                 <b>{{ username }}</b>
                             </div>
                         </div>
                         {% endif %}
-                        <div ng-show="!u2f_request && !otp_request && up_login && !oauth_validation">
+                        <div ng-show="!security_token_request && !otp_request && up_login && !oauth_validation">
                             <input ng-disabled="oauth_validation" ng-model="username" id="inputUser" class="form-control" placeholder="Username" required autofocus>
                             <input ng-disabled="oauth_validation" ng-model="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
                         </div>
 
-                        <div ng-show="!u2f_request && otp_request">
+                        <div ng-show="!security_token_request && otp_request">
                             <input ng-model="otp" id="inputOTP" class="form-control" placeholder="OTP Token" type="tel" maxlength="6" minlength="6">
                         </div>
 
-                        <div ng-show="u2f_request && !otp_request">
+                        <div ng-show="security_token_request && !otp_request">
                             <div class="icon-lock" style="font-size: 700%;"></div>
-                            <p>Please touch the flashing U2F device now.</p>
+                            <p>Please touch the flashing security token now.</p>
                             <p>Having trouble finding your security key? <a style="cursor: hand" ng-click="switch_to_otp()">Enter a verification code instead.</a></p>
                         </div>
 
-                        <button ng-show="!u2f_request && (up_login || otp_request || oauth_validation)" ng-disabled="loading==true" class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
+                        <button ng-show="!security_token_request && (up_login || otp_request || oauth_validation)" ng-disabled="loading==true" class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
                         {% raw %}
                         <div class="text-danger"><b>{{error}}</b></div>
                         {% endraw %}
 
-                        <div ng-show="!u2f_request && !otp_request && oauth_validation" style="margin-top: 15px">
+                        <div ng-show="!security_token_request && !otp_request && oauth_validation" style="margin-top: 15px">
                             <a style="cursor: hand;" ng-click="switch_user()">Or sign in as a different user...</a>
                         </div>
 
                         {% if signup %}
-                        <div style="margin-top: 15px" ng-show="!u2f_request && !otp_request && up_login && !oauth_validation">
+                        <div style="margin-top: 15px" ng-show="!security_token_request && !otp_request && up_login && !oauth_validation">
                             Do not have an account?
                             <a style="cursor: hand;" ng-click="switch_to_signup()">Sign up!</a>
                             <div style="margin-top: 10px">
@@ -64,11 +64,11 @@
                         </div>
                         {% endif %}
 
-                        <div ng-show="!u2f_request && !otp_request && up_login && providers.length!=0 && !oauth_validation">
+                        <div ng-show="!security_token_request && !otp_request && up_login && providers.length!=0 && !oauth_validation">
                             <div class="divider"><div>OR</div></div>
                         </div>
                         {% raw %}
-                        <div ng-show="!u2f_request && !otp_request && !oauth_validation && providers.length!=0">
+                        <div ng-show="!security_token_request && !otp_request && !oauth_validation && providers.length!=0">
                             <a ng-repeat="p in providers" ng-disabled="loading==true" style="margin-top: 10px" class="btn btn-primary btn-block" href="/api/v4/auth/login/?oauth_provider={{p}}">Sign-in with {{p | titleCase}}</a>
                             <div class="text-danger" style="padding-top: 10px"><b>{{oauth_error}}</b></div>
                         </div>

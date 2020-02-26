@@ -25,15 +25,15 @@ function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.otp_request = false;
     $scope.up_login = true;
     $scope.signup_mode = false;
-    $scope.u2f_request = false;
-    $scope.u2f_response = "";
+    $scope.security_token_request = false;
+    $scope.webauthn_auth_resp = "";
     $scope.signed_up = false;
     $scope.providers = [];
 
     $scope.switch_to_otp = function(){
         $scope.error = '';
         $scope.otp_request = true;
-        $scope.u2f_request = false;
+        $scope.security_token_request = false;
         $timeout(function(){$('#inputOTP').focus()}, 100);
     };
 
@@ -92,7 +92,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                 user: $scope.username,
                 password: password,
                 otp: $scope.otp,
-                u2f_response: $scope.u2f_response,
+                webauthn_auth_resp: $scope.webauthn_auth_resp,
                 oauth_provider: oauth_provider,
                 oauth_token: $scope.oauth_token
             }
@@ -101,12 +101,12 @@ function LoginBaseCtrl($scope, $http, $timeout) {
             window.location = $scope.next;
         })
         .error(function (data) {
-            if (data.api_error_message === 'Wrong U2F Security Token'){
-                if ($scope.u2f_request){
+            if (data.api_error_message === 'Wrong Security Token'){
+                if ($scope.security_token_request){
                     $scope.error = data.api_error_message;
                 }
                 else{
-                    $scope.u2f_request = true;
+                    $scope.security_token_request = true;
                     $scope.otp_request = false;
                 }
 
@@ -127,7 +127,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                                 "signature": new Uint8Array(assertion.response.signature)
                             });
 
-                            $scope.u2f_response = Array.from(new Uint8Array(assertion_data));
+                            $scope.webauthn_auth_resp = Array.from(new Uint8Array(assertion_data));
                                 $timeout(function(){
                                     $scope.login();
                                 }, 100);
@@ -153,7 +153,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                 }
                 else{
                     $scope.otp_request = true;
-                    $scope.u2f_request = false;
+                    $scope.security_token_request = false;
                 }
                 $scope.loading = false;
                 $scope.otp = "";

@@ -20,7 +20,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.user = null;
     $scope.loading = false;
     $scope.apikey_pattern = /^[a-z][a-z0-9_]*$/;
-    $scope.u2fkey_pattern = /^[a-z][a-z0-9_]*$/;
+    $scope.security_token_key_pattern = /^[a-z][a-z0-9_]*$/;
 
     //DEBUG MODE
     $scope.debug = false;
@@ -37,14 +37,14 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.error = '';
     $scope.success = '';
 
-    $scope.cancel_u2f = function(){
-        $scope.cancelled_u2f = true;
+    $scope.cancel_security_token = function(){
+        $scope.cancelled_security_token = true;
     };
 
-    $scope.disable_u2f_device = function(name){
+    $scope.disable_security_token = function(name){
         swal({
             title: "Remove "+ name +"?",
-            text: "Are you sure you want to remove this U2F Security token?",
+            text: "Are you sure you want to remove this Security token?",
             type: "warning",
             showCancelButton: true,
             confirmButtonColor: "#d9534f",
@@ -60,15 +60,15 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             .success(function () {
                 $scope.loading_extra = false;
                 $scope.success = "Security Token removed from your account.";
-                let idx = $scope.current_user['u2f_devices'].indexOf(name);
+                let idx = $scope.current_user['security_tokens'].indexOf(name);
                 if (idx !== -1){
-                    $scope.current_user['u2f_devices'].splice(idx, 1)
+                    $scope.current_user['security_tokens'].splice(idx, 1)
                 }
                 $timeout(function () {
                     $scope.success = "";
                         }, 2000);
 
-                $scope.current_user['u2f_enabled'] = $scope.current_user['u2f_devices'].length > 0;
+                $scope.current_user['security_token_enabled'] = $scope.current_user['security_tokens'].length > 0;
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
@@ -86,21 +86,21 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         });
     };
 
-    $scope.manage_u2f_devices = function(){
-      $scope.u2f_error = "";
-      $('#u2f_management').modal('show');
+    $scope.manage_security_tokens = function(){
+      $scope.security_token_error = "";
+      $('#security_token_management').modal('show');
     };
 
-    $scope.register_u2f_device = function (){
+    $scope.register_security_token = function (){
         $scope.loading_extra = true;
-        $scope.u2f_error = "";
-        $scope.cancelled_u2f = false;
+        $scope.security_token_error = "";
+        $scope.cancelled_security_token = false;
         $http({
             method: 'POST',
             url: "/api/v4/webauthn/register/begin/"
         }).success(function (data){
             $scope.loading_extra = false;
-            $('#u2f_prompt').modal('show');
+            $('#security_token_prompt').modal('show');
             let arrayData = toArrayBuffer(data.api_response);
             const options = CBOR.decode(arrayData.buffer);
             navigator.credentials.create(options).then(
@@ -112,19 +112,19 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                     $scope.loading_extra = true;
                     $http({
                         method: "POST",
-                        url: "/api/v4/webauthn/register/complete/" + $scope.u2fkey_name + "/",
+                        url: "/api/v4/webauthn/register/complete/" + $scope.security_token_key_name + "/",
                         data: Array.from(new Uint8Array(attestation_data))
                     }).success(
                         function(){
                             $scope.loading_extra = false;
-                            $scope.success = "U2F Security Token added to your account.";
-                            $scope.current_user['u2f_devices'].push($scope.u2fkey_name);
-                            $scope.current_user['u2f_enabled'] = $scope.current_user['u2f_devices'].length > 0;
-                            $('#u2f_prompt').modal('hide');
+                            $scope.success = "Security Token '" + $scope.security_token_key_name + "' added to your account.";
+                            $scope.current_user['security_tokens'].push($scope.security_token_key_name);
+                            $scope.current_user['security_token_enabled'] = $scope.current_user['security_tokens'].length > 0;
+                            $('#security_token_prompt').modal('hide');
                             $timeout(function () {
                                 $scope.success = "";
                             }, 2000);
-                            $scope.u2fkey_name = "";
+                            $scope.security_token_key_name = "";
                         }
                     ).error(
                         function(data, status, headers, config){
@@ -134,10 +134,10 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                             }
 
                             if (data.api_error_message) {
-                                $scope.u2f_error = data.api_error_message;
+                                $scope.security_token_error = data.api_error_message;
                             }
                             else {
-                                $scope.u2f_error = config.url + " (" + status + ")";
+                                $scope.security_token_error = config.url + " (" + status + ")";
                             }
                         }
                     )
@@ -145,7 +145,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             ).catch(
                 function (ex) {
                     $timeout(function () {
-                        $scope.u2f_error = ex.message;
+                        $scope.security_token_error = ex.message;
                     }, 100);
                 }
             )
@@ -156,10 +156,10 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             }
 
             if (data.api_error_message) {
-                $scope.u2f_error = data.api_error_message;
+                $scope.security_token_error = data.api_error_message;
             }
             else {
-                $scope.u2f_error = config.url + " (" + status + ")";
+                $scope.security_token_error = config.url + " (" + status + ")";
             }
         });
 

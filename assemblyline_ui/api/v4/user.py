@@ -121,9 +121,9 @@ def get_user_account(username, **kwargs):
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['apikeys'] = list(user.get('apikeys', {}).keys())
     user['has_password'] = user.pop('password', "") != ""
-    u2f_devices = user.get('u2f_devices', {})
-    user['u2f_devices'] = list(u2f_devices.keys())
-    user['u2f_enabled'] = len(u2f_devices) != 0
+    security_tokens = user.get('security_tokens', {}) or {}
+    user['security_tokens'] = list(security_tokens.keys())
+    user['security_token_enabled'] = len(security_tokens) != 0
 
     if "load_avatar" in request.args:
         user['avatar'] = STORAGE.user_avatar.get(username)
@@ -207,7 +207,7 @@ def set_user_account(username, **kwargs):
 
         data['apikeys'] = old_user.get('apikeys', [])
         data['otp_sk'] = old_user.get('otp_sk', None)
-        data['u2f_devices'] = old_user.get('u2f_devices', {})
+        data['security_tokens'] = old_user.get('security_tokens', {}) or {}
 
         if new_pass:
             password_requirements = config.auth.internal.password_requirements.as_primitives()

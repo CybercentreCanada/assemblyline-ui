@@ -126,7 +126,7 @@ def default_authenticator(auth, req, ses, storage):
 
     apikey = auth.get('apikey', None)
     otp = auth.get('otp', 0)
-    u2f_response = auth.get('u2f_response', None)
+    webauthn_auth_resp = auth.get('webauthn_auth_resp', None)
     state = ses.pop('state', None)
     password = auth.get('password', None)
     uname = auth.get('username', None)
@@ -156,7 +156,7 @@ def default_authenticator(auth, req, ses, storage):
             validated_user, priv = validate_userpass(uname, password, storage)
 
         if validated_user:
-            validate_2fa(validated_user, otp, state, u2f_response, storage)
+            validate_2fa(validated_user, otp, state, webauthn_auth_resp, storage)
             return validated_user, priv
 
     except AuthenticationException as ae:

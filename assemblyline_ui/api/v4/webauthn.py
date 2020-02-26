@@ -41,8 +41,8 @@ def sign(username, **_):
         return make_api_response({'success': False}, err="Bad Request", status_code=400)
 
     session.pop('state', None)
-    u2f_devices = user.get('u2f_devices', {}) or {}
-    credentials = [AttestedCredentialData(websafe_decode(x)) for x in u2f_devices.values()]
+    security_tokens = user.get('security_tokens', {}) or {}
+    credentials = [AttestedCredentialData(websafe_decode(x)) for x in security_tokens.values()]
 
     auth_data, state = server.authenticate_begin(credentials)
     session['state'] = state
@@ -72,7 +72,7 @@ def register_begin(**kwargs):
     user = STORAGE.user.get(uname, as_obj=False)
 
     session.pop('state', None)
-    u2f_devices = user.get('u2f_devices', {}) or {}
+    security_tokens = user.get('security_tokens', {}) or {}
 
     registration_data, state = server.register_begin(
         dict(
@@ -81,7 +81,7 @@ def register_begin(**kwargs):
             displayName=user['name'],
             icon=f"https://{config.ui.fqdn}/static/images/favicon.ico"
         ),
-        credentials=[AttestedCredentialData(websafe_decode(x)) for x in u2f_devices.values()]
+        credentials=[AttestedCredentialData(websafe_decode(x)) for x in security_tokens.values()]
     )
 
     session['state'] = state
@@ -119,12 +119,12 @@ def register_complete(name, **kwargs):
 
     auth_data = server.register_complete(session.pop('state', None), client_data, att_obj)
 
-    u2f_devices = user.get('u2f_devices', {})
-    if name in u2f_devices:
+    security_tokens = user.get('security_tokens', {})
+    if name in security_tokens:
         return make_api_response({'success': False}, err="A token with this name already exist", status_code=400)
 
-    u2f_devices[name] = websafe_encode(auth_data.credential_data)
-    user['u2f_devices'] = u2f_devices
+    security_tokens[name] = websafe_encode(auth_data.credential_data)
+    user['security_tokens'] = security_tokens
 
     return make_api_response({"success": STORAGE.user.save(uname, user)})
 
@@ -151,10 +151,10 @@ def remove(name, **kwargs):
     """
     uname = kwargs['user']['uname']
     user = STORAGE.user.get(uname, as_obj=False)
-    u2f_devices = user.get('u2f_devices', {})
-    if isinstance(u2f_devices, list):
-        u2f_devices = {"default": d for d in u2f_devices}
-    u2f_devices.pop(name, None)
-    user['u2f_devices'] = u2f_devices
+    security_tokens = user.get('security_tokens', {})
+    if isinstance(security_tokens, list):
+        security_tokens = {"default": d for d in security_tokens}
+    security_tokens.pop(name, None)
+    user['security_tokens'] = security_tokens
 
     return make_api_response({'success': STORAGE.user.save(uname, user)})

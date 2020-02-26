@@ -144,7 +144,7 @@
 							<div class="col-sm-12 text-center text-muted pad" ng-show="current_user.2fa_enabled&&user.allow_2fa">
 								<span class="glyphicon glyphicon-lock"></span>&nbsp;&nbsp;2-Factor Authentication enabled on this account
 							</div>
-							<div class="col-sm-12 text-center text-muted pad" ng-show="current_user.u2f_enabled&&user.allow_u2f">
+							<div class="col-sm-12 text-center text-muted pad" ng-show="current_user.security_token_enabled&&user.allow_security_tokens">
 								<span class="icon-lock">&nbsp;&nbsp;</span>A security token is configured on this account
 							</div>
 						</section>

@@ -174,7 +174,7 @@ def login(**_):
      "password": <ENCRYPTED_PASSWORD>,
      "otp": <OTP_TOKEN>,
      "apikey": <ENCRYPTED_APIKEY>,
-     "u2f_response": <RESPONSE_TO_CHALLENGE_FROM_U2F_TOKEN>
+     "webauthn_auth_resp": <RESPONSE_TO_CHALLENGE_FROM_WEBAUTHN>
     }
 
     Result example:
@@ -192,7 +192,7 @@ def login(**_):
     user = data.get('user', None)
     password = data.get('password', None)
     apikey = data.get('apikey', None)
-    u2f_response = data.get('u2f_response', None)
+    webauthn_auth_resp = data.get('webauthn_auth_resp', None)
     oauth_provider = data.get('oauth_provider', None)
     oauth_token = data.get('oauth_token', None)
 
@@ -214,7 +214,7 @@ def login(**_):
             'username': user,
             'password': password,
             'otp': otp,
-            'u2f_response': u2f_response,
+            'webauthn_auth_resp': webauthn_auth_resp,
             'apikey': apikey,
             'oauth_token': oauth_token
         }

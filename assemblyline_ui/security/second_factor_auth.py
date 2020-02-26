@@ -14,27 +14,27 @@ server = U2FFido2Server(f"https://{config.ui.fqdn}", rp)
 
 
 # noinspection PyBroadException
-def validate_2fa(username, otp_token, state, u2f_response, storage):
-    u2f_enabled = False
+def validate_2fa(username, otp_token, state, webauthn_auth_resp, storage):
+    security_token_enabled = False
     otp_enabled = False
-    u2f_error = False
+    security_token_error = False
     otp_error = False
     report_errors = False
 
     # Get user
     user_data = storage.user.get(username)
 
-    # Test u2f
-    if config.auth.allow_u2f:
-        u2f_devices = user_data.u2f_devices
+    # Test Security Tokens
+    if config.auth.allow_security_tokens:
+        security_tokens = user_data.security_tokens
 
-        credentials = [AttestedCredentialData(websafe_decode(x)) for x in u2f_devices.values()]
+        credentials = [AttestedCredentialData(websafe_decode(x)) for x in security_tokens.values()]
         if credentials:
-            # U2F is enabled for user
-            u2f_enabled = True
+            # Security tokens are enabled for user
+            security_token_enabled = True
             report_errors = True
-            if state and u2f_response:
-                data = cbor.decode(bytes(u2f_response))
+            if state and webauthn_auth_resp:
+                data = cbor.decode(bytes(webauthn_auth_resp))
                 credential_id = data['credentialId']
                 client_data = ClientData(data['clientDataJSON'])
                 auth_data = AuthenticatorData(data['authenticatorData'])
@@ -44,7 +44,7 @@ def validate_2fa(username, otp_token, state, u2f_response, storage):
                     server.authenticate_complete(state, credentials, credential_id, client_data, auth_data, signature)
                     return
                 except Exception:
-                    u2f_error = True
+                    security_token_error = True
 
     # Test OTP
     if config.auth.allow_2fa:
@@ -60,15 +60,15 @@ def validate_2fa(username, otp_token, state, u2f_response, storage):
                     return
 
     if report_errors:
-        if u2f_error:
+        if security_token_error:
             # Wrong response to challenge
-            raise AuthenticationException("Wrong U2F Security Token")
+            raise AuthenticationException("Wrong Security Token")
         elif otp_error:
             # Wrong token provided
             raise AuthenticationException("Wrong OTP token")
-        elif u2f_enabled:
-            # No challenge/response provided and U2F is enabled
-            raise AuthenticationException("Wrong U2F Security Token")
+        elif security_token_enabled:
+            # No challenge/response provided and security tokens are enabled
+            raise AuthenticationException("Wrong Security Token")
         elif otp_enabled:
             # No OTP Token provided and OTP is enabled
             raise AuthenticationException("Wrong OTP token")
