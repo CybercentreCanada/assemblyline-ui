@@ -109,7 +109,6 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                         "attestationObject": new Uint8Array(attestation.response.attestationObject),
                         "clientDataJSON": new Uint8Array(attestation.response.clientDataJSON)
                     });
-                    //const newAssertionForServer = transformNewAssertionForServer(data);
                     $scope.loading_extra = true;
                     $http({
                         method: "POST",

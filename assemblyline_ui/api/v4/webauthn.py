@@ -1,16 +1,15 @@
 
 from fido2 import cbor
 from fido2.client import ClientData
-from fido2.ctap1 import RegistrationData
-from fido2.ctap2 import AttestationObject, AuthenticatorData, AttestedCredentialData
+from fido2.ctap2 import AttestationObject, AttestedCredentialData
 from fido2.server import U2FFido2Server
 from fido2.utils import websafe_encode, websafe_decode
 from fido2.webauthn import PublicKeyCredentialRpEntity
 
 from flask import session, request
 
-from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint, make_binary_response
-from assemblyline_ui.config import STORAGE, APP_ID, config
+from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
+from assemblyline_ui.config import STORAGE, config
 
 SUB_API = 'webauthn'
 webauthn_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -23,7 +22,7 @@ server = U2FFido2Server(f"https://{config.ui.fqdn}", rp)
 @webauthn_api.route("/authenticate/begin/<username>/", methods=["GET"])
 def sign(username, **_):
     """
-    Start signin in procedure
+    Begin authentication procedure
 
     Variables:
     username     user name of the user you want to login with
@@ -35,20 +34,20 @@ def sign(username, **_):
     None
 
     Result example:
-    <U2F_SIGN_IN_CHALLENGE_BLOCK>
+    <WEBAUTHN_AUTHENTICATION_DATA>
     """
     user = STORAGE.user.get(username, as_obj=False)
     if not user:
         return make_api_response({'success': False}, err="Bad Request", status_code=400)
 
-    u2f_devices = user.get('u2f_devices', {})
-    if isinstance(u2f_devices, list):
-        u2f_devices = {"default": d for d in u2f_devices}
+    session.pop('state', None)
+    u2f_devices = user.get('u2f_devices', {}) or {}
+    credentials = [AttestedCredentialData(websafe_decode(x)) for x in u2f_devices.values()]
 
-    challenge = begin_authentication(APP_ID, list(u2f_devices.values()))
-    session['_u2f_challenge_'] = challenge.json
+    auth_data, state = server.authenticate_begin(credentials)
+    session['state'] = state
 
-    return make_api_response(challenge.data_for_client)
+    return make_api_response(list(cbor.encode(auth_data)))
 
 
 @webauthn_api.route("/register/begin/", methods=["POST"])
@@ -67,27 +66,27 @@ def register_begin(**kwargs):
     None
 
     Result example:
-    <WEBAUTHN_REGISTRATION_DICT>
+    <WEBAUTHN_REGISTRATION_DATA>
     """
     uname = kwargs['user']['uname']
     user = STORAGE.user.get(uname, as_obj=False)
 
     session.pop('state', None)
+    u2f_devices = user.get('u2f_devices', {}) or {}
 
-    registration_data , state = server.register_begin(
+    registration_data, state = server.register_begin(
         dict(
             id=user['uname'].encode('utf-8'),
             name=user['uname'],
             displayName=user['name'],
             icon=f"https://{config.ui.fqdn}/static/images/favicon.ico"
         ),
-        credentials=[AttestedCredentialData(websafe_decode(x)) for x in user['u2f_devices'].values()]
+        credentials=[AttestedCredentialData(websafe_decode(x)) for x in u2f_devices.values()]
     )
 
     session['state'] = state
 
-    cbor_data = cbor.encode(registration_data)
-    return make_api_response(list(cbor_data))
+    return make_api_response(list(cbor.encode(registration_data)))
 
 
 # noinspection PyBroadException

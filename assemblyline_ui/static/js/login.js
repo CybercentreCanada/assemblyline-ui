@@ -5,6 +5,15 @@
  * Main App Module
  */
 
+function toArrayBuffer(data){
+    let uint8Array = new Uint8Array(data.length);
+    for (let i = 0; i < uint8Array.length; i++){
+        uint8Array[i] = data[i];
+    }
+
+    return uint8Array;
+}
+
 function LoginBaseCtrl($scope, $http, $timeout) {
     $scope.username = "";
     $scope.password = "";
@@ -103,24 +112,26 @@ function LoginBaseCtrl($scope, $http, $timeout) {
 
                 $http({
                     method: 'GET',
-                    url: "/api/v4/u2f/sign/" + $scope.username + "/"
+                    url: "/api/v4/webauthn/authenticate/begin/" + $scope.username + "/"
                 })
                 .success(function (data) {
                     $scope.loading = false;
-                    u2f.sign(data.api_response.appId, data.api_response.challenge, data.api_response.registeredKeys,
-                        function(deviceResponse) {
-                            if (deviceResponse.errorCode === undefined || deviceResponse.errorCode === 0){
-                                $scope.u2f_response = deviceResponse;
+                    let arrayData = toArrayBuffer(data.api_response);
+                    const options = CBOR.decode(arrayData.buffer);
+                    navigator.credentials.get(options).then(
+                        function(assertion) {
+                            let assertion_data = CBOR.encode({
+                                "credentialId": new Uint8Array(assertion.rawId),
+                                "authenticatorData": new Uint8Array(assertion.response.authenticatorData),
+                                "clientDataJSON": new Uint8Array(assertion.response.clientDataJSON),
+                                "signature": new Uint8Array(assertion.response.signature)
+                            });
+
+                            $scope.u2f_response = Array.from(new Uint8Array(assertion_data));
                                 $timeout(function(){
                                     $scope.login();
                                 }, 100);
-                            }
-                            else{
-                                $timeout(function(){
-                                    $scope.error = "Invalid Security Token";
-                                    $scope.u2f_request = false;
-                                }, 100);
-                            }
+
                         });
                 })
                 .error(function (data) {
