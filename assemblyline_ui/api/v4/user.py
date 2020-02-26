@@ -63,7 +63,7 @@ def add_user_account(username, **_):
                 return make_api_response({"success": False}, error_msg, 469)
             data['password'] = get_password_hash(new_pass)
         else:
-            data['password'] = "__NO_PASSWORD__"
+            data['password'] = data.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         # Data's username as to match the API call username
         data['uname'] = username
@@ -217,7 +217,7 @@ def set_user_account(username, **kwargs):
             data['password'] = get_password_hash(new_pass)
             data.pop('new_pass_confirm', None)
         else:
-            data['password'] = old_user.get('password', None)
+            data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         return make_api_response({"success": save_user_account(username, data, kwargs['user'])})
     except AccessDeniedException as e:
