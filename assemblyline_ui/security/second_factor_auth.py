@@ -1,12 +1,20 @@
-from u2flib_server.u2f import complete_authentication
+from fido2 import cbor
+from fido2.client import ClientData
+from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
+from fido2.server import U2FFido2Server
+from fido2.utils import websafe_decode
+from fido2.webauthn import PublicKeyCredentialRpEntity
 
 from assemblyline.common.security import get_totp_token
 from assemblyline_ui.config import config, APP_ID
 from assemblyline_ui.http_exceptions import AuthenticationException
 
+rp = PublicKeyCredentialRpEntity(config.ui.fqdn, "Assemblyline server")
+server = U2FFido2Server(f"https://{config.ui.fqdn}", rp)
+
 
 # noinspection PyBroadException
-def validate_2fa(username, otp_token, u2f_challenge, u2f_response, storage):
+def validate_2fa(username, otp_token, state, u2f_response, storage):
     u2f_enabled = False
     otp_enabled = False
     u2f_error = False
@@ -19,17 +27,21 @@ def validate_2fa(username, otp_token, u2f_challenge, u2f_response, storage):
     # Test u2f
     if config.auth.allow_u2f:
         u2f_devices = user_data.u2f_devices
-        if isinstance(u2f_devices, list):
-            u2f_devices = {"default": d for d in u2f_devices}
 
-        registered_keys = u2f_devices.values()
-        if registered_keys:
+        credentials = [AttestedCredentialData(websafe_decode(x)) for x in u2f_devices.values()]
+        if credentials:
             # U2F is enabled for user
             u2f_enabled = True
             report_errors = True
-            if u2f_challenge and u2f_response:
+            if state and u2f_response:
+                data = cbor.decode(bytes(u2f_response))
+                credential_id = data['credentialId']
+                client_data = ClientData(data['clientDataJSON'])
+                auth_data = AuthenticatorData(data['authenticatorData'])
+                signature = data['signature']
+
                 try:
-                    complete_authentication(u2f_challenge, u2f_response, [APP_ID])
+                    server.authenticate_complete(state, credentials, credential_id, client_data, auth_data, signature)
                     return
                 except Exception:
                     u2f_error = True

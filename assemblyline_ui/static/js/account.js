@@ -142,6 +142,12 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                         }
                     )
                 }
+            ).catch(
+                function (ex) {
+                    $timeout(function () {
+                        $scope.u2f_error = ex.message;
+                    }, 100);
+                }
             )
         }).error(function (data, status, headers, config) {
             $scope.loading_extra = false;

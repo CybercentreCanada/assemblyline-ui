@@ -44,10 +44,10 @@
                             <p>Having trouble finding your security key? <a style="cursor: hand" ng-click="switch_to_otp()">Enter a verification code instead.</a></p>
                         </div>
 
+                        <button ng-show="!u2f_request && (up_login || otp_request || oauth_validation)" ng-disabled="loading==true" class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
                         {% raw %}
                         <div class="text-danger"><b>{{error}}</b></div>
                         {% endraw %}
-                        <button ng-show="!u2f_request && (up_login || otp_request || oauth_validation)" ng-disabled="loading==true" class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
 
                         <div ng-show="!u2f_request && !otp_request && oauth_validation" style="margin-top: 15px">
                             <a style="cursor: hand;" ng-click="switch_user()">Or sign in as a different user...</a>

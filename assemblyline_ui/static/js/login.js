@@ -132,7 +132,14 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                                     $scope.login();
                                 }, 100);
 
+                        }).catch(
+                        function(ex) {
+                            $timeout(function () {
+                                $scope.switch_to_otp();
+                                $scope.error = "Security token was invalid or operation was cancelled. Try with OTP instead?";
+                            }, 100);
                         });
+
                 })
                 .error(function (data) {
                     $scope.error = data.api_error_message;
