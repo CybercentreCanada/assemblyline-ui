@@ -4,6 +4,45 @@
 /**
  * Main App Module
  */
+function b64enc(buf) {
+    return base64js.fromByteArray(buf)
+                   .replace(/\+/g, "-")
+                   .replace(/\//g, "_")
+                   .replace(/=/g, "");
+};
+
+const transformCredentialCreateOptions = (credentialCreateOptionsFromServer) => {
+    let {challenge, user} = credentialCreateOptionsFromServer;
+    user.id = Uint8Array.from(
+        atob(credentialCreateOptionsFromServer.user.id), c => c.charCodeAt(0));
+
+    challenge = Uint8Array.from(
+        atob(credentialCreateOptionsFromServer.challenge), c => c.charCodeAt(0));
+
+    return Object.assign(
+        {}, credentialCreateOptionsFromServer,
+        {challenge, user});
+};
+
+const transformNewAssertionForServer = (newAssertion) => {
+    const attObj = new Uint8Array(
+        newAssertion.response.attestationObject);
+    const clientDataJSON = new Uint8Array(
+        newAssertion.response.clientDataJSON);
+    const rawId = new Uint8Array(
+        newAssertion.rawId);
+
+    const registrationClientExtensions = newAssertion.getClientExtensionResults();
+
+    return {
+        id: newAssertion.id,
+        rawId: b64enc(rawId),
+        type: newAssertion.type,
+        attObj: b64enc(attObj),
+        clientData: b64enc(clientDataJSON),
+        registrationClientExtensions: JSON.stringify(registrationClientExtensions)
+    };
+};
 
 function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     //Parameters vars
@@ -46,11 +85,11 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             $scope.loading_extra = true;
             $http({
                 method: 'GET',
-                url: "/api/v4/u2f/remove/" + name + "/"
+                url: "/api/v4/webauthn/remove/" + name + "/"
             })
             .success(function () {
                 $scope.loading_extra = false;
-                $scope.success = "U2F Security Token removed from your account.";
+                $scope.success = "Security Token removed from your account.";
                 let idx = $scope.current_user['u2f_devices'].indexOf(name);
                 if (idx !== -1){
                     $scope.current_user['u2f_devices'].splice(idx, 1)
@@ -82,68 +121,75 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
       $('#u2f_management').modal('show');
     };
 
-    $scope.register_u2f_device = function(){
+    $scope.register_u2f_device = function (){
         $scope.loading_extra = true;
         $scope.u2f_error = "";
         $scope.cancelled_u2f = false;
         $http({
             method: 'GET',
-            url: "/api/v4/u2f/enroll/"
-        })
-        .success(function (data) {
+            url: "/api/v4/webauthn/begin_activate/"
+        }).success(function (data){
             $scope.loading_extra = false;
             $('#u2f_prompt').modal('show');
-            u2f.register(data.api_response.appId, data.api_response.registerRequests, data.api_response.registeredKeys,
-                function(deviceResponse) {
-                    if ($scope.cancelled_u2f){
-                        return;
-                    }
+            const publicKeyCredentialCreateOptions = transformCredentialCreateOptions(data.api_response);
+            navigator.credentials.create({
+                publicKey: publicKeyCredentialCreateOptions
+            }).then(
+                function(data){
+                    const newAssertionForServer = transformNewAssertionForServer(data);
                     $scope.loading_extra = true;
                     $http({
-                        method: 'POST',
-                        url: "/api/v4/u2f/bind/" + $scope.u2fkey_name + "/",
-                        data: deviceResponse
-                    })
-                    .success(function () {
-                        $scope.loading_extra = false;
-                        $scope.success = "U2F Security Token added to your account.";
-                        $scope.current_user['u2f_devices'].push($scope.u2fkey_name);
-                        $scope.current_user['u2f_enabled'] = $scope.current_user['u2f_devices'].length > 0;
-                        $('#u2f_prompt').modal('hide');
-                        $timeout(function () {
-                            $scope.success = "";
-                        }, 2000);
-                        $scope.u2fkey_name = "";
-                    })
-                    .error(function (data, status, headers, config) {
-                        $scope.loading_extra = false;
-                        if (data === "") {
-                            return;
+                        method: "POST",
+                        url: "/api/v4/webauthn/verify_credential_info/" + $scope.u2fkey_name + "/",
+                        data: newAssertionForServer
+                    }).success(
+                        function(){
+                            $scope.loading_extra = false;
+                            $scope.success = "U2F Security Token added to your account.";
+                            $scope.current_user['u2f_devices'].push($scope.u2fkey_name);
+                            $scope.current_user['u2f_enabled'] = $scope.current_user['u2f_devices'].length > 0;
+                            $('#u2f_prompt').modal('hide');
+                            $timeout(function () {
+                                $scope.success = "";
+                            }, 2000);
+                            $scope.u2fkey_name = "";
                         }
+                    ).error(
+                        function(data, status){
+                            $scope.loading_extra = false;
+                            if (data === "") {
+                                return;
+                            }
 
-                        if (data.api_error_message) {
-                            $scope.u2f_error = data.api_error_message;
+                            if (data.api_error_message) {
+                                $scope.u2f_error = data.api_error_message;
+                            }
+                            else {
+                                $scope.u2f_error = config.url + " (" + status + ")";
+                            }
                         }
-                        else {
-                            $scope.error = config.url + " (" + status + ")";
-                        }
-                    });
+                    )
+                }
+            ).catch(
+                function(err){
+                    return console.error("Error creating credential:", err);
                 }
             );
-        })
-        .error(function (data, status, headers, config) {
+        }).error(function (data, status) {
             $scope.loading_extra = false;
             if (data === "") {
                 return;
             }
 
             if (data.api_error_message) {
-                $scope.error = data.api_error_message;
+                $scope.u2f_error = data.api_error_message;
             }
             else {
-                $scope.error = config.url + " (" + status + ")";
+                $scope.u2f_error = config.url + " (" + status + ")";
             }
         });
+
+
     };
 
     $scope.manage_apikeys = function(){

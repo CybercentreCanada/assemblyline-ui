@@ -24,9 +24,9 @@ from assemblyline_ui.api.v4.service import service_api
 from assemblyline_ui.api.v4.signature import signature_api
 from assemblyline_ui.api.v4.submission import submission_api
 from assemblyline_ui.api.v4.submit import submit_api
-from assemblyline_ui.api.v4.u2f import u2f_api
 from assemblyline_ui.api.v4.ui import ui_api
 from assemblyline_ui.api.v4.user import user_api
+from assemblyline_ui.api.v4.webauthn import webauthn_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
 from assemblyline_ui.views import views
@@ -76,10 +76,10 @@ app.register_blueprint(service_api)
 app.register_blueprint(signature_api)
 app.register_blueprint(submission_api)
 app.register_blueprint(submit_api)
-app.register_blueprint(u2f_api)
 app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
 app.register_blueprint(views)
+app.register_blueprint(webauthn_api)
 # app.register_blueprint(vm_api)
 app.register_blueprint(workflow_api)
 

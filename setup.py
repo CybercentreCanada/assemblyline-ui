@@ -42,11 +42,11 @@ setup(
         'gunicorn',
         'gevent',
         'gevent-websocket',
-        'python_u2flib_server',
         'pyqrcode',
         'markdown',
         'python-ldap',
-        'authlib'
+        'authlib',
+        'webauthn'
     ],
     package_data={
         'assemblyline_ui': [
