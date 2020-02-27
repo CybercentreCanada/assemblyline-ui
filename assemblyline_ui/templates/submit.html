@@ -19,10 +19,9 @@
 {% block content %}
     <section {% if not is_readonly %}flow-init flow-name="obj.flow" {% endif %}id="appContent" class="container">
 		<div class="bigpad centered_boxed_content">
-			<div class="banner">
+			<div class="banner" style="margin-bottom: 20px;">
 				{% block banner %}<img class="banner_img" src="/static/images/banner.svg">{% endblock %}
 			</div>
-			<h3 class="pad">{{app_name}} is a service that performs automated binary analysis on suspicious files and facilitates quick detection and cleanup of all sophisticated malware.</h3>
 		</div>
 
         {% if not is_readonly %}
