@@ -20,7 +20,7 @@ server = U2FFido2Server(f"https://{config.ui.fqdn}", rp)
 
 
 @webauthn_api.route("/authenticate/begin/<username>/", methods=["GET"])
-def sign(username, **_):
+def authenticate_begin(username, **_):
     """
     Begin authentication procedure
 
