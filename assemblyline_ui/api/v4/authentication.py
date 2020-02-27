@@ -116,6 +116,7 @@ def disable_otp(**kwargs):
     uname = kwargs['user']['uname']
     user_data = STORAGE.user.get(uname)
     user_data.otp_sk = None
+    user_data.security_tokens = {}
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
 

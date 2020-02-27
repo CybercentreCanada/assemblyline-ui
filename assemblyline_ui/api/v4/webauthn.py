@@ -71,6 +71,9 @@ def register_begin(**kwargs):
     uname = kwargs['user']['uname']
     user = STORAGE.user.get(uname, as_obj=False)
 
+    if user['otp_sk'] is None:
+        return make_api_response(None, err="OTP must be setup before adding security tokens", status_code=403)
+
     session.pop('state', None)
     security_tokens = user.get('security_tokens', {}) or {}
 
