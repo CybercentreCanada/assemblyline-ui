@@ -311,7 +311,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.disable_2fa = function () {
         swal({
             title: "Disable 2-Factor Auth?",
-            text: "Are you sure you want to disable 2-Factor Auth on this account?",
+            text: "Are you sure you want to disable 2-Factor Authentication on this account?\n\nBy doing so you will also remove any associated security tokens.",
             type: "warning",
             showCancelButton: true,
             confirmButtonColor: "#d9534f",
