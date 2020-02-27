@@ -2046,3 +2046,21 @@ figure.front{
 	-webkit-print-color-adjust: exact;
     background-color: #fff0f0 !important;
 }
+
+.divider {
+    display: inline-block;
+    text-align: center;
+    width: 280px;
+    margin: 30px 0;
+    position: relative;
+    border-top: 1px solid #AAAAAA;
+}
+
+.divider > div {
+    background-color: #FFFFFF;
+    left: 50%;
+    margin-left: -30px;
+    position: absolute;
+    top: -10px;
+    width: 60px;
+}

@@ -5,6 +5,7 @@
     <script src="/static/js/cbor/cbor.js"></script>
 	<script src="/static/js/account.js"></script>
 {% endblock %}
+{% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	<div ng-controller="classificationCtrl" classification-picker></div>
 	
@@ -85,21 +86,21 @@
                     <label class="control-label">API quota</label>
                     <input type="number" class="form-control input-sm" ng-model="current_user.api_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom: 30px">
                     <label class="control-label">Submission quota</label>
                     <input type="number" class="form-control input-sm" ng-model="current_user.submission_quota" ng-disabled="user.type.indexOf('admin')==-1" min="0" max="1024">
                 </div>
 				<div class="form-group" ng-if="!current_user['2fa_enabled']&&user.allow_2fa">
-					<span class="btn btn-success button" ng-click="enable_2fa();"><span class="glyphicon glyphicon-lock"></span> Enable 2-Factor Authentication</span>
+					<span class="btn btn-success button" ng-click="enable_2fa();" style="min-width: 250px;"><span class="glyphicon glyphicon-lock"></span> Enable 2-Factor Authentication</span>
                 </div>
 				<div class="form-group" ng-if="current_user['2fa_enabled']&&user.allow_2fa">
-					<span class="btn btn-danger button" ng-click="disable_2fa();"><span class="glyphicon glyphicon-lock"></span> Disable 2-Factor Authentication</span>
+					<span class="btn btn-danger button" ng-click="disable_2fa();" style="min-width: 250px;"><span class="glyphicon glyphicon-lock"></span> Disable 2-Factor Authentication</span>
                 </div>
-				<div class="form-group" ng-if="user.allow_security_tokens">
-					<span class="btn btn-primary button" ng-click="manage_security_tokens();"><span class="icon-lock">&nbsp;&nbsp;</span>Manage Security Tokens</span>
+				<div class="form-group" ng-if="current_user['2fa_enabled']&&user.allow_security_tokens">
+					<span class="btn btn-primary button" ng-click="manage_security_tokens();" style="min-width: 250px;"><span class="icon-lock">&nbsp;&nbsp;</span>Manage Security Tokens</span>
                 </div>
                 <div class="form-group" ng-if="user.allow_apikeys">
-					<span class="btn btn-primary button" ng-click="manage_apikeys();"><span class="icon-authentication-keyalt">&nbsp;&nbsp;</span>Manage APIKeys</span>
+					<span class="btn btn-primary button" ng-click="manage_apikeys();" style="min-width: 250px;"><span class="icon-authentication-keyalt">&nbsp;&nbsp;</span>Manage APIKeys</span>
                 </div>
 			</div>
             <div class="col-sm-12 text-center text-muted pad" ng-show="current_user.agrees_with_tos">
@@ -120,11 +121,12 @@
 				</div>
 				<div class="modal-body">
 					<section>
-                        <div class="bigpad">
-                            <p>You can now read the QRCode bellow with your OTP app</p>
+                        <div class="bigpad text-center">
+                            <p>Scan the QRCode below with your OTP application</p>
                             <div ng-bind-html="safe_qrcode" title="{{otp_data.otp_url}}"></div>
-                            <p>Or you can manually add the secret key in your OTP application</p>
-                            <span>{{otp_data.secret_key}}</span>
+							<div class="divider"><div>OR</div></div>
+                            <p>Manually add the secret key in your OTP application</p>
+                            <p style="margin-top: 25px; font-family: monospace;">{{otp_data.secret_key}}</p>
                         </div>
                         <div>
                             <label class="strong">Enter temporary OTP Token:</label>
@@ -167,24 +169,24 @@
 
                         <div class="row pad">
                             <form name="api_form">
-                                <div class="col-sm-7"><input placeholder="Enter key name" name="input_apikey" class="form-control input-sm" id="apikey_name" ng-model="apikey_name" ng-pattern="apikey_pattern" ng-required="true"/></div>
-                                <div class="col-sm-3">
+                                <div class="col-xs-7 col-sm-8" style="padding-right: 0"><input autocapitalize="none" placeholder="Enter APIKey name" name="input_apikey" class="form-control input-sm" id="apikey_name" ng-model="apikey_name" ng-pattern="apikey_pattern" ng-required="true"/></div>
+                                <div class="col-xs-3 col-sm-2" style="padding-right: 0">
                                     <select class="form-control input-sm" id="apikey_priv" ng-model="apikey_priv">
-                                        <option value="READ">READ</option>
+                                        <option title="Read privileges" value="READ">R</option>
                                         {% endraw %}
                                         {% if not is_readonly %}
 	                                    {% raw %}
-                                        <option value="READ_WRITE">READ/WRITE</option>
-                                        <option value="WRITE">WRITE</option>
+                                        <option title="Read and write privileges" value="READ_WRITE">R/W</option>
+                                        <option title="Write privileges" value="WRITE">W</option>
                                         {% endraw %}
                                         {% endif %}
 	                                    {% raw %}
                                     </select>
                                 </div>
-                                <div class="col-sm-2">
-                                    <button type="submit" class="btn btn-sm btn-success" ng-disabled="!api_form.input_apikey.$valid" ng-click="add_apikey()"><span class="glyphicon glyphicon-plus"><span>&nbsp;</span></span><span>Add APIKey</span></button>
+                                <div class="col-xs-2" style="padding-right: 0">
+                                    <button type="submit" class="btn btn-sm btn-success" ng-disabled="!api_form.input_apikey.$valid" ng-click="add_apikey()"><span class="glyphicon glyphicon-plus"><span class="hidden-xs">&nbsp;</span></span><span class="hidden-xs">Add APIKey</span></button>
                                 </div>
-                                <div class="col-sm-12 pad"><span class="text-danger strong">{{ apikey_error }}</span></div>
+                                <div class="col-xs-12 pad"><span class="text-danger strong">{{ apikey_error }}</span></div>
                             </form>
                         </div>
 					</section>
@@ -245,11 +247,11 @@
 
                         <div class="row pad">
                             <form name="security_token_form">
-                                <div class="col-sm-10"><input placeholder="Enter key name" name="input_security_token_key" class="form-control input-sm" id="security_token_key_name" ng-model="security_token_key_name" ng-pattern="security_token_key_pattern" ng-required="true"/></div>
-                                <div class="col-sm-2">
-                                    <button type="submit" class="btn btn-sm btn-success" ng-disabled="!security_token_form.input_security_token_key.$valid" ng-click="register_security_token()"><span class="glyphicon glyphicon-plus"><span>&nbsp;</span></span><span>Add Token</span></button>
+                                <div class="col-xs-10"><input autocapitalize="none" placeholder="Enter security token name" name="input_security_token_key" class="form-control input-sm" id="security_token_key_name" ng-model="security_token_key_name" ng-pattern="security_token_key_pattern" ng-required="true"/></div>
+                                <div class="col-xs-2">
+                                    <button type="submit" class="btn btn-sm btn-success" ng-disabled="!security_token_form.input_security_token_key.$valid" ng-click="register_security_token()"><span class="glyphicon glyphicon-plus"><span class="hidden-xs">&nbsp;</span></span><span class="hidden-xs">Add Token</span></button>
                                 </div>
-                                <div class="col-sm-12 pad"><span class="text-danger strong">{{ security_token_key_error }}</span></div>
+                                <div class="col-xs-12 pad"><span class="text-danger strong">{{ security_token_key_error }}</span></div>
                             </form>
                         </div>
 					</section>

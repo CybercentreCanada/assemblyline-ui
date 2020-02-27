@@ -88,6 +88,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
 
     $scope.manage_security_tokens = function(){
       $scope.security_token_error = "";
+      $scope.security_token_key_name = "";
       $('#security_token_management').modal('show');
     };
 
@@ -156,10 +157,10 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             }
 
             if (data.api_error_message) {
-                $scope.security_token_error = data.api_error_message;
+                $scope.error = data.api_error_message;
             }
             else {
-                $scope.security_token_error = config.url + " (" + status + ")";
+                $scope.error = config.url + " (" + status + ")";
             }
         });
 
@@ -219,14 +220,17 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             closeOnConfirm: true
         },
         function () {
+            $scope.loading_extra = true;
             $http({
                 method: 'DELETE',
                 url: "/api/v4/auth/apikey/" + key + "/"
             })
             .success(function () {
+                $scope.loading_extra = false;
                 $scope.current_user.apikeys.splice($scope.current_user.apikeys.indexOf(key), 1);
             })
             .error(function (data, status, headers, config) {
+                $scope.loading_extra = false;
                 if (data === "") {
                     return;
                 }
@@ -244,12 +248,14 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.enable_2fa = function () {
         $scope.error = '';
         $scope.success = '';
+        $scope.loading_extra = true;
 
         $http({
             method: 'GET',
             url: "/api/v4/auth/setup_otp/"
         })
         .success(function (data) {
+            $scope.loading_extra = false;
             $scope.otp_data = data.api_response;
             $scope.safe_qrcode = $sce.trustAsHtml($scope.otp_data.qrcode);
             $("#myModal").modal('show');
@@ -270,11 +276,13 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     };
 
     $scope.validate_2fa = function(){
+        $scope.loading_extra = true;
         $http({
             method: 'GET',
             url: "/api/v4/auth/validate_otp/" + $scope.temp_otp_token + "/"
         })
         .success(function () {
+            $scope.loading_extra = false;
             $scope.success = "2-Factor Authentication enabled on your account.";
             $scope.current_user['2fa_enabled'] = true;
             $("#myModal").modal('hide');
@@ -283,6 +291,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             }, 2000);
         })
         .error(function (data, status, headers, config) {
+            $scope.loading_extra = false;
             if (data === "") {
                 return;
             }
@@ -312,15 +321,18 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         function () {
             $scope.error = '';
             $scope.success = '';
+            $scope.loading_extra = true;
 
             $http({
                 method: 'GET',
                 url: "/api/v4/auth/disable_otp/"
             })
             .success(function () {
+                $scope.loading_extra = false;
                 $scope.current_user['2fa_enabled'] = false;
             })
             .error(function (data, status, headers, config) {
+                $scope.loading_extra = false;
                 if (data === "") {
                     return;
                 }
@@ -352,6 +364,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
     $scope.save = function () {
         $scope.error = '';
         $scope.success = '';
+        $scope.loading_extra = true;
 
         $http({
             method: 'POST',
@@ -359,12 +372,14 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             data: $scope.current_user
         })
             .success(function () {
+                $scope.loading_extra = false;
                 $scope.success = "Account successfully updated!";
                 $timeout(function () {
                     $scope.success = "";
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
+                $scope.loading_extra = false;
                 if (data === "" || data === null) {
                     return;
                 }
