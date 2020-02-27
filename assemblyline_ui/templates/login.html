@@ -30,8 +30,8 @@
                         </div>
                         {% endif %}
                         <div ng-show="!security_token_request && !otp_request && up_login && !oauth_validation">
-                            <input ng-disabled="oauth_validation" ng-model="username" id="inputUser" class="form-control" placeholder="Username" required autofocus>
-                            <input ng-disabled="oauth_validation" ng-model="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
+                            <input autocapitalize="none" ng-disabled="oauth_validation" ng-model="username" id="inputUser" class="form-control" placeholder="Username" required autofocus>
+                            <input autocapitalize="none" ng-disabled="oauth_validation" ng-model="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
                         </div>
 
                         <div ng-show="!security_token_request && otp_request">
@@ -80,10 +80,10 @@
                     {% if signup %}
                     <form ng-show="signup_mode && !signed_up" class="form-signin" ng-submit="signup()">
                         {% raw %}
-                        <input ng-model="username_signup" type="text" id="inputUserSignup" class="form-control" placeholder="Username" required autofocus/>
-                        <input ng-model="password_signup" type="password" id="inputPasswordSignup" class="form-control" placeholder="Password" required/>
-                        <input ng-model="password_signup_confirm" type="password" id="inputPasswordSignupConfirm" class="form-control" placeholder="Confirm Password" required/>
-                        <input ng-model="email_signup" type="email" id="inputEmail" class="form-control" placeholder="Email address" required/>
+                        <input autocapitalize="none" ng-model="username_signup" type="text" id="inputUserSignup" class="form-control" placeholder="Username" required autofocus/>
+                        <input autocapitalize="none" ng-model="password_signup" type="password" id="inputPasswordSignup" class="form-control" placeholder="Password" required/>
+                        <input autocapitalize="none" ng-model="password_signup_confirm" type="password" id="inputPasswordSignupConfirm" class="form-control" placeholder="Confirm Password" required/>
+                        <input autocapitalize="none" ng-model="email_signup" type="email" id="inputEmail" class="form-control" placeholder="Email address" required/>
 
                         <div class="text-danger"><b>{{error}}</b></div>
                         <button ng-show="signup_mode" ng-disabled="loading==true" class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign up</button>
