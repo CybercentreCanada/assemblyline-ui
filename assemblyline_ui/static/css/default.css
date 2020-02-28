@@ -2047,7 +2047,7 @@ figure.front{
     background-color: #fff0f0 !important;
 }
 
-.divider {
+.action_divider {
     display: inline-block;
     text-align: center;
     width: 280px;
@@ -2056,7 +2056,7 @@ figure.front{
     border-top: 1px solid #AAAAAA;
 }
 
-.divider > div {
+.action_divider > div {
     background-color: #FFFFFF;
     left: 50%;
     margin-left: -30px;

@@ -169,7 +169,7 @@ body {
     text-align: center;
 }
 
-.divider {
+.action_divider {
     display: block;
     text-align: center;
     width: 100%;
@@ -178,7 +178,7 @@ body {
     border-top: 1px solid #AAAAAA;
 }
 
-.divider > div {
+.action_divider > div {
     background-color: #FFFFFF;
     left: 50%;
     margin-left: -30px;
