@@ -1,5 +1,8 @@
 import base64
+import hashlib
 import requests
+
+from assemblyline_ui.config import config
 
 
 def parse_profile(profile):
@@ -11,7 +14,12 @@ def parse_profile(profile):
         password="__NO_PASSWORD__"
     )
 
-    picture = profile.get('picture', None)
+    alternate = None
+    if config.auth.oauth.gravatar_enabled:
+        email_hash = hashlib.md5(email_adr.encode('utf-8')).hexdigest()
+        alternate = f"https://www.gravatar.com/avatar/{email_hash}?s=256&d=404&r=pg"
+
+    picture = profile.get('picture', alternate)
     if picture:
         if picture.startswith('https://') or picture.startswith('http://'):
             resp = requests.get(picture)
