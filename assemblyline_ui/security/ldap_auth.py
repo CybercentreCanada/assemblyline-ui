@@ -5,7 +5,7 @@ import logging
 import time
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline_ui.config import config
+from assemblyline_ui.config import config, CLASSIFICATION
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 log = logging.getLogger('assemblyline.ldap_authenticator')
@@ -25,9 +25,8 @@ class BasicLDAPWrapper(object):
         self.ldap_uri = ldap_config.uri
         self.base = ldap_config.base
         self.uid_lookup = f"{ldap_config.uid_field}=%s"
+        self.group_lookup = ldap_config.group_lookup_query
 
-        # TODO: - this isn't fully implemented
-        self.classification_groups = ldap_config.classification_groups
         self.classification_mappings = ldap_config.classification_mappings
 
         self.cache = {}
@@ -41,24 +40,22 @@ class BasicLDAPWrapper(object):
         ldap_server.set_option(ldap.OPT_REFERRALS, 0)
         return ldap_server
 
-    def get_user_classification(self, uid, ldap_server=None):
+    def get_user_classification(self, dn, ldap_server=None):
         """
         Extend the users classification information with the configured group information
 
         NB: This is not fully implemented at this point
 
-        :param uid:
-        :param ldap_server:
+        :param dn: User's DN
+        :param ldap_server: Current LDAP server connection
         :return:
         """
-        # TODO: - this isn't fully implemented
 
-        ret = ""
-        for gq in self.classification_groups:
-            res = [x[0] for x in self.get_object(gq % uid, ldap_server)["ldap"]]
-            for group_dn in res:
-                if group_dn in self.classification_mappings:
-                    ret += self.classification_mappings[group_dn]
+        ret = CLASSIFICATION.UNRESTRICTED
+        group_dn_list = [x[0] for x in self.get_object(self.group_lookup % dn, ldap_server)["ldap"]]
+        for group_dn in group_dn_list:
+            if group_dn in self.classification_mappings:
+                ret = CLASSIFICATION.max_classification(ret, self.classification_mappings[group_dn])
 
         return ret
 
@@ -101,11 +98,13 @@ class BasicLDAPWrapper(object):
 
         try:
             ldap_server = self.create_connection()
-            dn, details = self.get_details_from_uid(user, ldap_server=ldap_server)
-            if dn:
+            ldap_ret = self.get_details_from_uid(user, ldap_server=ldap_server)
+            if ldap_ret and len(ldap_ret) == 2:
+                dn, details = ldap_ret
                 ldap_server.simple_bind_s(dn, password)
                 cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
-                               "connection": ldap_server, "details": details, "cached": False}
+                               "connection": ldap_server, "details": details, "cached": False,
+                               "classification": self.get_user_classification(dn, ldap_server=ldap_server)}
                 self.cache[user] = cache_entry
                 return cache_entry
         except Exception as e:
@@ -150,10 +149,11 @@ def validate_ldapuser(username, password, storage):
             if (not cur_user and config.auth.ldap.auto_create) or (cur_user and config.auth.ldap.auto_sync):
                 # Generate user data from ldap
                 data = dict(
+                    classification=ldap_info['classification'],
                     uname=username,
                     name=get_attribute(ldap_info, config.auth.ldap.name_field) or username,
                     email=get_attribute(ldap_info, config.auth.ldap.email_field),
-                    password="__LDAP__"
+                    password="__NO_PASSWORD__"
                 )
 
                 # Save the user avatar avatar from ldap
