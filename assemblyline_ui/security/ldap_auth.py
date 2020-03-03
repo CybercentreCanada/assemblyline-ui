@@ -27,6 +27,10 @@ class BasicLDAPWrapper(object):
         self.uid_lookup = f"{ldap_config.uid_field}=%s"
         self.group_lookup = ldap_config.group_lookup_query
 
+        self.admin_dn = ldap_config.admin_dn
+        self.sm_dn = ldap_config.signature_manager_dn
+        self.si_dn = ldap_config.signature_importer_dn
+
         self.classification_mappings = ldap_config.classification_mappings
 
         self.cache = {}
@@ -40,19 +44,32 @@ class BasicLDAPWrapper(object):
         ldap_server.set_option(ldap.OPT_REFERRALS, 0)
         return ldap_server
 
-    def get_user_classification(self, dn, ldap_server=None):
+    def get_group_list(self, dn, ldap_server=None):
+        group_list = [x[0] for x in self.get_object(self.group_lookup % dn, ldap_server)["ldap"]]
+        group_list.append(dn)
+        return group_list
+
+    def get_user_types(self, group_dn_list):
+        user_type = ['user']
+        if self.admin_dn in group_dn_list:
+            user_type.append('admin')
+        if self.sm_dn in group_dn_list:
+            user_type.append('signature_manager')
+        if self.si_dn in group_dn_list:
+            user_type.append('signature_importer')
+        return user_type
+
+    def get_user_classification(self, group_dn_list):
         """
         Extend the users classification information with the configured group information
 
         NB: This is not fully implemented at this point
 
-        :param dn: User's DN
-        :param ldap_server: Current LDAP server connection
+        :param group_dn_list: list of DNs the user is member of
         :return:
         """
 
         ret = CLASSIFICATION.UNRESTRICTED
-        group_dn_list = [x[0] for x in self.get_object(self.group_lookup % dn, ldap_server)["ldap"]]
         for group_dn in group_dn_list:
             if group_dn in self.classification_mappings:
                 ret = CLASSIFICATION.max_classification(ret, self.classification_mappings[group_dn])
@@ -101,10 +118,12 @@ class BasicLDAPWrapper(object):
             ldap_ret = self.get_details_from_uid(user, ldap_server=ldap_server)
             if ldap_ret and len(ldap_ret) == 2:
                 dn, details = ldap_ret
+                group_list = self.get_group_list(dn, ldap_server=ldap_server)
                 ldap_server.simple_bind_s(dn, password)
                 cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
                                "connection": ldap_server, "details": details, "cached": False,
-                               "classification": self.get_user_classification(dn, ldap_server=ldap_server)}
+                               "classification": self.get_user_classification(group_list),
+                               "type": self.get_user_types(group_list), 'dn': dn}
                 self.cache[user] = cache_entry
                 return cache_entry
         except Exception as e:
@@ -153,7 +172,9 @@ def validate_ldapuser(username, password, storage):
                     uname=username,
                     name=get_attribute(ldap_info, config.auth.ldap.name_field) or username,
                     email=get_attribute(ldap_info, config.auth.ldap.email_field),
-                    password="__NO_PASSWORD__"
+                    password="__NO_PASSWORD__",
+                    type=ldap_info['type'],
+                    dn=ldap_info['dn']
                 )
 
                 # Save the user avatar avatar from ldap
