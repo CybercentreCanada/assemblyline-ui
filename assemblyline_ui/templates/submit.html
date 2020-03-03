@@ -28,7 +28,7 @@
 		{% block caveat %}{% endblock %}
 
         {% raw %}
-        <div ng-if="user.c12n_enforcing" class="form-group text-center centered_boxed_content">
+        <div ng-if="user.c12n_enforcing" class="form-group text-center centered_boxed_content" style="margin-bottom: 40px">
             <label class="text-large text-muted">The following classification will be applied to your submission:</label>
             <div ng-controller="classificationCtrl" classification-picker></div>
             <div class="label text-large classification {{params.classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(params.classification)">{{params.classification | class_long}}</div>

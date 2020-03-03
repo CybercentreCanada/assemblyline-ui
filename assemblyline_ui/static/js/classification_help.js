@@ -20,7 +20,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
 
         //Do nothing
         $scope.start = function () {
-            if (classification_definition == null) {
+            if (Object.keys(classification_definition).length === 0) {
                 $timeout($scope.start, 50);
             }
             else {

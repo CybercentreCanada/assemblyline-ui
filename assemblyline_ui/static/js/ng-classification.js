@@ -5,9 +5,9 @@
  * Load classification definition from API into a global letiable.
  */
 
-let classification_definition = null;
+let classification_definition = {};
 $.getJSON("/api/v4/help/classification_definition/", function (data) {
-    classification_definition = data.api_response;
+    Object.assign(classification_definition, data.api_response);
 });
 
 /***************************************************************************************************
@@ -17,7 +17,7 @@ $.getJSON("/api/v4/help/classification_definition/", function (data) {
  *          for display purposes.
  */
 function get_c12n_level_index(c12n) {
-    if (classification_definition == null || c12n === undefined || c12n == null) return null;
+    if (Object.keys(classification_definition).length === 0 || c12n === undefined || c12n == null) return null;
     c12n = c12n.toUpperCase();
     let split_idx = c12n.indexOf("//");
     if (split_idx !== -1) {
@@ -59,7 +59,7 @@ function get_c12n_level_text(lvl_idx, long_format) {
 }
 
 function get_c12n_required(c12n, long_format) {
-    if (classification_definition == null || c12n === undefined || c12n == null) return [];
+    if (Object.keys(classification_definition).length === 0 || c12n === undefined || c12n == null) return [];
     if (long_format === undefined) long_format = true;
     c12n = c12n.toUpperCase();
 
@@ -95,7 +95,7 @@ function get_c12n_required(c12n, long_format) {
 }
 
 function get_c12n_groups(c12n, long_format) {
-    if (classification_definition == null || c12n === undefined || c12n == null) return [];
+    if (Object.keys(classification_definition).length === 0 || c12n === undefined || c12n == null) return [];
     if (long_format === undefined) long_format = true;
     c12n = c12n.toUpperCase();
 
@@ -161,7 +161,7 @@ function get_c12n_groups(c12n, long_format) {
 }
 
 function get_c12n_parts(c12n, long_format) {
-    if (classification_definition == null || c12n === undefined || c12n == null) return {};
+    if (Object.keys(classification_definition).length === 0 || c12n === undefined || c12n == null) return {};
     if (long_format === undefined) long_format = true;
     let out = {
         'lvl_idx': get_c12n_level_index(c12n),
@@ -260,7 +260,7 @@ function get_c12n_text_from_parts(parts, long_format) {
 }
 
 function get_c12n_text(c12n, long_format) {
-    if (classification_definition == null || c12n === undefined || c12n == null) return c12n;
+    if (Object.keys(classification_definition).length === 0 || c12n === undefined || c12n == null) return c12n;
     if (long_format === undefined) long_format = true;
     let parts = get_c12n_parts(c12n, long_format);
     return get_c12n_text_from_parts(parts, long_format);
@@ -275,7 +275,7 @@ utils.controller('classificationCtrl', function ($scope) {
     $scope.disabled_list = {};
 
     $scope.level_list = function () {
-        if (classification_definition == null) return [];
+        if (Object.keys(classification_definition).length === 0) return [];
         let out = [];
         for (let i in classification_definition.levels_map) {
             if (!isNaN(parseInt(i))) {
@@ -474,7 +474,7 @@ utils.directive('classificationPicker', function () {
  */
 utils.filter('class_banner_color', function () {
     return function (s) {
-        if (classification_definition == null) return "hidden";
+        if (Object.keys(classification_definition).length === 0) return "hidden";
         if (s === undefined || s == null) return "alert-success";
 
         let split_idx = s.indexOf("//");
@@ -494,7 +494,7 @@ utils.filter('class_banner_color', function () {
 
 utils.filter('class_label_color', function () {
     return function (s) {
-        if (classification_definition == null) return "hidden";
+        if (Object.keys(classification_definition).length === 0) return "hidden";
         if (s === undefined || s == null) return "label-default";
 
         let split_idx = s.indexOf("//");
@@ -514,7 +514,7 @@ utils.filter('class_label_color', function () {
 
 utils.filter('class_long', function () {
     return function (s) {
-        if (classification_definition == null) return "";
+        if (Object.keys(classification_definition).length === 0) return "";
         if (s === undefined || s == null) s = classification_definition.UNRESTRICTED;
         return get_c12n_text(s);
     }
@@ -522,7 +522,7 @@ utils.filter('class_long', function () {
 
 utils.filter('class_sm', function () {
     return function (s) {
-        if (classification_definition == null) return "";
+        if (Object.keys(classification_definition).length === 0) return "";
         if (s === undefined || s == null) s = classification_definition.UNRESTRICTED;
         return get_c12n_text(s, false);
     }
@@ -530,7 +530,7 @@ utils.filter('class_sm', function () {
 
 utils.filter('class_text_color', function () {
     return function (s) {
-        if (classification_definition == null) return "hidden";
+        if (Object.keys(classification_definition).length === 0) return "hidden";
         if (s === undefined || s == null) return "text-muted";
         let split_idx = s.indexOf("//");
         if (split_idx !== -1) {
