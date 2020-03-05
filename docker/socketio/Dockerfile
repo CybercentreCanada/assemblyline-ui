@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
 RUN pip3 install --user assemblyline-ui==$version
+RUN chown root:root -R /var/lib/assemblyline/.local
 
 # Create a new image, without compile depedencies
 FROM base
