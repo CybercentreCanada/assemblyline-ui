@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 
 from flask import request
 from hashlib import sha256
@@ -42,7 +43,7 @@ def add_update_signature(**_):
 
     Result example:
     {"success": true,      #If saving the rule was a success or not
-     "id": "<TYPE>_<SID>_<REVISION>"}  #ID that was assigned to the signature
+     "id": "<TYPE>_<SOURCE>_<ID>"}  #ID that was assigned to the signature
     """
     data = request.json
     dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
@@ -80,6 +81,76 @@ def add_update_signature(**_):
 
     # Save the signature
     return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
+
+
+@signature_api.route("/add_update_many/", methods=["POST", "PUT"])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
+def add_update_many_signature(**_):
+    """
+    Add or Update a list of the signatures based on their signature ID, type and source.
+
+    Variables:
+    None
+
+    Arguments:
+    dedup_name      ->      Should the signature manager check if the signature name already exists
+                            Default: true
+
+    Data Block (REQUIRED):
+    [                             # List of Signature blocks
+     {"name": "sig_name",           # Signature name
+      "type": "yara",               # One of yara, suricata or tagcheck
+      "data": "rule sample {...}",  # Data of the rule to be added
+      "source": "yara_signatures"   # Source from where the signature has been gathered
+     },
+     ...
+    ]
+
+    Result example:
+    {"success": 23,                 # Number of rules that succeeded
+     "errors": False}               # List of rules that failed or False
+    """
+    data = request.json
+    dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
+    source = request.args.get('source', None)
+    s_type = request.args.get('s_type', None)
+
+    if source is None or s_type is None or not isinstance(data, list):
+        return make_api_response("", f"Source, source type and data are mandatory fields.", 400)
+
+    # Test signature names
+    names_map = {x['name']: f"{x['type']}_{x['source']}_{x.get('signature_id', x['name'])}" for x in data}
+
+    if dedup_name:
+        skip_list = []
+
+        for item in STORAGE.signature.stream_search(f"type: \"{s_type}\" AND source:\"{source}\"",
+                                                    fl="id,name", as_obj=False):
+            lookup_id = names_map.get(item['name'], None)
+            if lookup_id and lookup_id != item['id']:
+                skip_list.append(lookup_id)
+
+        if skip_list:
+            data = [x for x in data if f"{x['type']}_{x['source']}_{x.get('signature_id', x['name'])}" not in skip_list]
+
+    old_data = STORAGE.signature.multiget(list(names_map.values()), as_dictionary=True, as_obj=False,
+                                          error_on_missing=False)
+
+    plan = []
+    for rule in data:
+        key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
+        rule['id'] = key
+        if key in old_data:
+            rule['status'] = old_data[key]['status']
+            rule['state_change_date'] = old_data[key]['state_change_date']
+            rule['state_change_user'] = old_data[key]['state_change_user']
+
+        plan.append(json.dumps({"update": {"_index": "signature", "_id": key}}))
+        plan.append(json.dumps({"doc": rule, "doc_as_upsert": True}))
+
+    res = STORAGE.signature.with_retries(STORAGE.signature.datastore.client.bulk, body="\n".join(plan))
+
+    return make_api_response({"success": len(res['items']), "errors": res['errors']})
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
