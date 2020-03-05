@@ -9,7 +9,7 @@ ARG version
 
 # Switch to root to install dependancies
 USER root
-RUN apt-get update && apt-get install -yy libldap2-dev libsasl2-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-dev && rm -rf /var/lib/apt/lists/*
 
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
