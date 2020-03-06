@@ -13,7 +13,14 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
+RUN touch /tmp/before-pip
 RUN pip3 install --user assemblyline-ui==$version
+
+# Remove files that existed before the pip install so that our copy command below doesn't take a snapshot of
+# files that already exist in the base image
+RUN find /var/lib/assemblyline/.local -type f ! -newer /tmp/before-pip -delete
+
+# Switch back to root and change the ownership of the files to be copied due to bitbucket pipeline uid nonsense
 USER root
 RUN chown root:root -R /var/lib/assemblyline/.local
 
@@ -21,7 +28,7 @@ RUN chown root:root -R /var/lib/assemblyline/.local
 FROM base
 
 # Get the updated local dir from builder
-COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.local /var/lib/assemblyline/.local
+COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.local/. /var/lib/assemblyline/.local/.
 
 # Switch back to assemblyline and run the app
 USER assemblyline
