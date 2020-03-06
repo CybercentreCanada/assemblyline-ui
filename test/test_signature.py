@@ -104,6 +104,61 @@ def test_add_update_signature(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
+def test_add_update_signature_many(datastore, login_session):
+    _, session = login_session
+
+    # Insert a dummy signature
+    source = "source"
+    s_type = "type"
+    sig_list = []
+    for x in range(10):
+        data = random_model_obj(Signature).as_primitives()
+        data['status'] = "DEPLOYED"
+        data['source'] = source
+        data['type'] = s_type
+        sig_list.append(data)
+
+    uri = f"{HOST}/api/v4/signature/add_update_many/?source={source}&s_type={s_type}"
+    resp = get_api_data(session, uri, data=json.dumps(sig_list), method="PUT")
+    assert resp == {'errors': False, 'success': 10}
+
+    # Test the signature data
+    ds.signature.commit()
+    data = random.choice(sig_list)
+    key = f"{data['type']}_{data['source']}_{data['signature_id']}"
+    added_sig = ds.signature.get(key, as_obj=False)
+    assert data == added_sig
+
+    # Change the signature status
+    resp = get_api_data(session, f"{HOST}/api/v4/signature/change_status/{key}/DISABLED/")
+    ds.signature.commit()
+    assert resp['success']
+
+    # Update signature data
+    new_sig_data = "NEW SIGNATURE DATA"
+    data['data'] = new_sig_data
+    uri = f"{HOST}/api/v4/signature/add_update_many/?source={source}&s_type={s_type}"
+    resp = get_api_data(session, uri, data=json.dumps([data]), method="POST")
+    assert resp == {'errors': False, 'success': 1}
+
+    # Remove state change data
+    data.pop('status', None)
+    data.pop('state_change_date', None)
+    data.pop('state_change_user', None)
+
+    # Test the signature data
+    ds.signature.commit()
+    modded_sig = ds.signature.get(key, as_obj=False)
+
+    modded_sig.pop('state_change_date')
+    # Was state kept?
+    assert "DISABLED" == modded_sig.pop('status')
+    # Was state_change_user kept?
+    assert "admin" == modded_sig.pop('state_change_user')
+    assert data == modded_sig
+
+
+# noinspection PyUnusedLocal
 def test_change_status(datastore, login_session):
     _, session = login_session
 
