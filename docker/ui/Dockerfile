@@ -28,8 +28,8 @@ RUN chown root:root -R /var/lib/assemblyline/.local
 FROM base
 
 # Get the updated local dir from builder
-COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.local/. /var/lib/assemblyline/.local/.
+COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.local /var/lib/assemblyline/.local
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "assemblyline_ui.app:app", "--config=~/.local/lib/python3.7/site-packages/assemblyline_ui/gunicorn_config.py"]
+CMD ["gunicorn", "assemblyline_ui.app:app", '--config="/var/lib/assemblyline/.local/lib/python3.7/site-packages/assemblyline_ui/gunicorn_config.py"']
