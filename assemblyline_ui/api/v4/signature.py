@@ -113,18 +113,17 @@ def add_update_many_signature(**_):
     data = request.json
     dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
     source = request.args.get('source', None)
-    s_type = request.args.get('s_type', None)
+    sig_type = request.args.get('sig_type', None)
 
-    if source is None or s_type is None or not isinstance(data, list):
+    if source is None or sig_type is None or not isinstance(data, list):
         return make_api_response("", f"Source, source type and data are mandatory fields.", 400)
 
     # Test signature names
     names_map = {x['name']: f"{x['type']}_{x['source']}_{x.get('signature_id', x['name'])}" for x in data}
 
+    skip_list = []
     if dedup_name:
-        skip_list = []
-
-        for item in STORAGE.signature.stream_search(f"type: \"{s_type}\" AND source:\"{source}\"",
+        for item in STORAGE.signature.stream_search(f"type: \"{sig_type}\" AND source:\"{source}\"",
                                                     fl="id,name", as_obj=False):
             lookup_id = names_map.get(item['name'], None)
             if lookup_id and lookup_id != item['id']:
@@ -148,9 +147,11 @@ def add_update_many_signature(**_):
         plan.append(json.dumps({"update": {"_index": "signature", "_id": key}}))
         plan.append(json.dumps({"doc": rule, "doc_as_upsert": True}))
 
-    res = STORAGE.signature.with_retries(STORAGE.signature.datastore.client.bulk, body="\n".join(plan))
+    if plan:
+        res = STORAGE.signature.bulk(plan)
+        return make_api_response({"success": len(res['items']), "errors": res['errors'], "skipped": skip_list})
 
-    return make_api_response({"success": len(res['items']), "errors": res['errors']})
+    return make_api_response({"success": 0, "errors": False, "skipped": skip_list})
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])

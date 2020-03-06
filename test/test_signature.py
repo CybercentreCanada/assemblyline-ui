@@ -118,9 +118,9 @@ def test_add_update_signature_many(datastore, login_session):
         data['type'] = s_type
         sig_list.append(data)
 
-    uri = f"{HOST}/api/v4/signature/add_update_many/?source={source}&s_type={s_type}"
+    uri = f"{HOST}/api/v4/signature/add_update_many/?source={source}&sig_type={s_type}"
     resp = get_api_data(session, uri, data=json.dumps(sig_list), method="PUT")
-    assert resp == {'errors': False, 'success': 10}
+    assert resp == {'errors': False, 'success': 10, 'skipped': []}
 
     # Test the signature data
     ds.signature.commit()
@@ -137,9 +137,9 @@ def test_add_update_signature_many(datastore, login_session):
     # Update signature data
     new_sig_data = "NEW SIGNATURE DATA"
     data['data'] = new_sig_data
-    uri = f"{HOST}/api/v4/signature/add_update_many/?source={source}&s_type={s_type}"
+    uri = f"{HOST}/api/v4/signature/add_update_many/?source={source}&sig_type={s_type}"
     resp = get_api_data(session, uri, data=json.dumps([data]), method="POST")
-    assert resp == {'errors': False, 'success': 1}
+    assert resp == {'errors': False, 'success': 1, 'skipped': []}
 
     # Remove state change data
     data.pop('status', None)
