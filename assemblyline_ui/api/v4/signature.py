@@ -7,7 +7,7 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
-from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
+from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES, Signature
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, STORAGE
@@ -137,6 +137,7 @@ def add_update_many_signature(**_):
 
     plan = []
     for rule in data:
+        rule = Signature(rule).as_primitives(hidden_fields=True)
         key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
         rule['id'] = key
         if key in old_data:
