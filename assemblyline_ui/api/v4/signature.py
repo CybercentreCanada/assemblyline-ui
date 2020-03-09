@@ -135,18 +135,15 @@ def add_update_many_signature(**_):
     old_data = STORAGE.signature.multiget(list(names_map.values()), as_dictionary=True, as_obj=False,
                                           error_on_missing=False)
 
-    plan = []
+    plan = STORAGE.signature.get_bulk_plan()
     for rule in data:
-        rule = Signature(rule).as_primitives(hidden_fields=True)
         key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
-        rule['id'] = key
         if key in old_data:
             rule['status'] = old_data[key]['status']
             rule['state_change_date'] = old_data[key]['state_change_date']
             rule['state_change_user'] = old_data[key]['state_change_user']
 
-        plan.append(json.dumps({"update": {"_index": "signature", "_id": key}}))
-        plan.append(json.dumps({"doc": rule, "doc_as_upsert": True}))
+        plan.add_upsert_operation(key, rule)
 
     if plan:
         res = STORAGE.signature.bulk(plan)
