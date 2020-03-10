@@ -739,7 +739,16 @@ utils.directive('kvSection', function () {
                     let div = document.createElement('div');
                     let value = kv_body[key];
 
-                    div.innerHTML = "<span class='strong'>" + key + ":&nbsp;&nbsp;</span><span>" + value + "</span>";
+                    let key_span = document.createElement('span');
+                    key_span.setAttribute("class", "strong")
+                    key_span.style.paddingRight = "10px";
+                    key_span.innerText = key;
+                    div.appendChild(key_span);
+
+                    let value_span = document.createElement('span');
+                    value_span.innerText = value;
+                    div.appendChild(value_span);
+
                     elem[0].appendChild(div);
                 }
             };
