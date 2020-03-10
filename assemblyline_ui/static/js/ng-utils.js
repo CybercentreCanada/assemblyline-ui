@@ -742,7 +742,7 @@ utils.directive('kvSection', function () {
                     let key_span = document.createElement('span');
                     key_span.setAttribute("class", "strong")
                     key_span.style.paddingRight = "10px";
-                    key_span.innerText = key;
+                    key_span.innerText = key + ":";
                     div.appendChild(key_span);
 
                     let value_span = document.createElement('span');
