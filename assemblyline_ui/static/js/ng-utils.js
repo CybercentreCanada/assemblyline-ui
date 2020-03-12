@@ -734,23 +734,27 @@ utils.directive('kvSection', function () {
                 while (elem[0].firstChild){
                     elem[0].removeChild(elem[0].firstChild)
                 }
-
+                let table = document.createElement('table');
+                table.style.width = "100%";
                 for (let key in kv_body) {
-                    let div = document.createElement('div');
+                    let tr = document.createElement('tr');
+                    tr.setAttribute("class", "kv_line");
                     let value = kv_body[key];
 
-                    let key_span = document.createElement('span');
-                    key_span.setAttribute("class", "strong")
-                    key_span.style.paddingRight = "10px";
-                    key_span.innerText = key + ":";
-                    div.appendChild(key_span);
+                    let key_td = document.createElement('td');
+                    key_td.setAttribute("class", "strong");
+                    key_td.style.paddingRight = "25px";
+                    key_td.innerText = key;
+                    tr.appendChild(key_td);
 
-                    let value_span = document.createElement('span');
-                    value_span.innerText = value;
-                    div.appendChild(value_span);
+                    let value_td = document.createElement('td');
+                    value_td.innerText = value;
+                    value_td.style.width = '100%';
+                    tr.appendChild(value_td);
 
-                    elem[0].appendChild(div);
+                    table.appendChild(tr);
                 }
+                elem[0].appendChild(table);
             };
             scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
         }

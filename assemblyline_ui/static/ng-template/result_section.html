@@ -17,6 +17,7 @@
 					<span title="{{tag.type}}: {{tag.value}}" class="label label-tag" style="cursor: pointer;" ng-repeat="tag in sec.tags | orderBy:'type'" ng-class="{'label-nolight': !isHighlighted(tag.type, tag.value), 'label-highlight': isHighlighted(tag.type, tag.value)}" ng-click="trigger_highlight(tag.type, tag.value);" >[{{tag.short_type.toUpperCase()}}] {{tag.value | breakableStr }}<a href='/search.html?query=result.sections.tags.{{tag.type}}:"{{uri_encode(tag.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 				</div>
 			</div>
+			<div style="min-height: 8px" ng-show="sec.body!=null"></div>
 		</div>
 	</section>
 </div>
