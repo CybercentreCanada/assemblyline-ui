@@ -30,10 +30,10 @@
 					<tr ng-click="editSignature(s.id)" ng-repeat="s in signature_list" style="cursor: pointer;">
 						<td nowrap>{{s.type}}</td>
 						<td nowrap>{{s.source}}</td>
-						<td nowrap>{{s.signature_id}}</td>
-						<td width="100%" style="word-break: break-all; overflow: hidden;">{{s.name}}</td>
+						<td>{{s.signature_id | breakableStr}}</td>
+						<td>{{s.name | breakableStr}}</td>
 						<td nowrap>{{s.revision}}</td>
-						<td nowrap ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_long}}</label></td>
+						<td nowrap ng-if="user.c12n_enforcing"><label class="label classification {{s.classification | class_label_color}}">{{s.classification | class_sm}}</label></td>
 						<td nowrap>
 							<span ng-show="s.status=='DEPLOYED'" class="label classification label-success">{{s.status}}</span>
 							<span ng-show="s.status=='NOISY'" class="label classification label-info">{{s.status}}</span>

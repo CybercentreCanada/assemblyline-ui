@@ -28,6 +28,10 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             return typeof val;
         };
 
+        $scope.receiveClassification = function (classification) {
+            $scope.current_source.default_classification = classification;
+        };
+
         $scope.show_add_service = function () {
             $scope.yaml = '';
             $("#serviceAddModal").modal('show');

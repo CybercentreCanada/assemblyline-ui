@@ -31,6 +31,10 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         return Object.keys(o).length;
     };
 
+    $scope.receiveClassification = function (classification) {
+        $scope.current_source.default_classification = classification;
+    };
+
     $scope.del = function () {
         swal({
                 title: "Delete signature source?",

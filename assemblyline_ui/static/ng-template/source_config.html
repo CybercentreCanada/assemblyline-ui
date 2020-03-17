@@ -1,7 +1,7 @@
 <section class="row">
     <div class="col-sm-12">
         <div class="docker_card" ng-click="$parent.edit_source_config(source_config, service)">
-            <div style="padding-bottom: 15px" class="text-icon text-fixed">{{ source_config.uri }}</div>
+			<div style="padding-bottom: 15px" class="text-icon text-fixed">{{ source_config.uri }}</div>
             <table>
 				<tbody>
 					<tr>
@@ -18,6 +18,9 @@
 					</tr>
 					<tr ng-show="source_config.password !== null && source_config.password !== undefined && source_config.password !== ''">
 						<td style="font-weight: 700;vertical-align: top;">Password:&nbsp;</td><td class="text-fixed" style="word-break: break-all;">******</td>
+					</tr>
+					<tr ng-show="$parent.user.c12n_enforcing">
+						<td style="font-weight: 700;vertical-align: top;">Default Classification:&nbsp;</td><td class="strong {{source_config.default_classification | class_text_color}}">{{source_config.default_classification | class_long}}</td>
 					</tr>
 				</tbody>
 			</table>
