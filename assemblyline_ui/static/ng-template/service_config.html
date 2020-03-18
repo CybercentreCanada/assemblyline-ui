@@ -63,13 +63,13 @@
             <label>Service Location</label>
             <div class="radio">
                 <label ng-class="{checked:current_service.is_external}">
-                    <input type="radio" name="is_external" ng-click="enable_field('is_external')" ng-checked="current_service.is_external">
+                    <input style="margin-top: 0" type="radio" name="is_external" ng-click="enable_field('is_external')" ng-checked="current_service.is_external">
                     External <span class="text-muted text-smaller">(Outside of Assemblyline infrastructure)</span>
                 </label>
             </div>
             <div class="radio">
                 <label ng-class="{checked:!current_service.is_external}">
-                    <input type="radio" name="is_external" ng-click="disable_field('is_external')" ng-checked="!current_service.is_external">
+                    <input style="margin-top: 0" type="radio" name="is_external" ng-click="disable_field('is_external')" ng-checked="!current_service.is_external">
                     Internal <span class="text-muted text-smaller">(Inside Assemblyline infrastructure)</span>
                 </label>
             </div>
@@ -79,12 +79,12 @@
 
             <div class="radio">
                 <label ng-class="{checked:!current_service.disable_cache}">
-                    <input type="radio" name="disable_cache" ng-click="disable_field('disable_cache')" ng-checked="!current_service.disable_cache"> Enabled
+                    <input style="margin-top: 0" type="radio" name="disable_cache" ng-click="disable_field('disable_cache')" ng-checked="!current_service.disable_cache"> Enabled
                 </label>
             </div>
             <div class="radio">
                 <label ng-class="{checked:current_service.disable_cache}">
-                    <input type="radio" name="disable_cache" ng-click="enable_field('disable_cache')" ng-checked="current_service.disable_cache"> Disabled
+                    <input style="margin-top: 0" type="radio" name="disable_cache" ng-click="enable_field('disable_cache')" ng-checked="current_service.disable_cache"> Disabled
                 </label>
             </div>
         </div>
@@ -130,13 +130,13 @@
             <label>Generates Signatures</label>
             <div class="radio">
                 <label ng-class="{checked:current_service.update_config.generates_signatures}">
-                    <input type="radio" name="generate_sigs" ng-click="enable_field('generates_signatures')" ng-checked="current_service.update_config.generates_signatures">
+                    <input style="margin-top: 0" type="radio" name="generate_sigs" ng-click="enable_field('generates_signatures')" ng-checked="current_service.update_config.generates_signatures">
                     Enabled
                 </label>
             </div>
             <div class="radio">
                 <label ng-class="{checked:!current_service.update_config.generates_signatures}">
-                    <input type="radio" name="generate_sigs" ng-click="disable_field('generates_signatures')" ng-checked="!current_service.update_config.generates_signatures">
+                    <input style="margin-top: 0" type="radio" name="generate_sigs" ng-click="disable_field('generates_signatures')" ng-checked="!current_service.update_config.generates_signatures">
                     Disabled
                 </label>
             </div>

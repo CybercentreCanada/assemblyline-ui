@@ -304,7 +304,11 @@ def search(**kwargs):
     search_scope = angular_safe(request.args.get('search_scope', None))
     if search_scope == 'all':
         search_scope = None
-    return custom_render("search.html", query=query, search_scope=search_scope, **kwargs)
+    use_archive = angular_safe(request.args.get('use_archive', "unset")).lower()
+    if use_archive not in ['false', 'true']:
+        use_archive = None
+
+    return custom_render("search.html", query=query, search_scope=search_scope, use_archive=use_archive, **kwargs)
 
 
 @views.route("/search_help.html")

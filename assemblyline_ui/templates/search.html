@@ -4,7 +4,7 @@
 {% block js_import %}
 	<script src="/static/js/search.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};settings={{settings}};debug={{debug}};{% if search_scope %}search_scope='{{search_scope}}';scoped_search=true;{% endif %}{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};settings={{settings}};debug={{debug}};{% if search_scope %}search_scope='{{search_scope}}';scoped_search=true;{% endif %}{% if use_archive %}use_archive={{use_archive}};{% endif %}{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
@@ -38,6 +38,7 @@
 
 			<form id="search-term" class="input-group" action="/search.html" method="get" role="search">
 				<input type="hidden" name="search_scope" value="{{search_scope}}"/>
+                <input type="hidden" name="use_archive" value="{{use_archive}}"/>
 				<div class="inner-addon right-addon">
                     <span ng-show="new_query&&!inFavorites(new_query)" ng-click="promptAddFavorites(new_query)" class="text-muted glyphicon glyphicon-star-empty" title="Add to favorites"></span>
                     <span ng-show="inFavorites(new_query)" ng-click="removeFromFavorites(nameOfQuery(new_query))" class="text-info glyphicon glyphicon-star" title="Remove from favorites"></span>
@@ -69,6 +70,20 @@
 						<div class="col-lg-2 col-md-3 col-sm-4 hidden-xs">
 							<label style="margin-top: 5px">Search Scope</label>
 							<select class="form-control input-sm" ng-model="search_scope" ng-change="reset()" ng-options="scope.value as scope.name for scope in scopes"></select>
+
+							<label style="margin-top: 10px; margin-bottom: 0">Query Archive</label>
+                            <div class="radio">
+                                <label ng-class="{checked: use_archive}">
+                                    <input style="margin-top: 0" type="radio" name="use_archive" ng-click="enable_archive()" ng-checked="use_archive">
+                                    Enabled
+                                </label>
+                            </div>
+                            <div class="radio">
+                                <label ng-class="{checked: !use_archive}">
+                                    <input style="margin-top: 0" type="radio" name="use_archive" ng-click="disable_archive()" ng-checked="!use_archive">
+                                    Disabled
+                                </label>
+                            </div>
 						</div>
 					</div>
 
@@ -78,10 +93,6 @@
 				<a class="btn btn-link" href="/search_help.html"><span class="glyphicon glyphicon-question-sign">&nbsp;</span>Query&nbsp;Syntax</a>
 			</div>
 			<div class="text-danger"><b>{{invalid_query}}</b></div>
-
-
-
-
 		</div>
 		
 		<div class="pull-right hidden-xs">
@@ -101,11 +112,27 @@
 	            {%raw%}
                 <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{(alert_list.total === undefined) ? "..." : alert_list.total}}<span ng-show="alert_list.total==10000">+</span>)</a></li>
 			</ul>
-			<div style="height: 40px" ng-show="export_btn&&scoped_search"></div>
+			<div class="text-large text-muted" ng-show="export_btn&&scoped_search">
+                <div ng-show="submission_list.total > 0">
+                    <div>{{submission_list.total}}<span ng-show="submission_list.total==10000">+</span> submissions found</div>
+                </div>
+                <div ng-show="file_list.total > 0">
+                    <div>{{file_list.total}}<span ng-show="file_list.total==10000">+</span> files found</div>
+                </div>
+                <div ng-show="result_list.total > 0">
+                    <div>{{result_list.total}}<span ng-show="result_list.total==10000">+</span> results found</div>
+                </div>
+                <div ng-show="signature_list.total > 0">
+                    <div>{{signature_list.total}}<span ng-show="signature_list.total==10000">+</span> signatures found</div>
+                </div>
+                <div ng-show="alert_list.total > 0">
+                    <div>{{alert_list.total}}<span ng-show="alert_list.total==10000">+</span> alerts found</div>
+                </div>
+            </div>
 						
 			<div class="tab-content">
 				<div class="tab-pane active" style="margin-top: 20px" id="submission">
-					<div ng-show="submission_list.total > 0">
+                    <div ng-show="submission_list.total > 0">
 						<div pager></div>
 					</div>
 					<section class="table-responsive" ng-show="submission_list.total > 0">

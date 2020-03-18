@@ -32,6 +32,7 @@ def search(bucket, **kwargs):
     sort           =>   How to sort the results (not available in deep paging)
     fl             =>   List of fields to return
     timeout        =>   Maximum execution time (ms)
+    use_archive    =>   Allow access to the datastore achive (Default: True)
 
     Data Block (POST ONLY):
     {"query": "query",     # Query to search for
@@ -54,7 +55,7 @@ def search(bucket, **kwargs):
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
     user = kwargs['user']
-    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id"]
+    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id", "use_archive"]
     multi_fields = ['filters']
 
     if request.method == "POST":

@@ -21,6 +21,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
     $scope.export_btn = false;
     $scope.search_scope = "all";
     $scope.scoped_search = false;
+    $scope.use_archive = true;
     $scope.buckets = ["submission", "file", "result", "signature", "alert"];
     $scope.scopes = [
         {value: "all", name: "All Indexes"},
@@ -42,6 +43,21 @@ function SearchBaseCtrl($scope, $http, $timeout) {
 
     $scope.dump = function (obj) {
         return angular.toJson(obj, true);
+    };
+
+
+    $scope.enable_archive = function(){
+        if (!$scope.use_archive){
+            $scope.use_archive = true;
+            $scope.reset();
+        }
+    };
+
+    $scope.disable_archive = function(){
+        if ($scope.use_archive){
+            $scope.use_archive = false;
+            $scope.reset();
+        }
     };
 
     $scope.getKeys = function (o) {
@@ -190,6 +206,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
             data['query'] = $scope.query;
             data['offset'] = $scope.offset;
             data['rows'] = $scope.rows;
+            data['use_archive'] = $scope.use_archive;
 
             if (!$scope.scoped_search){
                 for (let bucket in $scope.buckets) {
@@ -226,6 +243,7 @@ function SearchBaseCtrl($scope, $http, $timeout) {
         data['query'] = $scope.query;
         data['offset'] = $scope.offset;
         data['rows'] = $scope.rows;
+        data['use_archive'] = $scope.use_archive;
 
         $http({
             method: 'POST',
