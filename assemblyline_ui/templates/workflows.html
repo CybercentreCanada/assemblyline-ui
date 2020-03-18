@@ -76,7 +76,7 @@
                         </div>
                         <div id="query" class="form-group">
                             <label id="query_lbl" class="control-label">Query (required)</label>
-                            <input autocomplete="off" type="text" class="form-control" ng-model="cur_workflow.query" typeahead="s for s in suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)'>
+                            <input autocomplete="off" type="text" class="form-control" ng-model="cur_workflow.query" typeahead="s for s in suggestions['workflow'] | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)'>
                         </div>
                         <div class="form-group form-inline">
                             <label class="control-label">Labels</label><br/>

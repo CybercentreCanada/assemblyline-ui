@@ -1,7 +1,7 @@
 let ngSearch = angular.module('search', []);
 
 ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
-    $scope.suggestions = ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"];
+    $scope.suggestions = {'all': ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"]};
     $scope.favorites = {};
     $scope.favorites_toggled = [];
     $scope.global_filters = {};
@@ -268,23 +268,25 @@ ngSearch.controller('SearchController', function ($scope, $timeout, $http) {
             .success(function (data) {
                 if (bucket === "ALL") {
                     for (let bucket_name in data.api_response) {
+                        $scope.suggestions[bucket_name] = ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"];
                         let res_bucket = data.api_response[bucket_name];
                         for (let field_name in res_bucket) {
                             let field = res_bucket[field_name];
                             let lookup_name = field_name + ":";
-                            if (field.indexed && $scope.suggestions.indexOf(lookup_name) === -1) {
-                                $scope.suggestions.push(lookup_name);
+                            if (field.indexed && $scope.suggestions[bucket_name].indexOf(lookup_name) === -1) {
+                                $scope.suggestions[bucket_name].push(lookup_name);
                             }
                         }
                     }
                 }
                 else{
-                   for (let n_field in data.api_response) {
-                        let f = data.api_response[n_field];
-                        let l_name = n_field + ":";
-                        if (f.indexed && $scope.suggestions.indexOf(l_name) === -1) {
-                            $scope.suggestions.push(l_name);
-                        }
+                    $scope.suggestions[bucket] = ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"];
+                    for (let n_field in data.api_response) {
+                         let f = data.api_response[n_field];
+                         let l_name = n_field + ":";
+                         if (f.indexed && $scope.suggestions[bucket].indexOf(l_name) === -1) {
+                             $scope.suggestions[bucket].push(l_name);
+                         }
                     }
                 }
             })
@@ -386,7 +388,7 @@ ngSearch.controller('SearchControllerQuick', function ($scope, $http) {
     $scope.quick_suggestions = ["OR", "AND", "NOT", "TO", "now", "d", "M", "y", "h", "m"];
     $scope.quick = "";
 
-    $http({
+    /*$http({
         method: 'GET',
         url: "/api/v4/search/fields/ALL/"
     })
@@ -403,5 +405,5 @@ ngSearch.controller('SearchControllerQuick', function ($scope, $http) {
             }
         })
         .error(function (data, status, headers, config) {
-        });
+        });*/
 });

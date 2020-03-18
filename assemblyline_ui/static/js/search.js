@@ -19,12 +19,25 @@ function SearchBaseCtrl($scope, $http, $timeout) {
     $scope.new_query = null;
     $scope.invalid_query = null;
     $scope.export_btn = false;
+    $scope.search_scope = "all";
+    $scope.scoped_search = false;
     $scope.buckets = ["submission", "file", "result", "signature", "alert"];
+    $scope.scopes = [
+        {value: "all", name: "All Indexes"},
+        {value: "submission", name: "Submission index"},
+        {value: "file", name: "File index"},
+        {value: "result", name: "Result index"},
+        {value: "signature", name: "Signature index"},
+        {value: "alert", name: "Alert index"}];
 
     //DEBUG MODE
     $scope.debug = false;
     $scope.showParams = function () {
         console.log("Scope", $scope)
+    };
+
+    $scope.switch_search_scope = function (new_scope){
+        $scope.search_scope = new_scope;
     };
 
     $scope.dump = function (obj) {
@@ -123,8 +136,8 @@ function SearchBaseCtrl($scope, $http, $timeout) {
         data.bucket = bucket;
         $scope[bucket + "_list"] = data;
 
-        if ($scope.submission_list !== null || $scope.alert_list !== null || $scope.file_list !== null
-            || $scope.signature_list !== null || $scope.result_list !== null) {
+        if (!$scope.scoped_search && ($scope.submission_list !== null || $scope.alert_list !== null
+            || $scope.file_list !== null || $scope.signature_list !== null || $scope.result_list !== null)) {
             if ($scope.submission_list !== null && $scope.submission_list.total !== 0) {
                 $scope.show_tab('submission');
                 $scope.total = $scope.submission_list.total;
@@ -154,6 +167,14 @@ function SearchBaseCtrl($scope, $http, $timeout) {
             $scope.pages = $scope.pagerArray();
             $scope.started = true;
         }
+        else if ($scope.scoped_search){
+            $scope.show_tab($scope.search_scope);
+            $scope.total = $scope[$scope.search_scope + "_list"].total;
+            $scope.cur_list = $scope[$scope.search_scope + "_list"];
+            $scope.export_btn = $scope.search_scope === 'signature';
+            $scope.pages = $scope.pagerArray();
+            $scope.started = true;
+       }
     };
 
     //Load params from datastore
@@ -170,11 +191,29 @@ function SearchBaseCtrl($scope, $http, $timeout) {
             data['offset'] = $scope.offset;
             data['rows'] = $scope.rows;
 
-            for (let bucket in $scope.buckets) {
-                $scope.search_bucket($scope.buckets[bucket], data, $scope.search_callback)
+            if (!$scope.scoped_search){
+                for (let bucket in $scope.buckets) {
+                    $scope.search_bucket($scope.buckets[bucket], data, $scope.search_callback)
+                }
+            }
+            else{
+                $scope.search_bucket($scope.search_scope, data, $scope.search_callback)
             }
 
         }, 50);
+    };
+
+    $scope.reset = function (){
+        $scope.file_list = null;
+        $scope.submission_list = null;
+        $scope.signature_list = null;
+        $scope.result_list = null;
+        $scope.alert_list = null;
+        $scope.export_btn = false;
+        $scope.query = this.new_query;
+        $scope.search_scope = this.search_scope;
+        $scope.scoped_search = $scope.search_scope != 'all';
+        $scope.start();
     };
 
     $scope.load_data = function () {

@@ -4,15 +4,16 @@
 {% block js_import %}
 	<script src="/static/js/search.js"></script>
 {% endblock %}
-{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};settings={{settings}};debug={{debug}};{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
+{% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};settings={{settings}};debug={{debug}};{% if search_scope %}search_scope='{{search_scope}}';scoped_search=true;{% endif %}{% if query %}query='{{query}}';{% endif %};start();"{% endblock %}
 {% block loading_menu %}ng-hide="!loading_extra"{% endblock %}
 {% block content %}
 	{%raw%}
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Search</h1>
-			<h5 ng-show="query" class="text-muted">{{query}}</h5>
+			<h5 class="text-muted"><span ng-if="query">{{query}}&nbsp;&nbsp;-&nbsp;&nbsp;</span><span ng-if="search_scope=='all'">All indexes</span><span ng-if="search_scope!='all'">{{search_scope | titleCase}} index</span></h5>
 		</div>
+
 		<div ng-controller="SearchController" ng-init="page='search';load_favorites=true;load_global_favorites=false" class="bigpad">
             <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-resize">
@@ -36,34 +37,58 @@
             </div>
 
 			<form id="search-term" class="input-group" action="/search.html" method="get" role="search">
+				<input type="hidden" name="search_scope" value="{{search_scope}}"/>
 				<div class="inner-addon right-addon">
                     <span ng-show="new_query&&!inFavorites(new_query)" ng-click="promptAddFavorites(new_query)" class="text-muted glyphicon glyphicon-star-empty" title="Add to favorites"></span>
                     <span ng-show="inFavorites(new_query)" ng-click="removeFromFavorites(nameOfQuery(new_query))" class="text-info glyphicon glyphicon-star" title="Remove from favorites"></span>
-                    <input autocomplete="off" id="search-box" placeholder="Search query" name="query" type="text" class="form-control" ng-model="new_query" typeahead="s for s in suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
+                    <input autocomplete="off" id="search-box" placeholder="Search query" name="query" type="text" class="form-control" ng-model="new_query" typeahead="s for s in suggestions[search_scope] | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
                 </div>
 				<span class="input-group-btn">
                     <button type="submit" class="btn btn-primary">Search</button>
-                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                        <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-right" role="menu">
-                        <li ng-hide="favorites.length"><a><i>No favorites</i></a></li>
-                        <li ng-repeat="fav in favorites"><a href="/search.html?query={{fav.query}}">{{fav.name}}</a></li>
-                    </ul>
-
+					<span class="btn btn-primary" data-toggle="collapse" data-target="#searchMenu">
+						<span class="caret"></span>
+					</span>
                 </span>
 			</form>
-            <div class="pull-right">
+            <div id="searchMenu" class="collapse">
+				<section class="menudata">
+					<div class="row" >
+						<div class="hidden-lg hidden-md hidden-sm col-xs-12" style="margin-bottom: 10px">
+							<label style="margin-top: 5px">Search Scope</label>
+							<select class="form-control input-sm" ng-model="search_scope" ng-change="reset()" ng-options="scope.value as scope.name for scope in scopes"></select>
+						</div>
+						<div class="col-lg-10 col-md-9 col-sm-8 col-xs-12">
+							<div class="menuheader" data-toggle="collapse" data-target="#favorites">
+								<span class="text-big">Favorites</span>
+							</div>
+							<div id="favorites" class="collapse in">
+								<div ng-hide="favorites.length != 0"><i>No favorites</i></div>
+    							<a ng-repeat="fav in favorites" href="/search.html?query={{fav.query}}" style="display: block">{{fav.name}}</a>
+							</div>
+						</div>
+						<div class="col-lg-2 col-md-3 col-sm-4 hidden-xs">
+							<label style="margin-top: 5px">Search Scope</label>
+							<select class="form-control input-sm" ng-model="search_scope" ng-change="reset()" ng-options="scope.value as scope.name for scope in scopes"></select>
+						</div>
+					</div>
+
+				</section>
+			</div>
+			<div class="pull-right">
 				<a class="btn btn-link" href="/search_help.html"><span class="glyphicon glyphicon-question-sign">&nbsp;</span>Query&nbsp;Syntax</a>
 			</div>
 			<div class="text-danger"><b>{{invalid_query}}</b></div>
+
+
+
+
 		</div>
 		
 		<div class="pull-right hidden-xs">
 			<a href="/api/v4/signature/download/?query={{query}}" title="Download signatures" ng-show="export_btn" class="btn btn-default" style="font-size: 10pt; margin-top: 5px;"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download Signatures</span></a>
 		</div>
 		<div ng-controller="pagerCtrl" ng-init="stop_loading=false;pager_page='search'" ng-hide="file_list.items == null && submission_list.items == null && result_list.items == null && alert_list.items == null && signature_list.items == null">
-			<ul class="nav nav-tabs" id="tabContent">
+			<ul class="nav nav-tabs" id="tabContent" ng-show="!scoped_search">
 				<li id="submission_tab" class="active"><a href="#submission" data-toggle="tab" ng-click="page_switch(submission_list);show_export_btn(false)">Submissions ({{(submission_list.total === undefined) ? "..." : submission_list.total}}<span ng-show="submission_list.total==10000">+</span>)</a></li>
 				<li id="file_tab"><a href="#file" data-toggle="tab" ng-click="page_switch(file_list);show_export_btn(false)">Files ({{(file_list.total === undefined) ? "..." : file_list.total}}<span ng-show="file_list.total==10000">+</span>)</a></li>
 				<li id="result_tab"><a href="#result" data-toggle="tab" ng-click="page_switch(result_list);show_export_btn(false)">Results ({{(result_list.total === undefined) ? "..." : result_list.total}}<span ng-show="result_list.total==10000">+</span>)</a></li>
@@ -76,6 +101,7 @@
 	            {%raw%}
                 <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{(alert_list.total === undefined) ? "..." : alert_list.total}}<span ng-show="alert_list.total==10000">+</span>)</a></li>
 			</ul>
+			<div style="height: 40px" ng-show="export_btn&&scoped_search"></div>
 						
 			<div class="tab-content">
 				<div class="tab-pane active" style="margin-top: 20px" id="submission">
@@ -304,4 +330,4 @@
 	</section>
 	{%endraw%}
 {% endblock %}				
-{% block loading_jumbo %}ng-hide="file_list.items != null || submission_list.items != null || result_list.items != null || alert_list.items != null || signature_list.items != null || query == null || invalid_query != null"{% endblock %}
+{% block loading_jumbo %}ng-hide="file_list.items != null || submission_list.items != null || result_list.items != null || alert_list.items != null || signature_list.items != null || query == null || query === "" || invalid_query != null"{% endblock %}

@@ -9,7 +9,7 @@
 	</div>
 	<div class="col-sm-4" ng-controller="SearchController" ng-init="should_load_suggestion=!stop_loading;bucket=pager_page;disabled=disable_pager_filter">
 		<form ng-show="!disable_pager_filter" type="submit" ng-submit="$parent.tempSearchText=tempFilter">
-			<input autocomplete="off" id="search-box" placeholder="Search query" name="query" type="text" class="form-control input-sm pager_search" ng-model="tempFilter" typeahead="s for s in suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
+			<input autocomplete="off" id="search-box" placeholder="Search query" name="query" type="text" class="form-control input-sm pager_search" ng-model="tempFilter" typeahead="s for s in suggestions[pager_page] | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
 		</form>
 	</div>
 	<div class="col-sm-7 pager_pages">

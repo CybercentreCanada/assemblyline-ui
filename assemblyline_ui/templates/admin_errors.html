@@ -40,7 +40,7 @@
                     <div class="inner-addon right-addon">
                         <span ng-show="view_type!='list'&&query&&!inFavorites(query)" ng-click="promptAddFavorites()" class="text-muted glyphicon glyphicon-star-empty" title="Add to favorites"></span>
                         <span ng-show="view_type!='list'&&inFavorites(query)" ng-click="removeFromFavorites(nameOfQuery(query))" class="text-info glyphicon glyphicon-star" title="Remove from favorites"></span>
-                        <input autocomplete="off" id="search-box" placeholder="Filter" name="query" type="text" class="form-control" ng-model="query" typeahead="s for s in suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
+                        <input autocomplete="off" id="search-box" placeholder="Filter" name="query" type="text" class="form-control" ng-model="query" typeahead="s for s in suggestions['error'] | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
                     </div>
                     <span class="input-group-btn">
                         <a href="/admin/errors.html?filter={{query}}" class="btn btn-primary">Filter</a>

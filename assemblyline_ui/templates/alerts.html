@@ -152,7 +152,7 @@
                             </div>
                             <div id="modal-form" class="form-group">
                                 <label class="control-label">Query</label>
-                                <input autocomplete="off" type="text" id="name" class="form-control" ng-model="cur_favorite.query" typeahead="s for s in suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' ng-disabled="!edit_mode">
+                                <input autocomplete="off" type="text" id="name" class="form-control" ng-model="cur_favorite.query" typeahead="s for s in suggestions['alert'] | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' ng-disabled="!edit_mode">
                             </div>
                             <div id="modal-form" class="form-group">
                                 <label class="control-label">Name</label>
@@ -171,7 +171,7 @@
                     <div class="inner-addon right-addon">
                         <span ng-show="view_type!='list'&&query&&!inFavorites(query)" ng-click="promptAddFavorites(query)" class="text-muted glyphicon glyphicon-star-empty" title="Add to favorites"></span>
                         <span ng-show="view_type!='list'&&inFavorites(query)" ng-click="removeFromFavorites(nameOfQuery(query), false)" class="text-info glyphicon glyphicon-star" title="Remove from favorites"></span>
-                        <input autocomplete="off" id="search-box" placeholder="Filter" name="query" type="text" class="form-control" ng-model="query" typeahead="s for s in suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
+                        <input autocomplete="off" id="search-box" placeholder="Filter" name="query" type="text" class="form-control" ng-model="query" typeahead="s for s in suggestions['alert'] | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
                     </div>
                     <span class="input-group-btn">
                         <a href="/alerts.html?filter={{query}}&tc={{tc}}&view_type={{view_type}}&group_by={{group_by}}{{forced_filter}}" class="btn btn-primary" >Filter</a>

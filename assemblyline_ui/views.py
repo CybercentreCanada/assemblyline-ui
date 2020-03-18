@@ -301,7 +301,10 @@ def reset():
 @protected_renderer(load_settings=True, audit=False)
 def search(**kwargs):
     query = angular_safe(request.args.get('query', None))
-    return custom_render("search.html", query=query, **kwargs)
+    search_scope = angular_safe(request.args.get('search_scope', None))
+    if search_scope == 'all':
+        search_scope = None
+    return custom_render("search.html", query=query, search_scope=search_scope, **kwargs)
 
 
 @views.route("/search_help.html")
