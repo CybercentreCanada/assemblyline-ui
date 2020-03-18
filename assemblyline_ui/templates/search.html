@@ -112,7 +112,7 @@
 	            {%raw%}
                 <li id="alert_tab"><a href="#alert" data-toggle="tab" ng-click="page_switch(alert_list);show_export_btn(false)">Alerts ({{(alert_list.total === undefined) ? "..." : alert_list.total}}<span ng-show="alert_list.total==10000">+</span>)</a></li>
 			</ul>
-			<div class="text-large text-muted" ng-show="scoped_search">
+			<div class="text-large text-muted" ng-show="scoped_search" style="padding-bottom: 10px">
                 <div ng-show="submission_list.total > 0">
                     <div>{{submission_list.total}}<span ng-show="submission_list.total==10000">+</span> submissions found</div>
                 </div>
