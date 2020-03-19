@@ -437,12 +437,6 @@ def unsupported():
     return render_template("unsupported.html", user_agent=request.environ["HTTP_USER_AGENT"])
 
 
-# @views.route("/yara_standard.html")
-# @protected_renderer(audit=False, allow_readonly=False)
-# def yara_help(**kwargs):
-#     return custom_render("yara_standard.html", **kwargs)
-
-
 @views.route("/workflows.html")
 @protected_renderer(audit=False, allow_readonly=False)
 def workflows(**kwargs):
@@ -451,53 +445,6 @@ def workflows(**kwargs):
 
 ############################################
 # Admin Protected pages
-# @views.route("/admin/documentation.html")
-# @protected_renderer(require_type=['admin'], audit=False)
-# def admin_build_doc(**kwargs):
-#     def _list_files():
-#         fmap = OrderedDict()
-#         flist = []
-#         scan_dir_p = os.path.realpath(os.path.join(__file__.replace("assemblyline_ui/views.py", ""), ".."))
-#         for root, dirnames, filenames in os.walk(scan_dir_p):
-#             for filename in fnmatch.filter(filenames, '*.md'):
-#                 file_path = os.path.join(root, filename)
-#                 file_path = file_path.replace(scan_dir_p, "")
-#                 if file_path.startswith("/"):
-#                     file_path = file_path[1:]
-#
-#                 flist.append(file_path)
-#
-#                 pkg_root, fname = file_path.replace(scan_dir_p, "").split(os.sep, 1)
-#
-#                 if pkg_root not in fmap:
-#                     fmap[pkg_root] = []
-#
-#                 fmap[pkg_root].append(fname)
-#
-#         for key in fmap.keys():
-#             fmap[key] = sorted(fmap[key])
-#
-#         return fmap, flist
-#
-#     file_map, file_list = _list_files()
-#     raw = None
-#     content = ""
-#     my_file = angular_safe(request.args.get("fname", None))
-#
-#     if my_file and my_file in file_list:
-#         scan_dir = os.path.realpath(os.path.join(__file__.replace("assemblyline_ui/views.py", ""), ".."))
-#         data = codecs.open(os.path.join(scan_dir, my_file), "rb", "utf-8").read()
-#         content = markdown.markdown(data)
-#         basedir = os.path.dirname(my_file)
-#         content = Markup(re.sub(r'href="(?!(http|ftp))', r'href="documentation.html?fname=%s/' % basedir, content))
-#
-#         if my_file == "assemblyline/docs/markdown_documentation_example.md":
-#             raw = data
-#
-#     return custom_render("admin_documentation.html", content=content, raw=raw,
-#                          file_map=file_map, fname=my_file, **kwargs)
-
-
 @views.route("/admin/errors.html")
 @protected_renderer(require_type=['admin'], audit=False)
 def admin_errors(**kwargs):
@@ -521,9 +468,3 @@ def admin_site_map(**kwargs):
 @protected_renderer(require_type=['admin'], audit=False)
 def admin_user(**kwargs):
     return custom_render("admin_users.html", **kwargs)
-
-
-# @views.route("/admin/virtual_machines.html")
-# @protected_renderer(require_type=['admin'], audit=False, allow_readonly=False)
-# def admin_vm(**kwargs):
-#     return custom_render("admin_virtual_machines.html", **kwargs)

@@ -114,10 +114,6 @@ def create_menu(user, path):
              "active": path.startswith("/services.html"),
              "link": "/services.html",
              "title": "Service Listing"},
-            # {"class": "",
-            #  "active": path.startswith("/yara_standard.html"),
-            #  "link": "/yara_standard.html",
-            #  "title": "Yara Malware Standard"},
             {"class": "divider",
              "active": False,
              "link": None,
@@ -221,8 +217,7 @@ def create_menu(user, path):
             path.startswith("/heuristics_stats.html") or
             path.startswith("/signature_statistics.html") or
             path.startswith("/search_help.html") or
-            path.startswith("/services.html") or
-            path.startswith("/yara_standard.html"),
+            path.startswith("/services.html"),
          "link": "#",
          "title": "Help",
          "has_submenu": True,
@@ -260,8 +255,6 @@ def login(uname, path=None):
                                    path.startswith("/admin/") or path.startswith("/dashboard.html") or
                                    path.startswith("/kibana-dash.html"))
             user["admin_menu"] = [
-                # {"icon": None, "active": path.startswith("/admin/documentation.html"),
-                #  "link": "/admin/documentation.html", "title": "Documentation"},
                 {"icon": None, "active": path.startswith("/admin/errors.html"),
                  "link": "/admin/errors.html", "title": "Errors viewer"}]
             if not config.ui.read_only:
@@ -272,9 +265,6 @@ def login(uname, path=None):
                                         "link": "/admin/site_map.html", "title": "Site Map"},
                                        {"icon": None, "active": path.startswith("/admin/users.html"),
                                         "link": "/admin/users.html", "title": "Users"}])
-#            if not config.ui.read_only:
-#                user["admin_menu"].extend([{"icon": None, "active": path.startswith("/admin/virtual_machines.html"),
-#                                            "link": "/admin/virtual_machines.html", "title": "Virtual Machines"}])
         else:
             user['menu_active'] = (path.startswith("/settings.html") or path.startswith("/account.html") or
                                    path.startswith("/dashboard.html"))
