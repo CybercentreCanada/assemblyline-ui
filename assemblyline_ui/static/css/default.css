@@ -2020,17 +2020,17 @@ figure.front{
 }
 
 .section_info{
-	width: 0.5em;
+	min-width: 0.5em;
 	background-color: #f1f1f1 !important;
 }
 
 .section_suspicious{
-	width: 0.5em;
+	min-width: 0.5em;
 	background-color: #f5e3c9 !important;
 }
 
 .section_malicious{
-	width: 0.5em;
+	min-width: 0.5em;
 	background-color: #f3caca !important;
 }
 
