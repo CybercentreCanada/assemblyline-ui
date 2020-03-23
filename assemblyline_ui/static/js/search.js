@@ -22,14 +22,14 @@ function SearchBaseCtrl($scope, $http, $timeout) {
     $scope.search_scope = "all";
     $scope.scoped_search = false;
     $scope.use_archive = true;
-    $scope.buckets = ["alert", "file", "result", "signature", "submission"];
+    $scope.buckets = ["submission", "file", "result", "signature", "alert"];
     $scope.scopes = [
         {value: "all", name: "All Indexes"},
-        {value: "submission", name: "Submission index"},
+        {value: "alert", name: "Alert index"},
         {value: "file", name: "File index"},
         {value: "result", name: "Result index"},
         {value: "signature", name: "Signature index"},
-        {value: "alert", name: "Alert index"}];
+        {value: "submission", name: "Submission index"}];
 
     //DEBUG MODE
     $scope.debug = false;

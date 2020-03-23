@@ -16,7 +16,7 @@
 		
 		<div ng-show="hex">
 			<div class="pull-right">
-			<a href="/search.html?query=files.sha256:{{sha256}} OR results:{{sha256}}*" class="btn btn-default" title="Related submissions"><span class="glyphicon glyphicon-tasks"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Related Submissions</span></a>
+			<a href="/search.html?search_scope=submission&query=files.sha256:{{sha256}} OR results:{{sha256}}*" class="btn btn-default" title="Related submissions"><span class="glyphicon glyphicon-tasks"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Related Submissions</span></a>
 			<a href="/api/v4/file/download/{{sha256}}/" class="btn btn-default" title="Download file"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download File</span></a>
 			</div>
 			<ul class="nav nav-tabs" id="tabContent">
