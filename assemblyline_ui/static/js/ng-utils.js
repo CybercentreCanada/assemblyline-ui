@@ -1171,6 +1171,21 @@ utils.filter('section_color', function () {
     }
 });
 
+utils.filter('label_color', function () {
+    return function (score) {
+        if (score === undefined || score == null) return "label-heur-info";
+        if (score >= 1000) {
+            return "label-heur-malicious";
+        }
+        else if (score >= 100) {
+            return "label-heur-suspicious";
+        }
+        else {
+            return "label-heur-info";
+        }
+    }
+});
+
 utils.filter('verdict_text_color', function () {
     return function (score) {
         if (score === undefined || score == null) return "text-muted";
