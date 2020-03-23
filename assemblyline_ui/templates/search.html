@@ -11,7 +11,7 @@
 	<section id="appContent" class="container">
 		<div class="header_title text-right">
 			<h1>Search</h1>
-			<h5 class="text-muted"><span ng-if="query">{{query}}&nbsp;&nbsp;-&nbsp;&nbsp;</span><span ng-if="search_scope=='all'">All indexes</span><span ng-if="search_scope!='all'">{{search_scope | titleCase}} index</span></h5>
+			<h5 style="margin-bottom: 0; padding-bottom: 0" class="text-muted"><span ng-if="query">{{query}}&nbsp;&nbsp;-&nbsp;&nbsp;</span><span ng-if="search_scope=='all'">All indexes</span><span ng-if="search_scope!='all'">{{search_scope | titleCase}} index</span></h5>
 		</div>
 
 		<div ng-controller="SearchController" ng-init="page='search';load_favorites=true;load_global_favorites=false" class="bigpad">

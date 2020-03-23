@@ -190,12 +190,12 @@ def create_menu(user, path):
                  "has_submenu": False}
             ]
 
-            menu.extend([{"class": "",
-                          "active": path.startswith("/signatures.html") or path.startswith("/source_management.html"),
-                          "link": "#",
-                          "title": "Signatures",
-                          "has_submenu": True,
-                          "submenu": signature_submenu}])
+            menu.append({"class": "",
+                         "active": path.startswith("/signatures.html") or path.startswith("/source_management.html"),
+                         "link": "#",
+                         "title": "Signatures",
+                         "has_submenu": True,
+                         "submenu": signature_submenu})
         else:
             menu.append({"class": "",
                          "active": path.startswith("/signatures.html"),
@@ -203,12 +203,37 @@ def create_menu(user, path):
                          "title": "Signatures",
                          "has_submenu": False})
 
+    search_submenu = [
+        {"class": "",
+         "active": path.startswith("/search.html") and ("search_scope=all" in path or "search_scope" not in path),
+         "link": "/search.html",
+         "title": "All indexes",
+         "has_submenu": False},
+        {"class": "divider",
+         "active": False,
+         "link": None,
+         "title": None},
+        {"class": "dropdown-header",
+         "active": False,
+         "link": None,
+         "title": "Specific indexes"},
+
+    ]
+
+    for idx in ["Alert", "File", "Result", "Signature", "Submission"]:
+        search_submenu.append({"class": "",
+                               "active": path.startswith("/search.html") and f"search_scope={idx.lower()}" in path,
+                               "link": f"/search.html?search_scope={idx.lower()}",
+                               "title": f"{idx} Index",
+                               "has_submenu": False})
+
     menu.extend([
-        {"class": "hidden-md hidden-lg",
+        {"class": "",
          "active": path.startswith("/search.html"),
          "link": "/search.html",
          "title": "Search",
-         "has_submenu": False},
+         "has_submenu": True,
+         "submenu": search_submenu},
         {"class": "",
          "active": path.startswith("/api_doc.html") or
             path.startswith("/classification_help.html") or

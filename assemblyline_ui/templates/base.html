@@ -57,7 +57,7 @@
 			</div>
 		</div>
 		
-		{% block msg_head %}{%raw%}<div ng-if="user.c12n_enforcing" role="classification" class="classification-head {{ user.classification | class_banner_color }}"><span class="hidden-xs">Dynamic page - Highest possible classification: </span><strong>{{user.classification}}</strong></div>{%endraw%}{% endblock %}
+		{% block msg_head %}{%raw%}<div style="max-height: 67px" ng-if="user.c12n_enforcing" role="classification" class="classification-head {{ user.classification | class_banner_color }}"><span class="hidden-xs">Dynamic page - Highest classification: </span><strong>{{user.classification | class_sm}}</strong></div>{%endraw%}{% endblock %}
 
 		<div id="wrap">
 			{% if menu %}
@@ -88,47 +88,17 @@
 									<li class="{% if menu_item.active %}active{% endif %} {{menu_item.class}}"><a href="{{menu_item.link}}">{{menu_item.title}}</a></li>
 								{% endif %}
 							{% endfor %}
-							<li class="visible-md">
-								<form class="navbar-form" action="/search.html" method="get" role="search">
-									<div class="form-group btn-group">
-                                        <input autocomplete="off" placeholder="Search" name="query" type="text" class="btn form-control" style="cursor: text; text-align: left; margin-right: 1px;" ng-model="quick" typeahead="s for s in quick_suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
-										<!--<input name="query" type="text" placeholder="Search" class="btn form-control" style="cursor: text; text-align: left; margin-right: 1px;">-->
-										<button type="submit" class="btn btn-primary" style="height: 34px;"><span class="glyphicon glyphicon-search" style="font-size: 120%"></span></button>
-									</div>
-								</form>
-							</li>
-							<li class="hidden-lg dropdown{% if user.menu_active %} active{% endif %}">
-								<a class="clickable dropdown-toggle avatar" data-toggle="dropdown">
-									<img class="img-avatar"{% if avatar %} src="{{avatar}}"{%else%} src="/static/images/user_default.png"{% endif %}>
-									<b class="caret"></b>
-								</a>
-								<ul class="dropdown-menu">
-									<li class="dropdown-header">{{user.name}}</li>
-									{% for submenu_item in user.submenu %}
-										<li class="{% if submenu_item.active %}active{% endif %} {{submenu_item.class}}">
-											<a href="{{submenu_item.link}}">
-												{% if submenu_item.icon%}<i class="glyphicon {{submenu_item.icon}}"></i>{% endif %}
-												{{submenu_item.title}}
-											</a>
-										</li>
-									{% endfor %}
-									{% if 'admin' in user.type %}
-										<li class="divider"></li>
-										<li class="dropdown-header">Administration</li>
-										{% for submenu_item in user.admin_menu %}
-											<li {% if submenu_item.active %}class="active"{% endif %}><a href="{{submenu_item.link}}">{{submenu_item.title}}</a></li>
-										{% endfor %}
-									{% endif %}
-								</ul>
-							</li>
 						</ul>
-						<ul class="nav navbar-nav navbar-right visible-lg">
-							<li>
-								<form class="navbar-form hidden-sm" action="/search.html" method="get" role="search">
-									<div class="form-group btn-group">
-										<input autocomplete="off" placeholder="Search" name="query" type="text" class="btn form-control" style="cursor: text; text-align: left; margin-right: 1px;" ng-model="quick" typeahead="s for s in quick_suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
-										<!--<input name="query" type="text" placeholder="Search" class="btn form-control" style="cursor: text; text-align: left; margin-right: 1px;">-->
-										<button type="submit" class="btn btn-primary" style=" height: 34px;"><span class="glyphicon glyphicon-search" style="font-size: 120%"></span></button>
+						<ul class="nav navbar-nav navbar-right hidden-xs">
+							<li class="hidden-sm">
+								<form class="navbar-form" action="/search.html" method="get" role="search" style="margin-bottom: 0;padding: 0px 5px">
+									<div class="form-group ">
+										<div class="input-group">
+											<input style="max-width: 180px" autocomplete="off" placeholder="Search all indexes" name="query" type="text" class="form-control" ng-model="quick" typeahead="s for s in quick_suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
+											<span class="input-group-btn">
+												<button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-search"></span></button>
+											</span>
+										</div>
 									</div>
 								</form>
 							</li>
