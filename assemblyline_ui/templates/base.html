@@ -94,7 +94,7 @@
 								<form class="navbar-form" action="/search.html" method="get" role="search" style="margin-bottom: 0; padding: 3px 5px; max-width: 220px">
 									<div class="form-group ">
 										<div class="input-group input-group-sm">
-											<input autocomplete="off" placeholder="Search all indexes" name="query" type="text" class="form-control" ng-model="quick" typeahead="s for s in quick_suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
+											<input style="max-width: 165px" autocomplete="off" placeholder="Search all indexes" name="query" type="text" class="form-control" ng-model="quick" typeahead="s for s in quick_suggestions | filter:$viewValue | limitTo:20" typeahead-min-length='1' typeahead-on-select='onSelectPart($item, $model, $label)' />
 											<span class="input-group-btn">
 												<button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-search"></span></button>
 											</span>
