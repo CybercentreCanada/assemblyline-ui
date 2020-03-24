@@ -141,7 +141,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 section_hierarchy, _ = build_heirarchy_rec(section_list)
                 res['section_hierarchy'] = section_hierarchy['children']
             except InvalidSectionList:
-                LOGGER.warning(f"Could not generate section hierarchy for {res['response']['service)name']} "
+                LOGGER.warning(f"Could not generate section hierarchy for {res['response']['service_name']} "
                                f"service. Will use old display method.")
                 res['section_hierarchy'] = []
             for sec in section_list:
