@@ -14,6 +14,8 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
         $scope.started = false;
         $scope.data = null;
         $scope.sid = null;
+        $scope.file_tree = null;
+        $scope.important_files = null;
 
         //DEBUG MODE
         $scope.debug = false;
