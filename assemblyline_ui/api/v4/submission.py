@@ -845,7 +845,11 @@ def get_report(submission_id, **kwargs):
                 submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
                 submission['important_files'].add(sha256)
 
-        submission["file_info"] = STORAGE.file.get(submission['files'][0]['sha256'], as_obj=False)
+        submitted_sha256 = submission['files'][0]['sha256']
+        submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
+        if submitted_sha256 in submission['important_files']:
+            submission['important_files'].remove(submitted_sha256)
+
         submission['important_files'] = list(submission['important_files'])
 
         return make_api_response(submission)

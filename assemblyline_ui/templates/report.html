@@ -237,7 +237,7 @@
 				<div id="files">
 					<div ng-repeat="file in file_tree | orderByObjectInt:'score':'name'">
 						<ng-include src="'/static/ng-template/report_file_item.html'" ng-init="file_tree=file.children;important_files=important_files"></ng-include>
-						<div ng-show="important_files && (important_files.length == 0)" >
+						<div ng-show="important_files.length==0" >
 							<div class="pad text-muted">
 								Submitted file (<strong>{{file.name|split}}</strong>) did not generate any important files
 							</div>
