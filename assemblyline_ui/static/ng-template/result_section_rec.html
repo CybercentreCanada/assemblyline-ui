@@ -1,0 +1,27 @@
+<div class="part" ng-show="sections">
+	<section ng-repeat="sec_info in sections" class="section section_rec_{{section_list[sec_info.id].depth}}" ng-class="{'highlight': hasHighlightedTags(tagTypeList(sectionTags(section_list[sec_info.id])))}">
+		<div class="{{section_list[sec_info.id].heuristic.score | section_color}}"></div>
+		<div ng-class="{indent: section_list[sec_info.id].depth != 0}" style="width: 100%">
+			<div class="result_title" data-toggle="collapse" data-target="#{{parent}}_s{{sec_info.id}}" ng-class="{'highlight': hasHighlightedTags(tagTypeList(sectionTags(section_list[sec_info.id])))}"><span class="text-info"><strong><span class="{{section_list[sec_info.id].classification | class_text_color }}" ng-if="section_list[sec_info.id].classification">({{section_list[sec_info.id].classification | class_sm}})</span>&nbsp;<span class="{{section_list[sec_info.id].heuristic.score | score_color}}">{{section_list[sec_info.id].heuristic.score}}</span></strong></span><span class="text-muted">::&nbsp;</span><span replace-tags  data="section_list[sec_info.id].title_text" tags="tagTypeList(section_list[sec_info.id].tags)"></span></div>
+			<div id="{{parent}}_s{{sec_info.id}}" class="collapse in">
+				<div ng-if="section_list[sec_info.id].body_format=='TEXT'&&section_list[sec_info.id].body!=null" class="result_body"><div replace-tags data="section_list[sec_info.id].body" tags="tagTypeList(section_list[sec_info.id].tags)"></div></div>
+				<pre ng-if="section_list[sec_info.id].body_format=='MEMORY_DUMP'&&section_list[sec_info.id].body!=null" class="result_body">{{section_list[sec_info.id].body}}</pre>
+				<div graph-section ng-if="section_list[sec_info.id].body_format=='GRAPH_DATA'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
+				<div url-section ng-if="section_list[sec_info.id].body_format=='URL'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
+				<div ng-if="section_list[sec_info.id].body_format=='JSON'&&section_list[sec_info.id].body!=null" class="result_body"><div ng-jsoneditor ng-model="section_list[sec_info.id].body" options="{'mode': 'view'}" style="width: 100%; height: 300px;"></div></div>
+				<div kv-section ng-if="section_list[sec_info.id].body_format=='KEY_VALUE'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
+
+				<div style="margin-left: 2.5em; margin-bottom: .25em;" ng-if="section_list[sec_info.id].heuristic||section_list[sec_info.id].heuristic.attack_id||section_list[sec_info.id].tags.length!=0">
+					<span ng-if="section_list[sec_info.id].heuristic" title="Malware heuristic: {{section_list[sec_info.id].heuristic.name}} [{{section_list[sec_info.id].heuristic.heur_id}}]" class="label label-tag {{section_list[sec_info.id].heuristic.score | label_color}}" style="cursor: pointer;" ng-class="{'label-highlight': isHighlighted('heuristic', section_list[sec_info.id].heuristic.heur_id)}" ng-click="trigger_highlight('heuristic', section_list[sec_info.id].heuristic.heur_id);" >[HEURISTIC] {{section_list[sec_info.id].heuristic.name | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.heuristic.name:"{{section_list[sec_info.id].heuristic.name}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+					<span ng-if="section_list[sec_info.id].heuristic.attack_id" title="ATT&CK Pattern: {{section_list[sec_info.id].heuristic.attack_pattern}} [{{section_list[sec_info.id].heuristic.attack_id}}]" class="label label-tag {{section_list[sec_info.id].heuristic.score | label_color}}" style="cursor: pointer;" ng-class="{'label-highlight': isHighlighted('attack_pattern', section_list[sec_info.id].heuristic.attack_id)}" ng-click="trigger_highlight('attack_pattern', section_list[sec_info.id].heuristic.attack_id);">[ATT&CK] {{section_list[sec_info.id].heuristic.attack_pattern | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.heuristic.attack_pattern:"{{uri_encode(section_list[sec_info.id].heuristic.attack_pattern)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+					<span title="{{tag.type}}: {{tag.value}}" class="label label-tag {{section_list[sec_info.id].heuristic.score | label_color}}" style="cursor: pointer;" ng-repeat="tag in section_list[sec_info.id].tags | orderBy:'type'" ng-class="{'label-highlight': isHighlighted(tag.type, tag.value)}" ng-click="trigger_highlight(tag.type, tag.value);" >[{{tag.short_type.toUpperCase()}}] {{tag.value | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.tags.{{tag.type}}:"{{uri_encode(tag.value)}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+				</div>
+				<div ng-if="sec_info.children.length != 0" >
+					<div ng-include="'/static/ng-template/result_section_rec.html'" ng-init="sections=sec_info.children;section_list=section_list;parent=parent;"></div>
+				</div>
+				<div style="min-height: 8px" ng-if="sec_info.children.length == 0 && section_list[sec_info.id].body!=null"></div>
+			</div>
+		</div>
+	</section>
+</div>
+

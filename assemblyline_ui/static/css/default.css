@@ -2024,6 +2024,30 @@ figure.front{
 	padding-left: 12em;
 }
 
+.section_rec_1 {
+	margin-left: -0.5em;
+}
+
+.section_rec_2 {
+	margin-left: -1em;
+}
+
+.section_rec_3 {
+	margin-left: -1.5em;
+}
+
+.section_rec_4 {
+	margin-left: -2em;
+}
+
+.section_rec_5 {
+	margin-left: -2.5em;
+}
+
+.section_rec_6 {
+	margin-left: -3em;
+}
+
 .section_info{
 	min-width: 0.5em;
 	background-color: #f1f1f1 !important;
