@@ -737,8 +737,9 @@ def get_report(submission_id, **kwargs):
     if submission is None:
         return make_api_response("", "Submission ID %s does not exists." % submission_id, 404)
 
-    if user and Classification.is_accessible(user['classification'], submission['classification']):
+    submission['important_files'] = set()
 
+    if user and Classification.is_accessible(user['classification'], submission['classification']):
         if submission['state'] != 'completed':
             return make_api_response("", f"It is too early to generate the report. "
                                          f"Submission ID {submission_id} is incomplete.", 425)
@@ -799,6 +800,7 @@ def get_report(submission_id, **kwargs):
                 submission['attack_matrix'][cat].setdefault(item['name'], {'h_type': item['h_type'], 'files': []})
                 for name in name_map.get(sha256, [sha256]):
                     submission['attack_matrix'][cat][item['name']]['files'].append((name, sha256))
+                    submission['important_files'].add(sha256)
 
         # Process heuristics
         for h_type, items in heuristics.items():
@@ -808,6 +810,7 @@ def get_report(submission_id, **kwargs):
                 submission['heuristics'][h_type].setdefault(item['name'], [])
                 for name in name_map.get(sha256, [sha256]):
                     submission['heuristics'][h_type][item['name']].append((name, sha256))
+                    submission['important_files'].add(sha256)
 
         # Process tags
         for t in tags:
@@ -831,8 +834,10 @@ def get_report(submission_id, **kwargs):
             submission['tags'][summary_type][t['type']].setdefault(t['value'], {'h_type': t['h_type'], 'files': []})
             for name in name_map.get(sha256, [sha256]):
                 submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
+                submission['important_files'].add(sha256)
 
         submission["file_info"] = STORAGE.file.get(submission['files'][0]['sha256'], as_obj=False)
+        submission['important_files'] = list(submission['important_files'])
 
         return make_api_response(submission)
     else:

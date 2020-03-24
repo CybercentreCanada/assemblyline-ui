@@ -49,6 +49,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
                 $scope.started = true;
                 $scope.data = data.api_response;
                 $scope.file_tree = $scope.data.file_tree;
+                $scope.important_files = $scope.data.important_files;
             })
             .error(function (data, status, headers, config) {
                 $scope.started = true;

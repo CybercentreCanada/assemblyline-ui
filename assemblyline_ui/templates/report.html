@@ -230,16 +230,17 @@
 				</div>
 			</section>
 
-			<section class="report_section" id="section_files" ng-show="data">
+			<section class="report_section" id="section_files" ng-show="data && file_tree && (obj_len(file_tree) != 0)">
 				<div class="menureport">
-					<span class="text-big">Generated files</span>
+					<span class="text-big">Important generated files</span>
 				</div>
 				<div id="files">
-					<ng-include src="'/static/ng-template/report_file_item.html'" ng-init="file_tree=data.file_tree"></ng-include>
-
-					<div ng-show="data.file_tree && (obj_len(data.file_tree) == 0)" >
-						<div class="pad text-muted">
-							No files associated to this submission.
+					<div ng-repeat="file in file_tree | orderByObjectInt:'score':'name'">
+						<ng-include src="'/static/ng-template/report_file_item.html'" ng-init="file_tree=file.children;important_files=data.important_files"></ng-include>
+						<div ng-show="file.children && (obj_len(file.children) == 0)" >
+							<div class="pad text-muted">
+								Submitted file (<strong>{{file.name|split}}</strong>) did not generate any important files
+							</div>
 						</div>
 					</div>
 				</div>
