@@ -515,6 +515,12 @@ utils.directive('replaceTags', function ($compile) {
             if (scope.$eval(attr.data) == null){
                 return null;
             }
+
+            let sec_name = "section_list[sec_info.id]";
+            if (scope.$parent.sec_info === undefined){
+                sec_name = "sec";
+            }
+
             let data = escapeHTML(scope.$eval(attr.data));
             let tags = scope.$eval(attr.tags);
 
@@ -522,7 +528,7 @@ utils.directive('replaceTags', function ($compile) {
                 let tag = tags[i];
                 if (tag.value.length > 6) {
                     let re = new RegExp(escapeRegExp(escapeHTML(tag.value)), 'g');
-                    data = data.replace(re, inline_tag_template.replace(/-=TAG=-/g, 'sec.tags.' + i.toString()));
+                    data = data.replace(re, inline_tag_template.replace(/-=TAG=-/g, sec_name + '.tags.' + i.toString()));
                 }
             }
             elem.html(data);
