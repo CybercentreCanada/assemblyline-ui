@@ -22,16 +22,16 @@ pipelines:
             - cd ~/alv4 && pwd
             # Try to checkout the matching branch, if the command fails, don't care.
             - git checkout -b $BITBUCKET_BRANCH -t origin/$BITBUCKET_BRANCH || true
-            - pip install -e .
+            - pip install --no-cache-dir -e .
             # Install al core from source
             - git clone git@bitbucket.org:cse-assemblyline/alv4_core.git ~/alv4_core
             - cd ~/alv4_core && pwd
             # Try to checkout the matching branch, if the command fails, don't care.
             - git checkout -b $BITBUCKET_BRANCH -t origin/$BITBUCKET_BRANCH || true
-            - pip install -e .
+            - pip install --no-cache-dir -e .
             - cd $BITBUCKET_CLONE_DIR && pwd
-            - pip install -r test/requirements.txt
-            - pip install -e .
+            - pip install --no-cache-dir -r test/requirements.txt
+            - pip install --no-cache-dir -e .
             - python -m assemblyline_ui.app &
             - python -m assemblyline_ui.socketsrv &
             - pytest -rsx -vv
@@ -53,7 +53,7 @@ pipelines:
           name: Build Package
           image: python:3.8
           script:
-            - pip install wheel
+            - pip install --no-cache-dir wheel
             - python setup.py bdist_wheel
             - ls dist/
           artifacts:
@@ -67,12 +67,12 @@ pipelines:
               - rm -rf assemblyline_core setup.py  # Make sure we are running on the package from the prior build
               - apt update
               - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
-              - pip install -f dist assemblyline-ui
+              - pip install --no-cache-dir -f dist assemblyline-ui
               - mkdir -p /etc/assemblyline/
               - mkdir -p /var/cache/assemblyline/
               - mkdir -p /var/lib/assemblyline/
               - cp test/bitbucket/config.yml /etc/assemblyline
-              - pip install -r test/requirements.txt
+              - pip install --no-cache-dir -r test/requirements.txt
               - python -m assemblyline_ui.app &
               - python -m assemblyline_ui.socketsrv &
               - pytest -rsx -vv
@@ -86,7 +86,7 @@ pipelines:
           image: python:3.8
           deployment: test-pypi
           script:
-            - pip install twine
+            - pip install --no-cache-dir twine
             - ls dist
             - twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
       - step:
@@ -94,7 +94,7 @@ pipelines:
           image: python:3.8
           deployment: pypi
           script:
-            - pip install twine
+            - pip install --no-cache-dir twine
             - ls dist
             - twine upload --skip-existing dist/*
       - step:
@@ -104,7 +104,7 @@ pipelines:
           deployment: container
           script:
             - export TAG=${BITBUCKET_TAG#v}
-            - until pip install assemblyline-ui== 2>&1 | grep -q $TAG; do sleep 2; done
+            - until pip install --no-cache-dir assemblyline-ui== 2>&1 | grep -q $TAG; do sleep 2; done
             - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
             - docker build --build-arg version=$TAG -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
             - docker build --build-arg version=$TAG -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
