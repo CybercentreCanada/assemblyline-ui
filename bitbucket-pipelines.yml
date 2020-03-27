@@ -11,8 +11,8 @@ pipelines:
           caches: &caches
             - pip
           script: &build_test
-            - apt update
-            - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
+            - apt-get update
+            - apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
             - mkdir -p /etc/assemblyline/
             - mkdir -p /var/cache/assemblyline/
             - mkdir -p /var/lib/assemblyline/
@@ -65,8 +65,8 @@ pipelines:
             services: *services
             script: &deploy_test
               - rm -rf assemblyline_core setup.py  # Make sure we are running on the package from the prior build
-              - apt update
-              - apt install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
+              - apt-get update
+              - apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
               - pip install --no-cache-dir -f dist assemblyline-ui
               - mkdir -p /etc/assemblyline/
               - mkdir -p /var/cache/assemblyline/
