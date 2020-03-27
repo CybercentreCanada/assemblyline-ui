@@ -12,8 +12,9 @@ from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS
+from assemblyline_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS, LOGGER
 from assemblyline_ui.helper.result import format_result
+from assemblyline_ui.helper.submission import build_heirarchy_rec, InvalidSectionList
 from assemblyline_ui.helper.user import load_user_settings
 
 Classification = forge.get_classification()
@@ -474,7 +475,15 @@ def get_file_results(sha256, **kwargs):
 
         heuristics = STORAGE.get_all_heuristics()
         for res in output['results']:
-            for sec in res.get('result', {}).get('sections', []):
+            section_list = res.get('result', {}).get('sections', [])
+            try:
+                section_hierarchy, _ = build_heirarchy_rec(section_list)
+                res['section_hierarchy'] = section_hierarchy['children']
+            except InvalidSectionList:
+                LOGGER.warning(f"Could not generate section hierarchy for {res['response']['service_name']} "
+                               f"service. Will use old display method.")
+                res['section_hierarchy'] = []
+            for sec in section_list:
                 h_type = "info"
 
                 if sec.get('heuristic', False):
