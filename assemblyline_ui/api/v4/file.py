@@ -440,7 +440,8 @@ def get_file_results(sha256, **kwargs):
             "results": [],
             "tags": {},
             "attack_matrix": {},
-            'heuristics': {}
+            'heuristics': {},
+            "signatures": set()
         }
 
         with concurrent.futures.ThreadPoolExecutor(4) as executor:
@@ -519,12 +520,20 @@ def get_file_results(sha256, **kwargs):
                             # TODO: I need a logger because I need to report this.
                             pass
 
+                    # Process Signatures
+                    if sec['heuristic'].get('signature', None):
+                        sig = (sec['heuristic'].get('signature', None), h_type)
+                        if sig not in output['signatures']:
+                            output['signatures'].add(sig)
+
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
                     t_item = (t['value'], h_type)
                     if t_item not in output["tags"][t['type']]:
                         output["tags"][t['type']].append(t_item)
+
+        output['signatures'] = list(output['signatures'])
 
         return make_api_response(output)
     else:

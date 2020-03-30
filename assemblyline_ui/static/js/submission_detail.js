@@ -87,6 +87,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
                         tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
                     }
+                    if (section.heuristic.signature !== undefined && section.heuristic.signature !== null){
+                        tag_list.push({type: 'heuristic.signature', value: section.heuristic.signature})
+                    }
                 }
             });
             return tag_list;
@@ -102,6 +105,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 }
                 if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
                     tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
+                }
+                if (section.heuristic.signature !== undefined && section.heuristic.signature !== null){
+                    tag_list.push({type: 'heuristic.signature', value: section.heuristic.signature})
                 }
             }
             return tag_list;

@@ -174,6 +174,13 @@
 				<span class="indent"><input type="button" class="btn btn-xs btn-default text-tiny" ng-click="clear_selection();$event.stopPropagation();" value="Clear selection"/></span>
 			</div>
 			<div id="file_tags" class="collapse in">
+				<div class="row" ng-if="current_file.signatures.length != 0">
+					<div class="col-xs-12 col-sm-4 col-md-3"><strong>heuristic.signature</strong></div>
+					<div class="col-xs-12 col-sm-8 col-md-9">
+						<span id="file_heuristic.signature__{{value}}" class="label label-tag label-heur-{{value[1]}}" style="cursor: pointer;" ng-repeat="value in current_file.signatures | orderBy:value[0]" ng-class="{'label-highlight': isHighlighted('heuristic.signature', value[0])}" ng-click="trigger_highlight('heuristic.signature', value[0]);" >{{value[0] | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.heuristic.signature:"{{uri_encode(value[0])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+					</div>
+				</div>
+
 				<div ng-if="obj_len(current_file.tags) != 0">
 					<div class="row" ng-repeat="(tagType, values) in current_file.tags | orderBy:tagType">
 						<div class="col-xs-12 col-sm-4 col-md-3"><strong>{{tagType}}</strong></div>
@@ -183,7 +190,7 @@
 					</div>
 				</div>
 				
-				<div ng-if="obj_len(current_file.tags) == 0">
+				<div ng-if="obj_len(current_file.tags) == 0 && current_file.signatures.length == 0">
 					<span class="text-muted">No tags generated</span>
 				</div>
 			</div>
