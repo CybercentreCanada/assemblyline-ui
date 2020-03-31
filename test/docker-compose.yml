@@ -2,13 +2,13 @@ version: '2.4'
 
 services:
   al_ui:
-    image: cccs/assemblyline_dev:4.0.16
+    image: cccs/assemblyline_dev:4.0.17
     ports:
       - '5000:5000'
     volumes:
-      - /opt/alv4/alv4_ui/test/config/:/etc/assemblyline/
-      - /opt/alv4/:/opt/alv4/
-    working_dir: /opt/alv4/alv4_ui/assemblyline_ui/
+      - ./config/:/etc/assemblyline/
+      - ../../../:/opt/alv4/
+    working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
     command: python3 app.py
     depends_on:
       elasticsearch:
@@ -19,13 +19,13 @@ services:
         condition: service_started
 
   al_socketio:
-    image: cccs/assemblyline_dev:4.0.16
+    image: cccs/assemblyline_dev:4.0.17
     ports:
       - '5002:5002'
     volumes:
-      - /opt/alv4/alv4_ui/test/config/:/etc/assemblyline/
-      - /opt/alv4/:/opt/alv4/
-    working_dir: /opt/alv4/alv4_ui/assemblyline_ui/
+      - ./config/:/etc/assemblyline/
+      - ../../../:/opt/alv4/
+    working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
     command: python3 socketsrv.py
     depends_on:
       elasticsearch:

@@ -17,7 +17,7 @@ setup(
     description="Assemblyline (v4) automated malware analysis framework - UI components.",
     long_description="This package provides the UI components of Assemblyline v4 malware analysis framework. "
                      "(UI, APIs and SocketIO Server)",
-    url="https://bitbucket.org/cse-assemblyline/alv4_ui/",
+    url="https://github.com/CybercentreCanada/assemblyline-ui/",
     author="CCCS Assemblyline development team",
     author_email="assemblyline@cyber.gc.ca",
     license="MIT",
