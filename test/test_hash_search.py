@@ -1,6 +1,6 @@
 import pytest
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.result import Result
@@ -47,16 +47,16 @@ def datastore(datastore_connection):
 
 # noinspection PyUnusedLocal
 def test_list_data_sources(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/hash_search/list_data_sources/")
+    resp = get_api_data(session, f"{host}/api/v4/hash_search/list_data_sources/")
     assert resp == ['al', 'alert']
 
 
 # noinspection PyUnusedLocal
 def test_hash_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     for x in range(NUM_ITEMS):
-        resp = get_api_data(session, f"{HOST}/api/v4/hash_search/{f_hash_list[x]}/")
+        resp = get_api_data(session, f"{host}/api/v4/hash_search/{f_hash_list[x]}/")
         assert len(resp['alert']['items']) > 0 and len(resp['al']['items']) > 0

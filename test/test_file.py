@@ -10,7 +10,7 @@ from assemblyline.odm.models.result import Result
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 from cart import unpack_stream
 from io import BytesIO
 
@@ -52,10 +52,10 @@ def datastore(datastore_connection, filestore):
 
 # noinspection PyUnusedLocal
 def test_download_cart(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/download/{rand_hash}/?encoding=cart", raw=True)
+    resp = get_api_data(session, f"{host}/api/v4/file/download/{rand_hash}/?encoding=cart", raw=True)
     assert resp.startswith(b'CART')
 
     out = BytesIO()
@@ -68,28 +68,28 @@ def test_download_cart(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_download_raw(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/download/{rand_hash}/?encoding=raw", raw=True)
+    resp = get_api_data(session, f"{host}/api/v4/file/download/{rand_hash}/?encoding=raw", raw=True)
     assert resp.decode() == rand_hash
 
 
 # noinspection PyUnusedLocal
 def test_ascii(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/ascii/{rand_hash}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/ascii/{rand_hash}/")
     assert resp == rand_hash
 
 
 # noinspection PyUnusedLocal
 def test_children(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/children/{rand_hash}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/children/{rand_hash}/")
 
     for child in resp:
         assert 'name' in child and 'sha256' in child and len(child) == 2
@@ -97,39 +97,39 @@ def test_children(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_hex(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/hex/{rand_hash}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/hex/{rand_hash}/")
     assert resp.startswith("00000000:") and len(resp) == 311
 
 
 # noinspection PyUnusedLocal
 def test_info(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/file/info/{test_file.sha256}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/info/{test_file.sha256}/")
     get_file = File(resp)
     assert test_file == get_file
 
 
 # noinspection PyUnusedLocal
 def test_result(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/result/{rand_hash}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/result/{rand_hash}/")
     assert 'childrens' in resp and 'file_info' in resp and 'results' in resp and 'tags' in resp
 
 
 # noinspection PyUnusedLocal
 def test_result_for_service(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_key = random.choice(file_res_list)
     rand_hash = rand_key[:64]
     service_name = rand_key.split('.')[1]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/result/{rand_hash}/{service_name}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/result/{rand_hash}/{service_name}/")
     result_dict = resp['results'][0]
     for s in result_dict['result']['sections']:
         s['tags'] = unflatten(tag_list_to_dict(s['tags']))
@@ -139,11 +139,11 @@ def test_result_for_service(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_score(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_key = random.choice(file_res_list)
     rand_hash = rand_key[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/score/{rand_hash}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/score/{rand_hash}/")
     assert resp['score'] > 0
     assert rand_hash in resp['file_info']['sha256']
     for k in resp['result_keys']:
@@ -152,8 +152,8 @@ def test_score(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_strings(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     rand_hash = random.choice(file_res_list)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/file/strings/{rand_hash}/")
+    resp = get_api_data(session, f"{host}/api/v4/file/strings/{rand_hash}/")
     assert resp == rand_hash

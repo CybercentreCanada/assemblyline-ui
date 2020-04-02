@@ -1,6 +1,6 @@
 import pytest
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.result import Result
@@ -33,17 +33,17 @@ def datastore(datastore_connection):
 
 # noinspection PyUnusedLocal
 def test_get_message(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     r = random_model_obj(Result)
     wq.push({'status': "OK", 'cache_key': r.build_key()})
-    resp = get_api_data(session, f"{HOST}/api/v4/live/get_message/{wq_id}/")
+    resp = get_api_data(session, f"{host}/api/v4/live/get_message/{wq_id}/")
     assert resp['msg'] == r.build_key()
 
 
 # noinspection PyUnusedLocal
 def test_get_message_list(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     msgs = []
     for x in range(10):
@@ -51,25 +51,25 @@ def test_get_message_list(datastore, login_session):
         wq.push({'status': "OK", 'cache_key': r.build_key()})
         msgs.append(r.build_key())
 
-    resp = get_api_data(session, f"{HOST}/api/v4/live/get_message_list/{wq_id}/")
+    resp = get_api_data(session, f"{host}/api/v4/live/get_message_list/{wq_id}/")
     for x in range(10):
         assert resp[x]['msg'] == msgs[x]
 
 
 # noinspection PyUnusedLocal
 def test_outstanding_services(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/live/outstanding_services/{test_submission.sid}/")
+    resp = get_api_data(session, f"{host}/api/v4/live/outstanding_services/{test_submission.sid}/")
     assert isinstance(resp, dict)
 
 
 # noinspection PyUnusedLocal
 def test_setup_watch_queue(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/live/setup_watch_queue/{test_submission.sid}/")
+    resp = get_api_data(session, f"{host}/api/v4/live/setup_watch_queue/{test_submission.sid}/")
     assert resp['wq_id'].startswith("D-") and resp['wq_id'].endswith("-WQ")
 
-    resp = get_api_data(session, f"{HOST}/api/v4/live/get_message/{resp['wq_id']}/")
+    resp = get_api_data(session, f"{host}/api/v4/live/get_message/{resp['wq_id']}/")
     assert resp['type'] == 'start'

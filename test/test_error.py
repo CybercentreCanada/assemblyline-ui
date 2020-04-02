@@ -5,7 +5,7 @@ from assemblyline.odm.models.error import Error
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 NUM_ERRORS = 10
 test_error = None
@@ -31,16 +31,16 @@ def datastore(datastore_connection):
 
 # noinspection PyUnusedLocal
 def test_get_error(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/error/{test_error.build_key()}/")
+    resp = get_api_data(session, f"{host}/api/v4/error/{test_error.build_key()}/")
     err = Error(resp)
     assert err == test_error
 
 
 # noinspection PyUnusedLocal
 def test_list_error(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/error/list/")
+    resp = get_api_data(session, f"{host}/api/v4/error/list/")
     assert resp['total'] == NUM_ERRORS

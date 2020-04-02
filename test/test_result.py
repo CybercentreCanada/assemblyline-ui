@@ -2,7 +2,7 @@ import json
 import pytest
 import random
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.odm.models.error import Error
 from assemblyline.odm.models.file import File
@@ -51,11 +51,11 @@ def datastore(datastore_connection):
 
 # noinspection PyUnusedLocal
 def test_get_result(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     result_key = random.choice(result_key_list)
     sha256, service, version, _ = result_key.split('.')
-    resp = get_api_data(session, f"{HOST}/api/v4/result/{result_key}/")
+    resp = get_api_data(session, f"{host}/api/v4/result/{result_key}/")
     assert resp['sha256'] == sha256 \
         and resp['response']['service_name'] == service \
         and resp['response']['service_version'] == version[1:].replace("_", ".")
@@ -63,11 +63,11 @@ def test_get_result(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_get_result_error(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     error_key = random.choice(error_key_list)
     sha256, service, version, _, _ = error_key.split('.')
-    resp = get_api_data(session, f"{HOST}/api/v4/result/error/{error_key}/")
+    resp = get_api_data(session, f"{host}/api/v4/result/error/{error_key}/")
     assert resp['sha256'] == sha256 \
         and resp['response']['service_name'] == service \
         and resp['response']['service_version'] == version[1:].replace("_", ".")
@@ -75,13 +75,13 @@ def test_get_result_error(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_get_multiple_keys(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     data = {
         'error': error_key_list,
         'result': result_key_list
     }
 
-    resp = get_api_data(session, f"{HOST}/api/v4/result/multiple_keys/", method="POST", data=json.dumps(data))
+    resp = get_api_data(session, f"{host}/api/v4/result/multiple_keys/", method="POST", data=json.dumps(data))
     assert sorted(list(resp['error'].keys())) == sorted(error_key_list) \
         and sorted(list(resp['result'].keys())) == sorted(result_key_list)

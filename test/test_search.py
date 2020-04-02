@@ -3,7 +3,7 @@ import pytest
 
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.heuristic import Heuristic
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.file import File
@@ -78,7 +78,7 @@ def datastore(datastore_connection):
 
 # noinspection PyUnusedLocal
 def test_deep_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     params = {
         "query": "id:*",
@@ -88,7 +88,7 @@ def test_deep_search(datastore, login_session):
         params['deep_paging_id'] = "*"
         res = []
         while True:
-            resp = get_api_data(session, f"{HOST}/api/v4/search/{collection}/", params=params)
+            resp = get_api_data(session, f"{host}/api/v4/search/{collection}/", params=params)
             params['deep_paging_id'] = resp['next_deep_paging_id']
             if len(resp['items']) == 0:
                 break
@@ -98,10 +98,10 @@ def test_deep_search(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_facet_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/facet/{collection}/id/")
+        resp = get_api_data(session, f"{host}/api/v4/search/facet/{collection}/id/")
         assert len(resp) == TEST_SIZE
         for v in resp.values():
             assert isinstance(v, int)
@@ -109,10 +109,10 @@ def test_facet_search(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_grouped_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/grouped/{collection}/id/")
+        resp = get_api_data(session, f"{host}/api/v4/search/grouped/{collection}/id/")
         assert resp['total'] >= TEST_SIZE
         for v in resp['items']:
             assert v['total'] == 1 and 'value' in v
@@ -120,7 +120,7 @@ def test_grouped_search(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_histogram_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     date_hist_map = {
         'alert': 'ts',
@@ -136,7 +136,7 @@ def test_histogram_search(datastore, login_session):
         if not hist_field:
             continue
 
-        resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
+        resp = get_api_data(session, f"{host}/api/v4/search/histogram/{collection}/{hist_field}/")
         for k, v in resp.items():
             assert k.startswith("2") and k.endswith("Z") and isinstance(v, int)
 
@@ -155,33 +155,33 @@ def test_histogram_search(datastore, login_session):
         if not hist_field:
             continue
 
-        resp = get_api_data(session, f"{HOST}/api/v4/search/histogram/{collection}/{hist_field}/")
+        resp = get_api_data(session, f"{host}/api/v4/search/histogram/{collection}/{hist_field}/")
         for k, v in resp.items():
             assert isinstance(int(k), int) and isinstance(v, int)
 
 
 # noinspection PyUnusedLocal
 def test_get_fields(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/fields/{collection}/")
+        resp = get_api_data(session, f"{host}/api/v4/search/fields/{collection}/")
         for v in resp.values():
             assert list(v.keys()) == ['default', 'indexed', 'list', 'stored', 'type']
 
 
 # noinspection PyUnusedLocal
 def test_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     for collection in collections:
-        resp = get_api_data(session, f"{HOST}/api/v4/search/{collection}/", params={"query": "id:*"})
+        resp = get_api_data(session, f"{host}/api/v4/search/{collection}/", params={"query": "id:*"})
         assert TEST_SIZE <= resp['total'] >= len(resp['items'])
 
 
 # noinspection PyUnusedLocal
 def test_stats_search(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     int_map = {
         'alert': 'al.score',
@@ -198,7 +198,7 @@ def test_stats_search(datastore, login_session):
         if not field:
             continue
 
-        resp = get_api_data(session, f"{HOST}/api/v4/search/stats/{collection}/{field}/")
+        resp = get_api_data(session, f"{host}/api/v4/search/stats/{collection}/{field}/")
         assert list(resp.keys()) == ['avg', 'count', 'max', 'min', 'sum']
         for v in resp.values():
             assert isinstance(v, int) or isinstance(v, float)

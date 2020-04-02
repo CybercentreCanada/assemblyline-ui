@@ -5,7 +5,7 @@ import pytest
 import random
 import tempfile
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
@@ -34,11 +34,11 @@ def datastore(datastore_connection, filestore):
 
 # noinspection PyUnusedLocal
 def test_resubmit(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     sq.delete()
     submission_files = [f.sha256 for f in submission.files]
-    resp = get_api_data(session, f"{HOST}/api/v4/submit/resubmit/{submission.sid}/")
+    resp = get_api_data(session, f"{host}/api/v4/submit/resubmit/{submission.sid}/")
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['sid'] != submission.sid
     for f in resp['files']:
@@ -50,11 +50,11 @@ def test_resubmit(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_resubmit_dynamic(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     sq.delete()
     sha256 = random.choice(submission.results)[:64]
-    resp = get_api_data(session, f"{HOST}/api/v4/submit/dynamic/{sha256}/")
+    resp = get_api_data(session, f"{host}/api/v4/submit/dynamic/{sha256}/")
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['params']['description'].endswith('Dynamic Analysis')
     assert resp['sid'] != submission.sid
@@ -68,7 +68,7 @@ def test_resubmit_dynamic(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_submit_hash(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     sq.delete()
     data = {
@@ -76,7 +76,7 @@ def test_submit_hash(datastore, login_session):
         'name': 'random_hash.txt',
         'metadata': {'test': 'test_submit_hash'}
     }
-    resp = get_api_data(session, f"{HOST}/api/v4/submit/", method="POST", data=json.dumps(data))
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert isinstance(resp['sid'], str)
     for f in resp['files']:
         assert f['sha256'] == data['sha256']
@@ -88,7 +88,7 @@ def test_submit_hash(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_submit_url(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     sq.delete()
     data = {
@@ -96,7 +96,7 @@ def test_submit_url(datastore, login_session):
         'name': 'wmms.svg',
         'metadata': {'test': 'test_submit_url'}
     }
-    resp = get_api_data(session, f"{HOST}/api/v4/submit/", method="POST", data=json.dumps(data))
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert isinstance(resp['sid'], str)
     for f in resp['files']:
         assert f['name'] == data['name']
@@ -107,7 +107,7 @@ def test_submit_url(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_submit_binary(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     sq.delete()
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
@@ -123,7 +123,7 @@ def test_submit_binary(datastore, login_session):
                 'metadata': {'test': 'test_submit_binary'}
             }
             data = {'json': json.dumps(json_data)}
-            resp = get_api_data(session, f"{HOST}/api/v4/submit/", method="POST", data=data,
+            resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=data,
                                 files={'bin': fh}, headers={})
 
         assert isinstance(resp['sid'], str)

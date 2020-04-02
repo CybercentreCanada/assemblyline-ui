@@ -1,6 +1,6 @@
 import pytest
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 
@@ -18,23 +18,23 @@ def datastore(datastore_connection):
 
 # noinspection PyUnusedLocal
 def test_classification_definition(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/help/classification_definition/")
+    resp = get_api_data(session, f"{host}/api/v4/help/classification_definition/")
     assert isinstance(resp, dict)
 
 
 # noinspection PyUnusedLocal
 def test_configuration(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/help/configuration/")
+    resp = get_api_data(session, f"{host}/api/v4/help/configuration/")
     assert isinstance(resp, dict)
 
 
 # noinspection PyUnusedLocal
 def test_constants(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
-    resp = get_api_data(session, f"{HOST}/api/v4/help/constants/")
+    resp = get_api_data(session, f"{host}/api/v4/help/constants/")
     assert isinstance(resp, dict)

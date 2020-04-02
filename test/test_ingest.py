@@ -5,7 +5,7 @@ import pytest
 import random
 import tempfile
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
@@ -56,7 +56,7 @@ def datastore(datastore_connection, filestore):
 
 # noinspection PyUnusedLocal
 def test_ingest_hash(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     iq.delete()
     data = {
@@ -65,7 +65,7 @@ def test_ingest_hash(datastore, login_session):
         'metadata': {'test': 'ingest_hash'},
         'notification_queue': TEST_QUEUE
     }
-    resp = get_api_data(session, f"{HOST}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
     assert isinstance(resp['ingest_id'], str)
 
     msg = Submission(iq.pop(blocking=False))
@@ -74,7 +74,7 @@ def test_ingest_hash(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_ingest_url(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     iq.delete()
     data = {
@@ -83,7 +83,7 @@ def test_ingest_url(datastore, login_session):
         'metadata': {'test': 'ingest_url'},
         'notification_queue': TEST_QUEUE
     }
-    resp = get_api_data(session, f"{HOST}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
     assert isinstance(resp['ingest_id'], str)
 
     msg = Submission(iq.pop(blocking=False))
@@ -92,7 +92,7 @@ def test_ingest_url(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_ingest_binary(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     iq.delete()
 
@@ -110,7 +110,7 @@ def test_ingest_binary(datastore, login_session):
                 'notification_queue': TEST_QUEUE
             }
             data = {'json': json.dumps(json_data)}
-            resp = get_api_data(session, f"{HOST}/api/v4/ingest/", method="POST", data=data,
+            resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=data,
                                 files={'bin': fh}, headers={})
 
         assert isinstance(resp['ingest_id'], str)
@@ -130,19 +130,19 @@ def test_ingest_binary(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_get_message(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     nq.delete()
     test_message = random_model_obj(Submission).as_primitives()
     nq.push(test_message)
 
-    resp = get_api_data(session, f"{HOST}/api/v4/ingest/get_message/{TEST_QUEUE}/")
+    resp = get_api_data(session, f"{host}/api/v4/ingest/get_message/{TEST_QUEUE}/")
     assert resp == test_message
 
 
 # noinspection PyUnusedLocal
 def test_get_message_list(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     nq.delete()
     messages = []
@@ -151,6 +151,6 @@ def test_get_message_list(datastore, login_session):
         messages.append(test_message)
         nq.push(test_message)
 
-    resp = get_api_data(session, f"{HOST}/api/v4/ingest/get_message_list/{TEST_QUEUE}/")
+    resp = get_api_data(session, f"{host}/api/v4/ingest/get_message_list/{TEST_QUEUE}/")
     for x in range(NUM_FILES):
         assert resp[x] == messages[x]

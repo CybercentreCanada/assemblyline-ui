@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
 from assemblyline.common.bundling import create_bundle, BUNDLE_MAGIC
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
@@ -20,16 +20,16 @@ def datastore(datastore_connection, filestore):
 
 # noinspection PyUnusedLocal
 def test_create_bundle(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     sid = random.choice(datastore.submission.search('id:*', rows=100, as_obj=False)['items'])['sid']
-    resp = get_api_data(session, f"{HOST}/api/v4/bundle/{sid}/", raw=True)
+    resp = get_api_data(session, f"{host}/api/v4/bundle/{sid}/", raw=True)
     assert resp[:3] == BUNDLE_MAGIC
 
 
 # noinspection PyUnusedLocal
 def test_import_bundle(datastore, login_session, filestore):
-    _, session = login_session
+    _, session, host = login_session
     ds = datastore
 
     # Create a temporary bundle
@@ -44,7 +44,7 @@ def test_import_bundle(datastore, login_session, filestore):
     ds.submission.commit()
 
     with open(bundle_file, 'rb') as bfh:
-        resp = get_api_data(session, f"{HOST}/api/v4/bundle/", method="POST", data=bfh.read())
+        resp = get_api_data(session, f"{host}/api/v4/bundle/", method="POST", data=bfh.read())
         assert resp['success']
 
         ds.submission.commit()
