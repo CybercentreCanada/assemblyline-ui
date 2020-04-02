@@ -32,7 +32,15 @@ resources:
     env:
       MINIO_ACCESS_KEY: al_storage_key
       MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
-
+  repositories:
+  - repository: assemblyline-base
+    type: github
+    endpoint: github
+    name: CybercentreCanada/assemblyline-base
+  - repository: assemblyline-core
+    type: github
+    endpoint: github
+    name: CybercentreCanada/assemblyline-core
 
 jobs:
 - job: run_test
