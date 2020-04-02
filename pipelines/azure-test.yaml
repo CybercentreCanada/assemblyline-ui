@@ -64,8 +64,11 @@ jobs:
       inputs:
         versionSpec: '$(python.version)'
     - checkout: self
+      displayName: Checkout assemblyline-ui
     - checkout: assemblyline-base
+      displayName: Checkout assemblyline-base
     - checkout: assemblyline-core
+      displayName: Checkout assemblyline-core
     - script: |
         sudo mkdir -p /etc/assemblyline/
         sudo mkdir -p /var/cache/assemblyline/
