@@ -11,24 +11,20 @@ from assemblyline.odm.random_data import create_users, wipe_users, create_submis
 
 NUM_SUBMISSIONS = 10
 config = forge.get_config()
-ds = forge.get_datastore(config)
 fs = forge.get_filestore(config)
 
 
-def purge_submission():
-    wipe_users(ds)
-    wipe_submissions(ds, fs)
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
 
-    for _ in range(NUM_SUBMISSIONS):
-        create_submission(ds, fs)
-
-    request.addfinalizer(purge_submission)
-    return ds
+        for _ in range(NUM_SUBMISSIONS):
+            create_submission(datastore_connection, fs)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
+        wipe_submissions(datastore_connection, fs)
 
 
 # noinspection PyUnusedLocal

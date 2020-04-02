@@ -12,45 +12,42 @@ from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
 TEST_RESULTS = 10
-ds = forge.get_datastore()
 file_list = []
 error_key_list = []
 result_key_list = []
 
 
-def purge_result():
-    ds.error.wipe()
-    ds.file.wipe()
-    ds.result.wipe()
-    wipe_users(ds)
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
+def datastore(datastore_connection):
+    ds = datastore_connection
+    try:
+        create_users(ds)
 
-    for x in range(TEST_RESULTS):
-        f = random_model_obj(File)
-        ds.file.save(f.sha256, f)
-        file_list.append(f.sha256)
-    ds.file.commit()
+        for x in range(TEST_RESULTS):
+            f = random_model_obj(File)
+            ds.file.save(f.sha256, f)
+            file_list.append(f.sha256)
+        ds.file.commit()
 
-    for x in range(TEST_RESULTS):
-        e = random_model_obj(Error)
-        e.sha256 = file_list[x]
-        ds.error.save(e.build_key(), e)
-        error_key_list.append(e.build_key())
-    ds.error.commit()
+        for x in range(TEST_RESULTS):
+            e = random_model_obj(Error)
+            e.sha256 = file_list[x]
+            ds.error.save(e.build_key(), e)
+            error_key_list.append(e.build_key())
+        ds.error.commit()
 
-    for x in range(TEST_RESULTS):
-        r = random_model_obj(Result)
-        r.sha256 = file_list[x]
-        ds.result.save(r.build_key(), r)
-        result_key_list.append(r.build_key())
-    ds.result.commit()
-
-    request.addfinalizer(purge_result)
-    return ds
+        for x in range(TEST_RESULTS):
+            r = random_model_obj(Result)
+            r.sha256 = file_list[x]
+            ds.result.save(r.build_key(), r)
+            result_key_list.append(r.build_key())
+        ds.result.commit()
+        yield ds
+    finally:
+        ds.error.wipe()
+        ds.file.wipe()
+        ds.result.wipe()
+        wipe_users(ds)
 
 
 # noinspection PyUnusedLocal

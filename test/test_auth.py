@@ -11,15 +11,14 @@ from conftest import HOST, get_api_data, APIError
 ds = forge.get_datastore()
 
 
-def purge_auth():
-    wipe_users(ds)
-
 
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    request.addfinalizer(purge_auth)
-    return ds
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
 
 
 # noinspection PyUnusedLocal

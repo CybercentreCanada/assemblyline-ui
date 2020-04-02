@@ -17,66 +17,64 @@ from assemblyline.odm.random_data import create_users, wipe_users, create_signat
 TEST_SIZE = 10
 collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'workflow']
 
-ds = forge.get_datastore()
 file_list = []
 signatures = []
 
 
-def purge_result():
-    ds.alert.wipe()
-    ds.file.wipe()
-    ds.result.wipe()
-    ds.signature.wipe()
-    ds.submission.wipe()
-    ds.heuristic.wipe()
-    ds.workflow.wipe()
-    wipe_users(ds)
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    signatures.extend(create_signatures(ds))
-    ds.signature.commit()
+def datastore(datastore_connection):
+    ds = datastore_connection
+    try:
+        create_users(ds)
+        signatures.extend(create_signatures(ds))
+        ds.signature.commit()
 
-    for x in range(TEST_SIZE):
-        f = random_model_obj(File)
-        ds.file.save(f.sha256, f)
-        file_list.append(f.sha256)
-    ds.file.commit()
+        for x in range(TEST_SIZE):
+            f = random_model_obj(File)
+            ds.file.save(f.sha256, f)
+            file_list.append(f.sha256)
+        ds.file.commit()
 
-    for x in range(TEST_SIZE):
-        a = random_model_obj(Alert)
-        a.file.sha256 = file_list[x]
-        ds.alert.save(a.alert_id, a)
-    ds.alert.commit()
+        for x in range(TEST_SIZE):
+            a = random_model_obj(Alert)
+            a.file.sha256 = file_list[x]
+            ds.alert.save(a.alert_id, a)
+        ds.alert.commit()
 
-    for x in range(TEST_SIZE):
-        r = random_model_obj(Result)
-        r.sha256 = file_list[x]
-        ds.result.save(r.build_key(), r)
-    ds.result.commit()
+        for x in range(TEST_SIZE):
+            r = random_model_obj(Result)
+            r.sha256 = file_list[x]
+            ds.result.save(r.build_key(), r)
+        ds.result.commit()
 
-    for x in range(TEST_SIZE):
-        s = random_model_obj(Submission)
-        for f in s.files:
-            f.sha256 = file_list[x]
-        ds.submission.save(s.sid, s)
-    ds.submission.commit()
+        for x in range(TEST_SIZE):
+            s = random_model_obj(Submission)
+            for f in s.files:
+                f.sha256 = file_list[x]
+            ds.submission.save(s.sid, s)
+        ds.submission.commit()
 
-    for x in range(TEST_SIZE):
-        h = random_model_obj(Heuristic)
-        ds.heuristic.save(h.heur_id, h)
-    ds.heuristic.commit()
+        for x in range(TEST_SIZE):
+            h = random_model_obj(Heuristic)
+            ds.heuristic.save(h.heur_id, h)
+        ds.heuristic.commit()
 
-    for x in range(TEST_SIZE):
-        w_id = get_random_id()
-        w = random_model_obj(Workflow)
-        ds.workflow.save(w_id, w)
-    ds.workflow.commit()
+        for x in range(TEST_SIZE):
+            w_id = get_random_id()
+            w = random_model_obj(Workflow)
+            ds.workflow.save(w_id, w)
+        ds.workflow.commit()
 
-    request.addfinalizer(purge_result)
-    return ds
+        yield ds
+    finally:
+        ds.alert.wipe()
+        ds.file.wipe()
+        ds.result.wipe()
+        ds.signature.wipe()
+        ds.submission.wipe()
+        ds.heuristic.wipe()
+        ds.workflow.wipe()
+        wipe_users(ds)
 
 
 # noinspection PyUnusedLocal

@@ -4,7 +4,6 @@ import random
 
 from conftest import APIError, HOST, get_api_data
 
-from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.odm.models.workflow import Workflow
 from assemblyline.odm.randomizer import random_model_obj
@@ -12,30 +11,26 @@ from assemblyline.odm.random_data import create_users, wipe_users, create_servic
 
 
 NUM_WORKFLOWS = 10
-ds = forge.get_datastore()
 workflow_list = []
 
 
-def purge_workflow():
-    wipe_users(ds)
-    wipe_services(ds)
-    ds.workflow.wipe()
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    create_services(ds)
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        create_services(datastore_connection)
 
-    for x in range(NUM_WORKFLOWS):
-        workflow = random_model_obj(Workflow)
-        workflow_list.append(workflow.workflow_id)
-        ds.workflow.save(workflow.workflow_id, workflow)
+        for x in range(NUM_WORKFLOWS):
+            workflow = random_model_obj(Workflow)
+            workflow_list.append(workflow.workflow_id)
+            datastore_connection.workflow.save(workflow.workflow_id, workflow)
 
-    ds.workflow.commit()
-
-    request.addfinalizer(purge_workflow)
-    return ds
+        datastore_connection.workflow.commit()
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
+        wipe_services(datastore_connection)
+        datastore_connection.workflow.wipe()
 
 
 # noinspection PyUnusedLocal

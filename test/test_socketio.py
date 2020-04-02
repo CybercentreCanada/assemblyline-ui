@@ -20,11 +20,6 @@ from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
-ds = forge.get_datastore()
-
-
-def purge_socket():
-    wipe_users(ds)
 
 
 @pytest.fixture(scope='function')
@@ -36,10 +31,12 @@ def login_session():
 
 
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    request.addfinalizer(purge_socket)
-    return ds
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
 
 
 @pytest.fixture(scope="function")

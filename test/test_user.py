@@ -5,13 +5,11 @@ import random
 from conftest import APIError, HOST, get_api_data
 
 from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.common import forge
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
-ds = forge.get_datastore()
 AVATAR = "AVATAR!"
 NUM_FAVS = 10
 NUM_USERS = 5
@@ -19,41 +17,40 @@ FAV_TYPES = ['alert', 'error', 'search', 'signature', 'submission']
 user_list = []
 
 
-def purge_user():
-    wipe_users(ds)
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
+def datastore(datastore_connection):
     global user_list
-    create_users(ds)
+    ds = datastore_connection
+    try:
+        create_users(ds)
 
-    data = {
-        'alert': [],
-        'error': [],
-        'search': [],
-        'signature': [],
-        'submission': [],
-    }
-    for x in range(NUM_FAVS):
-        f = random_model_obj(Favorite)
-        f.name = f"test_{x+1}"
-        for key in data:
-            data[key].append(f)
+        data = {
+            'alert': [],
+            'error': [],
+            'search': [],
+            'signature': [],
+            'submission': [],
+        }
+        for x in range(NUM_FAVS):
+            f = random_model_obj(Favorite)
+            f.name = f"test_{x+1}"
+            for key in data:
+                data[key].append(f)
 
-    ds.user_favorites.save('admin', data)
-    ds.user_favorites.save('user', data)
-    
-    for x in range(NUM_USERS):
-        u = random_model_obj(User)
-        u.uname = f"test_{x+1}"
-        ds.user.save(u.uname, u)
-        ds.user_favorites.save(u.uname, data)
-        ds.user_avatar.save(u.uname, AVATAR)
-        user_list.append(u.uname)
+        ds.user_favorites.save('admin', data)
+        ds.user_favorites.save('user', data)
 
-    request.addfinalizer(purge_user)
-    return ds
+        for x in range(NUM_USERS):
+            u = random_model_obj(User)
+            u.uname = f"test_{x+1}"
+            ds.user.save(u.uname, u)
+            ds.user_favorites.save(u.uname, data)
+            ds.user_avatar.save(u.uname, AVATAR)
+            user_list.append(u.uname)
+
+        yield ds
+    finally:
+        wipe_users(ds)
 
 
 # noinspection PyUnusedLocal
@@ -69,9 +66,9 @@ def test_add_favorite(datastore, login_session):
                         method="PUT", data=json.dumps(data))
     assert resp['success']
 
-    ds.user_favorites.commit()
+    datastore.user_favorites.commit()
 
-    favs = ds.user_favorites.get(username, as_obj=False)
+    favs = datastore.user_favorites.get(username, as_obj=False)
     assert favs[fav_type][-1] == data
 
 
@@ -85,8 +82,8 @@ def test_add_user(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/user/{u.uname}/", method="PUT", data=json.dumps(u.as_primitives()))
     assert resp['success']
 
-    ds.user.commit()
-    new_user = ds.user.get(u.uname)
+    datastore.user.commit()
+    new_user = datastore.user.get(u.uname)
     assert new_user == u
 
 
@@ -108,7 +105,7 @@ def test_get_user(datastore, login_session):
     username = random.choice(user_list)
 
     resp = get_api_data(session, f"{HOST}/api/v4/user/{username}/")
-    new_user = ds.user.get(username, as_obj=False)
+    new_user = datastore.user.get(username, as_obj=False)
 
     assert resp['name'] == new_user['name']
     assert resp['uname'] == new_user['uname']
@@ -179,15 +176,15 @@ def test_remove_user(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/user/{username}/", method="DELETE")
     assert resp['success']
 
-    ds.user.commit()
-    ds.user_avatar.commit()
-    ds.user_favorites.commit()
-    ds.user_settings.commit()
+    datastore.user.commit()
+    datastore.user_avatar.commit()
+    datastore.user_favorites.commit()
+    datastore.user_settings.commit()
 
-    assert ds.user.get(username) is None
-    assert ds.user_avatar.get(username) is None
-    assert ds.user_favorites.get(username) is None
-    assert ds.user_settings.get(username) is None
+    assert datastore.user.get(username) is None
+    assert datastore.user_avatar.get(username) is None
+    assert datastore.user_favorites.get(username) is None
+    assert datastore.user_settings.get(username) is None
 
 
 # noinspection PyUnusedLocal
@@ -201,8 +198,8 @@ def test_remove_user_favorite(datastore, login_session):
                         method="DELETE", data=to_be_removed)
     assert resp['success']
 
-    ds.user_favorites.commit()
-    user_favs = ds.user_favorites.get(username, as_obj=False)
+    datastore.user_favorites.commit()
+    user_favs = datastore.user_favorites.get(username, as_obj=False)
     for f in user_favs[fav_type]:
         assert f['name'] != to_be_removed
 
@@ -218,9 +215,9 @@ def test_set_user(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/user/{username}/", method="POST", data=json.dumps(u))
     assert resp['success']
 
-    ds.user.commit()
+    datastore.user.commit()
 
-    new_user = ds.user.get(username, as_obj=False)
+    new_user = datastore.user.get(username, as_obj=False)
     for k in ['apikeys', 'otp_sk', 'password', 'security_tokens']:
         u.pop(k)
         new_user.pop(k)
@@ -238,8 +235,8 @@ def test_set_user_avatar(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/user/avatar/admin/", method="POST", data=new_avatar)
     assert resp['success']
 
-    ds.user_avatar.commit()
-    assert new_avatar == ds.user_avatar.get('admin')
+    datastore.user_avatar.commit()
+    assert new_avatar == datastore.user_avatar.get('admin')
 
 
 # noinspection PyUnusedLocal
@@ -251,8 +248,8 @@ def test_set_user_favorites(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/user/favorites/{username}/", method="POST", data=json.dumps(favs))
     assert resp['success']
 
-    ds.user_favorites.commit()
-    assert favs == ds.user_favorites.get(username, as_obj=False)
+    datastore.user_favorites.commit()
+    assert favs == datastore.user_favorites.get(username, as_obj=False)
 
 
 # noinspection PyUnusedLocal
@@ -267,5 +264,5 @@ def test_set_user_settings(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
     assert resp['success']
 
-    ds.user_settings.commit()
+    datastore.user_settings.commit()
     assert uset == load_user_settings({'uname': username})

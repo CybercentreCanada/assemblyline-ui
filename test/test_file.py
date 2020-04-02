@@ -16,43 +16,39 @@ from io import BytesIO
 
 NUM_FILES = 10
 test_file = None
-ds = forge.get_datastore()
 fs = forge.get_filestore()
 file_res_list = []
 
 
-def purge_file():
-    wipe_users(ds)
-    ds.file.wipe()
-    ds.result.wipe()
-    for key in file_res_list:
-        fs.delete(key[:64])
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
+def datastore(datastore_connection):
     global test_file, file_res_list
+    ds = datastore_connection
+    try:
+        create_users(ds)
+        for _f in range(NUM_FILES):
+            f = random_model_obj(File)
+            if test_file is None:
+                test_file = f
+            ds.file.save(f.sha256, f)
 
-    create_users(ds)
-    for _f in range(NUM_FILES):
-        f = random_model_obj(File)
-        if test_file is None:
-            test_file = f
-        ds.file.save(f.sha256, f)
+            fs.put(f.sha256, f.sha256)
 
-        fs.put(f.sha256, f.sha256)
+            for _r in range(random.randint(1, 3)):
+                r = random_model_obj(Result)
+                r.sha256 = f.sha256
+                file_res_list.append(r.build_key())
+                ds.result.save(r.build_key(), r)
 
-        for _r in range(random.randint(1, 3)):
-            r = random_model_obj(Result)
-            r.sha256 = f.sha256
-            file_res_list.append(r.build_key())
-            ds.result.save(r.build_key(), r)
-
-    ds.file.commit()
-    ds.result.commit()
-
-    request.addfinalizer(purge_file)
-    return ds
+        ds.file.commit()
+        ds.result.commit()
+        yield ds
+    finally:
+        wipe_users(ds)
+        ds.file.wipe()
+        ds.result.wipe()
+        for key in file_res_list:
+            fs.delete(key[:64])
 
 
 # noinspection PyUnusedLocal

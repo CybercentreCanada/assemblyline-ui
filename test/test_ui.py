@@ -11,20 +11,16 @@ from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.randomizer import get_random_phrase
 
-ds = forge.get_datastore()
-
-
-def purge_ui():
-    wipe_users(ds)
-    wipe_services(ds)
-
 
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    create_services(ds)
-    request.addfinalizer(purge_ui)
-    return ds
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        create_services(datastore_connection)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
+        wipe_services(datastore_connection)
 
 
 # noinspection PyUnusedLocal

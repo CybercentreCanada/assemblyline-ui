@@ -1,9 +1,48 @@
-
+import os
 from json import JSONDecodeError
 
-import pytest
 import requests
 import warnings
+
+import pytest
+
+from assemblyline.common import forge
+from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.datastore.stores.es_store import ESStore
+
+original_skip = pytest.skip
+
+# Check if we are in an unattended build environment where skips won't be noticed
+IN_CI_ENVIRONMENT = any(indicator in os.environ for indicator in
+                        ['CI', 'BITBUCKET_BUILD_NUMBER', 'AGENT_JOBSTATUS'])
+
+
+def skip_or_fail(message):
+    """Skip or fail the current test, based on the environment"""
+    if IN_CI_ENVIRONMENT:
+        pytest.fail(message)
+    else:
+        original_skip(message)
+
+
+# Replace the built in skip function with our own
+pytest.skip = skip_or_fail
+
+
+@pytest.fixture(scope='session')
+def config():
+    return forge.get_config()
+
+
+@pytest.fixture(scope='module')
+def datastore_connection(config):
+
+    store = ESStore(config.datastore.hosts)
+    ret_val = store.ping()
+    if not ret_val:
+        pytest.skip("Could not connect to datastore")
+
+    return AssemblylineDatastore(store)
 
 
 HOST = "https://localhost:443"

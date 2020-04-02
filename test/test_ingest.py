@@ -17,7 +17,6 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 NUM_FILES = 4
 TEST_QUEUE = "my_queue"
 config = forge.get_config()
-ds = forge.get_datastore(config)
 fs = forge.get_filestore(config)
 nq = NamedQueue(f"nq-{TEST_QUEUE}", host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
@@ -26,36 +25,34 @@ iq = NamedQueue("m-ingest", host=config.core.redis.persistent.host,
 file_hashes = []
 
 
-def purge_ingest():
-    # Cleanup Elastic
-    ds.file.wipe()
-    wipe_services(ds)
-    wipe_users(ds)
-
-    # Cleanup Minio
-    for f in file_hashes:
-        fs.delete(f)
-
-    # Cleanup Redis
-    nq.delete()
-    iq.delete()
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    create_services(ds)
+def datastore(datastore_connection):
+    ds = datastore_connection
+    try:
+        create_users(ds)
+        create_services(ds)
 
-    for _ in range(NUM_FILES):
-        f = random_model_obj(File)
-        ds.file.save(f.sha256, f)
-        file_hashes.append(f.sha256)
-        fs.put(f.sha256, f.sha256)
+        for _ in range(NUM_FILES):
+            f = random_model_obj(File)
+            ds.file.save(f.sha256, f)
+            file_hashes.append(f.sha256)
+            fs.put(f.sha256, f.sha256)
 
-    ds.file.commit()
+        ds.file.commit()
+        yield ds
+    finally:
+        # Cleanup Elastic
+        ds.file.wipe()
+        wipe_services(ds)
+        wipe_users(ds)
 
-    request.addfinalizer(purge_ingest)
-    return ds
+        # Cleanup Minio
+        for f in file_hashes:
+            fs.delete(f)
+
+        # Cleanup Redis
+        nq.delete()
+        iq.delete()
 
 
 # noinspection PyUnusedLocal

@@ -9,18 +9,18 @@ from conftest import get_api_data, HOST
 
 NUM_ALERTS = 10
 test_alert = None
-ds = forge.get_datastore()
 fs = forge.get_filestore()
 
 
-def purge_alert():
+def purge_alert(ds):
     wipe_users(ds)
     wipe_submissions(ds, fs)
     ds.alert.wipe()
 
 
 @pytest.fixture(scope="module")
-def datastore(request):
+def datastore(request, datastore_connection):
+    ds = datastore_connection
     global test_alert
 
     create_users(ds)
@@ -35,7 +35,7 @@ def datastore(request):
         ds.alert.save(a.alert_id, a)
     ds.alert.commit()
 
-    request.addfinalizer(purge_alert)
+    request.addfinalizer(lambda: purge_alert(ds))
     return ds
 
 

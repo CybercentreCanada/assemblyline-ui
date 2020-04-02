@@ -10,29 +10,25 @@ from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
-ds = forge.get_datastore()
 test_submission = None
 wq_id = "D-test_watch_queue-WQ"
 wq = NamedQueue(wq_id, host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
 
 
-def purge_live():
-    ds.submission.wipe()
-    wipe_users(ds)
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
+def datastore(datastore_connection):
     global test_submission
-    create_users(ds)
+    try:
+        create_users(datastore_connection)
 
-    test_submission = random_model_obj(Submission)
-    ds.submission.save(test_submission.sid, test_submission)
-    ds.submission.commit()
-
-    request.addfinalizer(purge_live)
-    return ds
+        test_submission = random_model_obj(Submission)
+        datastore_connection.submission.save(test_submission.sid, test_submission)
+        datastore_connection.submission.commit()
+        yield datastore_connection
+    finally:
+        datastore_connection.submission.wipe()
+        wipe_users(datastore_connection)
 
 
 # noinspection PyUnusedLocal

@@ -8,20 +8,17 @@ from assemblyline.common import forge
 from assemblyline.odm.random_data import create_users, wipe_users, create_heuristics, wipe_heuristics
 
 config = forge.get_config()
-ds = forge.get_datastore(config)
-
-
-def purge_heuristic():
-    wipe_users(ds)
-    wipe_heuristics(ds)
 
 
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    create_heuristics(ds)
-    request.addfinalizer(purge_heuristic)
-    return ds
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        create_heuristics(datastore_connection)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
+        wipe_heuristics(datastore_connection)
 
 
 def test_get_heuristics(datastore, login_session):

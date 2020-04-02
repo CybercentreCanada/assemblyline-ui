@@ -14,38 +14,37 @@ f_hash_list = []
 ds = forge.get_datastore()
 
 
-def purge_help():
-    ds.alert.wipe()
-    ds.file.wipe()
-    ds.submission.wipe()
-    wipe_users(ds)
-
-
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
+def datastore(datastore_connection):
+    ds = datastore_connection
+    try:
+        create_users(ds)
 
-    for x in range(NUM_ITEMS):
-        f = random_model_obj(File)
-        f_hash_list.append(f.sha256)
-        ds.file.save(f.sha256, f)
+        for x in range(NUM_ITEMS):
+            f = random_model_obj(File)
+            f_hash_list.append(f.sha256)
+            ds.file.save(f.sha256, f)
 
-    for x in range(NUM_ITEMS):
-        a = random_model_obj(Alert)
-        a.file.sha256 = f_hash_list[x]
-        ds.alert.save(a.alert_id, a)
+        for x in range(NUM_ITEMS):
+            a = random_model_obj(Alert)
+            a.file.sha256 = f_hash_list[x]
+            ds.alert.save(a.alert_id, a)
 
-    for x in range(NUM_ITEMS):
-        r = random_model_obj(Result)
-        r.sha256 = f_hash_list[x]
-        ds.result.save(r.build_key(), r)
+        for x in range(NUM_ITEMS):
+            r = random_model_obj(Result)
+            r.sha256 = f_hash_list[x]
+            ds.result.save(r.build_key(), r)
 
-    ds.alert.commit()
-    ds.file.commit()
-    ds.submission.commit()
+        ds.alert.commit()
+        ds.file.commit()
+        ds.submission.commit()
 
-    request.addfinalizer(purge_help)
-    return ds
+        yield ds
+    finally:
+        ds.alert.wipe()
+        ds.file.wipe()
+        ds.submission.wipe()
+        wipe_users(ds)
 
 
 # noinspection PyUnusedLocal
