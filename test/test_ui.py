@@ -7,7 +7,6 @@ from conftest import APIError, HOST, get_api_data
 from io import BytesIO
 
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
-from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.randomizer import get_random_phrase
 
@@ -77,8 +76,8 @@ def test_ui_submission(datastore, login_session):
     resp = get_api_data(session, f"{HOST}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(ui_params))
     assert resp['started']
 
-    ds.submission.commit()
-    submission = ds.submission.get(resp['sid'])
+    datastore.submission.commit()
+    submission = datastore.submission.get(resp['sid'])
     assert submission is not None
     assert submission.files[0].size == len(data)
     assert submission.files[0].sha256 == hashlib.sha256(data.encode()).hexdigest()

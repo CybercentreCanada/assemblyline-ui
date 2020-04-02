@@ -5,13 +5,10 @@ import random
 from assemblyline.odm.models.service import UpdateSource
 from conftest import HOST, get_api_data, APIError
 
-from assemblyline.common import forge
 from assemblyline.odm.models.signature import Signature
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures, \
     wipe_signatures, create_services, wipe_services
-
-config = forge.get_config()
 
 
 @pytest.fixture(scope="module")
@@ -30,6 +27,7 @@ def datastore(datastore_connection):
 # noinspection PyUnusedLocal
 def test_add_signature_source(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     data = random_model_obj(UpdateSource).as_primitives()
     data['name'] = "_NEW_added_SOURCE_"
@@ -59,6 +57,7 @@ def test_add_signature_source(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_add_update_signature(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     # Insert a dummy signature
     data = random_model_obj(Signature).as_primitives()
@@ -103,6 +102,7 @@ def test_add_update_signature(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_add_update_signature_many(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     # Insert a dummy signature
     source = "source"
@@ -158,6 +158,7 @@ def test_add_update_signature_many(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_change_status(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
     sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
@@ -177,6 +178,7 @@ def test_change_status(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_delete_signature(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
     sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
@@ -189,6 +191,7 @@ def test_delete_signature(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_delete_signature_source(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     invalid_service = random.choice(ds.service.search("NOT _exists_:update_config.generates_signatures",
                                                       rows=100, as_obj=False)['items'])
@@ -228,7 +231,7 @@ def test_download_signatures(datastore, login_session):
 def test_get_signature(datastore, login_session):
     _, session = login_session
 
-    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
+    signature = random.choice(datastore.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
     sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/{sid}/")
@@ -239,7 +242,7 @@ def test_get_signature(datastore, login_session):
 def test_get_signature_source(datastore, login_session):
     _, session = login_session
 
-    services = ds.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']
+    services = datastore.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/sources/")
     for service in services:
@@ -251,8 +254,8 @@ def test_set_signature_source(datastore, login_session):
     _, session = login_session
     original_source = service_data = None
 
-    for service in ds.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']:
-        service_data = ds.get_service_with_delta(service['name'], as_obj=False)
+    for service in datastore.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']:
+        service_data = datastore.get_service_with_delta(service['name'], as_obj=False)
         if len(service_data['update_config']['sources']) != 0:
             original_source = service_data['update_config']['sources'][0]
             break
@@ -267,8 +270,8 @@ def test_set_signature_source(datastore, login_session):
                         data=json.dumps(new_source), method="POST")
     assert resp['success']
 
-    ds.service.commit()
-    new_service_data = ds.get_service_with_delta(service_data['name'], as_obj=False)
+    datastore.service.commit()
+    new_service_data = datastore.get_service_with_delta(service_data['name'], as_obj=False)
     found = False
     for source in new_service_data['update_config']['sources']:
         if source['name'] == original_source['name']:
@@ -284,7 +287,7 @@ def test_set_signature_source(datastore, login_session):
 def test_signature_stats(datastore, login_session):
     _, session = login_session
 
-    signature_count = ds.signature.search("id:*", rows=0)['total']
+    signature_count = datastore.signature.search("id:*", rows=0)['total']
 
     resp = get_api_data(session, f"{HOST}/api/v4/signature/stats/")
     assert len(resp) == signature_count

@@ -1,15 +1,11 @@
 
 import pytest
 
-from assemblyline.common import forge
 from assemblyline.common.security import get_totp_token
 from assemblyline.odm.randomizer import get_random_hash
 from assemblyline.odm.random_data import create_users, wipe_users
 
 from conftest import HOST, get_api_data, APIError
-
-ds = forge.get_datastore()
-
 
 
 @pytest.fixture(scope="module")

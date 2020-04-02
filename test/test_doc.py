@@ -2,10 +2,7 @@ import pytest
 
 from conftest import HOST, get_api_data
 
-from assemblyline.common import forge
 from assemblyline.odm.random_data import create_users, wipe_users
-
-ds = forge.get_datastore()
 
 
 @pytest.fixture(scope="module")

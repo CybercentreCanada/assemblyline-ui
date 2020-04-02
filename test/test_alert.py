@@ -1,7 +1,6 @@
 import json
 import pytest
 
-from assemblyline.common import forge
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, wipe_submissions, create_submission
@@ -9,22 +8,21 @@ from conftest import get_api_data, HOST
 
 NUM_ALERTS = 10
 test_alert = None
-fs = forge.get_filestore()
 
 
-def purge_alert(ds):
+def purge_alert(ds, fs):
     wipe_users(ds)
     wipe_submissions(ds, fs)
     ds.alert.wipe()
 
 
 @pytest.fixture(scope="module")
-def datastore(request, datastore_connection):
+def datastore(request, datastore_connection, filestore):
     ds = datastore_connection
     global test_alert
 
     create_users(ds)
-    submission = create_submission(ds, fs)
+    submission = create_submission(ds, filestore)
 
     for _ in range(NUM_ALERTS):
         a = random_model_obj(Alert)
@@ -35,7 +33,7 @@ def datastore(request, datastore_connection):
         ds.alert.save(a.alert_id, a)
     ds.alert.commit()
 
-    request.addfinalizer(lambda: purge_alert(ds))
+    request.addfinalizer(lambda: purge_alert(ds, filestore))
     return ds
 
 

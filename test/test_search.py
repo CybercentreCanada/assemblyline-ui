@@ -5,7 +5,6 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.heuristic import Heuristic
 from conftest import HOST, get_api_data
 
-from assemblyline.common import forge
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result

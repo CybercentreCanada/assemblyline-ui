@@ -4,27 +4,24 @@ import random
 
 from conftest import HOST, get_api_data
 
-from assemblyline.common import forge
 from assemblyline.odm.randomizer import get_random_user, get_random_groups
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 
 
 NUM_SUBMISSIONS = 10
-config = forge.get_config()
-fs = forge.get_filestore(config)
 
 
 @pytest.fixture(scope="module")
-def datastore(datastore_connection):
+def datastore(datastore_connection, filestore):
     try:
         create_users(datastore_connection)
 
         for _ in range(NUM_SUBMISSIONS):
-            create_submission(datastore_connection, fs)
+            create_submission(datastore_connection, filestore)
         yield datastore_connection
     finally:
         wipe_users(datastore_connection)
-        wipe_submissions(datastore_connection, fs)
+        wipe_submissions(datastore_connection, filestore)
 
 
 # noinspection PyUnusedLocal

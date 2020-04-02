@@ -36,13 +36,20 @@ def config():
 
 @pytest.fixture(scope='module')
 def datastore_connection(config):
-
     store = ESStore(config.datastore.hosts)
     ret_val = store.ping()
     if not ret_val:
         pytest.skip("Could not connect to datastore")
 
     return AssemblylineDatastore(store)
+
+
+@pytest.fixture(scope='module')
+def filestore(config):
+    try:
+        return forge.get_filestore(config, connection_attempts=1)
+    except ConnectionError as err:
+        pytest.skip(str(err))
 
 
 HOST = "https://localhost:443"
@@ -56,11 +63,24 @@ class APIError(Exception):
     pass
 
 
+@pytest.fixture(scope='session')
+def http_endpoint_up():
+    """This is a probe for the host so that we can fail faster when it is missing."""
+    try:
+        requests.get(f"{HOST}/api/v4/")
+        return None
+    except requests.ConnectionError as err:
+        pytest.skip(str(err))
+
+
 @pytest.fixture(scope='function')
-def login_session():
-    session = requests.Session()
-    data = get_api_data(session, f"{HOST}/api/v4/auth/login/", params={'user': 'admin', 'password': 'admin'})
-    return data, session
+def login_session(http_endpoint_up):
+    try:
+        session = requests.Session()
+        data = get_api_data(session, f"{HOST}/api/v4/auth/login/", params={'user': 'admin', 'password': 'admin'})
+        return data, session
+    except requests.ConnectionError as err:
+        pytest.skip(str(err))
 
 
 def get_api_data(session, url, params=None, data=None, method="GET", raw=False, headers=None, files=None):

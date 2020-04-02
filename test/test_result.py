@@ -4,7 +4,6 @@ import random
 
 from conftest import HOST, get_api_data
 
-from assemblyline.common import forge
 from assemblyline.odm.models.error import Error
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result

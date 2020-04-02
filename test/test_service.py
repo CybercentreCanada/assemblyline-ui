@@ -4,12 +4,9 @@ import random
 
 from conftest import HOST, get_api_data
 
-from assemblyline.common import forge
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.randomizer import SERVICES
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
-
-config = forge.get_config()
 
 
 @pytest.fixture(scope="module")
@@ -43,7 +40,7 @@ def test_get_service(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_get_service_constants(datastore, login_session):
+def test_get_service_constants(datastore, login_session, config):
     _, session = login_session
 
     test_data = {
@@ -69,6 +66,7 @@ def test_get_all_services(datastore, login_session):
 def test_delete_service(datastore, login_session):
     _, session = login_session
 
+    ds = datastore
     service = random.choice(list(SERVICES.keys()))
     resp = get_api_data(session, f"{HOST}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
@@ -93,6 +91,7 @@ def test_delete_service(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_edit_service(datastore, login_session):
     _, session = login_session
+    ds = datastore
 
     delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)

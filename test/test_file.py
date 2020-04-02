@@ -16,12 +16,11 @@ from io import BytesIO
 
 NUM_FILES = 10
 test_file = None
-fs = forge.get_filestore()
 file_res_list = []
 
 
 @pytest.fixture(scope="module")
-def datastore(datastore_connection):
+def datastore(datastore_connection, filestore):
     global test_file, file_res_list
     ds = datastore_connection
     try:
@@ -32,7 +31,7 @@ def datastore(datastore_connection):
                 test_file = f
             ds.file.save(f.sha256, f)
 
-            fs.put(f.sha256, f.sha256)
+            filestore.put(f.sha256, f.sha256)
 
             for _r in range(random.randint(1, 3)):
                 r = random_model_obj(Result)
@@ -48,7 +47,7 @@ def datastore(datastore_connection):
         ds.file.wipe()
         ds.result.wipe()
         for key in file_res_list:
-            fs.delete(key[:64])
+            filestore.delete(key[:64])
 
 
 # noinspection PyUnusedLocal

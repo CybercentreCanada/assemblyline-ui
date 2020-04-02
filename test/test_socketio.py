@@ -5,7 +5,6 @@ import time
 
 from conftest import get_api_data
 
-from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.alert import AlertMessage
 from assemblyline.odm.messages.alerter_heartbeat import AlerterMessage
@@ -19,15 +18,16 @@ from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
-config = forge.get_config()
-
 
 @pytest.fixture(scope='function')
 def login_session():
-    session = requests.Session()
-    data = get_api_data(session, f"http://localhost:5000/api/v4/auth/login/",
-                        params={'user': 'admin', 'password': 'admin'})
-    return data, session
+    try:
+        session = requests.Session()
+        data = get_api_data(session, f"http://localhost:5000/api/v4/auth/login/",
+                            params={'user': 'admin', 'password': 'admin'})
+        return data, session
+    except requests.ConnectionError as err:
+        pytest.skip(str(err))
 
 
 @pytest.fixture(scope="module")

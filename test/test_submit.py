@@ -14,22 +14,21 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_core.dispatching.dispatcher import SubmissionTask
 
 config = forge.get_config()
-fs = forge.get_filestore(config)
 sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
 submission = None
 
 
 @pytest.fixture(scope="module")
-def datastore(datastore_connection):
+def datastore(datastore_connection, filestore):
     global submission
     try:
         create_users(datastore_connection)
-        submission = create_submission(datastore_connection, fs)
+        submission = create_submission(datastore_connection, filestore)
         yield datastore_connection
     finally:
         wipe_users(datastore_connection)
-        wipe_submissions(datastore_connection, fs)
+        wipe_submissions(datastore_connection, filestore)
         sq.delete()
 
 
