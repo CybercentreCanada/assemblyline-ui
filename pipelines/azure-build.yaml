@@ -60,6 +60,7 @@ stages:
     services:
       elasticsearch: elasticsearch
       redis: redis
+      minio: minio
     steps:
     - checkout: none
     - task: UsePythonVersion@0
