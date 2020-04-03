@@ -2,67 +2,61 @@ import json
 import pytest
 import random
 
-from conftest import HOST, get_api_data
+from conftest import get_api_data
 
-from assemblyline.common import forge
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.randomizer import SERVICES
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 
-config = forge.get_config()
-ds = forge.get_datastore(config)
-
-
-def purge_service():
-    wipe_users(ds)
-    wipe_services(ds)
-
 
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    create_services(ds)
-    request.addfinalizer(purge_service)
-    return ds
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        create_services(datastore_connection)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
+        wipe_services(datastore_connection)
 
 
 # noinspection PyUnusedLocal
 def test_get_versions(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     service = random.choice(list(SERVICES.keys()))
-    resp = get_api_data(session, f"{HOST}/api/v4/service/versions/{service}/")
+    resp = get_api_data(session, f"{host}/api/v4/service/versions/{service}/")
     assert resp == ['3.3.0', '4.0.0']
 
 
 # noinspection PyUnusedLocal
 def test_get_service(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     service = random.choice(list(SERVICES.keys()))
-    resp = get_api_data(session, f"{HOST}/api/v4/service/{service}/")
+    resp = get_api_data(session, f"{host}/api/v4/service/{service}/")
     service_data = datastore.get_service_with_delta(service, as_obj=False)
     assert resp == service_data
 
 
 # noinspection PyUnusedLocal
-def test_get_service_constants(datastore, login_session):
-    _, session = login_session
+def test_get_service_constants(datastore, login_session, config):
+    _, session, host = login_session
 
     test_data = {
         'stages': config.services.stages,
         'categories': config.services.categories,
     }
-    resp = get_api_data(session, f"{HOST}/api/v4/service/constants/")
+    resp = get_api_data(session, f"{host}/api/v4/service/constants/")
     assert resp == test_data
 
 
 # noinspection PyUnusedLocal
 def test_get_all_services(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
     svc_list = sorted(list(SERVICES.keys()))
-    resp = get_api_data(session, f"{HOST}/api/v4/service/all/")
+    resp = get_api_data(session, f"{host}/api/v4/service/all/")
     assert len(resp) == len(svc_list)
     for svc in resp:
         assert svc['name'] in svc_list
@@ -70,10 +64,11 @@ def test_get_all_services(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_delete_service(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
 
+    ds = datastore
     service = random.choice(list(SERVICES.keys()))
-    resp = get_api_data(session, f"{HOST}/api/v4/service/{service}/", method="DELETE")
+    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
 
     ds.service_delta.commit()
@@ -95,7 +90,8 @@ def test_delete_service(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_edit_service(datastore, login_session):
-    _, session = login_session
+    _, session, host = login_session
+    ds = datastore
 
     delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
@@ -111,7 +107,7 @@ def test_edit_service(datastore, login_session):
             "image": f"cccs/alsvc_{service.lower()}:latest",
         },
     }).as_primitives()
-    resp = get_api_data(session, f"{HOST}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
+    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
     assert resp['success']
 
     ds.service_delta.commit()

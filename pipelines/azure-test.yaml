@@ -1,0 +1,103 @@
+name: tests
+
+trigger: ["*"]
+pr: ["*"]
+
+pool:
+  vmImage: 'ubuntu-18.04'
+
+resources:
+  containers:
+  - container: redis
+    image: redis
+    ports:
+      - 6379:6379
+  - container: elasticsearch
+    image: sgaroncse/elasticsearch:7.6.0
+    env:
+      ES_JAVA_OPTS: "-Xms256m -Xmx512m"
+      DISCOVERY_TYPE: 'single-node'
+    ports:
+      - 9200:9200
+  - container: nginx
+    image: sgaroncse/nginx-ssl:1.17.5
+    env:
+      UI_HOST: localhost
+      SOCKET_HOST: localhost
+      KIBANA_HOST: localhost
+      FQDN: localhost
+
+  - container: minio
+    image: sgaroncse/minio
+    env:
+      MINIO_ACCESS_KEY: al_storage_key
+      MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
+  repositories:
+  - repository: assemblyline-base
+    type: github
+    endpoint: github
+    name: CybercentreCanada/assemblyline-base
+  - repository: assemblyline-core
+    type: github
+    endpoint: github
+    name: CybercentreCanada/assemblyline-core
+
+jobs:
+- job: run_test
+  strategy:
+    matrix:
+      python3_7:
+        python.version: '3.7'
+      Python3_8:
+        python.version: '3.8'
+
+  timeoutInMinutes: 10
+  services:
+    elasticsearch: elasticsearch
+    redis: redis
+    nginx: nginx
+    minio: minio
+
+  steps:
+    - task: UsePythonVersion@0
+      displayName: Set python version
+      inputs:
+        versionSpec: '$(python.version)'
+    - checkout: self
+      displayName: Checkout assemblyline-ui
+    - checkout: assemblyline-base
+      displayName: Checkout assemblyline-base
+    - checkout: assemblyline-core
+      displayName: Checkout assemblyline-core
+    - script: |
+        sudo mkdir -p /etc/assemblyline/
+        sudo mkdir -p /var/cache/assemblyline/
+        sudo cp pipelines/config.yml /etc/assemblyline
+        sudo chmod a+rw /var/cache/assemblyline/
+        sudo apt-get update
+        sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
+      displayName: Setup Environment
+      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+    - script: |
+        # Try to checkout the matching branch, if the command fails, don't care.
+        git checkout -b $(Build.SourceBranchName) -t origin/$(Build.SourceBranchName) || true
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+      displayName: Install assemblyline
+      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
+    - script: |
+        # Try to checkout the matching branch, if the command fails, don't care.
+        git checkout -b $(Build.SourceBranchName) -t origin/$(Build.SourceBranchName) || true
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+      displayName: Install assemblyline-core
+      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-core
+    - script: |
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -r test/requirements.txt
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+      displayName: Install assemblyline-ui
+      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+    - script: |
+        python -m assemblyline_ui.app &
+        python -m assemblyline_ui.socketsrv &
+        pytest -rsx -vv
+      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+      displayName: Test

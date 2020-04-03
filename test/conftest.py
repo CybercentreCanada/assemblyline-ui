@@ -1,12 +1,63 @@
-
+import os
 from json import JSONDecodeError
 
-import pytest
 import requests
 import warnings
+import redis
+
+import pytest
+
+from assemblyline.common import forge
+from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.datastore.stores.es_store import ESStore
+
+original_skip = pytest.skip
+
+# Check if we are in an unattended build environment where skips won't be noticed
+IN_CI_ENVIRONMENT = any(indicator in os.environ for indicator in
+                        ['CI', 'BITBUCKET_BUILD_NUMBER', 'AGENT_JOBSTATUS'])
 
 
-HOST = "https://localhost:443"
+def skip_or_fail(message):
+    """Skip or fail the current test, based on the environment"""
+    if IN_CI_ENVIRONMENT:
+        pytest.fail(message)
+    else:
+        original_skip(message)
+
+
+# Replace the built in skip function with our own
+pytest.skip = skip_or_fail
+
+
+@pytest.fixture(scope='session')
+def config():
+    return forge.get_config()
+
+
+@pytest.fixture(scope='module')
+def datastore_connection(config):
+    store = ESStore(config.datastore.hosts)
+    ret_val = store.ping()
+    if not ret_val:
+        pytest.skip("Could not connect to datastore")
+
+    return AssemblylineDatastore(store)
+
+
+@pytest.fixture(scope='module')
+def filestore(config):
+    try:
+        return forge.get_filestore(config, connection_attempts=1)
+    except ConnectionError as err:
+        pytest.skip(str(err))
+
+
+# Under different test setups, the host may have a different address
+POSSIBLE_HOSTS = [
+    "https://localhost:443",
+    "https://nginx",
+]
 
 
 class InvalidRequestMethod(Exception):
@@ -17,11 +68,46 @@ class APIError(Exception):
     pass
 
 
+@pytest.fixture(scope='session')
+def redis_connection(config):
+    try:
+        from assemblyline.remote.datatypes import get_client
+        c = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpersistent.port, False)
+        ret_val = c.ping()
+        if ret_val:
+            return c
+    except redis.ConnectionError:
+        pass
+
+    pytest.skip("Connection to the Redis server failed. This test cannot be performed...")
+
+
+@pytest.fixture(scope='session')
+def host(redis_connection):
+    """Figure out what hostname will reach the api server.
+
+    We also probe for the host so that we can fail faster when it is missing.
+    Request redis first, because if it is missing, the ui server can hang.
+    """
+    for host in POSSIBLE_HOSTS:
+        try:
+            result = requests.get(f"{host}/api/v4/auth/login", verify=False)
+            if result.status_code == 200:
+                return host
+        except requests.ConnectionError:
+            pass
+
+    pytest.skip("Couldn't find the API server, can't test against it.")
+
+
 @pytest.fixture(scope='function')
-def login_session():
-    session = requests.Session()
-    data = get_api_data(session, f"{HOST}/api/v4/auth/login/", params={'user': 'admin', 'password': 'admin'})
-    return data, session
+def login_session(host):
+    try:
+        session = requests.Session()
+        data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'admin', 'password': 'admin'})
+        return data, session, host
+    except requests.ConnectionError as err:
+        pytest.skip(str(err))
 
 
 def get_api_data(session, url, params=None, data=None, method="GET", raw=False, headers=None, files=None):

@@ -1,11 +1,11 @@
 import pytest
 import requests
 import socketio
+import socketio.exceptions
 import time
 
 from conftest import get_api_data
 
-from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.alert import AlertMessage
 from assemblyline.odm.messages.alerter_heartbeat import AlerterMessage
@@ -19,43 +19,44 @@ from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
-config = forge.get_config()
-ds = forge.get_datastore()
-
-
-def purge_socket():
-    wipe_users(ds)
-
-
-@pytest.fixture(scope='function')
-def login_session():
-    session = requests.Session()
-    data = get_api_data(session, f"http://localhost:5000/api/v4/auth/login/",
-                        params={'user': 'admin', 'password': 'admin'})
-    return data, session
-
 
 @pytest.fixture(scope="module")
-def datastore(request):
-    create_users(ds)
-    request.addfinalizer(purge_socket)
-    return ds
+def datastore(datastore_connection):
+    try:
+        create_users(datastore_connection)
+        yield datastore_connection
+    finally:
+        wipe_users(datastore_connection)
+
+
+SIO_HOSTS = {
+    'localhost': 'http://localhost:5002',
+    'nginx': 'http://al_socketio:5002'
+}
 
 
 @pytest.fixture(scope="function")
 def sio(login_session):
-    _, session = login_session
+    _, session, host = login_session
     sio = socketio.Client()
     headers = {
         'Cookie': f"session={session.cookies.get('session', None)}",
         'X-XSRF-TOKEN': session.headers.get('X-XSRF-TOKEN', None),
     }
 
-    sio.connect('http://localhost:5002',
-                namespaces=['/alerts', '/live_submission', "/submissions", '/status'],
-                headers=headers)
+    sio_host = None
+    for api_host, _sio in SIO_HOSTS.items():
+        if api_host in host:
+            sio_host = _sio
+            break
 
-    return sio
+    if sio_host:
+        sio.connect(sio_host,
+                    namespaces=['/alerts', '/live_submission', "/submissions", '/status'],
+                    headers=headers)
+        return sio
+
+    raise RuntimeError("Could connect to api but not socketio")
 
 
 # noinspection PyUnusedLocal
