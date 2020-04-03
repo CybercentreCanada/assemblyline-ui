@@ -60,7 +60,7 @@ jobs:
   services:
     elasticsearch: elasticsearch
     redis: redis
-    nginx: nginx
+#    nginx: nginx
     minio: minio
 
   steps:
@@ -103,6 +103,7 @@ jobs:
     - script: |
         python -m assemblyline_ui.app &
         python -m assemblyline_ui.socketsrv &
+        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "KIBANA_HOST=localhost" -e "FQDN=localhost" sgaroncse/nginx-ssl:1.17.5
         wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10
         pytest -rsx -vv
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
