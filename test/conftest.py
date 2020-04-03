@@ -1,3 +1,4 @@
+import time
 import os
 from json import JSONDecodeError
 
@@ -88,17 +89,22 @@ def host(redis_connection):
 
     We also probe for the host so that we can fail faster when it is missing.
     Request redis first, because if it is missing, the ui server can hang.
+
+    Try three times, in an outer loop, so we try the other urls while waiting
+    for the failed address to become available.
     """
     errors = {}
-    for host in POSSIBLE_HOSTS:
-        try:
-            result = requests.get(f"{host}/api/v4/auth/login", verify=False)
-            if result.status_code == 200:
-                return host
-            result.raise_for_status()
-            errors[host] = str(result.status_code)
-        except requests.RequestException as err:
-            errors[host] = str(err)
+    for _ in range(3):
+        for host in POSSIBLE_HOSTS:
+            try:
+                result = requests.get(f"{host}/api/v4/auth/login", verify=False)
+                if result.status_code == 200:
+                    return host
+                result.raise_for_status()
+                errors[host] = str(result.status_code)
+            except requests.RequestException as err:
+                errors[host] = str(err)
+        time.sleep(5)
 
     pytest.skip("Couldn't find the API server, can't test against it.\n" +
                 '\n'.join(k + ' ' + v for k, v in errors.items()))
