@@ -77,8 +77,10 @@ jobs:
     - script: |
         sudo mkdir -p /etc/assemblyline/
         sudo mkdir -p /var/cache/assemblyline/
+        sudo mkdir -p /var/lib/assemblyline/
         sudo cp pipelines/config.yml /etc/assemblyline
         sudo chmod a+rw /var/cache/assemblyline/
+        sudo chmod a+rw /var/lib/assemblyline/
         sudo apt-get update
         sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
       displayName: Setup Environment
