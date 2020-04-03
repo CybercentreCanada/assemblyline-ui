@@ -102,6 +102,9 @@ stages:
     variables:
       - group: deployment-information
     steps:
+    - task: UsePythonVersion@0
+      displayName: Set python version
+      inputs: {versionSpec: 3.8}
     - download: current
       artifact: dist
     - script: |
