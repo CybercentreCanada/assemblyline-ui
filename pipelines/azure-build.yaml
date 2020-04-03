@@ -40,7 +40,7 @@ stages:
       inputs: {versionSpec: 3.8}
     - script: |
         sudo env "PATH=$PATH" python -m pip install --no-cache-dir -U wheel cython pip
-        python setup.py sdist
+        python setup.py bdist_wheel
     - publish: $(System.DefaultWorkingDirectory)/dist/
       artifact: dist
     - publish: $(System.DefaultWorkingDirectory)/pipelines/
