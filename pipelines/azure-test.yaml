@@ -21,17 +21,21 @@ resources:
       - 9200:9200
   - container: nginx
     image: sgaroncse/nginx-ssl:1.17.5
+    ports:
+      - 443:443
     env:
       UI_HOST: localhost
       SOCKET_HOST: localhost
       KIBANA_HOST: localhost
       FQDN: localhost
-
   - container: minio
     image: sgaroncse/minio
     env:
       MINIO_ACCESS_KEY: al_storage_key
       MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
+    ports:
+      - 9000:9000
+
   repositories:
   - repository: assemblyline-base
     type: github
