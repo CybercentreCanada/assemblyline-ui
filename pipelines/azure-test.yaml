@@ -28,6 +28,7 @@ resources:
       SOCKET_HOST: localhost
       KIBANA_HOST: localhost
       FQDN: localhost
+    options:  --restart on-failure
   - container: minio
     image: sgaroncse/minio
     env:
@@ -55,7 +56,7 @@ jobs:
       Python3_8:
         python.version: '3.8'
 
-  timeoutInMinutes: 10
+  timeoutInMinutes: 15
   services:
     elasticsearch: elasticsearch
     redis: redis
