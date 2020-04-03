@@ -94,17 +94,15 @@ def host(redis_connection):
     for the failed address to become available.
     """
     errors = {}
-    for _ in range(3):
-        for host in POSSIBLE_HOSTS:
-            try:
-                result = requests.get(f"{host}/api/v4/auth/login", verify=False)
-                if result.status_code == 200:
-                    return host
-                result.raise_for_status()
-                errors[host] = str(result.status_code)
-            except requests.RequestException as err:
-                errors[host] = str(err)
-        time.sleep(5)
+    for host in POSSIBLE_HOSTS:
+        try:
+            result = requests.get(f"{host}/api/v4/auth/login", verify=False)
+            if result.status_code == 200:
+                return host
+            result.raise_for_status()
+            errors[host] = str(result.status_code)
+        except requests.RequestException as err:
+            errors[host] = str(err)
 
     pytest.skip("Couldn't find the API server, can't test against it.\n" +
                 '\n'.join(k + ' ' + v for k, v in errors.items()))

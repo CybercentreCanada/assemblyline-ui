@@ -80,7 +80,7 @@ jobs:
         sudo cp pipelines/config.yml /etc/assemblyline
         sudo chmod a+rw /var/cache/assemblyline/
         sudo apt-get update
-        sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev
+        sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
       displayName: Setup Environment
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
     - script: |
@@ -103,6 +103,7 @@ jobs:
     - script: |
         python -m assemblyline_ui.app &
         python -m assemblyline_ui.socketsrv &
+        wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10
         pytest -rsx -vv
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       displayName: Test
