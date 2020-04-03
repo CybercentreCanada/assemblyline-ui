@@ -78,6 +78,7 @@ stages:
         sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
         export VERSION=${BUILD_SOURCEBRANCH#"refs/tags/v"}
         sudo -E env "PATH=$PATH" python -m pip install --no-cache-dir -f $(Pipeline.Workspace)/dist/ "assemblyline-ui==${VERSION}"
+        sudo -E env "PATH=$PATH" python -m pip install --no-cache-dir -r $(Pipeline.Workspace)/test/requirements.txt
         sudo mkdir -p /etc/assemblyline/
         sudo mkdir -p /var/cache/assemblyline/
         sudo mkdir -p /var/lib/assemblyline/
