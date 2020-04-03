@@ -1,0 +1,139 @@
+name: build
+
+trigger:
+  tags:
+    include: ["v*"]
+
+pool:
+  vmImage: 'ubuntu-18.04'
+
+resources:
+  containers:
+  - container: redis
+    image: redis
+    ports:
+      - 6379:6379
+  - container: elasticsearch
+    image: sgaroncse/elasticsearch:7.6.0
+    env:
+      ES_JAVA_OPTS: "-Xms256m -Xmx512m"
+      DISCOVERY_TYPE: 'single-node'
+    ports:
+      - 9200:9200
+  - container: minio
+    image: sgaroncse/minio
+    env:
+      MINIO_ACCESS_KEY: al_storage_key
+      MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
+    ports:
+      - 9000:9000
+
+
+stages:
+- stage: build
+  jobs:
+  - job: build_package
+    displayName: Build Package
+    steps:
+    - task: UsePythonVersion@0
+      displayName: Set python version
+      inputs: {versionSpec: 3.8}
+    - script: |
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -U wheel cython pip
+        python setup.py sdist
+    - publish: $(System.DefaultWorkingDirectory)/dist/
+      artifact: dist
+    - publish: $(System.DefaultWorkingDirectory)/pipelines/
+      artifact: pipelines
+    - publish: $(System.DefaultWorkingDirectory)/test/
+      artifact: test
+- stage: test
+  jobs:
+  - job: run_test
+    strategy:
+      matrix:
+        python3_7:
+          python.version: '3.7'
+        Python3_8:
+          python.version: '3.8'
+    timeoutInMinutes: 10
+    services:
+      elasticsearch: elasticsearch
+      redis: redis
+    steps:
+    - checkout: none
+    - task: UsePythonVersion@0
+      displayName: Set python version
+      inputs:
+        versionSpec: '$(python.version)'
+    - download: current
+      artifact: dist
+    - download: current
+      artifact: pipelines
+    - download: current
+      artifact: test
+    - script: |
+        set -x  # Echo commands before they are run
+        sudo apt-get update
+        sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
+        export VERSION=${BUILD_SOURCEBRANCH#"refs/tags/v"}
+        sudo -E env "PATH=$PATH" python -m pip install --no-cache-dir -f $(Pipeline.Workspace)/dist/ "assemblyline-ui==${VERSION}"
+        sudo mkdir -p /etc/assemblyline/
+        sudo mkdir -p /var/cache/assemblyline/
+        sudo mkdir -p /var/lib/assemblyline/
+        sudo chmod a+rw /var/cache/assemblyline/
+        sudo chmod a+rw /var/lib/assemblyline/
+        sudo cp $(Pipeline.Workspace)/pipelines/config.yml /etc/assemblyline
+      displayName: Install package
+    - script: |
+        python -m assemblyline_ui.app &
+        python -m assemblyline_ui.socketsrv &
+        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "KIBANA_HOST=localhost" -e "FQDN=localhost" sgaroncse/nginx-ssl:1.17.5
+        wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10
+        pytest -rsx -vv
+      workingDirectory: $(Pipeline.Workspace)/test
+      displayName: Test
+- stage: deploy
+  jobs:
+  - job: deploy
+    displayName: Deploy packages and containers
+    variables:
+      - group: deployment-information
+    steps:
+    - download: current
+      artifact: dist
+    - script: |
+        set -xv  # Echo commands before they are run
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir twine
+        ls dist
+        twine upload --skip-existing --repository-url $TEST_REPOSITORY_URL dist/*
+      workingDirectory: $(Pipeline.Workspace)
+      displayName: Deploy to Test PyPI
+      env:
+        TWINE_USERNAME: $(twineUsername)
+        TWINE_PASSWORD: $(twinePassword)
+    - script: |
+        set -xv  # Echo commands before they are run
+        sudo env "PATH=$PATH" python -m pip install --no-cache-dir twine
+        ls dist
+        twine upload --skip-existing dist/*
+      workingDirectory: $(Pipeline.Workspace)
+      displayName: Deploy to PyPI
+      env:
+        TWINE_USERNAME: $(twineUsername)
+        TWINE_PASSWORD: $(twinePassword)
+    - task: Docker@2
+      displayName: Login to docker hub
+      inputs:
+        command: login
+        containerRegistry: dockerhub
+    - script: |
+        set -xv  # Echo commands before they are run
+        export TAG=${BUILD_SOURCEBRANCH#"refs/tags/v"}
+        until sudo env "PATH=$PATH" python -m pip download "assemblyline-core==$TAG" --pre --no-deps &> /dev/null; do sleep 2; done
+        docker build --build-arg version=$TAG -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
+        docker build --build-arg version=$TAG -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
+        docker push cccs/assemblyline-ui
+        docker push cccs/assemblyline-socketio
+      displayName: Deploy to Docker Hub
+

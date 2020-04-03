@@ -19,16 +19,16 @@ resources:
       DISCOVERY_TYPE: 'single-node'
     ports:
       - 9200:9200
-  - container: nginx
-    image: sgaroncse/nginx-ssl:1.17.5
-    ports:
-      - 443:443
-    env:
-      UI_HOST: localhost
-      SOCKET_HOST: localhost
-      KIBANA_HOST: localhost
-      FQDN: localhost
-    options:  --restart on-failure
+#  - container: nginx
+#    image: sgaroncse/nginx-ssl:1.17.5
+#    ports:
+#      - 443:443
+#    env:
+#      UI_HOST: localhost
+#      SOCKET_HOST: localhost
+#      KIBANA_HOST: localhost
+#      FQDN: localhost
+#    options:  --restart on-failure
   - container: minio
     image: sgaroncse/minio
     env:
@@ -60,7 +60,6 @@ jobs:
   services:
     elasticsearch: elasticsearch
     redis: redis
-#    nginx: nginx
     minio: minio
 
   steps:
