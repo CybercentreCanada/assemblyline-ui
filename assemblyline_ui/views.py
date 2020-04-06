@@ -219,46 +219,51 @@ def login():
                     # Get user data
                     resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
                     if resp.ok:
-                        data = parse_profile(resp.json())
-                        oauth_avatar = data.pop('avatar', None)
+                        data = parse_profile(resp.json(), config.auth.oauth.providers[oauth_provider].auto_properties)
+                        has_access = data.pop('access', False)
+                        if has_access:
+                            oauth_avatar = data.pop('avatar', None)
 
-                        # Find if user already exists
-                        users = STORAGE.user.search(f"email:{data['email']}", fl="uname", as_obj=False)['items']
-                        if users:
-                            cur_user = STORAGE.user.get(users[0]['uname'], as_obj=False) or {}
-                            # Do not update username and password from the current user
-                            data['uname'] = cur_user.get('uname', data['uname'])
-                            data['password'] = cur_user.get('password', data['password'])
-                        else:
-                            cur_user = {}
+                            # Find if user already exists
+                            users = STORAGE.user.search(f"email:{data['email']}", fl="uname", as_obj=False)['items']
+                            if users:
+                                cur_user = STORAGE.user.get(users[0]['uname'], as_obj=False) or {}
+                                # Do not update username and password from the current user
+                                data['uname'] = cur_user.get('uname', data['uname'])
+                                data['password'] = cur_user.get('password', data['password'])
+                            else:
+                                cur_user = {}
 
-                        username = data['uname']
+                            username = data['uname']
 
-                        # Make sure the user exists in AL and is in sync
-                        if (not cur_user and config.auth.oauth.providers[oauth_provider].auto_create) or \
-                                (cur_user and config.auth.oauth.providers[oauth_provider].auto_sync):
+                            # Make sure the user exists in AL and is in sync
+                            if (not cur_user and config.auth.oauth.providers[oauth_provider].auto_create) or \
+                                    (cur_user and config.auth.oauth.providers[oauth_provider].auto_sync):
 
-                            # Update the current user
-                            cur_user.update(data)
+                                # Update the current user
+                                cur_user.update(data)
 
-                            # Save avatar
-                            if oauth_avatar:
-                                avatar = fetch_avatar(oauth_avatar)
-                                STORAGE.user_avatar.save(username, avatar)
+                                # Save avatar
+                                if oauth_avatar:
+                                    avatar = fetch_avatar(oauth_avatar)
+                                    STORAGE.user_avatar.save(username, avatar)
 
-                            # Save updated user
-                            STORAGE.user.save(username, cur_user)
+                                # Save updated user
+                                STORAGE.user.save(username, cur_user)
 
-                        if cur_user:
-                            if avatar is None:
-                                avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-                            oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
-                            get_token_store(username).add(oauth_token)
+                            if cur_user:
+                                if avatar is None:
+                                    avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
+                                oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+                                get_token_store(username).add(oauth_token)
+                            else:
+                                oauth_validation = False
+                                avatar = None
+                                username = ''
+                                oauth_error = "User auto-creation is disabled"
                         else:
                             oauth_validation = False
-                            avatar = None
-                            username = ''
-                            oauth_error = "User auto-creation is disabled"
+                            oauth_error = "This user is not allowed access to the system"
 
                 except Exception as _:
                     oauth_validation = False
