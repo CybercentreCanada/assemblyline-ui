@@ -219,7 +219,7 @@ def login():
                     # Get user data
                     resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
                     if resp.ok:
-                        data = parse_profile(resp.json(), config.auth.oauth.providers[oauth_provider].auto_properties)
+                        data = parse_profile(resp.json(), config.auth.oauth.providers[oauth_provider])
                         has_access = data.pop('access', False)
                         if has_access:
                             oauth_avatar = data.pop('avatar', None)
@@ -232,6 +232,17 @@ def login():
                                 data['uname'] = cur_user.get('uname', data['uname'])
                                 data['password'] = cur_user.get('password', data['password'])
                             else:
+                                if data['uname'] != data['email']:
+                                    # Username was computed using a regular expression, lets make sure we don't
+                                    # assign the same username to two users
+                                    res = STORAGE.user.search(f"uname:{data['uname']}", rows=0, as_obj=False)
+                                    if res['total'] > 0:
+                                        cnt = res['total']
+                                        new_uname = f"{data['uname']}{cnt}"
+                                        while STORAGE.user.get(new_uname) is not None:
+                                            cnt += 1
+                                            new_uname = f"{data['uname']}{cnt}"
+                                        data['uname'] = new_uname
                                 cur_user = {}
 
                             username = data['uname']
