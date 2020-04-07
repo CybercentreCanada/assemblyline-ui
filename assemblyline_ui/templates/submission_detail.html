@@ -186,7 +186,7 @@
 								{{data.params.priority}}
 							</div>
 						</div>
-						<div class="row">
+						<div ng-show="data.params.ttl!=0" class="row">
 							<div class="col-xs-5 col-sm-3 col-md-2"><strong>Time&nbsp;To&nbsp;Live</strong></div>
 							<div class="col-xs-7 col-sm-9 col-md-10">
 								{{data.params.ttl}} days
