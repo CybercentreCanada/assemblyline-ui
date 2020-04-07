@@ -257,7 +257,8 @@ def login():
                                 # Save avatar
                                 if oauth_avatar:
                                     avatar = fetch_avatar(oauth_avatar)
-                                    STORAGE.user_avatar.save(username, avatar)
+                                    if avatar:
+                                        STORAGE.user_avatar.save(username, avatar)
 
                                 # Save updated user
                                 STORAGE.user.save(username, cur_user)
