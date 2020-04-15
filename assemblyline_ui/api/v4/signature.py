@@ -552,7 +552,7 @@ def update_signature_source(service, name, **_):
 
     if name != data['name']:
         return make_api_response({"success": False},
-                                 err="You are not allowed to change the source resulting filename.",
+                                 err="You are not allowed to change the source name.",
                                  status_code=400)
 
     if not service_data.get('update_config', {}).get('generates_signatures', False):
