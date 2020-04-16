@@ -25,7 +25,8 @@ def datastore(datastore_connection, filestore):
     ds = datastore_connection
     try:
         create_users(ds)
-        for _ in range(NUM_FILES):
+        # noinspection PyUnusedLocal
+        for _f in range(NUM_FILES):
             f = random_model_obj(File)
             if test_file is None:
                 test_file = f
@@ -33,7 +34,8 @@ def datastore(datastore_connection, filestore):
 
             filestore.put(f.sha256, f.sha256)
 
-            for _ in range(random.randint(1, 3)):
+            # noinspection PyUnusedLocal
+            for _r in range(random.randint(1, 3)):
                 r = random_model_obj(Result)
                 r.sha256 = f.sha256
                 file_res_list.append(r.build_key())
