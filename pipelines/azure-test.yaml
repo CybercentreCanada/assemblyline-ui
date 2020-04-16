@@ -20,7 +20,7 @@ resources:
     ports:
       - 9200:9200
 #  - container: nginx
-#    image: sgaroncse/nginx-ssl:1.17.5
+#    image: cccs/nginx-ssl
 #    ports:
 #      - 443:443
 #    env:
@@ -28,6 +28,7 @@ resources:
 #      SOCKET_HOST: localhost
 #      KIBANA_HOST: localhost
 #      FQDN: localhost
+#      TEMPLATE: minimal
 #    options:  --restart on-failure
   - container: minio
     image: sgaroncse/minio
@@ -104,7 +105,7 @@ jobs:
     - script: |
         python -m assemblyline_ui.app &
         python -m assemblyline_ui.socketsrv &
-        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "KIBANA_HOST=localhost" -e "FQDN=localhost" sgaroncse/nginx-ssl:1.17.5
+        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl
         wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
         pytest -rsx -vv
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
