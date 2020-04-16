@@ -18,7 +18,7 @@ def datastore(datastore_connection):
     try:
         create_users(ds)
 
-        for x in range(NUM_ITEMS):
+        for _ in range(NUM_ITEMS):
             f = random_model_obj(File)
             f_hash_list.append(f.sha256)
             ds.file.save(f.sha256, f)

@@ -20,7 +20,7 @@ def datastore(datastore_connection):
         create_users(datastore_connection)
         create_services(datastore_connection)
 
-        for x in range(NUM_WORKFLOWS):
+        for _ in range(NUM_WORKFLOWS):
             workflow = random_model_obj(Workflow)
             workflow_list.append(workflow.workflow_id)
             datastore_connection.workflow.save(workflow.workflow_id, workflow)
@@ -78,8 +78,8 @@ def test_list_workflows_labels(datastore, login_session):
     assert len(resp) > 1
 
     for x in datastore.workflow.search("id:*", fl="labels", as_obj=False)['items']:
-        for l in x['labels']:
-            assert l in resp
+        for label in x['labels']:
+            assert label in resp
 
 
 # noinspection PyUnusedLocal

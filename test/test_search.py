@@ -28,7 +28,7 @@ def datastore(datastore_connection):
         signatures.extend(create_signatures(ds))
         ds.signature.commit()
 
-        for x in range(TEST_SIZE):
+        for _ in range(TEST_SIZE):
             f = random_model_obj(File)
             ds.file.save(f.sha256, f)
             file_list.append(f.sha256)
@@ -53,12 +53,12 @@ def datastore(datastore_connection):
             ds.submission.save(s.sid, s)
         ds.submission.commit()
 
-        for x in range(TEST_SIZE):
+        for _ in range(TEST_SIZE):
             h = random_model_obj(Heuristic)
             ds.heuristic.save(h.heur_id, h)
         ds.heuristic.commit()
 
-        for x in range(TEST_SIZE):
+        for _ in range(TEST_SIZE):
             w_id = get_random_id()
             w = random_model_obj(Workflow)
             ds.workflow.save(w_id, w)
