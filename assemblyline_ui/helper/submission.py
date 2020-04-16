@@ -48,6 +48,7 @@ def build_heirarchy_rec(sections, current_id=0, current_lvl=0, parent=None):
             current_id += 1
         elif sec['depth'] > current_lvl:
             try:
+                # noinspection PyUnboundLocalVariable
                 _, current_id = build_heirarchy_rec(sections, current_id, current_lvl + 1, prev)
             except UnboundLocalError:
                 raise InvalidSectionList("Section list is invalid. Cannot build a tree from it...")

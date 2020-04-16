@@ -38,7 +38,7 @@ def get_api_documentation(**kwargs):
       'methods': ["GET", "POST"],       # Allowed HTTP methods
       'description': "API doc.",        # API documentation
       'id': "api_doc",                  # Unique ID for the API
-      'function': "apiv3.api_doc",      # Function called in the code
+      'function': "apiv4.api_doc",      # Function called in the code
       'protected': False,               # Does the API require login?
       'require_type': ['user'],         # Type of users allowed to use API
       'complete' : True},               # Is the API stable?
