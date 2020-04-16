@@ -50,6 +50,13 @@ setup(
         'authlib',
         'fido2'
     ],
+    extras_require={
+        'test': [
+            'pytest',
+            'pytest-cov',
+            'cart'
+        ]
+    },
     package_data={
         'assemblyline_ui': [
             "templates/*",
