@@ -1,24 +1,14 @@
-# Assemblyline 4 UI
+# Assemblyline 4 - User Interface
 
-This component provides the User Interface as well as the different APIs for the assemblyline 4 framework.
+This component provides the User Interface as well as the different APIs and socketio endpoints for the Assemblyline 4 framework.
 
-## UI Components
+### UI Components
 
-### NGinx
+#### APIs
 
-The assemblyline UI uses NGinx as the web proxy. It performs the following tasks:
+Assemblyline 4 provides a large set of API that can provide you with all the same information you will find in it's UI and even more. The list of APIs and their functionality is described in the help section of the UI.  
 
-* Serve and cache the static files
-* Perform Client certificate authentication against the cert CAs
-* Route the users between the production and development Web and SocketIO servers
-
-### uWsgi
-
-uWsgi is used to serve the different python APIs and views.
-
-###### APIs
-
-All APIs in assemblyline output their result in the same manner:
+All APIs in Assemblyline output their result in the same manner for consistency:
 
     {
        "api_response": {},            //Actual response from the API
@@ -29,19 +19,19 @@ All APIs in assemblyline output their result in the same manner:
 
  **NOTE**: All response codes return this output layout
 
-###### Views
+#### Views
 
-The uWsgi views are built in layers:
+The views are built in layers:
 
 1. It all starts with the python code which takes care of the authentication and loads information about the page and about the user
-2. It then passes that information to the Jinja template for the page to be rendered.
+2. It then passes that information to the Jinja template for the page to be rendered
 3. When it reaches the browser, the page in loaded into the angular controller which then in turn calls more APIs to load the data
 4. The angular layer loads the data received from the API into angular specific templates to render the page's final components
 
 
-### Gunicorn
+#### SocketIO endpoints
 
-Gunicorn is used as the SocketIO server. This server will provide authenticated access to many Redis broadcast queues. It is a way for the system to notify user of changes and health of the system without having them to query for that information.
+Assemblyline 4 also provide a list of SocketIO endpoints to get information about the system live. The endpoints will provide authenticated access to many Redis broadcast queues. It is a way for the system to notify user of changes and health of the system without having them to query for that information.
 
 The following queues can be listen on:
 
