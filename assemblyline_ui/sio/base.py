@@ -85,10 +85,11 @@ def get_user_info(request_p, session_p):
     uname = None
     current_session = KV_SESSION.get(session_p.get("session_id", None))
     if current_session:
-        if src_ip != current_session.get('ip', None):
+        if config.ui.validate_session_ip and src_ip != current_session.get('ip', None):
             raise AuthenticationFailure(f"IP {src_ip} does not match session IP {current_session.get('ip', None)}")
 
-        if request_p.headers.get("User-Agent", None) != current_session.get('user_agent', None):
+        if config.ui.validate_session_useragent and \
+                request_p.headers.get("User-Agent", None) != current_session.get('user_agent', None):
             raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
 
         uname = current_session['username']
