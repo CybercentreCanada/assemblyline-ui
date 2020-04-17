@@ -80,8 +80,7 @@ def get_request_id(request_p):
 
 
 def get_user_info(request_p, session_p):
-    src_ip = request_p.headers.get("X-Original-Forwarded-For",
-                                   request_p.headers.get("X-Forwarded-For", request.remote_addr))
+    src_ip = request_p.headers.get("X-Forwarded-For", request_p.remote_addr)
     sid = get_request_id(request_p)
     uname = None
     current_session = KV_SESSION.get(session_p.get("session_id", None))
