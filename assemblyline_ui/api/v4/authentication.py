@@ -221,7 +221,8 @@ def login(**_):
         }
 
         logged_in_uname = None
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        ip = request.headers.get("X-Original-Forwarded-For",
+                                 request.headers.get("X-Forwarded-For", request.remote_addr))
         try:
             logged_in_uname, priv = default_authenticator(auth, request, flsk_session, STORAGE)
             session_duration = config.ui.session_duration

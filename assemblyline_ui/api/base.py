@@ -43,7 +43,8 @@ class api_login(BaseSecurityRenderer):
         uname = request.environ.get('HTTP_X_USER', None)
 
         if apikey is not None and uname is not None:
-            ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+            ip = request.headers.get("X-Original-Forwarded-For",
+                                     request.headers.get("X-Forwarded-For", request.remote_addr))
             with elasticapm.capture_span(name=f"@api_login:auto_auth_check()", span_type="authentication"):
                 try:
                     # TODO: apikey_handler is slow to verify the password (bcrypt's fault)
