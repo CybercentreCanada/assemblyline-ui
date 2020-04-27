@@ -190,7 +190,7 @@ def add_signature_source(service, **_):
     if not service_data.get('update_config', {}).get('generates_signatures', False):
         return make_api_response({"success": False},
                                  err="This service does not generate alerts therefor "
-                                     "you cannot add a source to get the alerts from",
+                                     "you cannot add a source to get the alerts from.",
                                  status_code=400)
 
     current_sources = service_data.get('update_config', {}).get('sources', [])
@@ -198,11 +198,6 @@ def add_signature_source(service, **_):
         if source['name'] == data['name']:
             return make_api_response({"success": False},
                                      err=f"Update source name already exist: {data['name']}",
-                                     status_code=400)
-
-        if source['uri'] == data['uri']:
-            return make_api_response({"success": False},
-                                     err=f"Update source uri already exist: {data['uri']}",
                                      status_code=400)
 
     current_sources.append(data)
