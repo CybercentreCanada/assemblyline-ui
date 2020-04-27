@@ -260,6 +260,8 @@ def remove_service(servicename, **_):
             success = False
         if not STORAGE.service.delete_matching(f"id:{servicename}*"):
             success = False
+        if not STORAGE.heuristic.delete_matching(f"{servicename.upper()}*"):
+            success = False
         return make_api_response({"success": success})
     else:
         return make_api_response({"success": False},
