@@ -1,5 +1,4 @@
 import concurrent.futures
-import json
 
 from flask import request
 from hashlib import sha256
@@ -7,7 +6,7 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
-from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES, Signature
+from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, STORAGE
@@ -198,7 +197,7 @@ def add_signature_source(service, **_):
     for source in current_sources:
         if source['name'] == data['name']:
             return make_api_response({"success": False},
-                                     err=f"Update source filename already exist: {data['name']}",
+                                     err=f"Update source name already exist: {data['name']}",
                                      status_code=400)
 
         if source['uri'] == data['uri']:
