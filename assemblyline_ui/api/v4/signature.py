@@ -358,12 +358,13 @@ def delete_signature_source(service, name, **_):
     else:
         service_delta['update_config']['sources'] = new_sources
 
-    return make_api_response({
-        # Save the signature
-        "source": STORAGE.service_delta.save(service, service_delta),
-        # Delete source associated signatures
-        "signatures": STORAGE.signature.delete_matching(f"type:{service.lower()} AND source:{name}")
-    })
+    # Save the new sources
+    success = STORAGE.service_delta.save(service, service_delta)
+    if success:
+        # Remove old source signatures
+        STORAGE.signature.delete_matching(f"type:{service.lower()} AND source:{name}")
+
+    return make_api_response({"success": success})
 
 
 # noinspection PyBroadException
