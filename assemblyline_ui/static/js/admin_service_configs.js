@@ -12,6 +12,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.loading = false;
         $scope.loading_extra = false;
         $scope.current_service = null;
+        $scope.current_source = null;
         $scope.started = false;
         //DEBUG MODE
         $scope.debug = false;
@@ -29,7 +30,12 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.receiveClassification = function (classification) {
-            $scope.current_source.default_classification = classification;
+            if ($scope.current_source !== null){
+                $scope.current_source.default_classification = classification;
+            }
+            else {
+                $scope.current_service.default_result_classification = classification;
+            }
         };
 
         $scope.show_add_service = function () {
@@ -232,6 +238,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 $scope.current_service.update_config.sources.push($scope.current_source)
 
             }
+            $scope.current_source = null;
             $("#sourceModal").modal('hide');
         };
 

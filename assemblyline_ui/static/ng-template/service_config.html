@@ -27,6 +27,10 @@
                 <option ng-repeat="version in current_service_versions">{{version}}</option>
             </select>
         </div>
+        <div ng-if="user.c12n_enforcing" class="form-group col-sm-12">
+            <label class="control-label">Default result classification</label>
+            <div class="label classification {{current_service.default_result_classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_service.default_result_classification)">{{current_service.default_result_classification | class_long}}</div>
+        </div>
         <div class="form-group col-sm-12">
             <label class="control-label">Description</label>
             <textarea class="form-control input-sm" ng-model="current_service.description" rows="4"></textarea>

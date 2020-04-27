@@ -1,14 +1,13 @@
 <section class="row pad">
 	<div class="col-md-12">
-		<div class="label classification {{current_source.default_classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_source.default_classification)">{{current_source.default_classification | class_long}}</div>
-	</div>
-</section>
-<section class="row pad">
-	<div class="col-md-12">
 		<div id="source_uri" class="form-group">
 			<label class="control-label">URI</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
 			<input type="text" class="form-control input-sm input-medium" ng-model="current_source.uri">
 		</div>
+	</div>
+	<div ng-if="user.c12n_enforcing" class="col-md-12">
+		<label>Default signatures classification</label>
+		<div style="margin-bottom: 15px" class="label classification {{current_source.default_classification | class_label_color}}" data-toggle="modal" href="#classification_picker" ng-click="setClassification(current_source.default_classification)">{{current_source.default_classification | class_long}}</div>
 	</div>
 	<div class="col-md-6">
 		<div id="source_resulting_filename" class="form-group">
