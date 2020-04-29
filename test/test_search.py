@@ -187,7 +187,7 @@ def test_stats_search(datastore, login_session):
         'alert': 'al.score',
         'file': 'seen.count',
         'result': 'result.score',
-        'signature': 'revision',
+        'signature': 'order',
         'submission': 'file_count',
         'heuristic': False,
         'workflow': 'hit_count'
