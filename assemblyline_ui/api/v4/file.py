@@ -507,8 +507,8 @@ def get_file_results(sha256, **kwargs):
                         pass
 
                     # Process Attack matrix
-                    attack_id = sec['heuristic'].get('attack_id', None)
-                    if attack_id:
+                    for attack in sec['heuristic'].get('attack', []):
+                        attack_id = attack['attack_id']
                         attack_pattern_def = attack_map.get(attack_id, {})
                         if attack_pattern_def:
                             for cat in attack_pattern_def['categories']:
@@ -521,8 +521,8 @@ def get_file_results(sha256, **kwargs):
                             pass
 
                     # Process Signatures
-                    if sec['heuristic'].get('signature', None):
-                        sig = (sec['heuristic'].get('signature', None), h_type)
+                    for signature in sec['heuristic'].get('signature', []):
+                        sig = (signature['name'], h_type)
                         if sig not in output['signatures']:
                             output['signatures'].add(sig)
 

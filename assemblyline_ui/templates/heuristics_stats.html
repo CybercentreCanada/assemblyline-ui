@@ -123,16 +123,30 @@
 							</div>
 						</section>
                         <section class="row">
-							<div class="col-md-6">
+							<div class="col-md-4">
 								<div class="form-group">
 									<label class="control-label">Score</label>
 									<input type="text" class="form-control input-sm input-medium" ng-model="current_heuristic.score" disabled="disabled">
 								</div>
 							</div>
-							<div class="col-md-6">
+							<div class="col-md-4">
 								<div class="form-group">
-									<label class="control-label">Att&ck ID</label>
+									<label class="control-label">Max Score</label>
+									<input type="text" class="form-control input-sm input-medium" ng-model="current_heuristic.max_score" disabled="disabled">
+								</div>
+							</div>
+							<div class="col-md-4">
+								<div class="form-group">
+									<label class="control-label">Att&ck ID(s)</label>
 									<input type="text" class="form-control input-sm input-medium" ng-model="current_heuristic.attack_id" disabled="disabled">
+								</div>
+							</div>
+						</section>
+						<section class="row">
+							<div class="col-md-12">
+								<div class="form-group">
+									<label class="control-label">Signature Score Map</label>
+									<pre>{{current_heuristic.signature_score_map}}</pre>
 								</div>
 							</div>
 						</section>
