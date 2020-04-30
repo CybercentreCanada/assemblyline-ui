@@ -142,7 +142,7 @@ def get_service_result(cache_key, **kwargs):
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
     cur_file = STORAGE.file.get(cache_key[:64], as_obj=False)
-    data = format_result(user['classification'], data, cur_file['classification'])
+    data = format_result(user['classification'], data, cur_file['classification'], build_hierarchy=True)
     if not data:
         return make_api_response("", "You are not allowed to view the results for this key", 403)
 

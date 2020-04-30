@@ -28,36 +28,6 @@ class ForbiddenLocation(Exception):
     pass
 
 
-class InvalidSectionList(Exception):
-    pass
-
-
-def build_heirarchy_rec(sections, current_id=0, current_lvl=0, parent=None):
-    if parent is None:
-        parent = {"id": None, "children": []}
-
-    while True:
-        try:
-            sec = sections[current_id]
-        except IndexError:
-            break
-        temp = {"id": current_id, "children": []}
-        if sec['depth'] == current_lvl:
-            prev = temp
-            parent['children'].append(temp)
-            current_id += 1
-        elif sec['depth'] > current_lvl:
-            try:
-                # noinspection PyUnboundLocalVariable
-                _, current_id = build_heirarchy_rec(sections, current_id, current_lvl + 1, prev)
-            except UnboundLocalError:
-                raise InvalidSectionList("Section list is invalid. Cannot build a tree from it...")
-        else:
-            break
-
-    return parent, current_id
-
-
 def validate_url(url):
     try:
         parsed = urlparse(url)

@@ -6,12 +6,11 @@ from assemblyline.common.isotime import now_as_iso
 from flask import request
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER
+from assemblyline_ui.config import STORAGE
 from assemblyline_ui.helper.result import format_result
 from assemblyline.common import forge
 from assemblyline.common.attack_map import attack_map
 from assemblyline.datastore import SearchException
-from assemblyline_ui.helper.submission import build_heirarchy_rec, InvalidSectionList
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -125,7 +124,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                                                          cl_engine=Classification, as_obj=False).values())
         results = []
         for r in temp_results:
-            r = format_result(user['classification'], r, temp_file['classification'])
+            r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
             if r:
                 results.append(r)
         output['results'] = results 
@@ -137,15 +136,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
         heuristics = STORAGE.get_all_heuristics()
         for res in output['results']:
-            section_list = res.get('result', {}).get('sections', [])
-            try:
-                section_hierarchy, _ = build_heirarchy_rec(section_list)
-                res['section_hierarchy'] = section_hierarchy['children']
-            except InvalidSectionList:
-                LOGGER.warning(f"Could not generate section hierarchy for {res['response']['service_name']} "
-                               f"service. Will use old display method.")
-                res['section_hierarchy'] = []
-            for sec in section_list:
+            for sec in res['result']['sections']:
                 h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
