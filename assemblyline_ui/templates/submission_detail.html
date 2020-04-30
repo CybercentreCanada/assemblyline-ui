@@ -244,7 +244,7 @@
 						<div class="row" ng-repeat="(category, attack_patterns) in attack_matrix | orderBy:category">
 							<div class="col-xs-12 col-sm-4 col-md-3"><strong>{{category}}</strong></div>
 							<div class="col-xs-12 col-sm-8 col-md-9">
-								<span id="{{item[0]}}_{{item[1]}}" class="label label-tag label-heur-{{item[2]}}" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.heuristic.attack_pattern:"{{uri_encode(item[1])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
+								<span id="{{item[0]}}_{{item[1]}}" class="label label-tag label-heur-{{item[2]}}" style="cursor: pointer;" ng-repeat="item in attack_patterns | orderBy:item[1]" ng-class="{'label-highlight': isHighlighted('attack_pattern', item[0])}" ng-click="trigger_highlight('attack_pattern', item[0]);" >{{item[1] | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.heuristic.attack.pattern:"{{uri_encode(item[1])}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>
 							</div>
 						</div>
 					</div>
