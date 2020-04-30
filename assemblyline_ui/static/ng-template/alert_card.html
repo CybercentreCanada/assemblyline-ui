@@ -48,6 +48,9 @@
                 <div ng-if="has_meta(alert)" style="padding-top: 10px; padding-bottom: 10px;">
                     <div ng-if="k != 'type' && k != 'ts'" ng-repeat="(k,v) in alert.metadata" class="row"><label ng-if="v" class="col-xs-3 col-sm-2">{{ k | titleCase }}:</label><div ng-if="v" class="col-xs-9 col-sm-10">{{ v | joinBy }}</div></div>
                 </div>
+                <div class="row" ng-if="alert.attack.category"><label class="col-xs-3 col-sm-2">Category:</label><div class="col-xs-9 col-sm-10 small"><span class="text-info text-heavy">{{alert.attack.category | split}}</span></div></div>
+                <div class="row" ng-if="alert.attack.pattern"><label class="col-xs-3 col-sm-2">Patterns:</label><div class="col-xs-9 col-sm-10 small"><span class="text-info text-heavy">{{alert.attack.pattern | split}}</span></div></div>
+                <div class="row" ng-if="alert.heuristic.name"><label class="col-xs-3 col-sm-2">Heuristics:</label><div class="col-xs-9 col-sm-10 small"><span class="text-info">{{alert.heuristic.name | split}}</span></div></div>
                 <div class="row" ng-if="alert.al.behavior"><label class="col-xs-3 col-sm-2">Behaviors:</label><div class="col-xs-9 col-sm-10 small"><span class="text-info">{{alert.al.behavior | split}}</span></div></div>
                 <div class="row" ng-if="alert.al.attrib"><label class="col-xs-3 col-sm-2">Attribution:</label><div class="col-xs-9 col-sm-10"><b class="text-danger">{{alert.al.attrib | split}}</b></div></div>
                 <div class="row" ng-if="alert.al.av"><label class="col-xs-3 col-sm-2">AV Hits:</label><div class="col-xs-9 col-sm-10"><b class="text-warning">{{alert.al.av | split}}</b></div></div>
