@@ -20,7 +20,7 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active">
-						<th>ID</th><th>Name</th><th>File Type</th><th>Score</th><th>Att&ck ID</th><th ng-if="user.c12n_enforcing">Classification</th>
+						<th>ID</th><th>Name</th><th>File Type</th><th>Score</th><th>Att&ck ID(s)</th><th ng-if="user.c12n_enforcing">Classification</th>
                     </tr>
 				</thead>
 				<tbody>
@@ -29,7 +29,7 @@
 						<td>{{u.name}}</td>
 						<td>{{u.filetype}}</td>
 						<td>{{u.score}}</td>
-                        <td>{{u.attack_id}}</td>
+                        <td>{{u.attack_id | joinBy:"," }}</td>
                         <td ng-if="user.c12n_enforcing">
                             <label class="label classification  {{u.classification | class_label_color}}">
                                 {{u.classification | class_sm}}
@@ -85,16 +85,30 @@
 							</div>
 						</section>
                         <section class="row">
-							<div class="col-md-6">
+							<div class="col-md-4">
 								<div class="form-group">
 									<label class="control-label">Score</label>
 									<input type="text" class="form-control input-sm input-medium" ng-model="current_heuristic.score" disabled="disabled">
 								</div>
 							</div>
-							<div class="col-md-6">
+							<div class="col-md-4">
 								<div class="form-group">
-									<label class="control-label">Att&ck ID</label>
+									<label class="control-label">Max Score</label>
+									<input type="text" class="form-control input-sm input-medium" ng-model="current_heuristic.max_score" disabled="disabled">
+								</div>
+							</div>
+							<div class="col-md-4">
+								<div class="form-group">
+									<label class="control-label">Att&ck ID(s)</label>
 									<input type="text" class="form-control input-sm input-medium" ng-model="current_heuristic.attack_id" disabled="disabled">
+								</div>
+							</div>
+						</section>
+						<section class="row">
+							<div class="col-md-12">
+								<div class="form-group">
+									<label class="control-label">Signature Score Map</label>
+									<pre>{{current_heuristic.signature_score_map}}</pre>
 								</div>
 							</div>
 						</section>
