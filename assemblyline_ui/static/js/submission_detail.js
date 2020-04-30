@@ -81,14 +81,20 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 tag_list = tag_list.concat(section.tags);
 
                 if (section.heuristic !== undefined && section.heuristic !== null){
-                    if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
-                        tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                    if (section.heuristic.attack !== undefined && section.heuristic.attack.length !== 0){
+                        for (let x in section.heuristic.attack){
+                            let attack = section.heuristic.attack[x];
+                            tag_list.push({type: 'attack_pattern', value: attack.attack_id})
+                        }
                     }
                     if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
                         tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
                     }
-                    if (section.heuristic.signature !== undefined && section.heuristic.signature !== null){
-                        tag_list.push({type: 'heuristic.signature', value: section.heuristic.signature})
+                    if (section.heuristic.signature !== undefined && section.heuristic.signature.length !== 0){
+                        for (let x in section.heuristic.signature) {
+                            let signature = section.heuristic.signature[x];
+                            tag_list.push({type: 'heuristic.signature', value: signature.name})
+                        }
                     }
                 }
             });
@@ -100,14 +106,20 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             tag_list = tag_list.concat(section.tags);
 
             if (section.heuristic !== undefined && section.heuristic !== null){
-                if (section.heuristic.attack_id !== undefined && section.heuristic.attack_id !== null){
-                    tag_list.push({type: 'attack_pattern', value: section.heuristic.attack_id})
+                if (section.heuristic.attack !== undefined && section.heuristic.attack.length !== 0){
+                    for (let x in section.heuristic.attack){
+                        let attack = section.heuristic.attack[x];
+                        tag_list.push({type: 'attack_pattern', value: attack.attack_id})
+                    }
                 }
                 if (section.heuristic.heur_id !== undefined && section.heuristic.heur_id !== null){
                     tag_list.push({type: 'heuristic', value: section.heuristic.heur_id})
                 }
-                if (section.heuristic.signature !== undefined && section.heuristic.signature !== null){
-                    tag_list.push({type: 'heuristic.signature', value: section.heuristic.signature})
+                if (section.heuristic.signature !== undefined && section.heuristic.signature.length !== 0){
+                    for (let x in section.heuristic.signature) {
+                        let signature = section.heuristic.signature[x];
+                        tag_list.push({type: 'heuristic.signature', value: signature.name})
+                    }
                 }
             }
             return tag_list;
