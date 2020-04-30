@@ -182,10 +182,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
                     # Process Signatures
                     for signature in sec['heuristic'].get('signature', []):
-                        if signature['name'] != 'null':
-                            sig = (signature['name'], h_type)
-                            if sig not in output['signatures']:
-                                output['signatures'].add(sig)
+                        sig = (signature['name'], h_type)
+                        if sig not in output['signatures']:
+                            output['signatures'].add(sig)
 
                 # Process tags
                 for t in sec['tags']:
