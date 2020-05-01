@@ -434,8 +434,9 @@ def get_file_results(sha256, **kwargs):
         return make_api_response({}, "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+        max_c12n = file_obj['classification']
         output = {
-            "file_info": {},
+            "file_info": file_obj,
             "results": [],
             "tags": {},
             "attack_matrix": {},
@@ -455,13 +456,13 @@ def get_file_results(sha256, **kwargs):
         output['childrens'] = res_children.result()
         output['metadata'] = res_meta.result()
 
-        output['file_info'] = file_obj
         output['results'] = [] 
         output['alternates'] = {}
         res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
         for r in res:
             res = format_result(user['classification'], r, file_obj['classification'], build_hierarchy=True)
             if res:
+                max_c12n = Classification.max_classification(max_c12n, res['classification'])
                 output['results'].append(res)
 
         for i in alternates:
@@ -526,6 +527,7 @@ def get_file_results(sha256, **kwargs):
 
         output['signatures'] = list(output['signatures'])
 
+        output['file_info']['classification'] = max_c12n
         return make_api_response(output)
     else:
         return make_api_response({}, "You are not allowed to view this file", 403)

@@ -119,6 +119,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         if not Classification.is_accessible(user['classification'], temp_file['classification']):
             return make_api_response("", "You are not allowed to view the data of this file", 403)
         output['file_info'] = temp_file
+        max_c12n = output['file_info']['classification']
 
         temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
                                                          cl_engine=Classification, as_obj=False).values())
@@ -126,6 +127,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         for r in temp_results:
             r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
             if r:
+                max_c12n = Classification.max_classification(max_c12n, r['classification'])
                 results.append(r)
         output['results'] = results 
 
@@ -186,6 +188,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
         output['signatures'] = list(output['signatures'])
 
+        output['file_info']['classification'] = max_c12n
         return make_api_response(output)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)

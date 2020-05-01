@@ -220,7 +220,7 @@
 										<li class="small" ng-repeat="a in current_file.alternates[res.response.service_name]" ng-class="{disabled: a.created==res.created}"><a ng-click="select_alternate(a.response.service_name, a.created);$event.stopPropagation();">{{a.response.service_name}} :: {{a.response.service_version}} :: [{{a.result.score}}] @ {{a.created | date:"yyyy-MM-dd HH:mm:ss"}}</a></li>
 									</ul>
 								</div>
-								<strong><span ng-if="res.result.classification" class="{{res.result.classification | class_text_color }}" >({{res.result.classification | class_sm}})&nbsp;</span>{{res.response.service_name}}</strong>&nbsp;[<span class="{{res.result.score | score_color}}"><strong>{{res.result.score}}</strong></span>]&nbsp;<span class="text-muted">:: {{res.response.service_version}}<span ng-show="res.response.service_context"> ({{res.response.service_context}})</span></span>
+								<strong><span ng-if="res.classification" class="{{res.classification | class_text_color }}" >({{res.classification | class_sm}})&nbsp;</span>{{res.response.service_name}}</strong>&nbsp;[<span class="{{res.result.score | score_color}}"><strong>{{res.result.score}}</strong></span>]&nbsp;<span class="text-muted">:: {{res.response.service_version}}<span ng-show="res.response.service_context"> ({{res.response.service_context}})</span></span>
 							</div>
 							<div id="{{res.response.service_name}}_content" class="content collapse" ng-class="{'in': res.result.score >= settings.expand_min_score || res.response.service_name == switch_service }">
 								<div ng-if="res.result.sections.length == 0" >
@@ -286,7 +286,7 @@
 										<li class="small" ng-repeat="a in current_file.alternates[res.response.service_name]" ng-class="{disabled: a.created==res.created}"><a ng-click="select_alternate(a.response.service_name, a.created);$event.stopPropagation();">{{a.response.service_name}} :: {{a.response.service_version}} <span ng-show="a.response.service_context"> ({{a.response.service_context}}) </span>:: [{{a.result.score}}] @ {{a.created | date:"yyyy-MM-dd HH:mm:ss"}}</a></li>
 									</ul>
 								</div>
-								<strong><span ng-if="res.result.classification" class="{{res.result.classification | class_text_color }}" >({{res.result.classification | class_sm}})&nbsp;</span>{{res.response.service_name}}</strong>&nbsp;[<span class="{{res.result.score | score_color}}"><strong>{{res.result.score}}</strong></span>]&nbsp;<span class="text-muted">:: {{res.response.service_version}}<span ng-show="res.response.service_context"> ({{res.response.service_context}})</span></span>
+								<strong><span ng-if="res.classification" class="{{res.classification | class_text_color }}" >({{res.classification | class_sm}})&nbsp;</span>{{res.response.service_name}}</strong>&nbsp;[<span class="{{res.result.score | score_color}}"><strong>{{res.result.score}}</strong></span>]&nbsp;<span class="text-muted">:: {{res.response.service_version}}<span ng-show="res.response.service_context"> ({{res.response.service_context}})</span></span>
 							</div>
 							<div id="{{res.response.service_name}}_content" class="content collapse" ng-class="{'in': res.result.score >= settings.expand_min_score || res.response.service_name == switch_service }">
 								<div ng-if="res.result.sections.length == 0" >
