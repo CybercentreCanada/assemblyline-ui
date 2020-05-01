@@ -78,7 +78,6 @@ def format_result(user_classification, r, min_classification, build_hierarchy=Fa
         r['response']['extracted'] = []
         r['response']['supplementary'] = []
 
-    r['section_hierarchy'] = []
     if build_hierarchy:
         try:
             section_hierarchy, _ = build_heirarchy_rec(r['result']['sections'])
