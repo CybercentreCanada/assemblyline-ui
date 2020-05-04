@@ -228,7 +228,9 @@ def get_file_tree(sid, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth))
+        return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
+                                                                 cl_engine=Classification,
+                                                                 user_classification=user['classification']))
     else: 
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
@@ -366,10 +368,18 @@ def get_full_results(sid, **kwargs):
         res_keys = data.get("results", [])
         err_keys = data.get("errors", [])
 
-        data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth)
+        data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
+                                                            cl_engine=Classification,
+                                                            user_classification=user['classification'])
         data['file_infos'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
+
+        for r in data['results']:
+            data['classification'] = Classification.max_classification(data['classification'], r['classification'])
+
+        for f in data['file_infos']:
+            data['classification'] = Classification.max_classification(data['classification'], f['classification'])
 
         return make_api_response(data)
     else:
@@ -743,8 +753,11 @@ def get_report(submission_id, **kwargs):
             return make_api_response("", f"It is too early to generate the report. "
                                          f"Submission ID {submission_id} is incomplete.", 425)
 
-        tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth)
+        tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
+                                               cl_engine=Classification, user_classification=user['classification'])
         submission['file_tree'] = tree
+        submission['classification'] = Classification.max_classification(submission['classification'],
+                                                                         tree['classification'])
 
         errors = submission.pop('errors', None)
         submission['params']['services']['errors'] = list(set([x.split('.')[1] for x in errors]))
