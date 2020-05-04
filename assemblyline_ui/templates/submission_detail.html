@@ -52,7 +52,7 @@
 	
 	<div id="underlay">
 		<section id="appContent" class="container">
-			<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{data.classification | class_label_color}}">{{data.classification | class_long}}</label>
+			<label ng-if="user.c12n_enforcing" style="margin-top: 8px;" class="label classification {{max_classification | class_label_color}}">{{max_classification | class_long}}</label>
 			<div class="row">
 				<div style="margin-top: 20px" class="col-sm-4">
 					<div ng-show="started && !data.times.completed"><div class="throbber"></div></div>

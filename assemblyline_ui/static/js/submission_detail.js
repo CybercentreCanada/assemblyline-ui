@@ -52,6 +52,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.num_files = 0;
         $scope.temp_keys = {error: [], result: []};
         $scope.outstanding = null;
+        $scope.max_classification = null;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -793,7 +794,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             $scope.setup_watch_queue(true);
                         }, 500 * $scope.final_timeout_count);
                     }
-
+                    $scope.max_classification = get_max_c12n(data.api_response.classification);
                 })
                 .error(function (data, status, headers, config) {
                     if (data === "" || data === null) {
@@ -853,6 +854,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.summary = data.api_response.tags;
                     $scope.tag_map = data.api_response.map;
                     $scope.heuristics = data.api_response.heuristics;
+                    $timeout(function (){
+                        $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);
+                    });
                 })
                 .error(function (data, status, headers, config) {
                     if (data === "" || data === null) {
@@ -884,6 +888,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     } else {
                         $scope.file_tree = data.api_response;
                     }
+                    $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);
                 })
                 .error(function (data, status, headers, config) {
                     if (data === "" || data === null) {
