@@ -888,7 +888,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     } else {
                         $scope.file_tree = data.api_response;
                     }
-                    $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);
+                    $timeout(function (){
+                        $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);
+                    });
                 })
                 .error(function (data, status, headers, config) {
                     if (data === "" || data === null) {
