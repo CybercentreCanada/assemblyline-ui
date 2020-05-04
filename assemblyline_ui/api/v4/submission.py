@@ -498,12 +498,15 @@ def get_summary(sid, **kwargs):
                 'ioc': {}
             },
             "attack_matrix": {},
-            "heuristics": {}
+            "heuristics": {},
+            "classification": Classification.UNRESTRICTED
         }
-        summary_cache = STORAGE.submission_summary.get_if_exists(sid, as_obj=False)
+        cache_key = f"{sid}_{user['classification']}".replace(" ", "_")
+        summary_cache = STORAGE.submission_summary.get_if_exists(cache_key, as_obj=False)
 
         if not summary_cache:
-            summary = STORAGE.get_summary_from_keys(submission["results"])
+            summary = STORAGE.get_summary_from_keys(submission["results"], cl_engine=Classification,
+                                                    user_classification=user['classification'])
             tags = summary['tags']
             attack_matrix = summary['attack_matrix']
             heuristics = summary['heuristics']
@@ -511,13 +514,17 @@ def get_summary(sid, **kwargs):
                 "attack_matrix": json.dumps(summary['attack_matrix']),
                 "tags": json.dumps(summary['tags']),
                 "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
-                "heuristics": json.dumps(summary['heuristics'])
+                "heuristics": json.dumps(summary['heuristics']),
+                "classification": summary['classification']
+
             }
-            STORAGE.submission_summary.save(sid, summary_cache)
+            STORAGE.submission_summary.save(cache_key, summary_cache)
         else:
             tags = json.loads(summary_cache['tags'])
             attack_matrix = json.loads(summary_cache['attack_matrix'])
             heuristics = json.loads(summary_cache['heuristics'])
+
+        output['classification'] = summary_cache['classification']
 
         # Process attack matrix
         for item in attack_matrix:
@@ -780,9 +787,11 @@ def get_report(submission_id, **kwargs):
         name_map = recurse_get_names(tree)
         results = submission.pop('results', [])
 
-        summary_cache = STORAGE.submission_summary.get_if_exists(submission_id, as_obj=False)
+        cache_key = f"{submission_id}_{user['classification']}".replace(" ", "_")
+        summary_cache = STORAGE.submission_summary.get_if_exists(cache_key, as_obj=False)
         if not summary_cache:
-            summary = STORAGE.get_summary_from_keys(results)
+            summary = STORAGE.get_summary_from_keys(results, cl_engine=Classification,
+                                                    user_classification=user['classification'])
             tags = summary['tags']
             attack_matrix = summary['attack_matrix']
             heuristics = summary['heuristics']
@@ -790,13 +799,17 @@ def get_report(submission_id, **kwargs):
                 "attack_matrix": json.dumps(summary['attack_matrix']),
                 "tags": json.dumps(summary['tags']),
                 "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
-                "heuristics": json.dumps(summary['heuristics'])
+                "heuristics": json.dumps(summary['heuristics']),
+                "classification": summary['classification']
             }
-            STORAGE.submission_summary.save(submission_id, summary_cache)
+            STORAGE.submission_summary.save(cache_key, summary_cache)
         else:
             tags = json.loads(summary_cache['tags'])
             attack_matrix = json.loads(summary_cache['attack_matrix'])
             heuristics = json.loads(summary_cache['heuristics'])
+
+        submission['classification'] = Classification.max_classification(submission['classification'],
+                                                                         summary_cache['classification'])
 
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
