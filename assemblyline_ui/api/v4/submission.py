@@ -370,7 +370,7 @@ def get_full_results(sid, **kwargs):
 
         data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
                                                             cl_engine=Classification,
-                                                            user_classification=user['classification'])
+                                                            user_classification=user['classification'])['tree']
         data['file_infos'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
@@ -755,7 +755,7 @@ def get_report(submission_id, **kwargs):
 
         tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
                                                cl_engine=Classification, user_classification=user['classification'])
-        submission['file_tree'] = tree
+        submission['file_tree'] = tree['tree']
         submission['classification'] = Classification.max_classification(submission['classification'],
                                                                          tree['classification'])
 
@@ -777,7 +777,7 @@ def get_report(submission_id, **kwargs):
 
             return output
 
-        name_map = recurse_get_names(tree)
+        name_map = recurse_get_names(tree['tree'])
 
         summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'])
         tags = summary['tags']
