@@ -97,7 +97,8 @@ def get_or_create_summary(sid, results, user_classification):
             "tags": json.dumps(summary['tags']),
             "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
             "heuristics": json.dumps(summary['heuristics']),
-            "classification": summary['classification']
+            "classification": summary['classification'],
+            "filtered": summary["filtered"]
 
         }
         STORAGE.submission_summary.save(cache_key, summary_cache)
@@ -107,7 +108,8 @@ def get_or_create_summary(sid, results, user_classification):
             "tags": summary['tags'],
             "expiry_ts": summary_cache["expiry_ts"],
             "heuristics": summary['heuristics'],
-            "classification": summary['classification']
+            "classification": summary['classification'],
+            "filtered": summary["filtered"]
         }
 
     return {
@@ -115,5 +117,6 @@ def get_or_create_summary(sid, results, user_classification):
             "tags": json.loads(summary_cache['tags']),
             "expiry_ts": summary_cache["expiry_ts"],
             "heuristics": json.loads(summary_cache['heuristics']),
-            "classification": summary_cache['classification']
+            "classification": summary_cache['classification'],
+            "filtered": summary_cache["filtered"]
         }

@@ -108,7 +108,7 @@
 			</div>
 
 			<div ng-show="started">
-				<section class="header_title" id="section_submission" ng-show="data">
+                <section class="header_title" id="section_submission" ng-show="data">
 					<div class="menuheader " data-toggle="collapse" data-target="#submission">
 						<span class="text-big">Submission Information</span>
 					</div>
@@ -212,7 +212,11 @@
 						</div>
 					</div>
 				</section>
-				
+
+                <section class="report_section" id="warning_section" ng-show="filtered">
+                    <h5><b>** Warning</b>: Some details about the submission has been filtered because you do not have enough privilege to view all the results.</h5>
+                </section>
+
 				<section class="header_title" id="section_metadata" ng-hide="empty(data.metadata)">
 					<div class="menuheader" data-toggle="collapse" data-target="#metadata">
 						<span class="text-big">Metadata</span>

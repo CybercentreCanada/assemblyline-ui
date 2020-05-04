@@ -53,6 +53,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.temp_keys = {error: [], result: []};
         $scope.outstanding = null;
         $scope.max_classification = null;
+        $scope.filtered = false;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -854,6 +855,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.summary = data.api_response.tags;
                     $scope.tag_map = data.api_response.map;
                     $scope.heuristics = data.api_response.heuristics;
+                    if (data.api_response.filtered){
+                        $scope.filtered = true;
+                    }
                     $timeout(function (){
                         $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);
                     });
@@ -887,6 +891,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         })
                     } else {
                         $scope.file_tree = data.api_response.tree;
+                    }
+                    if (data.api_response.filtered){
+                        $scope.filtered = true;
                     }
                     $timeout(function (){
                         $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);

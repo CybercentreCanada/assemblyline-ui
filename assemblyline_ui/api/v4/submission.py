@@ -507,7 +507,8 @@ def get_summary(sid, **kwargs):
             },
             "attack_matrix": {},
             "heuristics": {},
-            "classification": Classification.UNRESTRICTED
+            "classification": Classification.UNRESTRICTED,
+            "filtered": False
         }
 
         summary = get_or_create_summary(sid, submission["results"], user['classification'])
@@ -515,6 +516,7 @@ def get_summary(sid, **kwargs):
         attack_matrix = summary['attack_matrix']
         heuristics = summary['heuristics']
         output['classification'] = summary['classification']
+        output['filtered'] = summary['filtered']
 
         # Process attack matrix
         for item in attack_matrix:
@@ -747,6 +749,7 @@ def get_report(submission_id, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % submission_id, 404)
 
     submission['important_files'] = set()
+    submission['report_filtered'] = False
 
     if user and Classification.is_accessible(user['classification'], submission['classification']):
         if submission['state'] != 'completed':
@@ -758,6 +761,8 @@ def get_report(submission_id, **kwargs):
         submission['file_tree'] = tree['tree']
         submission['classification'] = Classification.max_classification(submission['classification'],
                                                                          tree['classification'])
+        if tree['filtered']:
+            submission['report_filtered'] = True
 
         errors = submission.pop('errors', None)
         submission['params']['services']['errors'] = list(set([x.split('.')[1] for x in errors]))
@@ -785,6 +790,8 @@ def get_report(submission_id, **kwargs):
         heuristics = summary['heuristics']
         submission['classification'] = Classification.max_classification(submission['classification'],
                                                                          summary['classification'])
+        if summary['filtered']:
+            submission['report_filtered'] = True
 
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
