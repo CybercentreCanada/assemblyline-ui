@@ -87,13 +87,17 @@ jobs:
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
     - script: |
         # Try to checkout the matching branch, if the command fails, don't care.
-        git checkout -b $(Build.SourceBranchName) -t origin/$(Build.SourceBranchName) || true
+        export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
+        export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
+        git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
         sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
       displayName: Install assemblyline
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
     - script: |
         # Try to checkout the matching branch, if the command fails, don't care.
-        git checkout -b $(Build.SourceBranchName) -t origin/$(Build.SourceBranchName) || true
+        export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
+        export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
+        git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
         sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
       displayName: Install assemblyline-core
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-core
