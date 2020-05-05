@@ -122,7 +122,11 @@ def test_get_submission_tree(datastore, login_session):
     submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
     resp = get_api_data(session, f"{host}/api/v4/submission/tree/{submission['sid']}/")
     assert isinstance(resp, dict)
-    for k in resp:
+    assert "classification" in resp
+    assert "filtered" in resp
+    assert "tree" in resp
+
+    for k in resp['tree']:
         assert len(k) == 64
 
 
