@@ -59,21 +59,32 @@ def add_service(**_):
 
         new_heuristics = []
         if heuristics:
+            plan = STORAGE.heuristic.get_bulk_plan()
             for index, heuristic in enumerate(heuristics):
                 try:
                     # Append service name to heuristic ID
                     heuristic['heur_id'] = f"{service.name.upper()}.{str(heuristic['heur_id'])}"
 
+                    # Attack_id field is now a list, make it a list if we receive otherwise
+                    attack_id = heuristic.get('attack_id', None)
+                    if isinstance(attack_id, str):
+                        heuristic['attack_id'] = [attack_id]
+
                     heuristic = Heuristic(heuristic)
-                    if not STORAGE.heuristic.get_if_exists(heuristic.heur_id):
-                        STORAGE.heuristic.save(heuristic.heur_id, heuristic)
-                        STORAGE.heuristic.commit()
-                        new_heuristics.append(heuristic.heur_id)
+                    heuristic_id = heuristic.heur_id
+                    plan.add_upsert_operation(heuristic_id, heuristic)
                 except Exception as e:
-                    raise ValueError(f"Error parsing heuristics: {str(e)}")
+                    raise ValueError("Error parsing heuristics")
+
+            for item in STORAGE.heuristic.bulk(plan)['items']:
+                if item['update']['result'] != "noop":
+                    new_heuristics.append(item['update']['_id'])
+
+            STORAGE.heuristic.commit()
 
         return make_api_response(dict(
-            service_name=service.name
+            service_name=service.name,
+            new_heuristics=new_heuristics
         ))
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
         return make_api_response("", err=str(e), status_code=400)
