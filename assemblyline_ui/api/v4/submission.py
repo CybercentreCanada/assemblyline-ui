@@ -375,10 +375,10 @@ def get_full_results(sid, **kwargs):
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
 
-        for r in data['results']:
+        for r in data['results'].values():
             data['classification'] = Classification.max_classification(data['classification'], r['classification'])
 
-        for f in data['file_infos']:
+        for f in data['file_infos'].values():
             data['classification'] = Classification.max_classification(data['classification'], f['classification'])
 
         return make_api_response(data)
