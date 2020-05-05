@@ -1,16 +1,14 @@
-
-import json
 import time
 
-from assemblyline.common.isotime import now_as_iso
 from flask import request
 
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE
-from assemblyline_ui.helper.result import format_result
 from assemblyline.common import forge
 from assemblyline.common.attack_map import attack_map
 from assemblyline.datastore import SearchException
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.config import STORAGE
+from assemblyline_ui.helper.result import format_result
+from assemblyline_ui.helper.submission import get_or_create_summary
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -230,7 +228,9 @@ def get_file_tree(sid, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
     
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth))
+        return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
+                                                                 cl_engine=Classification,
+                                                                 user_classification=user['classification']))
     else: 
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
@@ -368,10 +368,18 @@ def get_full_results(sid, **kwargs):
         res_keys = data.get("results", [])
         err_keys = data.get("errors", [])
 
-        data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth)
+        data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
+                                                            cl_engine=Classification,
+                                                            user_classification=user['classification'])['tree']
         data['file_infos'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
+
+        for r in data['results']:
+            data['classification'] = Classification.max_classification(data['classification'], r['classification'])
+
+        for f in data['file_infos']:
+            data['classification'] = Classification.max_classification(data['classification'], f['classification'])
 
         return make_api_response(data)
     else:
@@ -498,26 +506,17 @@ def get_summary(sid, **kwargs):
                 'ioc': {}
             },
             "attack_matrix": {},
-            "heuristics": {}
+            "heuristics": {},
+            "classification": Classification.UNRESTRICTED,
+            "filtered": False
         }
-        summary_cache = STORAGE.submission_summary.get_if_exists(sid, as_obj=False)
 
-        if not summary_cache:
-            summary = STORAGE.get_summary_from_keys(submission["results"])
-            tags = summary['tags']
-            attack_matrix = summary['attack_matrix']
-            heuristics = summary['heuristics']
-            summary_cache = {
-                "attack_matrix": json.dumps(summary['attack_matrix']),
-                "tags": json.dumps(summary['tags']),
-                "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
-                "heuristics": json.dumps(summary['heuristics'])
-            }
-            STORAGE.submission_summary.save(sid, summary_cache)
-        else:
-            tags = json.loads(summary_cache['tags'])
-            attack_matrix = json.loads(summary_cache['attack_matrix'])
-            heuristics = json.loads(summary_cache['heuristics'])
+        summary = get_or_create_summary(sid, submission["results"], user['classification'])
+        tags = summary['tags']
+        attack_matrix = summary['attack_matrix']
+        heuristics = summary['heuristics']
+        output['classification'] = summary['classification']
+        output['filtered'] = summary['filtered']
 
         # Process attack matrix
         for item in attack_matrix:
@@ -750,14 +749,20 @@ def get_report(submission_id, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % submission_id, 404)
 
     submission['important_files'] = set()
+    submission['report_filtered'] = False
 
     if user and Classification.is_accessible(user['classification'], submission['classification']):
         if submission['state'] != 'completed':
             return make_api_response("", f"It is too early to generate the report. "
                                          f"Submission ID {submission_id} is incomplete.", 425)
 
-        tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth)
-        submission['file_tree'] = tree
+        tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
+                                               cl_engine=Classification, user_classification=user['classification'])
+        submission['file_tree'] = tree['tree']
+        submission['classification'] = Classification.max_classification(submission['classification'],
+                                                                         tree['classification'])
+        if tree['filtered']:
+            submission['report_filtered'] = True
 
         errors = submission.pop('errors', None)
         submission['params']['services']['errors'] = list(set([x.split('.')[1] for x in errors]))
@@ -777,26 +782,16 @@ def get_report(submission_id, **kwargs):
 
             return output
 
-        name_map = recurse_get_names(tree)
-        results = submission.pop('results', [])
+        name_map = recurse_get_names(tree['tree'])
 
-        summary_cache = STORAGE.submission_summary.get_if_exists(submission_id, as_obj=False)
-        if not summary_cache:
-            summary = STORAGE.get_summary_from_keys(results)
-            tags = summary['tags']
-            attack_matrix = summary['attack_matrix']
-            heuristics = summary['heuristics']
-            summary_cache = {
-                "attack_matrix": json.dumps(summary['attack_matrix']),
-                "tags": json.dumps(summary['tags']),
-                "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
-                "heuristics": json.dumps(summary['heuristics'])
-            }
-            STORAGE.submission_summary.save(submission_id, summary_cache)
-        else:
-            tags = json.loads(summary_cache['tags'])
-            attack_matrix = json.loads(summary_cache['attack_matrix'])
-            heuristics = json.loads(summary_cache['heuristics'])
+        summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'])
+        tags = summary['tags']
+        attack_matrix = summary['attack_matrix']
+        heuristics = summary['heuristics']
+        submission['classification'] = Classification.max_classification(submission['classification'],
+                                                                         summary['classification'])
+        if summary['filtered']:
+            submission['report_filtered'] = True
 
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}

@@ -1,11 +1,15 @@
+import json
 import requests
 import os
 import socket
 from urllib.parse import urlparse
 
 from assemblyline.common import forge
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
+from assemblyline_ui.config import STORAGE, CLASSIFICATION
+
 
 config = forge.get_config()
 try:
@@ -76,3 +80,43 @@ def safe_download(download_url, target):
                     os.unlink(target)
                     raise FileTooBigException("File too big to be scanned.")
                 f.write(chunk)
+
+
+def get_or_create_summary(sid, results, user_classification):
+    cache_key = f"{sid}_{CLASSIFICATION.normalize_classification(user_classification, long_format=False)}"
+    for illegal_char in [" ", ":", "/"]:
+        cache_key = cache_key.replace(illegal_char, "")
+
+    summary_cache = STORAGE.submission_summary.get_if_exists(cache_key, as_obj=False)
+
+    if not summary_cache:
+        summary = STORAGE.get_summary_from_keys(results, cl_engine=CLASSIFICATION,
+                                                user_classification=user_classification)
+        summary_cache = {
+            "attack_matrix": json.dumps(summary['attack_matrix']),
+            "tags": json.dumps(summary['tags']),
+            "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
+            "heuristics": json.dumps(summary['heuristics']),
+            "classification": summary['classification'],
+            "filtered": summary["filtered"]
+
+        }
+        STORAGE.submission_summary.save(cache_key, summary_cache)
+
+        return {
+            "attack_matrix": summary['attack_matrix'],
+            "tags": summary['tags'],
+            "expiry_ts": summary_cache["expiry_ts"],
+            "heuristics": summary['heuristics'],
+            "classification": summary['classification'],
+            "filtered": summary["filtered"]
+        }
+
+    return {
+            "attack_matrix": json.loads(summary_cache['attack_matrix']),
+            "tags": json.loads(summary_cache['tags']),
+            "expiry_ts": summary_cache["expiry_ts"],
+            "heuristics": json.loads(summary_cache['heuristics']),
+            "classification": summary_cache['classification'],
+            "filtered": summary_cache["filtered"]
+        }

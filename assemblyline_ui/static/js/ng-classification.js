@@ -175,6 +175,34 @@ function get_c12n_parts(c12n, long_format) {
     return out;
 }
 
+function get_max_c12n(c12n_1, c12n_2, long_format) {
+    if (Object.keys(classification_definition).length === 0 || c12n_1 === null || c12n_1 === undefined) return null;
+    if (long_format === undefined) long_format = true;
+    if (c12n_2 === undefined || c12n_2 === null ) return c12n_1;
+
+    let out = {
+        'lvl_idx':  Math.max(get_c12n_level_index(c12n_1), get_c12n_level_index(c12n_2)),
+        'req': [...new Set(get_c12n_required(c12n_1, long_format).concat(get_c12n_required(c12n_2, long_format)))]
+    };
+
+    let grps_1 = get_c12n_groups(c12n_1, long_format);
+    let grps_2 = get_c12n_groups(c12n_2, long_format);
+    if (grps_1['groups'].length > 0 && grps_2['groups'].length > 0){
+        out['groups'] = grps_1['groups'].filter(value => grps_2['groups'].includes(value))
+    }
+    else{
+        out['groups'] = [...new Set(grps_1['groups'].concat(grps_2['groups']))]
+    }
+    if (grps_1['subgroups'].length > 0 && grps_2['subgroups'].length > 0){
+        out['subgroups'] = grps_1['subgroups'].filter(value => grps_2['subgroups'].includes(value))
+    }
+    else{
+        out['subgroups'] = [...new Set(grps_1['subgroups'].concat(grps_2['subgroups']))]
+    }
+
+    return get_c12n_text_from_parts(out, long_format);
+}
+
 function get_c12n_text_from_parts(parts, long_format) {
     let lvl_idx = parts['lvl_idx'];
     let req = parts['req'];

@@ -57,7 +57,7 @@
 			</div>
 		</div>
 		
-		{% block msg_head %}{%raw%}<div style="max-height: 67px" ng-if="user.c12n_enforcing" role="classification" class="classification-head {{ user.classification | class_banner_color }}"><span class="hidden-xs">Dynamic page - Highest classification: </span><strong>{{user.classification | class_sm}}</strong></div>{%endraw%}{% endblock %}
+		{% block msg_head %}{%raw%}<div style="max-height: 67px" ng-if="user.c12n_enforcing" role="classification" class="hidden-print classification-head {{ user.classification | class_banner_color }}"><span class="hidden-xs">Dynamic page - Highest classification: </span><strong>{{user.classification | class_sm}}</strong></div>{%endraw%}{% endblock %}
 
 		<div id="wrap">
 			{% if menu %}
