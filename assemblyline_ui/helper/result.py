@@ -87,6 +87,11 @@ def format_result(user_classification, r, min_classification, build_hierarchy=Fa
     max_classification, r['result']['sections'] = filter_sections(r['result']['sections'], user_classification,
                                                                   min_classification)
 
+    # Drop supplementary and extracted files that the user does not have access to
+    for ftype in ['supplementary', 'extracted']:
+        r['response'][ftype] = [x for x in r['response'][ftype]
+                                if CLASSIFICATION.is_accessible(user_classification, x['classification'])]
+
     # Set result classification to at least min but no more then viewable result classification
     r['classification'] = CLASSIFICATION.max_classification(max_classification, min_classification)
 
