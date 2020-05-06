@@ -7,28 +7,40 @@
 	</div>
 	<div class="col-md-6">
 		<div class="form-group">
-			<label class="control-label">Allowed CPU cores</label>
+			<label class="control-label">Allowed CPU cores</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
 			<input type="number" min="0.01" step="0.01" class="form-control input-sm input" ng-model="current_docker_config.cpu_cores"/>
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="form-group">
-			<label class="control-label">Allowed RAM usage (MB)</label>
+			<label class="control-label">Allowed RAM usage (MB)</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
 			<input type="number" min="64" class="form-control input-sm input-medium" ng-model="current_docker_config.ram_mb">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="form-group">
+			<label class="control-label">Registry Username</label>
+			<input type="text" class="form-control input-sm input" ng-model="current_docker_config.registry_username"/>
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="form-group">
+			<label class="control-label">Registry Password</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.registry_password">
 		</div>
 	</div>
 	<div class="col-md-12">
 		<div class="form-group">
 			<label class="control-label">Command to run in the container</label>
-			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.command" split-array="{splitter: ' '}">
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.command" split-array="{splitter: ' '}" placeholder="Default container command">
 		</div>
     </div>
     <div class="col-sm-12">
-        <label>Allow Internet Access</label>
+        <label>Allow Outside Access</label>
         <div class="radio">
             <label ng-class="{checked:current_docker_config.allow_internet_access}">
                 <input type="radio" name="allow_internet_access" ng-click="enable_field('allow_internet_access')" ng-checked="current_docker_config.allow_internet_access">
-                Yes <span class="text-muted text-smaller">(Allowed to access resources outside of the assemblyline cluster)</span>
+                Yes <span class="text-muted text-smaller">(Allowed to access resources outside of the assemblyline cluster, may be able to reach the internet depending on setup)</span>
             </label>
         </div>
         <div class="radio">

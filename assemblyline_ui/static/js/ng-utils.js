@@ -714,6 +714,9 @@ utils.directive('splitArray', function () {
             if (data !== undefined && data.splitter !== undefined) splitter = data.splitter;
 
             function fromUser(text) {
+                if (text === ""){
+                    return []
+                }
                 return text.split(splitter);
             }
 
