@@ -155,6 +155,9 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 $("#docker_image").addClass('has-error');
                 return;
             }
+            if ($scope.current_docker_config.command !== undefined && $scope.current_docker_config.command.length === 1 && $scope.current_docker_config.command[0] === ""){
+                delete $scope.current_docker_config.command;
+            }
             if ($scope.docker_type === "service_container"){
                 $scope.current_service.docker_config = $scope.current_docker_config;
             }
