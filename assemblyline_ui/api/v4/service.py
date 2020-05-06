@@ -73,7 +73,7 @@ def add_service(**_):
                     heuristic = Heuristic(heuristic)
                     heuristic_id = heuristic.heur_id
                     plan.add_upsert_operation(heuristic_id, heuristic)
-                except Exception as e:
+                except Exception:
                     raise ValueError("Error parsing heuristics")
 
             for item in STORAGE.heuristic.bulk(plan)['items']:
