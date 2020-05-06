@@ -205,6 +205,9 @@ def set_user_account(username, **kwargs):
         if not old_user:
             return make_api_response({"success": False}, "User %s does not exists" % username, 404)
 
+        if not data['name']:
+            return make_api_response({"success": False}, "Full name of the user cannot be empty", 400)
+
         data['apikeys'] = old_user.get('apikeys', [])
         data['otp_sk'] = old_user.get('otp_sk', None)
         data['security_tokens'] = old_user.get('security_tokens', {}) or {}
