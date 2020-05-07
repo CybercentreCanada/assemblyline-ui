@@ -322,12 +322,23 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                                 return;
                             }
 
+                            let message = "";
                             $scope.loading_extra = false;
                             if (data.api_error_message) {
-                                $scope.error = data.api_error_message;
+                                message = data.api_error_message;
                             } else {
-                                $scope.error = config.url + " (" + status + ")";
+                                message = config.url + " (" + status + ")";
                             }
+                            $("div.sweet-alert").find("button").show();
+                            swal({
+                                title: "Deletion failed!",
+                                text: message,
+                                type: "error",
+                                showCancelButton: false,
+                                confirmButtonColor: "#D0D0D0",
+                                confirmButtonText: "Close",
+                                closeOnConfirm: true
+                            });
                         });
                 });
         };
