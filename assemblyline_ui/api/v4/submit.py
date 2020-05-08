@@ -238,16 +238,34 @@ def submit(**kwargs):
             if data is None:
                 return make_api_response({}, "Missing data block", 400)
 
-            if not Classification.is_accessible(user['classification'], data['ui_params']['classification']):
-                return make_api_response({}, "You cannot start a scan with higher "
-                                             "classification then you're allowed to see", 400)
-
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
             name = os.path.basename(name)
             if not name:
                 return make_api_response({}, "Invalid filename", 400)
+
+            # Create task object
+            if "ui_params" in data:
+                s_params = ui_to_submission_params(data['ui_params'])
+            else:
+                s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
+
+            if not s_params:
+                s_params = get_default_user_settings(user)
+
+            s_params.update(data.get("params", {}))
+            if 'groups' not in s_params:
+                s_params['groups'] = user['groups']
+
+            s_params['quota_item'] = True
+            s_params['submitter'] = user['uname']
+            if not s_params['description']:
+                s_params['description'] = "Inspection of file: %s" % name
+
+            if not Classification.is_accessible(user['classification'], s_params['classification']):
+                return make_api_response({}, "You cannot start a scan with higher "
+                                             "classification then you're allowed to see", 400)
 
             # Prepare the output directory
             try:
@@ -281,24 +299,6 @@ def submit(**kwargs):
             else:
                 with open(out_file, "wb") as my_file:
                     my_file.write(binary.read())
-
-            # Create task object
-            if "ui_params" in data:
-                s_params = ui_to_submission_params(data['ui_params'])
-            else:
-                s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
-
-            if not s_params:
-                s_params = get_default_user_settings(user)
-
-            s_params.update(data.get("params", {}))
-            if 'groups' not in s_params:
-                s_params['groups'] = user['groups']
-
-            s_params['quota_item'] = True
-            s_params['submitter'] = user['uname']
-            if not s_params['description']:
-                s_params['description'] = "Inspection of file: %s" % name
 
             try:
                 submission_obj = Submission({
