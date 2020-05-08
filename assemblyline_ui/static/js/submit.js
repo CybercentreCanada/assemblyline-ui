@@ -63,12 +63,22 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
             $scope.loading = false;
 
+            let message = "";
             if (data.api_error_message) {
-                $scope.error = data.api_error_message;
+                message = data.api_error_message;
             }
             else {
-                $scope.error = config.url + " (" + status + ")";
+                message = config.url + " (" + status + ")";
             }
+            swal({
+                    title: "Submission failed!",
+                    text: message,
+                    type: "error",
+                    showCancelButton: false,
+                    confirmButtonColor: "#D0D0D0",
+                    confirmButtonText: "Close",
+                    closeOnConfirm: true
+                });
         });
 
 
@@ -200,12 +210,22 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                             return;
                         }
 
+                        let message = "";
                         if (data.api_error_message) {
-                            $scope.error = data.api_error_message;
+                            message = data.api_error_message;
                         }
                         else {
-                            $scope.error = config.url + " (" + status + ")";
+                            message = config.url + " (" + status + ")";
                         }
+                        swal({
+                                title: "Submission failed!",
+                                text: message,
+                                type: "error",
+                                showCancelButton: false,
+                                confirmButtonColor: "#D0D0D0",
+                                confirmButtonText: "Close",
+                                closeOnConfirm: true
+                            });
 
                         $scope.reset_transfer();
                         uuid = null;
@@ -218,7 +238,9 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
 
     $scope.reset_transfer = function () {
         $scope.transfer_started = false;
+        $scope.started = false;
         $scope.obj.flow.cancel();
+        $scope.obj.flow.off('complete');
     };
 
     //Sliding menu

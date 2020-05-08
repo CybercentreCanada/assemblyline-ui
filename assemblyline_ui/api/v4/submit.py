@@ -238,6 +238,10 @@ def submit(**kwargs):
             if data is None:
                 return make_api_response({}, "Missing data block", 400)
 
+            if not Classification.is_accessible(user['classification'], data['ui_params']['classification']):
+                return make_api_response({}, "You cannot start a scan with higher "
+                                             "classification then you're allowed to see", 400)
+
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
