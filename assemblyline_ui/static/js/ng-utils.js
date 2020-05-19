@@ -790,64 +790,45 @@ utils.directive('ncSection', function () {
                     var ul = document.createElement("ul");
                     ul.style.listStyleType = "none";
                     for (let process of process_tree) {
-                        // "Container"
-                        let li_div = document.createElement("div");
-                        li_div.className = "container-fluid";
-                        li_div.style.border = "1px solid #9a9a9a";
-                        li_div.style.borderRadius = "5px";
-                        li_div.style.paddingTop = "10px";
-
-                        // Row 1
-                        let row1 = document.createElement("div");
-                        row1.className = "row";
-
-                        // Row 2
-                        let row2 = document.createElement("div");
-                        row2.className = "row";
-
-                        // Initial list item details
+                        // Initial list item element
                         let li = document.createElement("li");
 
-                        let process_info_div = document.createElement("div");
-                        process_info_div.className = "col-xs-10 col-sm-10 col-md-10 col-lg-10";
-                        let text = document.createTextNode(process["process_name"]);
-                        process_info_div.appendChild(text);
+                        // "Container" that will contain the panel
+                        let panel = document.createElement("div");
+                        panel.className = "panel panel-default";
+                        panel.style.marginBottom = "1px";
 
-                        row1.appendChild(process_info_div);
+                        // Panel header
+                        let header = document.createElement("div");
+                        header.className = "panel-heading";
+                        header.style.padding = "5px";
+                        header.style.backgroundColor = "white";
 
-                        // Code details
-                        let code_div = document.createElement("div");
-                        code_div.className = "col-xs-9 col-sm-9 col-md-9 col-lg-9";
-                        let pre = document.createElement("pre");
-                        let code = document.createElement("code");
+                        // Process name details
+                        let process_name = document.createTextNode(process["process_name"]);
+                        header.appendChild(process_name);
+
+                        // Panel footer
+                        let footer = document.createElement("div");
+                        footer.className = "panel-footer";
+                        footer.style.padding = "5px";
+
+                        // Command line details
+                        let samp = document.createElement("samp");
                         let small = document.createElement("small");
                         let cmd = document.createTextNode(process["command_line"]);
                         small.appendChild(cmd);
-                        code.appendChild(small);
-                        pre.appendChild(code);
-                        code_div.appendChild(pre);
-                        row2.appendChild(code_div);
+                        samp.appendChild(small);
+                        footer.appendChild(samp);
 
-                        // Spacing details
-                        let spacing_div = document.createElement("div");
-                        spacing_div.className = "col-xs-1 col-sm-1 col-md-1 col-lg-1";
-                        row2.appendChild(spacing_div);
+                        // Adding the panel components
+                        panel.appendChild(header);
+                        panel.appendChild(footer);
 
-                        // Alerts details
-                        let alerts_div = document.createElement("div");
-                        alerts_div.className = "col-xs-2 col-sm-2 col-md-2 col-lg-2";
-                        let number_of_alerts = document.createTextNode("5");
-                        alerts_div.appendChild(number_of_alerts);
-                        let warning = document.createElement("i");
-                        warning.className = "fa fa-exclamation-triangle";
-                        alerts_div.appendChild(warning);
-                        row2.appendChild(alerts_div);
+                        // Adding the panel to the list
+                        li.appendChild(panel);
+                        ul.append(li);
 
-                        li.appendChild(row1);
-                        li.appendChild(row2);
-
-                        li_div.appendChild(li);
-                        ul.append(li_div);
                         if (process["children"]) {
                             process_list(process["children"], ul);
                         }
