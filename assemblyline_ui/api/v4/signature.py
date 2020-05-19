@@ -144,7 +144,7 @@ def add_update_many_signature(**_):
 
         plan.add_upsert_operation(key, rule)
 
-    if plan:
+    if not plan.empty:
         res = STORAGE.signature.bulk(plan)
         return make_api_response({"success": len(res['items']), "errors": res['errors'], "skipped": skip_list})
 
