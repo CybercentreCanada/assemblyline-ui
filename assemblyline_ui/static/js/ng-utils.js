@@ -782,6 +782,7 @@ utils.directive('tableSection', function () {
                 }
                 let table = document.createElement('table');
                 table.style.width = "100%";
+                table.setAttribute("class", "table");
 
                 let thead = table.createTHead();
                 let headerRow = thead.insertRow();
@@ -807,8 +808,14 @@ utils.directive('tableSection', function () {
                 }
 
                 // Create Table Body
+
+                // Used for alternating striped rows
+                var count = 0;
                 for (let row of table_body) {
                     let tr = table.insertRow();
+                    if (count % 2 === 0) {
+                        tr.setAttribute("class", "active");
+                    }
                     for (let column of table_headers) {
                         let str_value = "";
                         if (column in row) {
@@ -820,8 +827,14 @@ utils.directive('tableSection', function () {
                         let text = document.createTextNode(str_value);
                         cell.appendChild(text);
                     }
+                    count++;
                 }
-                elem[0].appendChild(table);
+                // Responsive table
+                let div = document.createElement('div');
+                div.setAttribute('class', 'table-responsive');
+                div.appendChild(table);
+
+                elem[0].appendChild(div);
             };
             scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
         }
