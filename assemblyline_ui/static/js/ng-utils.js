@@ -770,6 +770,98 @@ utils.directive('kvSection', function () {
     }
 });
 
+utils.directive('ncSection', function () {
+    return {
+        restrict: 'A',
+        require:"ngModel",
+        link: function (scope, elem, attrs, ngModel) {
+            scope.render = function () {
+                let nc_body = JSON.parse(ngModel.$viewValue);
+
+                while (elem[0].firstChild){
+                    elem[0].removeChild(elem[0].firstChild)
+                }
+                var div = document.createElement("div");
+                div.className = "container-fluid";
+
+                process_list(nc_body, div);
+
+                function process_list(process_tree, root) {
+                    var ul = document.createElement("ul");
+                    ul.style.listStyleType = "none";
+                    for (let process of process_tree) {
+                        // "Container"
+                        let li_div = document.createElement("div");
+                        li_div.className = "container-fluid";
+                        li_div.style.border = "1px solid #9a9a9a";
+                        li_div.style.borderRadius = "5px";
+                        li_div.style.paddingTop = "10px";
+
+                        // Row 1
+                        let row1 = document.createElement("div");
+                        row1.className = "row";
+
+                        // Row 2
+                        let row2 = document.createElement("div");
+                        row2.className = "row";
+
+                        // Initial list item details
+                        let li = document.createElement("li");
+
+                        let process_info_div = document.createElement("div");
+                        process_info_div.className = "col-xs-10 col-sm-10 col-md-10 col-lg-10";
+                        let text = document.createTextNode(process["process_name"]);
+                        process_info_div.appendChild(text);
+
+                        row1.appendChild(process_info_div);
+
+                        // Code details
+                        let code_div = document.createElement("div");
+                        code_div.className = "col-xs-9 col-sm-9 col-md-9 col-lg-9";
+                        let pre = document.createElement("pre");
+                        let code = document.createElement("code");
+                        let small = document.createElement("small");
+                        let cmd = document.createTextNode(process["command_line"]);
+                        small.appendChild(cmd);
+                        code.appendChild(small);
+                        pre.appendChild(code);
+                        code_div.appendChild(pre);
+                        row2.appendChild(code_div);
+
+                        // Spacing details
+                        let spacing_div = document.createElement("div");
+                        spacing_div.className = "col-xs-1 col-sm-1 col-md-1 col-lg-1";
+                        row2.appendChild(spacing_div);
+
+                        // Alerts details
+                        let alerts_div = document.createElement("div");
+                        alerts_div.className = "col-xs-2 col-sm-2 col-md-2 col-lg-2";
+                        let number_of_alerts = document.createTextNode("5");
+                        alerts_div.appendChild(number_of_alerts);
+                        let warning = document.createElement("i");
+                        warning.className = "fa fa-exclamation-triangle";
+                        alerts_div.appendChild(warning);
+                        row2.appendChild(alerts_div);
+
+                        li.appendChild(row1);
+                        li.appendChild(row2);
+
+                        li_div.appendChild(li);
+                        ul.append(li_div);
+                        if (process["children"]) {
+                            process_list(process["children"], ul);
+                        }
+                    }
+                    root.append(ul);
+                }
+
+                elem[0].appendChild(div);
+            };
+            scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
+        }
+    }
+});
+
 utils.directive('urlSection', function () {
     return {
         restrict: 'A',
