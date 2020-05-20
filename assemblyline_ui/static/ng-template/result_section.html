@@ -10,7 +10,7 @@
 				<div url-section ng-if="sec.body_format=='URL'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
 				<div ng-if="sec.body_format=='JSON'&&sec.body!=null" class="result_body"><div ng-jsoneditor ng-model="sec.body" options="{'mode': 'view'}" style="width: 100%; height: 300px;"></div></div>
 				<div kv-section ng-if="sec.body_format=='KEY_VALUE'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
-				<div nc-section ng-if="sec.body_format=='NESTED_CARDS'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
+				<div nc-section ng-if="sec.body_format=='PROCESS_TREE'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
         <div table-section ng-if="sec.body_format=='TABLE'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
 
 				<div style="margin-left: 2.5em; margin-bottom: .25em;" ng-if="sec.heuristic||sec.tags.length!=0">
