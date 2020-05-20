@@ -25,6 +25,16 @@ String.prototype.toTitleCase = function () {
     return this.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ").toProperCase();
 };
 
+String.prototype.breakableStr = function (){
+    let outString = String();
+    for (let i = 0; i < this.length; i += 4) {
+        outString += this.substr(i, 4);
+        outString += "\u200b";
+    }
+
+    return outString;
+}
+
 function arrayBufferToUTF8String(arrayBuffer) {
     try {
         //noinspection JSUnresolvedFunction
@@ -748,7 +758,6 @@ utils.directive('kvSection', function () {
                     elem[0].removeChild(elem[0].firstChild)
                 }
                 let table = document.createElement('table');
-                table.style.width = "100%";
                 for (let key in kv_body) {
                     let tr = document.createElement('tr');
                     tr.setAttribute("class", "kv_line");
@@ -757,12 +766,11 @@ utils.directive('kvSection', function () {
                     let key_td = document.createElement('td');
                     key_td.setAttribute("class", "strong");
                     key_td.style.paddingRight = "25px";
-                    key_td.innerText = key;
+                    key_td.innerText = key.toTitleCase();
                     tr.appendChild(key_td);
 
                     let value_td = document.createElement('td');
                     value_td.innerText = value;
-                    value_td.style.width = '100%';
                     tr.appendChild(value_td);
 
                     table.appendChild(tr);
@@ -817,7 +825,7 @@ utils.directive('ncSection', function () {
                         header.style.backgroundColor = "white";
 
                         // Process name details
-                        let process_name = document.createTextNode(process["process_name"]);
+                        let process_name = document.createTextNode(String(process["process_name"]).breakableStr());
                         header.appendChild(process_name);
 
                         // card footer
@@ -826,7 +834,7 @@ utils.directive('ncSection', function () {
                         // Command line details
                         let samp = document.createElement("samp");
                         let small = document.createElement("small");
-                        let cmd = document.createTextNode(process["command_line"]);
+                        let cmd = document.createTextNode(String(process["command_line"]).breakableStr());
                         small.appendChild(cmd);
                         samp.appendChild(small);
                         footer.appendChild(samp);
@@ -869,6 +877,7 @@ utils.directive('tableSection', function () {
                 }
                 let table = document.createElement('table');
                 table.style.width = "100%";
+                table.style.marginBottom = "0";
                 table.setAttribute("class", "table table-bordered table-condensed table-hover table-striped");
 
                 let thead = table.createTHead();
@@ -906,7 +915,6 @@ utils.directive('tableSection', function () {
                             if (row[column] !== null && typeof row[column] === 'object') {
                                 // Creating table object
                                 let nested_table = document.createElement('table');
-                                nested_table.style.width = "100%";
                                 // Copying the key value body format section
                                 for (let key in row[column]) {
                                     let tr = document.createElement('tr');
@@ -916,12 +924,14 @@ utils.directive('tableSection', function () {
                                     let key_td = document.createElement('td');
                                     key_td.setAttribute("class", "strong");
                                     key_td.style.paddingRight = "25px";
-                                    key_td.innerText = key;
+                                    key_td.innerText = String(key).toTitleCase();
                                     tr.appendChild(key_td);
 
+                                    if (typeof value === 'object'){
+                                        value = JSON.stringify(value);
+                                    }
                                     let value_td = document.createElement('td');
-                                    value_td.innerText = value;
-                                    value_td.style.width = '100%';
+                                    value_td.innerText = String(value).breakableStr();
                                     tr.appendChild(value_td);
 
                                     nested_table.appendChild(tr);
@@ -936,7 +946,7 @@ utils.directive('tableSection', function () {
                             }
                         }
                         let cell = tr.insertCell();
-                        let text = document.createTextNode(str_value);
+                        let text = document.createTextNode(String(str_value).breakableStr());
                         cell.appendChild(text);
                     }
                 }
@@ -1013,13 +1023,7 @@ utils.filter('breakableStr', function () {
         if (typeof(data) !== "string"){
             data = data.toString();
         }
-
-        for (let i = 0; i < data.length; i += 4) {
-            outString += data.substr(i, 4);
-            outString += "\u200b";
-        }
-
-        return outString
+        return data.breakableStr();
     }
 });
 
