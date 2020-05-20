@@ -21,6 +21,10 @@ String.prototype.toProperCase = function () {
     });
 };
 
+String.prototype.toTitleCase = function () {
+    return this.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ").toProperCase();
+};
+
 function arrayBufferToUTF8String(arrayBuffer) {
     try {
         //noinspection JSUnresolvedFunction
@@ -802,7 +806,7 @@ utils.directive('tableSection', function () {
                 // Creating Table Headers
                 for (let key of table_headers) {
                     let th = document.createElement("th");
-                    let text = document.createTextNode(key);
+                    let text = document.createTextNode(key.toTitleCase());
                     th.appendChild(text);
                     th.setAttribute("class", "active");
                     headerRow.appendChild(th);
@@ -1403,8 +1407,7 @@ utils.filter('titleCase', function () {
         if (input === null || input === undefined){
             return input
         }
-        input = input.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ");
-        return input.toProperCase();
+        return input.toTitleCase()
     }
 });
 
