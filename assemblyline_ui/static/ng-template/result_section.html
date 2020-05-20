@@ -11,6 +11,7 @@
 				<div ng-if="sec.body_format=='JSON'&&sec.body!=null" class="result_body"><div ng-jsoneditor ng-model="sec.body" options="{'mode': 'view'}" style="width: 100%; height: 300px;"></div></div>
 				<div kv-section ng-if="sec.body_format=='KEY_VALUE'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
 				<div nc-section ng-if="sec.body_format=='NESTED_CARDS'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
+        <div table-section ng-if="sec.body_format=='TABLE'&&sec.body!=null" class="result_body" ng-model="sec.body"></div>
 
 				<div style="margin-left: 2.5em; margin-bottom: .25em;" ng-if="sec.heuristic||sec.tags.length!=0">
 					<span ng-if="sec.heuristic" title="Malware heuristic: {{sec.heuristic.name}} [{{sec.heuristic.heur_id}}]" class="label label-tag {{sec.heuristic.score | label_color}}" style="cursor: pointer;" ng-class="{'label-highlight': isHighlighted('heuristic', sec.heuristic.heur_id)}" ng-click="trigger_highlight('heuristic', sec.heuristic.heur_id);" >[HEURISTIC] {{sec.heuristic.name | breakableStr }}<a href='/search.html?search_scope=result&query=result.sections.heuristic.name:"{{sec.heuristic.name}}"' class="search_tag clickable_color glyphicon glyphicon-search" ng-click="$event.stopPropagation();"></a></span>

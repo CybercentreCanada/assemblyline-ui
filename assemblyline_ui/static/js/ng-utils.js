@@ -21,6 +21,10 @@ String.prototype.toProperCase = function () {
     });
 };
 
+String.prototype.toTitleCase = function () {
+    return this.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ").toProperCase();
+};
+
 function arrayBufferToUTF8String(arrayBuffer) {
     try {
         //noinspection JSUnresolvedFunction
@@ -853,6 +857,74 @@ utils.directive('ncSection', function () {
     }
 });
 
+utils.directive('tableSection', function () {
+    return {
+        restrict: 'A',
+        require:"ngModel",
+        link: function (scope, elem, attrs, ngModel) {
+            scope.render = function () {
+                let table_body = JSON.parse(ngModel.$viewValue);
+                while (elem[0].firstChild){
+                    elem[0].removeChild(elem[0].firstChild)
+                }
+                let table = document.createElement('table');
+                table.style.width = "100%";
+                table.setAttribute("class", "table table-bordered table-condensed table-hover table-striped");
+
+                let thead = table.createTHead();
+                let headerRow = thead.insertRow();
+                let table_headers = [];
+
+                if(table_body.length > 0){
+                    // Create Table Header using union of keys from all dictionaries
+                    for (let table_row of table_body) {
+                        for (let key of Object.keys(table_row)) {
+                            if (!table_headers.includes(key)) {
+                                table_headers.push(key);
+                            }
+                        }
+                    }
+                }
+
+                // Creating Table Headers
+                for (let key of table_headers) {
+                    let th = document.createElement("th");
+                    let text = document.createTextNode(key.toTitleCase());
+                    th.appendChild(text);
+                    th.setAttribute("class", "active");
+                    headerRow.appendChild(th);
+                }
+
+                // Create Table Body
+                let tbody = table.createTBody();
+
+                // Used for alternating striped rows
+                for (let row of table_body) {
+                    let tr = tbody.insertRow();
+                    for (let column of table_headers) {
+                        let str_value = "";
+                        if (column in row) {
+                            if (row[column] !== null) {
+                                str_value = row[column];
+                            }
+                        }
+                        let cell = tr.insertCell();
+                        let text = document.createTextNode(str_value);
+                        cell.appendChild(text);
+                    }
+                }
+                // Responsive table
+                let div = document.createElement('div');
+                div.setAttribute('class', 'table-responsive');
+                div.appendChild(table);
+
+                elem[0].appendChild(div);
+            };
+            scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
+        }
+    }
+});
+
 utils.directive('urlSection', function () {
     return {
         restrict: 'A',
@@ -1418,8 +1490,7 @@ utils.filter('titleCase', function () {
         if (input === null || input === undefined){
             return input
         }
-        input = input.replace(/-/g, " ").replace(/_/g, " ").replace(/\./g, " ");
-        return input.toProperCase();
+        return input.toTitleCase()
     }
 });
 
