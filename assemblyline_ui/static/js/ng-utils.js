@@ -906,19 +906,25 @@ utils.directive('tableSection', function () {
                             if (row[column] !== null && typeof row[column] === 'object') {
                                 // Creating table object
                                 let nested_table = document.createElement('table');
-                                nested_table.setAttribute("class", "table-bordered");
                                 nested_table.style.width = "100%";
-                                // Creating table body
-                                let nested_tbody = nested_table.createTBody();
+                                // Copying the key value body format section
                                 for (let key in row[column]) {
-                                    // Creating table row
-                                    let nested_tr = nested_tbody.insertRow();
-                                    let key_cell = nested_tr.insertCell();
-                                    let key_text = document.createTextNode(key.toTitleCase());
-                                    key_cell.appendChild(key_text);
-                                    let val_cell = nested_tr.insertCell();
-                                    let val_text= document.createTextNode(row[column][key]);
-                                    val_cell.appendChild(val_text);
+                                    let tr = document.createElement('tr');
+                                    tr.setAttribute("class", "kv_line");
+                                    let value = row[column][key];
+
+                                    let key_td = document.createElement('td');
+                                    key_td.setAttribute("class", "strong");
+                                    key_td.style.paddingRight = "25px";
+                                    key_td.innerText = key;
+                                    tr.appendChild(key_td);
+
+                                    let value_td = document.createElement('td');
+                                    value_td.innerText = value;
+                                    value_td.style.width = '100%';
+                                    tr.appendChild(value_td);
+
+                                    nested_table.appendChild(tr);
                                 }
                                 let cell = tr.insertCell();
                                 cell.style.padding = "0px";
