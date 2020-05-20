@@ -786,7 +786,7 @@ utils.directive('tableSection', function () {
                 }
                 let table = document.createElement('table');
                 table.style.width = "100%";
-                table.setAttribute("class", "table");
+                table.setAttribute("class", "table table-bordered table-condensed table-hover table-striped");
 
                 let thead = table.createTHead();
                 let headerRow = thead.insertRow();
