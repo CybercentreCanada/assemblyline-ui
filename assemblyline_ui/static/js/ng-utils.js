@@ -774,6 +774,89 @@ utils.directive('kvSection', function () {
     }
 });
 
+utils.directive('ncSection', function () {
+    return {
+        restrict: 'A',
+        require:"ngModel",
+        link: function (scope, elem, attrs, ngModel) {
+            scope.render = function () {
+                let nc_body = JSON.parse(ngModel.$viewValue);
+
+                while (elem[0].firstChild){
+                    elem[0].removeChild(elem[0].firstChild)
+                }
+                let div = document.createElement("div");
+                div.style.marginLeft = "-40px";
+                process_list(nc_body, div);
+
+                function process_list(process_tree, root) {
+                    let ul = document.createElement("ul");
+                    ul.style.listStyleType = "none";
+                    for (let process of process_tree) {
+                        // Initial list item element
+                        let li = document.createElement("li");
+
+                        // "Container" that will contain the card
+                        let card = document.createElement("div");
+                        card.className = "process_card";
+
+                        let pid_section = document.createElement("div");
+                        pid_section.style.padding = "5px";
+                        pid_section.style.backgroundColor = "#EEE";
+                        // Process name details
+                        let process_pid = document.createTextNode(process["process_pid"]);
+                        pid_section.appendChild(process_pid);
+
+                        let detail_section = document.createElement("div");
+                        detail_section.style.padding = "5px";
+
+                        // card header
+                        let header = document.createElement("div");
+                        header.className = "text-heavy";
+                        header.style.paddingBottom = "5px";
+                        header.style.backgroundColor = "white";
+
+                        // Process name details
+                        let process_name = document.createTextNode(process["process_name"]);
+                        header.appendChild(process_name);
+
+                        // card footer
+                        let footer = document.createElement("div");
+
+                        // Command line details
+                        let samp = document.createElement("samp");
+                        let small = document.createElement("small");
+                        let cmd = document.createTextNode(process["command_line"]);
+                        small.appendChild(cmd);
+                        samp.appendChild(small);
+                        footer.appendChild(samp);
+
+                        // Add header and footer to detail section
+                        detail_section.appendChild(header);
+                        detail_section.appendChild(footer);
+
+                        // Adding the card components
+                        card.appendChild(pid_section);
+                        card.appendChild(detail_section);
+
+                        // Adding the card to the list
+                        li.appendChild(card);
+                        ul.append(li);
+
+                        if (process["children"]) {
+                            process_list(process["children"], ul);
+                        }
+                    }
+                    root.append(ul);
+                }
+
+                elem[0].appendChild(div);
+            };
+            scope.$watch(function () { return ngModel.$modelValue; }, scope.render, true);
+        }
+    }
+});
+
 utils.directive('tableSection', function () {
     return {
         restrict: 'A',

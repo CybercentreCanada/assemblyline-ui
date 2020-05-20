@@ -1447,6 +1447,13 @@ figure.front{
 	cursor: pointer;
 }
 
+.process_card {
+	border: solid 1px #DDDDDD;
+	margin: 0.2em 0em;
+	border-radius: 4px;
+	display: flex;
+}
+
 .card {
 	border: solid 1px #DDDDDD;
 	margin: 1em 0em;

@@ -10,6 +10,7 @@
 				<div url-section ng-if="section_list[sec_info.id].body_format=='URL'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
 				<div ng-if="section_list[sec_info.id].body_format=='JSON'&&section_list[sec_info.id].body!=null" class="result_body"><div ng-jsoneditor ng-model="section_list[sec_info.id].body" options="{'mode': 'view'}" style="width: 100%; height: 300px;"></div></div>
 				<div kv-section ng-if="section_list[sec_info.id].body_format=='KEY_VALUE'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
+				<div nc-section ng-if="section_list[sec_info.id].body_format=='PROCESS_TREE'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
 				<div table-section ng-if="section_list[sec_info.id].body_format=='TABLE'&&section_list[sec_info.id].body!=null" class="result_body" ng-model="section_list[sec_info.id].body"></div>
 
 				<div style="margin-left: 2.5em; margin-bottom: .25em;" ng-if="section_list[sec_info.id].heuristic||section_list[sec_info.id].tags.length!=0">
