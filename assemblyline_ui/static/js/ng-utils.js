@@ -804,18 +804,16 @@ utils.directive('tableSection', function () {
                     let th = document.createElement("th");
                     let text = document.createTextNode(key);
                     th.appendChild(text);
+                    th.setAttribute("class", "active");
                     headerRow.appendChild(th);
                 }
 
                 // Create Table Body
+                let tbody = table.createTBody();
 
                 // Used for alternating striped rows
-                var count = 0;
                 for (let row of table_body) {
-                    let tr = table.insertRow();
-                    if (count % 2 === 0) {
-                        tr.setAttribute("class", "active");
-                    }
+                    let tr = tbody.insertRow();
                     for (let column of table_headers) {
                         let str_value = "";
                         if (column in row) {
@@ -827,7 +825,6 @@ utils.directive('tableSection', function () {
                         let text = document.createTextNode(str_value);
                         cell.appendChild(text);
                     }
-                    count++;
                 }
                 // Responsive table
                 let div = document.createElement('div');
