@@ -897,14 +897,35 @@ utils.directive('tableSection', function () {
 
                 // Create Table Body
                 let tbody = table.createTBody();
-
-                // Used for alternating striped rows
                 for (let row of table_body) {
                     let tr = tbody.insertRow();
                     for (let column of table_headers) {
                         let str_value = "";
                         if (column in row) {
-                            if (row[column] !== null) {
+                            // Creating nested table
+                            if (row[column] !== null && typeof row[column] === 'object') {
+                                // Creating table object
+                                let nested_table = document.createElement('table');
+                                nested_table.setAttribute("class", "table-bordered");
+                                nested_table.style.width = "100%";
+                                // Creating table body
+                                let nested_tbody = nested_table.createTBody();
+                                for (let key in row[column]) {
+                                    // Creating table row
+                                    let nested_tr = nested_tbody.insertRow();
+                                    let key_cell = nested_tr.insertCell();
+                                    let key_text = document.createTextNode(key.toTitleCase());
+                                    key_cell.appendChild(key_text);
+                                    let val_cell = nested_tr.insertCell();
+                                    let val_text= document.createTextNode(row[column][key]);
+                                    val_cell.appendChild(val_text);
+                                }
+                                let cell = tr.insertCell();
+                                cell.style.padding = "0px";
+                                cell.appendChild(nested_table);
+                                continue;
+                            }
+                            else if (row[column] !== null) {
                                 str_value = row[column];
                             }
                         }
