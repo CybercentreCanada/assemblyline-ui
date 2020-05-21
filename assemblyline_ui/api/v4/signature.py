@@ -106,8 +106,9 @@ def add_update_many_signature(**_):
     ]
 
     Result example:
-    {"success": 23,                 # Number of rules that succeeded
-     "errors": False}               # List of rules that failed or False
+    {"success": 23,                # Number of rules that succeeded
+     "errors": [],                 # List of rules that failed
+     "skipped": [],                # List of skipped signatures, they already exist
     """
     data = request.json
     dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
@@ -148,7 +149,7 @@ def add_update_many_signature(**_):
         res = STORAGE.signature.bulk(plan)
         return make_api_response({"success": len(res['items']), "errors": res['errors'], "skipped": skip_list})
 
-    return make_api_response({"success": 0, "errors": False, "skipped": skip_list})
+    return make_api_response({"success": 0, "errors": [], "skipped": skip_list})
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
@@ -593,7 +594,7 @@ def update_signature_source(service, name, **_):
 
 
 @signature_api.route("/stats/", methods=["GET"])
-@api_login(allow_readonly=False)
+@api_login(allow_readonly=False, required_priv=['R'])
 def signature_statistics(**kwargs):
     """
     Gather all signatures stats in system
