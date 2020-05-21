@@ -135,6 +135,7 @@ def download_file(sha256, **kwargs):
     sha256       => A resource locator for the file (sha256)
     
     Arguments (optional):
+    encoding     => Type of encoding use for the resulting file
     name         => Name of the file to download
     sid          => Submission ID where the file is from
 
