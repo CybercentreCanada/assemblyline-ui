@@ -81,7 +81,7 @@ def import_bundle(**_):
     min_classification      => Minimum classification that the files and result from the bundle should get
 
     Data Block:
-    None
+    The bundle file to import
 
     Result example:
     {"success": true}
