@@ -74,7 +74,7 @@ def get_heuristic(heuristic_id, **kwargs):
 
 
 @heuristics_api.route("/stats/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['R'], allow_readonly=False)
 def heuritics_statistics(**kwargs):
     """
     Gather all heuristics stats in system
