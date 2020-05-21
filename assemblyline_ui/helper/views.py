@@ -17,13 +17,7 @@ config = get_config()
 #######################################
 # Views Helper functions
 def redirect_helper(path):
-    port = ""
-    if request.environ.get("HTTP_SERVER_PORT", None):
-        port = ":%s" % request.environ.get("HTTP_SERVER_PORT", None)
-
-    return "%s://%s%s%s" % (request.environ.get("HTTP_SCHEME", "https"),
-                            request.environ.get("HTTP_HOST", "localhost"),
-                            port, path)
+    return f"{current_app.config['PREFERRED_URL_SCHEME']}://{request.host}{path}"
 
 
 def angular_safe(value):
