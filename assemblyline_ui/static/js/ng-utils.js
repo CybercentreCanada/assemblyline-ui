@@ -887,9 +887,13 @@ utils.directive('tableSection', function () {
                 if(table_body.length > 0){
                     // Create Table Header using union of keys from all dictionaries
                     for (let table_row of table_body) {
-                        for (let key of Object.keys(table_row)) {
-                            if (!table_headers.includes(key)) {
-                                table_headers.push(key);
+                        for (let key in table_row) {
+                            let val = table_row[key];
+                            // False and 0 are okay
+                            if (val !== null && val !== undefined && val!==NaN && val !== "") {
+                                if (!table_headers.includes(key)) {
+                                    table_headers.push(key);
+                                }
                             }
                         }
                     }
@@ -917,6 +921,11 @@ utils.directive('tableSection', function () {
                                 let nested_table = document.createElement('table');
                                 // Copying the key value body format section
                                 for (let key in row[column]) {
+                                    let val = row[column][key];
+                                    if (val === null || val === undefined || val === NaN || val === "") {
+                                        continue;
+                                    }
+
                                     let tr = document.createElement('tr');
                                     tr.setAttribute("class", "kv_line");
                                     let value = row[column][key];
