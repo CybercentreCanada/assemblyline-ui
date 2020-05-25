@@ -110,6 +110,8 @@ def test_add_update_signature_many(datastore, login_session):
     sig_list = []
     for x in range(10):
         data = random_model_obj(Signature).as_primitives()
+        data['signature_id'] = f"test_sig_{x}"
+        data['name'] = f"sig_name_{x}"
         data['status'] = "DEPLOYED"
         data['source'] = source
         data['type'] = s_type
