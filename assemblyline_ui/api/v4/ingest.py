@@ -214,6 +214,7 @@ def ingest_single_file(**kwargs):
             original_file = out_file = os.path.join(out_dir, name)
 
             # Load file
+            extra_meta = {}
             if not binary:
                 if sha256:
                     if f_transport.exists(sha256):
@@ -227,6 +228,7 @@ def ingest_single_file(**kwargs):
 
                         try:
                             safe_download(url, out_file)
+                            extra_meta['submitted_url'] = url
                         except FileTooBigException:
                             return make_api_response({}, "File too big to be scanned.", 400)
                         except InvalidUrlException:
@@ -308,6 +310,7 @@ def ingest_single_file(**kwargs):
             metadata.update(al_meta)
             if 'ts' not in metadata:
                 metadata['ts'] = now_as_iso()
+            metadata.update(extra_meta)
 
             # Set description if it does not exists
             s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of file: {name}"

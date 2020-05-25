@@ -275,6 +275,7 @@ def submit(**kwargs):
             out_file = os.path.join(out_dir, name)
 
             # Get the output file
+            extra_meta = {}
             if not binary:
                 if sha256:
                     if f_transport.exists(sha256):
@@ -288,6 +289,7 @@ def submit(**kwargs):
 
                         try:
                             safe_download(url, out_file)
+                            extra_meta['submitted_url'] = url
                         except FileTooBigException:
                             return make_api_response({}, "File too big to be scanned.", 400)
                         except InvalidUrlException:
@@ -301,9 +303,12 @@ def submit(**kwargs):
                     my_file.write(binary.read())
 
             try:
+                metadata = flatten(data.get('metadata', {}))
+                metadata.update(extra_meta)
+
                 submission_obj = Submission({
                     "files": [],
-                    "metadata": flatten(data.get('metadata', {})),
+                    "metadata": metadata,
                     "params": s_params
                 })
             except (ValueError, KeyError) as e:
