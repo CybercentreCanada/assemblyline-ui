@@ -7,6 +7,8 @@ from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
+from assemblyline.remote.datatypes import get_client
+from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, STORAGE
@@ -273,6 +275,19 @@ def change_status(sid, status, **kwargs):
             ('SET', 'state_change_user', uname),
             ('SET', 'status', status)
         ]
+
+        service_updates = Hash('service-updates', get_client(
+            host=config.core.redis.persistent.host,
+            port=config.core.redis.persistent.port,
+            private=False,
+        ))
+
+        for svc in service_updates.items():
+            if svc.lower() == data['type']:
+                update_data = service_updates.get(svc)
+                update_data['next_update'] = now_as_iso(120)
+                service_updates.set(svc, update_data)
+                break
 
         return make_api_response({"success": STORAGE.signature.update(sid, operations)})
     else:

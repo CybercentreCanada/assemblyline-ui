@@ -181,7 +181,7 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
         })
             .success(function () {
                 $("#myModal").modal('hide');
-                $scope.success = "Status of signature " + $scope.current_signature_id + " successfully changed to " + new_status + ".";
+                $scope.success = "Status of signature " + $scope.current_signature_id + " successfully changed to " + new_status + ". Changes will take effect in 2 minutes...";
                 $timeout(function () {
                     $scope.success = "";
                     $scope.load_data();
