@@ -264,6 +264,7 @@ def change_status(sid, status, **kwargs):
         if status not in ['DISABLED', 'INVALID', 'TESTING']:
             query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{sid}"
             others_operations = [
+                ('SET', 'last_modified', today),
                 ('SET', 'state_change_date', today),
                 ('SET', 'state_change_user', uname),
                 ('SET', 'status', 'DISABLED')
@@ -271,6 +272,7 @@ def change_status(sid, status, **kwargs):
             STORAGE.signature.update_by_query(query, others_operations)
 
         operations = [
+            ('SET', 'last_modified', today),
             ('SET', 'state_change_date', today),
             ('SET', 'state_change_user', uname),
             ('SET', 'status', status)
