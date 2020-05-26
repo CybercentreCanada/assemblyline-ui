@@ -462,7 +462,10 @@ def signup(**_):
             break
 
     if not email_valid:
-        return make_api_response({"success": False}, "Invalid email address", 466)
+        extra = ""
+        if config.ui.email:
+            extra = f". Contact {config.ui.email} for more information."
+        return make_api_response({"success": False}, f"Invalid email address{extra}", 466)
 
     password = get_password_hash(password)
     key = hashlib.sha256(get_random_password(length=512).encode('utf-8')).hexdigest()
