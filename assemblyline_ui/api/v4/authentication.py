@@ -8,7 +8,7 @@ from io import BytesIO
 from passlib.hash import bcrypt
 
 from assemblyline.common import forge
-from assemblyline.common.auth_email import send_signup_email, send_reset_email
+from assemblyline.common.comms import send_signup_email, send_reset_email
 from assemblyline.common.isotime import now
 from assemblyline.common.security import generate_random_secret, get_totp_token, \
     check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password

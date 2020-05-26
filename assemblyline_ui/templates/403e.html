@@ -63,7 +63,11 @@
 					<br/>
 					<h3 style="padding-bottom: 20px">Waiting for system administrators approval ...</h3>
 					<div><i>{{exception}}</i></div>
-					{% if email %}<div style="padding-top: 20px"> Contact system administrators at <a href="mailto:{{email}}">{{email}}</a> to get your account activated.</div>{% endif %}
+                    {% if notified %}
+                        <div style="padding-top: 20px"> System administrators have been notified. You will receive an email once your account is active.</div>
+                    {% elif email %}
+                        <div style="padding-top: 20px"> Contact system administrators at <a href="mailto:{{email}}">{{email}}</a> to get your account activated.</div>
+                    {% endif %}
 				</div>
 			</div>
 		</div>

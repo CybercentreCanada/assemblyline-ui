@@ -1,6 +1,7 @@
 
 from flask import request
 
+from assemblyline.common.comms import send_authorize_email, send_activated_email
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import get_password_hash, check_password_requirements, \
     get_password_requirement_message
@@ -222,7 +223,20 @@ def set_user_account(username, **kwargs):
         else:
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
-        return make_api_response({"success": save_user_account(username, data, kwargs['user'])})
+        ret_val = save_user_account(username, data, kwargs['user'])
+
+        if ret_val and \
+                not old_user['is_active'] \
+                and data['is_active'] \
+                and config.ui.tos_lockout \
+                and config.ui.tos_lockout_notify:
+            email = data['email'] or ""
+            for adr in config.ui.tos_lockout_notify:
+                send_activated_email(adr, username, email, kwargs['user']['uname'])
+            if email:
+                send_activated_email(email, username, email, kwargs['user']['uname'])
+
+        return make_api_response({"success": ret_val})
     except AccessDeniedException as e:
         return make_api_response({"success": False}, str(e), 403)
     except InvalidDataException as e:
@@ -695,5 +709,10 @@ def agree_with_tos(username, **kwargs):
         user.agrees_with_tos = now_as_iso()
         if config.ui.tos_lockout:
             user.is_active = False
+
         STORAGE.user.save(username, user)
+
+        if config.ui.tos_lockout and config.ui.tos_lockout_notify:
+            for adr in config.ui.tos_lockout_notify:
+                send_authorize_email(adr, username, user.email or "")
         return make_api_response({"success": True})

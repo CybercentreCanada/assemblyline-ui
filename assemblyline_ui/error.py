@@ -66,7 +66,9 @@ def handle_403(e):
         return make_api_response("", "Access Denied (%s) [%s]" % (request.path, error_message), 403)
     else:
         if error_message.startswith("User") and str(e).endswith("is disabled"):
-            return render_template('403e.html', exception=error_message, email=config.ui.email or ""), 403
+            return render_template('403e.html', exception=error_message,
+                                   email=config.ui.email or "",
+                                   notified=config.ui.tos_lockout and config.ui.tos_lockout_notify), 403
         else:
             return render_template('403.html', exception=error_message), 403
 
