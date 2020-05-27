@@ -67,6 +67,7 @@ function LoginBaseCtrl($scope, $http, $timeout) {
                 email: $scope.email_signup}
             })
             .success(function () {
+                $scope.loading = false;
                 $scope.signed_up = true;
             })
             .error(function (data) {

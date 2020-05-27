@@ -50,6 +50,7 @@ function ResetBaseCtrl($scope, $http, $timeout) {
             data: {email: $scope.email}
         })
         .success(function () {
+            $scope.loading = false;
             $scope.link_sent = true;
         })
         .error(function (data) {

@@ -152,9 +152,15 @@ def get_reset_link(**_):
     email = data.get('email', None)
     if email and STORAGE.user.search(f"email:{email}").get('total', 0) == 1:
         key = hashlib.sha256(get_random_password(length=512).encode('utf-8')).hexdigest()
-        send_reset_email(email, key)
-        get_reset_queue(key).add(email)
-    return make_api_response({"success": True})
+        # noinspection PyBroadException
+        try:
+            send_reset_email(email, key)
+            get_reset_queue(key).add(email)
+            return make_api_response({"success": True})
+        except Exception:
+            make_api_response({"success": False}, "The system failed to send the password reset link.", 400)
+
+    return make_api_response({"success": False}, "We have no record of this email address in our system.", 400)
 
 
 # noinspection PyBroadException,PyPropertyAccess
@@ -479,7 +485,7 @@ def signup(**_):
             "name": uname
         })
     except Exception:
-        return make_api_response({"success": False})
+        return make_api_response({"success": False}, "The system failed to send signup confirmation link.", 400)
 
     return make_api_response({"success": True})
 
