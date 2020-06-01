@@ -7,6 +7,8 @@ from assemblyline.common import forge
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
+from assemblyline.remote.datatypes import get_client
+from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, BUILD_MASTER, BUILD_LOWER
 
@@ -88,6 +90,42 @@ def add_service(**_):
         ))
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
         return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/updates/", methods=["GET"])
+@api_login(audit=False, allow_readonly=False, check_xsrf_token=False)  # TODO: re-enable XSRF tokens
+def check_for_service_updates(**_):
+    """
+        Check for potential updates for the given services.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+        {TBD}
+    """
+    output = {}
+    latest_service_tags = Hash('service-tags', get_client(
+        host=config.core.redis.nonpersistent.host,
+        port=config.core.redis.nonpersistent.port,
+        private=False,
+    ))
+
+    for service in STORAGE.list_all_services(full=True, as_obj=False):
+        update_info = latest_service_tags.get(service['name']) or {}
+        latest_tag = update_info.get(service['update_channel'], None)
+        output[service['name']] = {
+            "latest_tag": latest_tag,
+            "update_available": latest_tag is not None and latest_tag != service['version']
+        }
+
+    return make_api_response(output)
 
 
 @service_api.route("/constants/", methods=["GET"])
