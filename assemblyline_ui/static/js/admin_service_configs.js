@@ -495,12 +495,13 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         //Load params from datastore
-        $scope.update = function (name, version) {
+        $scope.update = function (name, image) {
             $scope.loading_extra = true;
 
             $http({
                 method: 'PUT',
-                url: "/api/v4/service/update/" + name + "/" + version + "/"
+                url: "/api/v4/service/update/",
+                data: {name: name, image: image}
             })
             .success(function (data) {
                 $scope.loading_extra = false;

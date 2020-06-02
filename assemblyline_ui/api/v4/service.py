@@ -105,7 +105,7 @@ def add_service(**_):
 
 
 @service_api.route("/updates/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False)
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
 def check_for_service_updates(**_):
     """
         Check for potential updates for the given services.
@@ -133,6 +133,7 @@ def check_for_service_updates(**_):
         update_info = latest_service_tags.get(service['name']) or {}
         latest_tag = update_info.get(service['update_channel'], None)
         output[service['name']] = {
+            "image": f"{update_info['image']}:{latest_tag or 'latest'}",
             "latest_tag": latest_tag,
             "update_available": latest_tag is not None and latest_tag != service['version'],
             "updating": service_update.exists(service['name'])
@@ -392,26 +393,29 @@ def set_service(servicename, **_):
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
 
 
-@service_api.route("/update/<service_name>/<service_version>/", methods=["PUT"])
-@api_login(audit=False, allow_readonly=False)
-def update_service(service_name, service_version, **_):
+@service_api.route("/update/", methods=["PUT"])
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+def update_service(**_):
     """
         Update a given service
 
         Variables:
-        service_name     ->    Name of the service to update
-        service_version  ->    Version to update to
+        None
 
         Arguments:
         None
 
         Data Block:
-        None
+        {
+          "name": "ResultSample"
+          "image": "cccs/assemblyline-service-resultsample:4.0.0dev0"
+        }
 
         Result example:
         {
           success: true
         }
     """
-    service_update.set(service_name, service_version)
+    data = request.json
+    service_update.set(data['name'], data['image'])
     return make_api_response({'success': True})
