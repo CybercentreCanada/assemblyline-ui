@@ -18,6 +18,18 @@ SUB_API = 'service'
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
 service_api._doc = "Manage the different services"
 
+latest_service_tags = Hash('service-tags', get_client(
+    host=config.core.redis.nonpersistent.host,
+    port=config.core.redis.nonpersistent.port,
+    private=False,
+))
+
+service_update = Hash('container-update', get_client(
+    host=config.core.redis.nonpersistent.host,
+    port=config.core.redis.nonpersistent.port,
+    private=False,
+))
+
 
 @service_api.route("/", methods=["PUT"])
 @api_login(require_type=['admin'], allow_readonly=False)
@@ -93,7 +105,7 @@ def add_service(**_):
 
 
 @service_api.route("/updates/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, check_xsrf_token=False)  # TODO: re-enable XSRF tokens
+@api_login(audit=False, allow_readonly=False)
 def check_for_service_updates(**_):
     """
         Check for potential updates for the given services.
@@ -108,21 +120,22 @@ def check_for_service_updates(**_):
         None
 
         Result example:
-        {TBD}
+        {
+          'ResultSample': {
+            'latest_tag': 'v4.0.0dev163',
+            'update_available': true
+          }, ...
+        }
     """
     output = {}
-    latest_service_tags = Hash('service-tags', get_client(
-        host=config.core.redis.nonpersistent.host,
-        port=config.core.redis.nonpersistent.port,
-        private=False,
-    ))
 
     for service in STORAGE.list_all_services(full=True, as_obj=False):
         update_info = latest_service_tags.get(service['name']) or {}
         latest_tag = update_info.get(service['update_channel'], None)
         output[service['name']] = {
             "latest_tag": latest_tag,
-            "update_available": latest_tag is not None and latest_tag != service['version']
+            "update_available": latest_tag is not None and latest_tag != service['version'],
+            "updating": service_update.exists(service['name'])
         }
 
     return make_api_response(output)
@@ -377,3 +390,28 @@ def set_service(servicename, **_):
     delta['version'] = version
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
+
+
+@service_api.route("/update/<service_name>/<service_version>/", methods=["PUT"])
+@api_login(audit=False, allow_readonly=False)
+def update_service(service_name, service_version, **_):
+    """
+        Update a given service
+
+        Variables:
+        service_name     ->    Name of the service to update
+        service_version  ->    Version to update to
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+        {
+          success: true
+        }
+    """
+    service_update.set(service_name, service_version)
+    return make_api_response({'success': True})
