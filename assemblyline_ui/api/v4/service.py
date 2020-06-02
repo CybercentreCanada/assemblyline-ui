@@ -7,6 +7,8 @@ from assemblyline.common import forge
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
+from assemblyline.remote.datatypes import get_client
+from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, BUILD_MASTER, BUILD_LOWER
 
@@ -15,6 +17,18 @@ config = forge.get_config()
 SUB_API = 'service'
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
 service_api._doc = "Manage the different services"
+
+latest_service_tags = Hash('service-tags', get_client(
+    host=config.core.redis.nonpersistent.host,
+    port=config.core.redis.nonpersistent.port,
+    private=False,
+))
+
+service_update = Hash('container-update', get_client(
+    host=config.core.redis.nonpersistent.host,
+    port=config.core.redis.nonpersistent.port,
+    private=False,
+))
 
 
 @service_api.route("/", methods=["PUT"])
@@ -88,6 +102,45 @@ def add_service(**_):
         ))
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
         return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/updates/", methods=["GET"])
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+def check_for_service_updates(**_):
+    """
+        Check for potential updates for the given services.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+        {
+          'ResultSample': {
+            'latest_tag': 'v4.0.0dev163',
+            'update_available': true
+          }, ...
+        }
+    """
+    output = {}
+
+    for service in STORAGE.list_all_services(full=True, as_obj=False):
+        update_info = latest_service_tags.get(service['name']) or {}
+        if update_info:
+            latest_tag = update_info[service['update_channel']]
+            output[service['name']] = {
+                "image": f"{update_info['image']}:{latest_tag or 'latest'}",
+                "latest_tag": latest_tag,
+                "update_available": latest_tag is not None and latest_tag != service['version'],
+                "updating": service_update.exists(service['name'])
+            }
+
+    return make_api_response(output)
 
 
 @service_api.route("/constants/", methods=["GET"])
@@ -339,3 +392,31 @@ def set_service(servicename, **_):
     delta['version'] = version
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
+
+
+@service_api.route("/update/", methods=["PUT"])
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+def update_service(**_):
+    """
+        Update a given service
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        {
+          "name": "ResultSample"
+          "image": "cccs/assemblyline-service-resultsample:4.0.0dev0"
+        }
+
+        Result example:
+        {
+          success: true
+        }
+    """
+    data = request.json
+    service_update.set(data['name'], data['image'])
+    return make_api_response({'success': True})

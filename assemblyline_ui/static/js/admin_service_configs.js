@@ -13,6 +13,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.loading_extra = false;
         $scope.current_service = null;
         $scope.current_source = null;
+        $scope.update_data = {};
         $scope.started = false;
         //DEBUG MODE
         $scope.debug = false;
@@ -24,6 +25,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.error = '';
         $scope.success = '';
         $scope.yaml = '';
+
 
         $scope.typeOf = function (val) {
             return typeof val;
@@ -492,6 +494,40 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $scope.load_data();
         };
 
+        //Load params from datastore
+        $scope.update = function (name, image) {
+            $scope.loading_extra = true;
+
+            $http({
+                method: 'PUT',
+                url: "/api/v4/service/update/",
+                data: {name: name, image: image}
+            })
+            .success(function (data) {
+                $scope.loading_extra = false;
+                $scope.update_data[name]['updating'] = true;
+            })
+            .error(function (data, status, headers, config) {
+                $scope.loading_extra = false;
+                $scope.updating[name] = false;
+
+                if (data === "" || data === null || status === 400) {
+                    $scope.service_list = [];
+                    $scope.started = true;
+                    return;
+                }
+
+                if (data.api_error_message) {
+                    $scope.error = data.api_error_message;
+                }
+                else {
+                    $scope.error = config.url + " (" + status + ")";
+                }
+                $scope.started = true;
+
+            });
+        };
+
         //Pager methods
         $scope.load_data = function () {
             $scope.loading_extra = true;
@@ -500,50 +536,71 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 method: 'GET',
                 url: "/api/v4/service/all/"
             })
-                .success(function (data) {
-                    $scope.loading_extra = false;
-                    $scope.service_list = data.api_response;
+            .success(function (data) {
+                $scope.loading_extra = false;
+                $scope.service_list = data.api_response;
+                $scope.started = true;
+            })
+            .error(function (data, status, headers, config) {
+                $scope.loading_extra = false;
+
+                if (data === "" || data === null || status === 400) {
+                    $scope.service_list = [];
                     $scope.started = true;
-                })
-                .error(function (data, status, headers, config) {
-                    $scope.loading_extra = false;
+                    return;
+                }
 
-                    if (data === "" || data === null || status === 400) {
-                        $scope.service_list = [];
-                        $scope.started = true;
-                        return;
-                    }
+                if (data.api_error_message) {
+                    $scope.error = data.api_error_message;
+                }
+                else {
+                    $scope.error = config.url + " (" + status + ")";
+                }
+                $scope.started = true;
 
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                    $scope.started = true;
+            });
 
-                });
+            $http({
+                method: 'GET',
+                url: "/api/v4/service/updates/"
+            })
+            .success(function (data) {
+                $scope.update_data = data.api_response;
+            })
+            .error(function (data, status, headers, config) {
+                if (data === "" || data === null) {
+                    return;
+                }
+
+                if (data.api_error_message) {
+                    $scope.error = data.api_error_message;
+                }
+                else {
+                    $scope.error = config.url + " (" + status + ")";
+                }
+                scroll(0, 0);
+            });
 
             $http({
                 method: 'GET',
                 url: "/api/v4/service/constants/"
             })
-                .success(function (data) {
-                    $scope.service_constants = data.api_response;
-                })
-                .error(function (data, status, headers, config) {
-                    if (data === "" || data === null) {
-                        return;
-                    }
+            .success(function (data) {
+                $scope.service_constants = data.api_response;
+            })
+            .error(function (data, status, headers, config) {
+                if (data === "" || data === null) {
+                    return;
+                }
 
-                    if (data.api_error_message) {
-                        $scope.error = data.api_error_message;
-                    }
-                    else {
-                        $scope.error = config.url + " (" + status + ")";
-                    }
-                    scroll(0, 0);
-                });
+                if (data.api_error_message) {
+                    $scope.error = data.api_error_message;
+                }
+                else {
+                    $scope.error = config.url + " (" + status + ")";
+                }
+                scroll(0, 0);
+            });
         };
 
         //Service Specific functions/vars

@@ -19,7 +19,7 @@
 			<table class="table table-hover">
 				<thead>
 					<tr class="active">
-						<th>Name</th><th>Version</th><th>Category</th><th>Stage</th><th>Accepts</th><th>Enabled</th>
+						<th>Name</th><th>Version</th><th>Category</th><th>Stage</th><th>Accepts</th><th>Enabled</th><th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -32,6 +32,10 @@
 						<td class="text-muted">
 							<span ng-show="s.enabled" class="glyphicon glyphicon-ok text-success"></span>
 							<span ng-hide="s.enabled" class="glyphicon glyphicon-remove text-danger"></span>
+						</td>
+						<td style="width: 1px">
+							<div title="{{s.name}} version {{update_data[s.name]['latest_tag']}} available!" class="btn btn-xs btn-info" ng-show="update_data[s.name]['update_available']&&!update_data[s.name]['updating']" ng-click="update(s.name, update_data[s.name]['image']);$event.stopPropagation();">Update</div>
+							<div ng-show="update_data[s.name]['updating']" class="text-info">Updating...</div>
 						</td>
 					</tr>
 				</tbody>

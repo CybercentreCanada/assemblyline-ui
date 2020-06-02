@@ -97,6 +97,16 @@
         <div>
             <h4><strong>Docker configuration</strong></h4>
         </div>
+        <div class="form-group">
+            <label class="control-label">Service container channel</label>
+            <select class="form-control input-sm" ng-model="current_service.update_channel">
+                <option value="stable">Stable</option>
+                <option value="rc">Release Candidate</option>
+                <option value="beta">Beta</option>
+                <option value="dev">Development</option>
+            </select>
+        </div>
+        <label class="control-label">Docker image</label>
         <div docker-config src="current_service.docker_config" type="'service_container'" style="margin-bottom: 10px"></div>
         <label>Container dependancies</label>
         <div class="row">
