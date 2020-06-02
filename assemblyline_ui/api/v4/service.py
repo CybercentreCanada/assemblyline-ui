@@ -131,13 +131,14 @@ def check_for_service_updates(**_):
 
     for service in STORAGE.list_all_services(full=True, as_obj=False):
         update_info = latest_service_tags.get(service['name']) or {}
-        latest_tag = update_info.get(service['update_channel'], None)
-        output[service['name']] = {
-            "image": f"{update_info['image']}:{latest_tag or 'latest'}",
-            "latest_tag": latest_tag,
-            "update_available": latest_tag is not None and latest_tag != service['version'],
-            "updating": service_update.exists(service['name'])
-        }
+        if update_info:
+            latest_tag = update_info[service['update_channel']]
+            output[service['name']] = {
+                "image": f"{update_info['image']}:{latest_tag or 'latest'}",
+                "latest_tag": latest_tag,
+                "update_available": latest_tag is not None and latest_tag != service['version'],
+                "updating": service_update.exists(service['name'])
+            }
 
     return make_api_response(output)
 
