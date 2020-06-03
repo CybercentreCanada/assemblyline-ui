@@ -19,14 +19,14 @@ service_api = make_subapi_blueprint(SUB_API, api_version=4)
 service_api._doc = "Manage the different services"
 
 latest_service_tags = Hash('service-tags', get_client(
-    host=config.core.redis.nonpersistent.host,
-    port=config.core.redis.nonpersistent.port,
+    host=config.core.redis.persistent.host,
+    port=config.core.redis.persistent.port,
     private=False,
 ))
 
 service_update = Hash('container-update', get_client(
-    host=config.core.redis.nonpersistent.host,
-    port=config.core.redis.nonpersistent.port,
+    host=config.core.redis.persistent.host,
+    port=config.core.redis.persistent.port,
     private=False,
 ))
 
