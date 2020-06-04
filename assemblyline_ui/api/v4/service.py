@@ -134,6 +134,7 @@ def check_for_service_updates(**_):
         if update_info:
             latest_tag = update_info[service['update_channel']]
             output[service['name']] = {
+                "auth": update_info['auth'],
                 "image": f"{update_info['image']}:{latest_tag or 'latest'}",
                 "latest_tag": latest_tag,
                 "update_available": latest_tag is not None and latest_tag != service['version'],
@@ -388,6 +389,8 @@ def set_service(servicename, **_):
     if 'name' in data and servicename != data['name']:
         return make_api_response({"success": False}, "You cannot change the service name", 400)
 
+    # Do not allow user to edit the docker_config.image since we will use the default image for each versions
+    data['docker_config']['image'] = current_service['docker_config']['image']
     delta = get_recursive_delta(current_service, data)
     delta['version'] = version
 
@@ -418,5 +421,13 @@ def update_service(**_):
         }
     """
     data = request.json
-    service_update.set(data['name'], data['image'])
-    return make_api_response({'success': True})
+    service_key = f"{data['name']}_{data['update_data']['latest_tag']}"
+
+    # Check is the version we are trying to update to already exists
+    if STORAGE.service.get_if_exists(service_key):
+        operations = [(STORAGE.service_delta.UPDATE_SET, 'version', data['update_data']['latest_tag'])]
+        if STORAGE.service_delta.update(data['name'], operations):
+            return make_api_response({'success': True, 'status': "updated"})
+
+    service_update.set(data['name'], data['update_data'])
+    return make_api_response({'success': True, 'status': "updating"})

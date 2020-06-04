@@ -495,17 +495,25 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         //Load params from datastore
-        $scope.update = function (name, image) {
+        $scope.update = function (name, update_data) {
             $scope.loading_extra = true;
 
             $http({
                 method: 'PUT',
                 url: "/api/v4/service/update/",
-                data: {name: name, image: image}
+                data: {name: name, update_data: update_data}
             })
             .success(function (data) {
                 $scope.loading_extra = false;
-                $scope.update_data[name]['updating'] = true;
+                if (data.api_response.status === 'updating'){
+                    $scope.update_data[name]['updating'] = true;
+                }
+                else {
+                    $scope.update_data[name]['updating'] = true;
+                    $timeout(function () {
+                        $scope.load_data();
+                    }, 2000);
+                }
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;

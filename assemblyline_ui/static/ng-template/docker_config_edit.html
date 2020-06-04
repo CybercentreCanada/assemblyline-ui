@@ -2,7 +2,7 @@
 	<div class="col-md-12">
 		<div id="docker_image" class="form-group">
 			<label class="control-label">Container Image</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
-			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.image">
+			<input ng-disabled="docker_type=='service_container'" type="text" class="form-control input-sm input-medium" ng-model="current_docker_config.image">
 		</div>
 	</div>
 	<div class="col-md-6">
