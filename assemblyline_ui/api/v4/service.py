@@ -9,8 +9,9 @@ from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
+from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, BUILD_MASTER, BUILD_LOWER
+from assemblyline_ui.config import STORAGE, LOGGER
 
 config = forge.get_config()
 
@@ -52,13 +53,30 @@ def add_service(**_):
     data = request.data
 
     try:
+        if b"$SERVICE_TAG" in data:
+            tmp_service = yaml.safe_load(data)
+            tmp_service.pop('tool_version', None)
+            tmp_service.pop('file_required', None)
+            tmp_service.pop('heuristics', [])
+            tmp_service['update_channel'] = config.services.preferred_update_channel
+            image_name, tag_name, _ = get_latest_tag_for_service(Service(tmp_service), config, LOGGER)
+            if tag_name:
+                tag_name = tag_name.encode()
+            else:
+                tag_name = b'latest'
+
+            data = data.replace(b"$SERVICE_TAG", tag_name)
+
         service = yaml.safe_load(data)
         # Pop the data not part of service model
         service.pop('tool_version', None)
         service.pop('file_required', None)
         heuristics = service.pop('heuristics', [])
-        service['version'] = f"{BUILD_MASTER}.{BUILD_LOWER}.{service.get('version', 1)}"
 
+        # Fix update_channel with the system default
+        service['update_channel'] = config.services.preferred_update_channel
+
+        # Load service info
         service = Service(service)
 
         # Save service if it doesn't already exist
@@ -132,7 +150,7 @@ def check_for_service_updates(**_):
     for service in STORAGE.list_all_services(full=True, as_obj=False):
         update_info = latest_service_tags.get(service['name']) or {}
         if update_info:
-            latest_tag = update_info[service['update_channel']]
+            latest_tag = update_info.get(service['update_channel'], None)
             output[service['name']] = {
                 "auth": update_info['auth'],
                 "image": f"{update_info['image']}:{latest_tag or 'latest'}",
