@@ -7,7 +7,7 @@ from assemblyline.common.security import get_password_hash, check_password_requi
     get_password_requirement_message
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, config
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, config, LOGGER
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.user import load_user_settings, save_user_settings, save_user_account
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
@@ -230,11 +230,18 @@ def set_user_account(username, **kwargs):
                 and data['is_active'] \
                 and config.ui.tos_lockout \
                 and config.ui.tos_lockout_notify:
-            email = data['email'] or ""
-            for adr in config.ui.tos_lockout_notify:
-                send_activated_email(adr, username, email, kwargs['user']['uname'])
-            if email:
-                send_activated_email(email, username, email, kwargs['user']['uname'])
+            try:
+                email = data['email'] or ""
+                for adr in config.ui.tos_lockout_notify:
+                    send_activated_email(adr, username, email, kwargs['user']['uname'])
+                if email:
+                    send_activated_email(email, username, email, kwargs['user']['uname'])
+            except Exception as e:
+                # We can't send confirmation email, Rollback user change and mark this a failure
+                STORAGE.user.save(username, old_user)
+                LOGGER.error(f"An error occured while sending confirmation emails: {str(e)}")
+                return make_api_response({"success": False}, "The system was unable to send confirmation emails. "
+                                                             "Retry again later...", 404)
 
         return make_api_response({"success": ret_val})
     except AccessDeniedException as e:
@@ -710,9 +717,16 @@ def agree_with_tos(username, **kwargs):
         if config.ui.tos_lockout:
             user.is_active = False
 
+        if config.ui.tos_lockout and config.ui.tos_lockout_notify:
+            # noinspection PyBroadException
+            try:
+                for adr in config.ui.tos_lockout_notify:
+                    send_authorize_email(adr, username, user.email or "")
+            except Exception as e:
+                LOGGER.error(f"An error occured while sending confirmation emails: {str(e)}")
+                return make_api_response({"success": False}, "The system was unable to send confirmation emails "
+                                                             "to the administrators. Retry again later...", 400)
+
         STORAGE.user.save(username, user)
 
-        if config.ui.tos_lockout and config.ui.tos_lockout_notify:
-            for adr in config.ui.tos_lockout_notify:
-                send_authorize_email(adr, username, user.email or "")
         return make_api_response({"success": True})
