@@ -180,7 +180,7 @@ def login():
     oauth_token = ''
     oauth_error = ''
     username = ''
-    oauth_validation = 'code' in request.args and 'state' in request.args
+    oauth_validation = config.auth.oauth.enabled and 'code' in request.args and 'state' in request.args
     oauth_provider = request.args.get('provider', None)
     up_login = config.auth.internal.enabled or config.auth.ldap.enabled
 
