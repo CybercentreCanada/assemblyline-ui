@@ -101,6 +101,11 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") {
                         return;
                     }
@@ -134,6 +139,11 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                     $("#workflowModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") {
                         return;
                     }
@@ -171,6 +181,11 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                 .error(function (data, status, headers, config) {
                     let ctrl;
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "") {
                         return;
@@ -222,6 +237,11 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                 .error(function (data, status, headers, config) {
                     let ctrl;
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "") {
                         return;
@@ -284,6 +304,11 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                 })
                 .error(function (data, status, headers, config) {
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || status === 400) {
                         return;
                     }
@@ -316,6 +341,11 @@ let app = angular.module('app', ['utils', 'search', 'ui.bootstrap', 'ngAnimate',
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "" || status === 400) {
                         $scope.workflow_list = [];

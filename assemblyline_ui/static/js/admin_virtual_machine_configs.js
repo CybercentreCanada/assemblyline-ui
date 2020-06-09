@@ -63,6 +63,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $("#myModal").modal('show');
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -99,6 +104,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -134,6 +144,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "" || data === null || status === 400) {
                         $("#vm_name_group").addClass("has-error");
@@ -187,6 +202,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "" || data === null) {
                         return;
@@ -261,6 +281,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null || status === 400) {
                         $scope.vm_list = [];
                         $scope.total = 0;
@@ -295,6 +320,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "" || data === null) {
                         return;

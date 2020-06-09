@@ -105,6 +105,11 @@ function SearchBaseCtrl($scope, $http, $timeout) {
                 callback(bucket, data.api_response)
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }
@@ -250,9 +255,14 @@ function SearchBaseCtrl($scope, $http, $timeout) {
             url: "/api/v4/search/" + $scope.cur_list.bucket + "/",
             data: data
         })
-        .success(function (data) {
+        .success(function (data, status) {
             $scope.loading_extra = false;
             data.api_response.bucket = $scope.cur_list.bucket;
+
+            if (status === 401){
+                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                return;
+            }
 
             if ($scope.cur_list.bucket === "file") {
                 $scope.file_list = data.api_response;

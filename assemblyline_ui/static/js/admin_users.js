@@ -130,6 +130,11 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "" || data === null) {
                     return;
                 }
@@ -172,6 +177,11 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 $("#myModal").modal('show');
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "" || data === null) {
                     return;
                 }
@@ -210,6 +220,11 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
             .error(function (data, status, headers, config) {
                 let ctrl;
                 $scope.loading_extra = false;
+
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
 
                 if (status === 400) {
                     ctrl = $("#uname");
@@ -289,6 +304,11 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
                 let ctrl;
                 $scope.loading_extra = false;
 
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (status === 400) {
                     ctrl = $("#uname");
                     ctrl.addClass("has-error");
@@ -348,6 +368,11 @@ function AdminUserBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
+
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
 
                 if (data === "" || data === null || status === 400) {
                     $scope.user_list = [];

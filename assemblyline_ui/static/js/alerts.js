@@ -115,6 +115,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -145,7 +150,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.user_input = null;
                             $scope.last_error = "";
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             $scope.last_error = data.api_error_message;
                         });
                 }
@@ -160,7 +170,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.user_input = null;
                             $scope.last_error = "";
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             $scope.last_error = data.api_error_message;
                         });
                 }
@@ -183,7 +198,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.user_input = null;
                             $scope.last_error = "";
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             $scope.last_error = data.api_error_message;
                         });
                 }
@@ -217,7 +237,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.user_input = null;
                             $scope.last_error = "";
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             $scope.last_error = data.api_error_message;
                         });
                 }
@@ -239,7 +264,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.user_input = null;
                             $scope.last_error = "";
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             $scope.last_error = data.api_error_message;
                         });
                 }
@@ -277,7 +307,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             $scope.user_input = null;
                             $scope.last_error = "";
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             $scope.last_error = data.api_error_message;
                         });
                 }
@@ -332,7 +367,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             .success(function () {
                                 $scope.alert_list[alert_idx]['owner'] = $scope.user.uname;
                             })
-                            .error(function (data) {
+                            .error(function (data, status) {
+                                if (status === 401){
+                                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                    return;
+                                }
+
                                 $timeout(function () {
                                     swal({
                                         title: "Error while taking ownership",
@@ -384,7 +424,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                                     }
                                 }
                             })
-                            .error(function (data) {
+                            .error(function (data, status) {
+                                if (status === 401){
+                                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                    return;
+                                }
+
                                 $timeout(function () {
                                     swal({
                                         title: "Error while taking ownership",
@@ -439,7 +484,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         $scope.related_ids = data.api_response;
                         $("#related_ids_mdl").modal('show');
                     })
-                    .error(function (data) {
+                    .error(function (data, status) {
+                        if (status === 401){
+                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            return;
+                        }
+
                         $timeout(function () {
                             swal({
                                 title: "Error while generating list of IDs.",
@@ -485,7 +535,12 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     ctrl.addClass("btn-primary");
                     ctrl.text(data.api_response.total + " similar alerts")
                 })
-                .error(function (data) {
+                .error(function (data, status) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     ctrl.removeClass("btn-default");
                     ctrl.addClass("btn-danger");
                     ctrl.removeAttr('disabled');
@@ -591,6 +646,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") return;
 
                     if (data.api_error_message) {
@@ -651,6 +711,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading = false;
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") return;
 
                     if (status === 400) {
@@ -705,6 +770,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") return;
 
                     if (data.api_error_message) {
@@ -730,6 +800,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") return;
 
                     if (data.api_error_message) {
@@ -754,6 +829,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "") return;
 
@@ -784,6 +864,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
 
                     if (data === "") return;
 

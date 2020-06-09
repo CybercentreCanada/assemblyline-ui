@@ -34,6 +34,11 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                     $scope.map = data.api_response;
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }

@@ -277,6 +277,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -318,6 +323,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             }, 1500);
                         })
                         .error(function (data, status, headers, config) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             if (data === "" || data === null) {
                                 return;
                             }
@@ -368,6 +378,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -400,6 +415,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }, 2000);
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -587,6 +607,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                             $scope.outstanding = data.api_response;
                         })
                         .error(function (data, status, headers, config) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             if (data === "" || data === null) {
                                 return;
                             }
@@ -622,6 +647,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -648,6 +678,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -673,6 +708,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -743,6 +783,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.render_file(data, name);
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -765,6 +810,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }).success(function (data){
                 $scope.configuration = data.api_response;
             }).error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -809,6 +859,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     $scope.max_classification = get_max_c12n(data.api_response.classification);
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -874,6 +929,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     });
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -911,6 +971,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     });
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -942,6 +1007,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }

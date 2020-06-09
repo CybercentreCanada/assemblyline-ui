@@ -83,6 +83,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                 })
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
@@ -132,7 +137,12 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.related_ids = data.api_response;
                         $("#related_ids_mdl").modal('show');
                     })
-                    .error(function (data) {
+                    .error(function (data, status) {
+                        if (status === 401){
+                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            return;
+                        }
+
                         return $timeout(function () {
                             swal({
                                 title: "Error while generating list of IDs.",
@@ -176,7 +186,12 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                             ctrl.text("Has ownership");
                             $scope.alert['owner'] = $scope.user.uname;
                         })
-                        .error(function (data) {
+                        .error(function (data, status) {
+                            if (status === 401){
+                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                return;
+                            }
+
                             ctrl.removeClass("btn-default");
                             ctrl.addClass("btn-danger");
                             ctrl.removeAttr('disabled');
@@ -205,7 +220,12 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     ctrl.addClass("btn-primary");
                     ctrl.text(data.api_response.total + " similar alerts")
                 })
-                .error(function (data) {
+                .error(function (data, status) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     ctrl.removeClass("btn-default");
                     ctrl.addClass("btn-danger");
                     ctrl.removeAttr('disabled');
@@ -225,7 +245,12 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.user_input = null;
                         $scope.last_error = "";
                     })
-                    .error(function (data) {
+                    .error(function (data, status) {
+                        if (status === 401){
+                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            return;
+                        }
+
                         if (data.api_error_message.indexOf("already has") === -1) {
                             $scope.last_error = data.api_error_message;
                         }
@@ -242,7 +267,12 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.user_input = null;
                         $scope.last_error = "";
                     })
-                    .error(function (data) {
+                    .error(function (data, status) {
+                        if (status === 401){
+                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            return;
+                        }
+
                         if (data.api_error_message.indexOf("already has") === -1) {
                             $scope.last_error = data.api_error_message;
                         }
@@ -267,7 +297,12 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         $scope.user_input = null;
                         $scope.last_error = "";
                     })
-                    .error(function (data) {
+                    .error(function (data, status) {
+                        if (status === 401){
+                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            return;
+                        }
+
                         if (data.api_error_message.indexOf("already has") === -1) {
                             $scope.last_error = data.api_error_message;
                         }
@@ -311,6 +346,11 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     $scope.loading_extra = false;
                 })
                 .error(function (data, status, headers, config) {
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "") {
                         return;
                     }

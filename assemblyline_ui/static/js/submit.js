@@ -57,6 +57,11 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
             window.location = "/submission_detail.html?new&sid=" + data.api_response.sid;
         })
         .error(function (data, status, headers, config) {
+            if (status === 401){
+                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                return;
+            }
+
             if (data === "") {
                 return;
             }
@@ -206,6 +211,11 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                         window.location = "/submission_detail.html?new&sid=" + data.api_response.sid;
                     })
                     .error(function (data, status, headers, config) {
+                        if (status === 401){
+                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            return;
+                        }
+
                         if (data === "") {
                             return;
                         }
@@ -319,6 +329,11 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                 $scope.params_bck = temp_param_bck;
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }
@@ -344,11 +359,16 @@ function flowFactory(flowFactoryProvider) {
         simultaneousUploads: 4,
         generateUniqueIdentifier: generateUUID
     };
-    flowFactoryProvider.on('catchAll', function (event) {
-        console.log('catchAll', arguments);
-    });
-    flowFactoryProvider.on('fileAdded', function (event) {
-        console.log(arguments[0].uniqueIdentifier)
+    flowFactoryProvider.on('fileError', function (event) {
+        try{
+            let data = JSON.parse(arguments[1]);
+            if (data.hasOwnProperty("api_status_code")){
+                if (data.api_status_code === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                }
+            }
+        }
+        catch (ex){}
     });
 }
 

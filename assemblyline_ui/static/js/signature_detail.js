@@ -49,6 +49,11 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
 
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }
@@ -81,6 +86,11 @@ function SignatureDetailBaseCtrl($scope, $http, $timeout) {
                 $scope.current_signature_state = data.api_response.status;
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }

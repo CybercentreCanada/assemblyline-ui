@@ -70,6 +70,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }
@@ -131,6 +136,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }
@@ -166,6 +176,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "") {
                     return;
                 }
@@ -270,6 +285,11 @@ function ServiceBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
+
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
 
                 if (data === "" || status === 400) {
                     $scope.source_map = {};

@@ -26,7 +26,7 @@ let app = angular.module('app', ['utils', 'search', 'socket-io', 'ngAnimate', 'u
         });
         return mySocket;
     })
-    .controller('ALController', function ($scope, $http, $timeout, mySocket) {
+    .controller('ALController', function ($scope, $timeout, mySocket) {
         $scope.user = null;
         $scope.socket_status = 'init';
         $scope.data = {

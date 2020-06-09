@@ -97,6 +97,11 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
                 }, 2000);
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "" || data === null) {
                     return;
                 }
@@ -129,6 +134,11 @@ function SettingsBaseCtrl($scope, $http, $timeout) {
                 $scope.params_bck = temp_param_bck;
             })
             .error(function (data, status, headers, config) {
+                if (status === 401){
+                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    return;
+                }
+
                 if (data === "" || data === null) {
                     return;
                 }

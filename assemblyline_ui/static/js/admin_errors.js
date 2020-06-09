@@ -77,6 +77,11 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
 
+                    if (status === 401){
+                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        return;
+                    }
+
                     if (data === "" || data === null) return;
 
                     if (status === 400) {
