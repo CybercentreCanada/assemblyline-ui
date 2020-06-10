@@ -56,7 +56,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap']
             .error(function (data, status, headers, config) {
                 $scope.started = true;
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 

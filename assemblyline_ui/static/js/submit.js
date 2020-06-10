@@ -58,7 +58,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
         })
         .error(function (data, status, headers, config) {
             if (status === 401){
-                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                 return;
             }
 
@@ -212,7 +212,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
                     })
                     .error(function (data, status, headers, config) {
                         if (status === 401){
-                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                             return;
                         }
 
@@ -330,7 +330,7 @@ function SubmitBaseCtrl($scope, $http, $timeout) {
             })
             .error(function (data, status, headers, config) {
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
@@ -364,7 +364,7 @@ function flowFactory(flowFactoryProvider) {
             let data = JSON.parse(arguments[1]);
             if (data.hasOwnProperty("api_status_code")){
                 if (data.api_status_code === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                 }
             }
         }

@@ -84,7 +84,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -139,7 +139,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     })
                     .error(function (data, status) {
                         if (status === 401){
-                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                             return;
                         }
 
@@ -188,7 +188,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -222,7 +222,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                 })
                 .error(function (data, status) {
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -247,7 +247,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     })
                     .error(function (data, status) {
                         if (status === 401){
-                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                             return;
                         }
 
@@ -269,7 +269,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     })
                     .error(function (data, status) {
                         if (status === 401){
-                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                             return;
                         }
 
@@ -299,7 +299,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                     })
                     .error(function (data, status) {
                         if (status === 401){
-                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                             return;
                         }
 
@@ -347,7 +347,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'ui.bootstrap',
                 })
                 .error(function (data, status, headers, config) {
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 

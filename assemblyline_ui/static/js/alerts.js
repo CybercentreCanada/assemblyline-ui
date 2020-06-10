@@ -116,7 +116,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 .error(function (data, status, headers, config) {
                     $scope.loading_extra = false;
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -152,7 +152,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -172,7 +172,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -200,7 +200,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -239,7 +239,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -266,7 +266,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -309,7 +309,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                         })
                         .error(function (data, status) {
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -369,7 +369,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             })
                             .error(function (data, status) {
                                 if (status === 401){
-                                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                     return;
                                 }
 
@@ -426,7 +426,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                             })
                             .error(function (data, status) {
                                 if (status === 401){
-                                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                     return;
                                 }
 
@@ -486,7 +486,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     })
                     .error(function (data, status) {
                         if (status === 401){
-                            window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                             return;
                         }
 
@@ -537,7 +537,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                 })
                 .error(function (data, status) {
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -647,7 +647,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.loading_extra = false;
 
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -712,7 +712,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.loading = false;
 
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -771,7 +771,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.loading_extra = false;
 
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -801,7 +801,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.loading_extra = false;
 
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -831,7 +831,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.loading_extra = false;
 
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 
@@ -866,7 +866,7 @@ let app = angular.module('app', ['utils', 'search', 'infinite-scroll', 'ui.boots
                     $scope.loading_extra = false;
 
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 

@@ -35,7 +35,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 })
                 .error(function (data, status, headers, config) {
                     if (status === 401){
-                        window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                         return;
                     }
 

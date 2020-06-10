@@ -30,7 +30,7 @@ function ResetBaseCtrl($scope, $http, $timeout) {
             .success(function () {
                 $scope.reseted = true;
                 $timeout(function(){
-                    window.location = "login.html";
+                    window.location = "/login.html";
                 }, 2000);
             })
             .error(function (data) {

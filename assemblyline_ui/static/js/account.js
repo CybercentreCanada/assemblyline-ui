@@ -73,7 +73,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
@@ -136,7 +136,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
                         function(data, status, headers, config){
                             $scope.loading_extra = false;
                             if (status === 401){
-                                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                                 return;
                             }
 
@@ -163,7 +163,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         }).error(function (data, status, headers, config) {
             $scope.loading_extra = false;
             if (status === 401){
-                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                 return;
             }
 
@@ -208,7 +208,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         .error(function (data, status, headers, config) {
             $scope.loading_extra = false;
             if (status === 401){
-                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                 return;
             }
 
@@ -252,7 +252,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
@@ -288,7 +288,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         .error(function (data, status, headers, config) {
             $scope.loading_extra = false;
             if (status === 401){
-                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                 return;
             }
 
@@ -323,7 +323,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
         .error(function (data, status, headers, config) {
             $scope.loading_extra = false;
             if (status === 401){
-                window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                 return;
             }
 
@@ -369,7 +369,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
@@ -421,7 +421,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             .error(function (data, status, headers, config) {
                 $scope.loading_extra = false;
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
@@ -472,7 +472,7 @@ function AccountBaseCtrl($scope, $http, $timeout, $sce) {
             })
             .error(function (data, status, headers, config) {
                 if (status === 401){
-                    window.location = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location = "/login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
                     return;
                 }
 
