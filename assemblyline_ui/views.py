@@ -215,11 +215,28 @@ def login():
                 try:
                     # Test oauth access token
                     token = provider.authorize_access_token()
+                    oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
                     # Get user data
-                    resp = provider.get(config.auth.oauth.providers[oauth_provider].user_get)
+                    resp = provider.get(oauth_provider_config.user_get)
                     if resp.ok:
-                        data = parse_profile(resp.json(), config.auth.oauth.providers[oauth_provider])
+                        user_data = resp.json()
+
+                        # Add group data if API is configured for it
+                        if oauth_provider_config.user_groups:
+                            resp_grp = provider.get(oauth_provider_config.user_groups)
+                            if resp_grp.ok:
+                                groups = resp_grp.json()
+
+                                if oauth_provider_config.user_groups_data_field:
+                                    groups = groups[oauth_provider_config.user_groups_data_field]
+
+                                if oauth_provider_config.user_groups_name_field:
+                                    groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
+
+                                user_data['groups'] = groups
+
+                        data = parse_profile(user_data, oauth_provider_config)
                         has_access = data.pop('access', False)
                         if has_access:
                             oauth_avatar = data.pop('avatar', None)
@@ -248,8 +265,8 @@ def login():
                             username = data['uname']
 
                             # Make sure the user exists in AL and is in sync
-                            if (not cur_user and config.auth.oauth.providers[oauth_provider].auto_create) or \
-                                    (cur_user and config.auth.oauth.providers[oauth_provider].auto_sync):
+                            if (not cur_user and oauth_provider_config.auto_create) or \
+                                    (cur_user and oauth_provider_config.auto_sync):
 
                                 # Update the current user
                                 cur_user.update(data)
