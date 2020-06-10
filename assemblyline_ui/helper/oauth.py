@@ -73,8 +73,15 @@ def parse_profile(profile, provider):
     )
 
 
-def fetch_avatar(url):
-    if url.startswith('https://') or url.startswith('http://'):
+def fetch_avatar(url, provider, provider_config):
+    if url.startswith(provider_config.api_base_url):
+        resp = provider.get(url[len(provider_config.api_base_url):])
+        if resp.ok and resp.headers.get("content-type") is not None:
+            b64_img = base64.b64encode(resp.content).decode()
+            avatar = f'data:{resp.headers.get("content-type")};base64,{b64_img}'
+            return avatar
+
+    elif url.startswith('https://') or url.startswith('http://'):
         resp = requests.get(url)
         if resp.ok and resp.headers.get("content-type") is not None:
             b64_img = base64.b64encode(resp.content).decode()
