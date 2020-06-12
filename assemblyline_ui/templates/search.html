@@ -139,15 +139,14 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Start Time</th><th>Verdict</th><th>Score</th><th>Description</th><th>User</th><th nowrap># Files</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
+									<th nowrap>Start Time</th><th>Verdict</th><th>Description</th><th>User</th><th nowrap># Files</th><th ng-if="user.c12n_enforcing">Classification</th><th>Status</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="submission in submission_list.items | orderBy:'times.submitted':true">
 									<td nowrap><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.times.submitted | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'" class="label classification {{submission.max_score | verdict_color}}">{{submission.max_score | verdict}}</span><span class='text-muted' ng-show="submission.state=='failed'">N/A</span></a></td>
-						            <td class="{{submission.max_score | score_color}}"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'"><strong>{{submission.max_score}}</strong></span><span class='text-muted' ng-show="submission.state=='failed'">N/A</span></a></td>
-									<td width="100%"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.description | maxLength:120 | breakableStr}}</a></td>
+									<td><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><span ng-show="submission.state=='completed'" title="Maximum Score: {{ submission.max_score }}" class="label classification {{submission.max_score | verdict_color}}">{{submission.max_score | verdict}}</span><span class='text-muted' ng-show="submission.state=='failed'">N/A</span></a></td>
+						            <td width="100%"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.description | maxLength:120 | breakableStr}}</a></td>
 									<td nowrap><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.params.submitter}}</a></td>
 									<td><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}">{{submission.file_count}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/{{get_default_view(submission)}}.html?sid={{submission.sid}}"><label class="label classification {{submission.classification | class_label_color}}">{{submission.classification | class_sm }}</label></a></td>
@@ -227,13 +226,13 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Creation Date</th><th>Score</th><th>SHA256</th><th>Service</th><th ng-if="user.c12n_enforcing">Classification</th>
+									<th nowrap>Creation Date</th><th></th><th>SHA256</th><th>Service</th><th ng-if="user.c12n_enforcing">Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="result in result_list.items | orderBy:'file_info.seen_last':true">
 									<td nowrap><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.created | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td class="{{result.result.score | score_color}}"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><strong>{{result.result.score}}</strong></a></td>
+									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><span title="{{result.result.score | score_label}} (Score: {{ result.result.score }})" class="text-fixed label label-tag {{result.result.score | label_color}}"><strong>{{result.result.score | score_label | firstLetter }}</strong></span></a></td>
 									<td width="100%"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.id | getHashFromKey | breakableStr}}</a></td>
 									<td><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}">{{result.response.service_name}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/file_detail.html?sha256={{result.id | getHashFromKey}}"><label class="label classification {{result.classification | class_label_color}}">{{result.classification | class_sm}}</label></a></td>
@@ -321,14 +320,14 @@
 						<table class="table table-hover table-striped table-clickthrough">
 							<thead>
 								<tr class="active">
-									<th nowrap>Alert Time</th><th>Score</th><th>SHA256</th><th>Status</th><th>Type</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
+									<th nowrap>Alert Time</th><th>Verdict</th><th>SHA256</th><th>Status</th><th>Type</th><th ng-if="user.c12n_enforcing" nowrap>Classification</th>
 								</tr>
 							</thead>
 							<tbody>
 								<tr ng-repeat="alert in alert_list.items | orderBy:'reporting_ts':true">
 									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.reporting_ts | date:'yyyy-MM-dd HH:mm:ss'}}</a></td>
-									<td class="{{alert.al.score | score_color}}"><a href="/alert_detail.html?alert_key={{alert.id}}"><strong>{{alert.al.score}}</strong></a></td>
-									<td width="100%"><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.sha256 | breakableStr}}</a></td>
+									<td><a href="/alert_detail.html?alert_key={{alert.id}}"><span title="Score: {{ alert.al.score }}" class="label classification {{alert.al.score | verdict_color}}">{{alert.al.score | verdict}}</span></a></td>
+						            <td width="100%"><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.file.sha256 | breakableStr}}</a></td>
 									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.status}}</a></td>
 									<td nowrap><a href="/alert_detail.html?alert_key={{alert.id}}">{{alert.type}}</a></td>
 									<td ng-if="user.c12n_enforcing"><a href="/alert_detail.html?alert_key={{alert.id}}"><label class="label classification {{alert.classification | class_label_color}}">{{alert.classification | class_sm}}</label></a></td>

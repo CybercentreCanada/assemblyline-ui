@@ -806,6 +806,17 @@ section.container{
     background-color: #ae4e4e !important;
 }
 
+.label-heur-safe{
+	-webkit-print-color-adjust: exact;
+    color: #FFF !important;
+    background-color: #5cb85c !important;
+}
+
+.label-heur-safe:hover{
+	color: #FFF !important;
+    background-color: #54a054 !important;
+}
+
 .label-highlight{
 	background-color: #428bca !important;
 }
@@ -2068,6 +2079,11 @@ figure.front{
 .section_malicious{
 	min-width: 0.5em;
 	background-color: #f3caca !important;
+}
+
+.section_safe{
+	min-width: 0.5em;
+	background-color: #c8f5c8 !important;
 }
 
 .rpt_row_info {}

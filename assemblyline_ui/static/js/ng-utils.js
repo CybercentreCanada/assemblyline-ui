@@ -1228,6 +1228,14 @@ utils.filter("joinBy", function () {
     }
 });
 
+utils.filter('firstLetter', function () {
+    return function (data) {
+        if (data === undefined || data == null) return "";
+
+        return data[0]
+    }
+});
+
 utils.filter('maxLength', function () {
     return function (data, length) {
         if (data === undefined || data == null) return "";
@@ -1369,6 +1377,9 @@ utils.filter('section_color', function () {
         else if (score >= 100) {
             return "section_suspicious";
         }
+        else if (score < 0) {
+            return "section_safe";
+        }
         else {
             return "section_info";
         }
@@ -1384,8 +1395,29 @@ utils.filter('label_color', function () {
         else if (score >= 100) {
             return "label-heur-suspicious";
         }
+        else if (score < 0) {
+            return "label-heur-safe";
+        }
         else {
             return "label-heur-info";
+        }
+    }
+});
+
+utils.filter('score_label', function () {
+    return function (score) {
+        if (score === undefined || score == null) return "Info";
+        if (score >= 1000) {
+            return "Malicious";
+        }
+        else if (score >= 100) {
+            return "Suspicious";
+        }
+        else if (score < 0) {
+            return "Safe";
+        }
+        else {
+            return "Info";
         }
     }
 });

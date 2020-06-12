@@ -46,15 +46,9 @@
 						</div>
 					</div>
 					<div class="row">
-						<div class="col-xs-4 col-md-3 col-lg-2"><label>Maliciousness Score</label></div>
-						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span class="text-heavy {{data.max_score | score_color}}">{{data.max_score}}</span>
-						</div>
-					</div>
-					<div class="row">
 						<div class="col-xs-4 col-md-3 col-lg-2"><label>Verdict</label></div>
 						<div class="col-xs-8 col-md-9 col-lg-10">
-							<span class="label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span>
+							<span style="cursor: default" title="Maximum score: {{data.max_score}}" class="label {{data.max_score | verdict_color}}">{{data.max_score | verdict}}</span>
 						</div>
 					</div>
 					<div class="row">

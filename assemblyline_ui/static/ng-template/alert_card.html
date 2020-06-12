@@ -2,8 +2,7 @@
     <div id="{{alert_idx}}" class="alert_card" ng-class="{success: alert.owner||alert.hint_owner, danger: alert.al.attrib.length>0}">
         <div class="row">
             <div class="col-xs-12 col-sm-2 col-lg-1 text-center">
-                <div class="pad ac_pl ac_auto_up" style="font-size: 110%;"><span style="width: 100%; min-width: 70px; text-align: center; display: inline-table" class="label label-tag {{alert.al.score | verdict_color}}">{{alert.al.score | verdict}}</span></div>
-                <div class="ac_auto_up hidden-xs {{alert.al.score | score_color}}" style="font-size: 110%;"><b>{{alert.al.score}}</b></div>
+                <div class="pad ac_pl ac_auto_up" style="font-size: 110%;"><span title="Score: {{ alert.al.score }}" style="cursor: default; width: 100%; min-width: 70px; text-align: center; display: inline-table" class="label label-tag {{alert.al.score | verdict_color}}">{{alert.al.score | verdict}}</span></div>
                 <div ng-if="alert.group_count" class="hidden-xs bigger ac_auto_up" style="padding-top: 15px;"><h4><b><a href="/alerts.html?tc_start={{tc_start}}&tc={{tc}}&view_type=list&group_by={{group_by}}&fq={{group_by}}:&quot;{{get_object_value(alert, group_by) | quote}}&quot;&fq={{filter}}{{forced_filter}}">{{alert.group_count}}x</a></b></h4></div>
                 <div ng-if="alert.extended_scan" class="hidden-xs bigpad text-large ac_auto_up" >
                     <span ng-if="alert.extended_scan=='completed'" class="text-success icon icon-ok-circle" title="Extended Scan completed successfully"></span>
