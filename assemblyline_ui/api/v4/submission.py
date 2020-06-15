@@ -584,9 +584,21 @@ def get_summary(sid, **kwargs):
                 output['map'][sha256].append(tag_key)
 
             # Tags
-            output['tags'][summary_type].setdefault(t['type'], [])
-            if (t['value'], t['h_type']) not in output['tags'][summary_type][t['type']]:
-                output['tags'][summary_type][t['type']].append((t['value'], t['h_type']))
+            output['tags'][summary_type].setdefault(t['type'], {})
+            current_htype = output['tags'][summary_type][t['type']].get(t['value'], None)
+            if not current_htype:
+                output['tags'][summary_type][t['type']][t['value']] = t['h_type']
+            else:
+                if current_htype == 'malicious' or t['h_type'] == 'malicious':
+                    output['tags'][summary_type][t['type']][t['value']] = 'malicious'
+                elif current_htype == 'suspicious' or t['h_type'] == 'suspicious':
+                    output['tags'][summary_type][t['type']][t['value']] = 'suspicious'
+                else:
+                    output['tags'][summary_type][t['type']][t['value']] = 'info'
+
+        for summary_type in output['tags']:
+            for t_type in output['tags'][summary_type]:
+                output['tags'][summary_type][t_type] = [(k, v) for k, v in output['tags'][summary_type][t_type].items()]
 
         return make_api_response(output)
     else:
