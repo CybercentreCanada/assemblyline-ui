@@ -769,8 +769,14 @@ utils.directive('kvSection', function () {
                     key_td.innerText = key.toTitleCase();
                     tr.appendChild(key_td);
 
+                    if (value instanceof Array){
+                        value = value.join(" | ");
+                    }
+                    else if (typeof value === 'object'){
+                        value = JSON.stringify(value);
+                    }
                     let value_td = document.createElement('td');
-                    value_td.innerText = value;
+                    value_td.innerText = String(value).breakableStr();
                     tr.appendChild(value_td);
 
                     table.appendChild(tr);
