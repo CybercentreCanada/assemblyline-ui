@@ -167,10 +167,20 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
                 # Process tags
                 for t in sec['tags']:
-                    output["tags"].setdefault(t['type'], [])
-                    t_item = (t['value'], h_type)
-                    if t_item not in output["tags"][t['type']]:
-                        output["tags"][t['type']].append(t_item)
+                    output["tags"].setdefault(t['type'], {})
+                    current_htype = output["tags"][t['type']].get(t['value'], None)
+                    if not current_htype:
+                        output["tags"][t['type']][t['value']] = h_type
+                    else:
+                        if current_htype == 'malicious' or h_type == 'malicious':
+                            output["tags"][t['type']][t['value']] = 'malicious'
+                        elif current_htype == 'suspicious' or h_type == 'suspicious':
+                            output["tags"][t['type']][t['value']] = 'suspicious'
+                        else:
+                            output["tags"][t['type']][t['value']] = 'info'
+
+        for t_type in output["tags"]:
+            output["tags"][t_type] = [(k, v) for k, v in output['tags'][t_type].items()]
 
         output['signatures'] = list(output['signatures'])
 
