@@ -850,7 +850,8 @@ def get_report(submission_id, **kwargs):
             submission['tags'][summary_type].setdefault(t['type'], {})
             submission['tags'][summary_type][t['type']].setdefault(t['value'], {'h_type': t['h_type'], 'files': []})
             for name in name_map.get(sha256, [sha256]):
-                submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
+                if (name, sha256) not in submission['tags'][summary_type][t['type']][t['value']]['files']:
+                    submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
                 submission['important_files'].add(sha256)
 
         submitted_sha256 = submission['files'][0]['sha256']
