@@ -2047,23 +2047,23 @@ figure.front{
 }
 
 .section_rec_2 {
-	margin-left: -1em;
-}
-
-.section_rec_3 {
-	margin-left: -1.5em;
-}
-
-.section_rec_4 {
-	margin-left: -2em;
-}
-
-.section_rec_5 {
 	margin-left: -2.5em;
 }
 
+.section_rec_3 {
+	margin-left: -4.5em;
+}
+
+.section_rec_4 {
+	margin-left: -6.5em;
+}
+
+.section_rec_5 {
+	margin-left: -8.5em;
+}
+
 .section_rec_6 {
-	margin-left: -3em;
+	margin-left: -10.5em;
 }
 
 .section_info{
