@@ -816,7 +816,8 @@ def get_report(submission_id, **kwargs):
                 submission['attack_matrix'].setdefault(cat, {})
                 submission['attack_matrix'][cat].setdefault(item['name'], {'h_type': item['h_type'], 'files': []})
                 for name in name_map.get(sha256, [sha256]):
-                    submission['attack_matrix'][cat][item['name']]['files'].append((name, sha256))
+                    if (name, sha256) not in  submission['attack_matrix'][cat][item['name']]['files']:
+                        submission['attack_matrix'][cat][item['name']]['files'].append((name, sha256))
                     submission['important_files'].add(sha256)
 
         # Process heuristics
@@ -826,7 +827,8 @@ def get_report(submission_id, **kwargs):
                 sha256 = item['key'][:64]
                 submission['heuristics'][h_type].setdefault(item['name'], [])
                 for name in name_map.get(sha256, [sha256]):
-                    submission['heuristics'][h_type][item['name']].append((name, sha256))
+                    if (name, sha256) not in submission['heuristics'][h_type][item['name']]:
+                        submission['heuristics'][h_type][item['name']].append((name, sha256))
                     submission['important_files'].add(sha256)
 
         # Process tags
