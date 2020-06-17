@@ -482,36 +482,26 @@ def get_file_results(sha256, **kwargs):
 
                 if sec.get('heuristic', False):
                     # Get the heuristics data
-                    h = heuristics.get(sec['heuristic']['heur_id'], None)
-                    if h is not None:
-                        if sec['heuristic']['score'] < 100:
-                            h_type = "info"
-                        elif sec['heuristic']['score'] < 1000:
-                            h_type = "suspicious"
-                        else:
-                            h_type = "malicious"
-
-                        item = (h['heur_id'], h['name'])
-                        output['heuristics'].setdefault(h_type, [])
-                        if item not in output['heuristics'][h_type]:
-                            output['heuristics'][h_type].append(item)
+                    if sec['heuristic']['score'] < 100:
+                        h_type = "info"
+                    elif sec['heuristic']['score'] < 1000:
+                        h_type = "suspicious"
                     else:
-                        # TODO: I need a logger because I need to report this
-                        pass
+                        h_type = "malicious"
+
+                    item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
+                    output['heuristics'].setdefault(h_type, [])
+                    if item not in output['heuristics'][h_type]:
+                        output['heuristics'][h_type].append(item)
 
                     # Process Attack matrix
                     for attack in sec['heuristic'].get('attack', []):
                         attack_id = attack['attack_id']
-                        attack_pattern_def = attack_map.get(attack_id, {})
-                        if attack_pattern_def:
-                            for cat in attack_pattern_def['categories']:
-                                output['attack_matrix'].setdefault(cat, [])
-                                item = (attack_id, attack_pattern_def['name'], h_type)
-                                if item not in output['attack_matrix'][cat]:
-                                    output['attack_matrix'][cat].append(item)
-                        else:
-                            # TODO: I need a logger because I need to report this.
-                            pass
+                        for cat in attack['categories']:
+                            output['attack_matrix'].setdefault(cat, [])
+                            item = (attack_id, attack['pattern'], h_type)
+                            if item not in output['attack_matrix'][cat]:
+                                output['attack_matrix'][cat].append(item)
 
                     # Process Signatures
                     for signature in sec['heuristic'].get('signature', []):
