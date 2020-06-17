@@ -1,11 +1,12 @@
 import time
 
+from assemblyline.datastore.exceptions import MultiKeyError
 from flask import request
 
 from assemblyline.common import forge
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE
+from assemblyline_ui.config import STORAGE, LOGGER
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
 
@@ -113,6 +114,11 @@ def get_file_submission_results(sid, sha256, **kwargs):
     
         # Get File, results and errors
         temp_file = STORAGE.file.get(sha256, as_obj=False)
+        if not temp_file:
+            output['file_info']['sha256'] = sha256
+            output['signatures'] = list(output['signatures'])
+            output['missing'] = True
+            return make_api_response(output, "The file you are trying to view is missing from the system", 404)
         if not Classification.is_accessible(user['classification'], temp_file['classification']):
             return make_api_response("", "You are not allowed to view the data of this file", 403)
         output['file_info'] = temp_file
@@ -128,8 +134,13 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 results.append(r)
         output['results'] = results 
 
-        output['errors'] = STORAGE.error.multiget([x for x in err_keys if x.startswith(sha256)],
-                                                  as_obj=False, as_dictionary=False)
+        try:
+            output['errors'] = STORAGE.error.multiget([x for x in err_keys if x.startswith(sha256)],
+                                                      as_obj=False, as_dictionary=False)
+        except MultiKeyError as e:
+            LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
+            output['errors'] = e.partial_output
+
         output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
                                                               user["access_control"])
 
@@ -322,30 +333,42 @@ def get_full_results(sid, **kwargs):
     def get_errors(keys):
         out = {}
         err = {}
+        missing = []
         retry = 0
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            err.update(STORAGE.error.multiget(keys, as_obj=False))
-            keys = [x for x in err_keys if x not in err]
+            try:
+                err.update(STORAGE.error.multiget(keys, as_obj=False))
+            except MultiKeyError as e:
+                LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
+                err.update(e.partial_output)
+                missing.extend(e.keys)
+            keys = [x for x in keys if x not in err and x not in missing]
             retry += 1
 
         out["errors"] = err
-        out["missing_error_keys"] = keys
+        out["missing_error_keys"] = keys + missing
 
         return out
 
     def get_file_infos(keys):
         infos = {}
+        missing = []
         retry = 0
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            infos.update(STORAGE.file.multiget(keys, as_obj=False))
-            keys = [x for x in keys if x not in infos]
+            try:
+                infos.update(STORAGE.file.multiget(keys, as_obj=False))
+            except MultiKeyError as e:
+                LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
+                infos.update(e.partial_output)
+                missing.extend(e.keys)
+            keys = [x for x in keys if x not in infos and x not in missing]
             retry += 1
 
-        return infos
+        return infos, missing
 
     def recursive_flatten_tree(tree):
         sha256s = []
@@ -369,7 +392,7 @@ def get_full_results(sid, **kwargs):
         data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
                                                             cl_engine=Classification,
                                                             user_classification=user['classification'])['tree']
-        data['file_infos'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
+        data['file_infos'], data['missing_file_keys'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
 
@@ -515,6 +538,7 @@ def get_summary(sid, **kwargs):
         heuristics = summary['heuristics']
         output['classification'] = summary['classification']
         output['filtered'] = summary['filtered']
+        output['partial'] = summary['partial']
 
         # Process attack matrix
         for item in attack_matrix:
@@ -802,6 +826,9 @@ def get_report(submission_id, **kwargs):
                                                                          summary['classification'])
         if summary['filtered']:
             submission['report_filtered'] = True
+
+        if summary['partial']:
+            submission['report_partial'] = True
 
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}

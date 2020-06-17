@@ -2,14 +2,21 @@
 	<div class="header_title text-right">
 		<h1>File Details</h1>
 		<h5 ng-show="current_file.name" class="text-muted">{{current_file.name | split}}</h5>
-		<p ng-show="current_file" style="font-size: 120%;">
+		<p ng-show="current_file&&!current_file.missing" style="font-size: 120%;">
 			<a href="/search.html?search_scope=submission&query=files.sha256:{{current_file.file_info.sha256}} OR results:{{current_file.file_info.sha256}}*" class="btn btn-default btn-sm" title="Related submissions"><span class="glyphicon glyphicon-tasks"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Related Submissions</span></a>
 			<a href="/api/v4/file/download/{{current_file.file_info.sha256}}/?name={{current_file.name}}&sid={{sid}}" class="btn btn-default btn-sm" title="Download file"><span class="glyphicon glyphicon-download-alt"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Download File</span></a>
 			<a href="file_viewer.html?sha256={{current_file.file_info.sha256}}" class="btn btn-default btn-sm" title="File viewer"><span class="glyphicon glyphicon-info-sign"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">File Viewer</span></a>
 			<a ng-if="!user.read_only" class="btn btn-default btn-sm" title="Resubmit Dynamic" ng-click="resubmit_dynamic_async(current_file.file_info.sha256, sid, current_file.name)"><span class="glyphicon glyphicon-repeat"><span class="hidden-sm hidden-xs">&nbsp;</span></span><span class="hidden-sm hidden-xs">Resubmit Dynamic</span></a>
 		</p>
 	</div>
-	<div ng-show="current_file">
+	<div style="padding: 30px 10px 0px 10px" ng-show="current_file.missing">
+		<div style="padding: 40px 0px" class="alert alert-danger text-center">
+			<span class="text-large">
+				This file is missing from the system. We cannot show you any information about it...
+			</span>
+		</div>
+	</div>
+	<div ng-show="current_file&&!current_file.missing">
 		<section class="header_title">
 			<div class="menuheader " data-toggle="collapse" data-target="#file_meta">
 				<span class="text-big">File identification</span>
@@ -71,7 +78,7 @@
 				</div>
 			</div>
 		</section>
-		<section class="header_title">
+		<section class="header_title" ng-if="current_file.file_info.seen">
 			<div class="menuheader " data-toggle="collapse" data-target="#sub_freq">
 				<span class="text-big">File Frequency</span>
 			</div>

@@ -87,6 +87,7 @@ def import_bundle(**_):
     {"success": true}
     """
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
+    allow_incomplete = request.args.get('allow_incomplete', 'true').lower() == 'true'
 
     current_bundle = os.path.join(BUNDLING_DIR, f"{get_random_id()}.bundle")
 
@@ -100,7 +101,8 @@ def import_bundle(**_):
                 fh.write(request.data)
 
     try:
-        bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification)
+        bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification,
+                      allow_incomplete=allow_incomplete)
         return make_api_response({'success': True})
     except InvalidClassification as ice:
         return make_api_response({'success': False}, err=str(ice), status_code=400)

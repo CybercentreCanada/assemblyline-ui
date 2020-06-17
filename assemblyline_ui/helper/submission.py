@@ -92,24 +92,29 @@ def get_or_create_summary(sid, results, user_classification):
     if not summary_cache:
         summary = STORAGE.get_summary_from_keys(results, cl_engine=CLASSIFICATION,
                                                 user_classification=user_classification)
-        summary_cache = {
-            "attack_matrix": json.dumps(summary['attack_matrix']),
-            "tags": json.dumps(summary['tags']),
-            "expiry_ts": now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60),
-            "heuristics": json.dumps(summary['heuristics']),
-            "classification": summary['classification'],
-            "filtered": summary["filtered"]
 
-        }
-        STORAGE.submission_summary.save(cache_key, summary_cache)
+        expiry = now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60)
+        # Do not cache summaries that have errors...
+        if "missing_results" not in summary and "missing_files" not in summary:
+            summary_cache = {
+                "attack_matrix": json.dumps(summary['attack_matrix']),
+                "tags": json.dumps(summary['tags']),
+                "expiry_ts": expiry,
+                "heuristics": json.dumps(summary['heuristics']),
+                "classification": summary['classification'],
+                "filtered": summary["filtered"]
+
+            }
+            STORAGE.submission_summary.save(cache_key, summary_cache)
 
         return {
             "attack_matrix": summary['attack_matrix'],
             "tags": summary['tags'],
-            "expiry_ts": summary_cache["expiry_ts"],
+            "expiry_ts": expiry,
             "heuristics": summary['heuristics'],
             "classification": summary['classification'],
-            "filtered": summary["filtered"]
+            "filtered": summary["filtered"],
+            "partial": "missing_results" in summary or "missing_files" in summary
         }
 
     return {
@@ -118,5 +123,6 @@ def get_or_create_summary(sid, results, user_classification):
             "expiry_ts": summary_cache["expiry_ts"],
             "heuristics": json.loads(summary_cache['heuristics']),
             "classification": summary_cache['classification'],
-            "filtered": summary_cache["filtered"]
+            "filtered": summary_cache["filtered"],
+            "partial": False
         }

@@ -1,9 +1,9 @@
-
+from assemblyline.datastore.exceptions import MultiKeyError
 from flask import request
 
 from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, LOGGER
 from assemblyline_ui.helper.result import format_result
 
 config = forge.get_config()
@@ -38,12 +38,23 @@ def get_multiple_service_results(**kwargs):
     user = kwargs['user']
     data = request.json
 
-    errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False)
+    try:
+        errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False)
+    except MultiKeyError as e:
+        LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
+        errors = e.partial_output
     results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False)
 
-    file_infos = STORAGE.file.multiget(list(set([x[:64] for x in results.keys()])), as_dictionary=True, as_obj=False)
+    try:
+        file_infos = STORAGE.file.multiget(list(set([x[:64] for x in results.keys()])),
+                                           as_dictionary=True, as_obj=False)
+    except MultiKeyError as e:
+        LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
+        file_infos = e.partial_output
+
     for r_key in list(results.keys()):
-        r_value = format_result(user['classification'], results[r_key], file_infos[r_key[:64]]['classification'])
+        r_value = format_result(user['classification'], results[r_key],
+                                file_infos.get(r_key[:64], {}).get('classification', CLASSIFICATION.UNRESTRICTED))
         if not r_value:
             del results[r_key]
         else:

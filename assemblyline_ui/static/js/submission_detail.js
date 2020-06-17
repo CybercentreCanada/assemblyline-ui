@@ -54,6 +54,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
         $scope.outstanding = null;
         $scope.max_classification = null;
         $scope.filtered = false;
+        $scope.partial = false;
 
         //DEBUG MODE
         $scope.debug = false;
@@ -788,11 +789,16 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                         return;
                     }
 
+                    $scope.loading_extra = false;
+                    if (status === 404){
+                        $scope.render_file(data, name);
+                        return;
+                    }
+
                     if (data === "" || data === null) {
                         return;
                     }
 
-                    $scope.loading_extra = false;
                     if (data.api_error_message) {
                         $scope.error = data.api_error_message;
                     } else {
@@ -924,6 +930,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     if (data.api_response.filtered){
                         $scope.filtered = true;
                     }
+                    if (data.api_response.partial){
+                        $scope.partial = true;
+                    }
                     $timeout(function (){
                         $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);
                     });
@@ -965,6 +974,9 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
                     }
                     if (data.api_response.filtered){
                         $scope.filtered = true;
+                    }
+                    if (data.api_response.partial){
+                        $scope.partial = true;
                     }
                     $timeout(function (){
                         $scope.max_classification = get_max_c12n($scope.max_classification, data.api_response.classification);

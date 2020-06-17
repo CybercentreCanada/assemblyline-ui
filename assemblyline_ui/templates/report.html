@@ -137,6 +137,10 @@
 				<h5><b>**Warning</b>: Data in this report has been filtered because you do not have enough privilege to view the full report.</h5>
 			</section>
 
+			<section class="report_section" id="warning_section" ng-show="data.report_partial">
+				<h5><b>**Warning</b>: Some information about this report is missing from the system therefore you're only seeing partial results.</h5>
+			</section>
+
 			<section class="report_section" id="metadata_section" ng-hide="empty(data.metadata)">
 				<div class="menureport">
 					<span class="text-big">Metadata</span>
