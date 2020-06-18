@@ -10,8 +10,10 @@ cl_engine = forge.get_classification()
 
 
 def parse_profile(profile, provider):
-    # Find email address
+    # Find email address and normalize it for further processing
     email_adr = profile.get('email', profile.get('upn', None))
+    if email_adr:
+        email_adr = email_adr.lower()
 
     # Find username or compute it from email
     uname = profile.get('uname', email_adr)

@@ -166,12 +166,17 @@ def validate_ldapuser(username, password, storage):
 
             # Make sure the user exists in AL and is in sync
             if (not cur_user and config.auth.ldap.auto_create) or (cur_user and config.auth.ldap.auto_sync):
+                # Normalize email address
+                email = get_attribute(ldap_info, config.auth.ldap.email_field)
+                if email is not None:
+                    email = email.lower()
+
                 # Generate user data from ldap
                 data = dict(
                     classification=ldap_info['classification'],
                     uname=username,
                     name=get_attribute(ldap_info, config.auth.ldap.name_field) or username,
-                    email=get_attribute(ldap_info, config.auth.ldap.email_field),
+                    email=email,
                     password="__NO_PASSWORD__",
                     type=ldap_info['type'],
                     dn=ldap_info['dn']

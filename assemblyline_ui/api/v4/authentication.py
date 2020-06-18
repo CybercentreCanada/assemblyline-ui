@@ -150,7 +150,7 @@ def get_reset_link(**_):
         data = request.values
 
     email = data.get('email', None)
-    if email and STORAGE.user.search(f"email:{email}").get('total', 0) == 1:
+    if email and STORAGE.user.search(f"email:{email.lower()}").get('total', 0) == 1:
         key = hashlib.sha256(get_random_password(length=512).encode('utf-8')).hexdigest()
         # noinspection PyBroadException
         try:
@@ -457,9 +457,11 @@ def signup(**_):
         error_msg = get_password_requirement_message(**password_requirements)
         return make_api_response({"success": False}, error_msg, 469)
 
-    if STORAGE.user.search(f"email:{email}").get('total', 0) != 0:
+    if STORAGE.user.search(f"email:{email.lower()}").get('total', 0) != 0:
         return make_api_response({"success": False}, "Invalid email address", 466)
 
+    # Normalize email address
+    email = email.lower()
     email_valid = False
     for r in config.auth.internal.signup.valid_email_patterns:
         matcher = re.compile(r)
