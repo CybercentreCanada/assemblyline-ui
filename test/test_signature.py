@@ -2,9 +2,10 @@ import json
 import pytest
 import random
 
-from assemblyline.odm.models.service import UpdateSource
 from conftest import get_api_data, APIError
 
+from assemblyline.common import forge
+from assemblyline.odm.models.service import UpdateSource
 from assemblyline.odm.models.signature import Signature
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures, \
@@ -288,9 +289,16 @@ def test_set_signature_source(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):
     _, session, host = login_session
+    cache = forge.get_statistics_cache()
+    cache.delete()
+
+    resp = get_api_data(session, f"{host}/api/v4/signature/stats/")
+    assert len(resp) == 0
+
+    stats = datastore.calculate_signature_stats()
+    cache.set('signatures', stats)
 
     signature_count = datastore.signature.search("id:*", rows=0)['total']
-
     resp = get_api_data(session, f"{host}/api/v4/signature/stats/")
     assert len(resp) == signature_count
     for sig_stat in resp:
