@@ -446,11 +446,10 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
         //SocketIO
         $scope.$on('socket:error', function (event, data) {
-            console.log(event.name, data);
-            if (data.msg) {
-                $scope.error = data.msg;
-            }
+            console.log(event.name, "Dispatcher did not respond in a timely manner creating a new watch queue...");
+            $scope.setup_watch_queue(true);
         });
+
         $scope.$on('socket:start', function (event) {
             console.log(event.name);
             $scope.started = true;
@@ -467,6 +466,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }
             $scope.timed_redraw();
         });
+
         $scope.$on('socket:stop', function (event) {
             console.log(event.name);
             let should_push = true;
@@ -491,6 +491,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             }, 2000);
 
         });
+
         $scope.$on('socket:cachekey', function (event, data) {
             //console.log(event.name, data);
             for (let idx in $scope.messages) {
@@ -504,6 +505,7 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
 
             $scope.temp_keys.result.push(data.msg)
         });
+
         $scope.$on('socket:cachekeyerr', function (event, data) {
             //console.log(event.name, data);
             for (let idx in $scope.messages_error) {
@@ -599,13 +601,19 @@ let app = angular.module('app', ['utils', 'search', 'ngAnimate', 'socket-io', 'u
             let data = $scope.temp_keys;
             if (data.error.length === 0 && data.result.length === 0) {
                 $scope.run_count += 1;
-                if ($scope.run_count === 5) {
+                if ($scope.run_count % 5 === 0) {
                     $http({
                         method: 'GET',
                         url: "/api/v4/live/outstanding_services/" + $scope.sid + "/"
                     })
                         .success(function (data) {
-                            $scope.outstanding = data.api_response;
+                            if (Object.keys(data.api_response).length === 0){
+                                $scope.error = "We are not receiving any messages from dispatcher and there are no outstanding service. Dispatcher does not seem to be working correctly.";
+                                $scope.outstanding = null;
+                            }
+                            else{
+                                $scope.outstanding = data.api_response;
+                            }
                         })
                         .error(function (data, status, headers, config) {
                             if (status === 401){
