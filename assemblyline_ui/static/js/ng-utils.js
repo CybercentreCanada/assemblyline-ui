@@ -911,6 +911,9 @@ utils.directive('tableSection', function () {
                     let text = document.createTextNode(key.toTitleCase());
                     th.appendChild(text);
                     th.setAttribute("class", "active");
+                    th.style.position = "sticky";
+                    th.style.top = "0";
+                    th.style.backgroundClip = "padding-box";  // This is necessary because position: sticky removes borders
                     headerRow.appendChild(th);
                 }
 
@@ -968,6 +971,8 @@ utils.directive('tableSection', function () {
                 // Responsive table
                 let div = document.createElement('div');
                 div.setAttribute('class', 'table-responsive');
+                div.style.overflowY = "auto";
+                div.style.maxHeight = "500px";
                 div.appendChild(table);
 
                 elem[0].appendChild(div);
