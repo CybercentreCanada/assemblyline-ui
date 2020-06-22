@@ -46,7 +46,7 @@ def test_add_workflow(datastore, login_session):
         resp = get_api_data(session, f"{host}/api/v4/workflow/",
                             method="PUT", data=json.dumps(workflow))
 
-    workflow['query'] = "sha256:*"
+    workflow['query'] = "file.sha256:*"
     resp = get_api_data(session, f"{host}/api/v4/workflow/",
                         method="PUT", data=json.dumps(workflow))
     assert resp['success']
