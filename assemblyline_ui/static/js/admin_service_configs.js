@@ -128,7 +128,8 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 cpu_cores: 1.0,
                 environment: [],
                 image: "",
-                ram_mb: 256
+                ram_mb: 512,
+                ram_mb_min: 128
             };
             $scope.docker_type = 'dependency';
             $("#dockerModal").modal('show');

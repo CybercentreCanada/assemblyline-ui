@@ -13,8 +13,15 @@
 	</div>
 	<div class="col-md-6">
 		<div class="form-group">
-			<label class="control-label">Allowed RAM usage (MB)</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
-			<input type="number" min="64" class="form-control input-sm input-medium" ng-model="current_docker_config.ram_mb">
+			<label class="control-label">Allowed RAM range (MB)</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
+			<div class="row">
+				<div class="col-xs-6">
+					<input type="number" min="64" class="form-control input-sm input-medium" ng-model="current_docker_config.ram_mb_min">
+				</div>
+				<div class="col-xs-6">
+					<input type="number" min="64" class="form-control input-sm input-medium" ng-model="current_docker_config.ram_mb">
+				</div>
+			</div>
 		</div>
 	</div>
 	<div class="col-md-6">
