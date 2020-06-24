@@ -131,7 +131,7 @@
 					</div>
 				</div>
 			</nav>
-			<div id="appMenu" class="navbar-inverse navbar-collapse collapse width" >
+			<div id="appMenu" class="{% if not is_prod %}navbar-dev{% endif %} navbar-inverse navbar-collapse collapse width" >
 				<ul class="hidden-lg hidden-md hidden-sm hidden-print nav navbar-nav">
 					<li class="dropdown{% if user.menu_active %} active{% endif %}">
 						<a class="clickable dropdown-toggle avatar" data-toggle="dropdown">
