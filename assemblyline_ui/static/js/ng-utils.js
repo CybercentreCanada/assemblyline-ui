@@ -800,12 +800,18 @@ utils.directive('ncSection', function () {
                     elem[0].removeChild(elem[0].firstChild)
                 }
                 let div = document.createElement("div");
-                div.style.marginLeft = "-40px";
-                process_list(nc_body, div);
+                div.style.overflowX = "auto";
+                div.style.marginRight = "0.5em";
+                const isFirst = true;
+                process_list(nc_body, div, isFirst);
 
-                function process_list(process_tree, root) {
+                function process_list(process_tree, root, isFirst) {
                     let ul = document.createElement("ul");
                     ul.style.listStyleType = "none";
+                    if (isFirst === true) {
+                        ul.style.marginLeft = "-40px";
+                        isFirst = false;
+                    }
                     for (let process of process_tree) {
                         // Initial list item element
                         let li = document.createElement("li");
@@ -858,7 +864,7 @@ utils.directive('ncSection', function () {
                         ul.append(li);
 
                         if (process["children"]) {
-                            process_list(process["children"], ul);
+                            process_list(process["children"], ul, isFirst);
                         }
                     }
                     root.append(ul);
