@@ -79,6 +79,9 @@ def add_service(**_):
         # Load service info
         service = Service(service)
 
+        # Fix service version, we don't want to see stable if it's a stable container
+        service.version = service.version.replace("stable", "")
+
         # Save service if it doesn't already exist
         if not STORAGE.service.get_if_exists(f'{service.name}_{service.version}'):
             STORAGE.service.save(f'{service.name}_{service.version}', service)
@@ -155,7 +158,7 @@ def check_for_service_updates(**_):
                 "auth": update_info['auth'],
                 "image": f"{update_info['image']}:{latest_tag or 'latest'}",
                 "latest_tag": latest_tag,
-                "update_available": latest_tag is not None and latest_tag != service['version'],
+                "update_available": latest_tag is not None and latest_tag.replace('stable', '') != service['version'],
                 "updating": service_update.exists(service['name'])
             }
 
@@ -439,7 +442,7 @@ def update_service(**_):
         }
     """
     data = request.json
-    service_key = f"{data['name']}_{data['update_data']['latest_tag']}"
+    service_key = f"{data['name']}_{data['update_data']['latest_tag'].replace('stable', '')}"
 
     # Check is the version we are trying to update to already exists
     if STORAGE.service.get_if_exists(service_key):
