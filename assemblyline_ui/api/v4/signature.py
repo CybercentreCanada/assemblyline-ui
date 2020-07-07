@@ -20,6 +20,22 @@ signature_api._doc = "Perform operations on signatures"
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
 
 
+def _reset_service_updates(signature_type):
+    service_updates = Hash('service-updates', get_client(
+        host=config.core.redis.persistent.host,
+        port=config.core.redis.persistent.port,
+        private=False,
+    ))
+
+    for svc in service_updates.items():
+        if svc.lower() == signature_type.lower():
+            update_data = service_updates.get(svc)
+            update_data['next_update'] = now_as_iso(120)
+            update_data['previous_update'] = now_as_iso(-10 ** 10)
+            service_updates.set(svc, update_data)
+            break
+
+
 @signature_api.route("/add_update/", methods=["POST", "PUT"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
 def add_update_signature(**_):
@@ -208,6 +224,8 @@ def add_signature_source(service, **_):
     else:
         service_delta['update_config']['sources'] = current_sources
 
+    _reset_service_updates(service)
+
     # Save the signature
     return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
@@ -276,18 +294,7 @@ def change_status(sid, status, **kwargs):
             ('SET', 'status', status)
         ]
 
-        service_updates = Hash('service-updates', get_client(
-            host=config.core.redis.persistent.host,
-            port=config.core.redis.persistent.port,
-            private=False,
-        ))
-
-        for svc in service_updates.items():
-            if svc.lower() == data['type']:
-                update_data = service_updates.get(svc)
-                update_data['next_update'] = now_as_iso(120)
-                service_updates.set(svc, update_data)
-                break
+        _reset_service_updates(data['type'])
 
         return make_api_response({"success": STORAGE.signature.update(sid, operations)})
     else:
@@ -318,7 +325,11 @@ def delete_signature(sid, **kwargs):
         if not Classification.is_accessible(user['classification'],
                                             data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to delete this signature.", 403)
-        return make_api_response({"success": STORAGE.signature.delete(sid)})
+
+        ret_val =STORAGE.signature.delete(sid)
+
+        _reset_service_updates(data['type'])
+        return make_api_response({"success": ret_val})
     else:
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
@@ -379,6 +390,8 @@ def delete_signature_source(service, name, **_):
     if success:
         # Remove old source signatures
         STORAGE.signature.delete_matching(f"type:{service.lower()} AND source:{name}")
+
+    _reset_service_updates(service)
 
     return make_api_response({"success": success})
 
@@ -603,6 +616,8 @@ def update_signature_source(service, name, **_):
         service_delta['update_config'] = {"sources": new_sources}
     else:
         service_delta['update_config']['sources'] = new_sources
+
+    _reset_service_updates(service)
 
     # Save the signature
     return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
