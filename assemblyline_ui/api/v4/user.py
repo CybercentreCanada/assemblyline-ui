@@ -21,6 +21,35 @@ user_api._doc = "Manage the different users of the system"
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 
 
+@user_api.route("/whoami/", methods=["GET"])
+@api_login()
+def who_am_i(**kwargs):
+    """
+    Add a user to the system
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "name": "Test user",        # Name of the user
+     "is_active": true,          # Is the user active?
+     "classification": "",       # Max classification for user
+     "uname": "usertest",        # Username
+     "type": ['user'],           # List of all types the user is member of
+     "avatar": null,             # Avatar of the user
+     "groups": ["TEST"]          # Groups the user is member of
+    }
+    """
+    return make_api_response(kwargs['user'])
+
+
 @user_api.route("/<username>/", methods=["PUT"])
 @api_login(require_type=['admin'])
 def add_user_account(username, **_):
