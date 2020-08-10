@@ -42,6 +42,7 @@ def who_am_i(**kwargs):
      "allow_2fa": True,                         # Is 2fa Allowed for the user
      "allow_apikeys": True,                     # Are APIKeys allowed for the user
      "allow_security_tokens": True,             # Are Security tokens allowed for the user
+     "avatar": "data:image/jpg...",             # Avatar data block
      "c12n_enforcing": False,                   # Are we enforcing classification engine
      "classification": "TLP:W",                 # Classification of the user
      "email": "basic.user@assemblyline.local",  # Email of the user
@@ -69,6 +70,7 @@ def who_am_i(**kwargs):
                 "type",
                 "uname"]}
 
+    data['avatar'] = STORAGE.user_avatar.get(data['uname'])
     return make_api_response(data)
 
 
