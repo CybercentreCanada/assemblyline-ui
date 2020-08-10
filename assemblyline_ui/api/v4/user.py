@@ -38,16 +38,38 @@ def who_am_i(**kwargs):
 
     Result example:
     {
-     "name": "Test user",        # Name of the user
-     "is_active": true,          # Is the user active?
-     "classification": "",       # Max classification for user
-     "uname": "usertest",        # Username
-     "type": ['user'],           # List of all types the user is member of
-     "avatar": null,             # Avatar of the user
-     "groups": ["TEST"]          # Groups the user is member of
+     "agrees_with_tos": None,                   # Date the user agreed with TOS
+     "allow_2fa": True,                         # Is 2fa Allowed for the user
+     "allow_apikeys": True,                     # Are APIKeys allowed for the user
+     "allow_security_tokens": True,             # Are Security tokens allowed for the user
+     "c12n_enforcing": False,                   # Are we enforcing classification engine
+     "classification": "TLP:W",                 # Classification of the user
+     "email": "basic.user@assemblyline.local",  # Email of the user
+     "groups": ["USERS"],                       # Groups the user if member of
+     "is_active": True,                         # Is the user active
+     "name": "Basic user",                      # Name of the user
+     "read_only": False,                        # Is the interface to be displayed in read-only mode
+     "type": ["user", "admin"],                 # Roles the user is member of
+     "uname": "sgaron-cyber"                    # Username of the current user
     }
     """
-    return make_api_response(kwargs['user'])
+    data = {k: v for k, v in kwargs['user'].items()
+            if k in [
+                "agrees_with_tos",
+                "allow_2fa",
+                "allow_apikeys",
+                "allow_security_tokens",
+                "c12n_enforcing",
+                "classification",
+                "email",
+                "groups",
+                "is_active",
+                "name",
+                "read_only",
+                "type",
+                "uname"]}
+
+    return make_api_response(data)
 
 
 @user_api.route("/<username>/", methods=["PUT"])

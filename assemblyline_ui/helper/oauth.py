@@ -9,6 +9,13 @@ from assemblyline_ui.config import config
 cl_engine = forge.get_classification()
 
 
+def reorder_name(name):
+    if name is None:
+        return name
+
+    return " ".join(name.split(", ", 1)[::-1])
+
+
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
     email_adr = profile.get('email', profile.get('upn', None))
@@ -68,7 +75,7 @@ def parse_profile(profile, provider):
         type=roles,
         classification=classification,
         uname=uname,
-        name=profile.get('name', None),
+        name=reorder_name(profile.get('name', None)),
         email=email_adr,
         password="__NO_PASSWORD__",
         avatar=profile.get('picture', alternate)

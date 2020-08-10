@@ -13,7 +13,9 @@ from assemblyline.common.isotime import now
 from assemblyline.common.security import generate_random_secret, get_totp_token, \
     check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER
+from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER, \
+    get_token_store
+from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
@@ -202,13 +204,18 @@ def login(**_):
     webauthn_auth_resp = data.get('webauthn_auth_resp', None)
     oauth_provider = data.get('oauth_provider', None)
     oauth_token = data.get('oauth_token', None)
+    redirect_to_login = data.get('redirect_to_login', 'true').lower() == 'true'
 
     if config.auth.oauth.enabled and oauth_provider:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
         provider = oauth.create_client(oauth_provider)
 
         if provider:
-            redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
+            if redirect_to_login:
+                redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
+            else:
+                redirect_uri = f'https://{request.host}/?provider={oauth_provider}'
+
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
@@ -288,6 +295,130 @@ def logout(**_):
         return make_api_response({"success": True})
     except ValueError:
         return make_api_response("", err="No user logged in?", status_code=400)
+
+
+# noinspection PyBroadException
+@auth_api.route("/oauth/", methods=["GET"])
+def oauth_validate(**_):
+    """
+    Validate and oAuth session and return it's associated username, avatar and oAuth Token
+
+    Variables:
+    None
+
+    Arguments:
+    provider   =>   Which oAuth provider to validate the token against
+    *          =>   All parameters returned by your oAuth provider callback...
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "avatar": "data:image...",
+     "oauth_token": "123123...123213",
+     "username": "user"
+    }
+    """
+    data = request.values
+    oauth_provider = data.get('provider', None)
+    avatar = None
+    username = None
+    oauth_token = None
+
+    if config.auth.oauth.enabled:
+        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        provider = oauth.create_client(oauth_provider)
+
+        if provider:
+            # noinspection PyBroadException
+            try:
+                # Test oauth access token
+                token = provider.authorize_access_token()
+                oauth_provider_config = config.auth.oauth.providers[oauth_provider]
+
+                # Get user data
+                resp = provider.get(oauth_provider_config.user_get)
+                if resp.ok:
+                    user_data = resp.json()
+
+                    # Add group data if API is configured for it
+                    if oauth_provider_config.user_groups:
+                        resp_grp = provider.get(oauth_provider_config.user_groups)
+                        if resp_grp.ok:
+                            groups = resp_grp.json()
+
+                            if oauth_provider_config.user_groups_data_field:
+                                groups = groups[oauth_provider_config.user_groups_data_field]
+
+                            if oauth_provider_config.user_groups_name_field:
+                                groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
+
+                            user_data['groups'] = groups
+
+                    data = parse_profile(user_data, oauth_provider_config)
+                    has_access = data.pop('access', False)
+                    if has_access:
+                        oauth_avatar = data.pop('avatar', None)
+
+                        # Find if user already exists
+                        users = STORAGE.user.search(f"email:{data['email']}", fl="uname", as_obj=False)['items']
+                        if users:
+                            cur_user = STORAGE.user.get(users[0]['uname'], as_obj=False) or {}
+                            # Do not update username and password from the current user
+                            data['uname'] = cur_user.get('uname', data['uname'])
+                            data['password'] = cur_user.get('password', data['password'])
+                        else:
+                            if data['uname'] != data['email']:
+                                # Username was computed using a regular expression, lets make sure we don't
+                                # assign the same username to two users
+                                res = STORAGE.user.search(f"uname:{data['uname']}", rows=0, as_obj=False)
+                                if res['total'] > 0:
+                                    cnt = res['total']
+                                    new_uname = f"{data['uname']}{cnt}"
+                                    while STORAGE.user.get(new_uname) is not None:
+                                        cnt += 1
+                                        new_uname = f"{data['uname']}{cnt}"
+                                    data['uname'] = new_uname
+                            cur_user = {}
+
+                        username = data['uname']
+
+                        # Make sure the user exists in AL and is in sync
+                        if (not cur_user and oauth_provider_config.auto_create) or \
+                                (cur_user and oauth_provider_config.auto_sync):
+
+                            # Update the current user
+                            cur_user.update(data)
+
+                            # Save avatar
+                            if oauth_avatar:
+                                avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
+                                if avatar:
+                                    STORAGE.user_avatar.save(username, avatar)
+
+                            # Save updated user
+                            STORAGE.user.save(username, cur_user)
+
+                        if cur_user:
+                            if avatar is None:
+                                avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
+                            oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+                            get_token_store(username).add(oauth_token)
+                        else:
+                            return make_api_response({"err_code": 3},
+                                                     err="User auto-creation is disabled",
+                                                     status_code=403)
+                    else:
+                        return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
+                                                 status_code=403)
+
+            except Exception as _:
+                return make_api_response({"err_code": 1}, err="Invalid oAuth2 token, try again", status_code=401)
+
+    if username is None:
+        return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)
+    return make_api_response({"avatar": avatar, "username": username, "oauth_token": oauth_token})
 
 
 # noinspection PyBroadException
