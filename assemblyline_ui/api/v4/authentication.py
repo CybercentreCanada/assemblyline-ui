@@ -12,6 +12,7 @@ from assemblyline.common.comms import send_signup_email, send_reset_email
 from assemblyline.common.isotime import now
 from assemblyline.common.security import generate_random_secret, get_totp_token, \
     check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
+from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER, \
     get_token_store
@@ -571,7 +572,7 @@ def signup(**_):
 
     if STORAGE.user.get(uname) or len(uname) < 3:
         return make_api_response({"success": False},
-                                 "Invalid username. [Lowercase letters and dashes only with at least 3 letters]",
+                                 "There is already a user registered with this name",
                                  460)
     else:
         for c in uname:
@@ -589,7 +590,7 @@ def signup(**_):
         return make_api_response({"success": False}, error_msg, 469)
 
     if STORAGE.user.search(f"email:{email.lower()}").get('total', 0) != 0:
-        return make_api_response({"success": False}, "Invalid email address", 466)
+        return make_api_response({"success": False}, "There is already a user registered with this email address", 466)
 
     # Normalize email address
     email = email.lower()
@@ -621,6 +622,57 @@ def signup(**_):
         return make_api_response({"success": False}, "The system failed to send signup confirmation link.", 400)
 
     return make_api_response({"success": True})
+
+
+# noinspection PyBroadException,PyPropertyAccess
+@auth_api.route("/signup_validate/", methods=["POST"])
+def signup_validate(**_):
+    """
+    Validate a user's signup request
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+     "registration_key": "234234...ADFCB"    # Key used to validate the user's signup process
+    }
+
+    Result example:
+    {
+     "success": true
+    }
+    """
+    if not config.auth.internal.signup.enabled:
+        return make_api_response({"success": False}, "Signup process has been disabled", 403)
+
+    data = request.json
+    if not data:
+        data = request.values
+
+    registration_key = data.get('registration_key', None)
+
+    if registration_key:
+        try:
+            signup_queue = get_signup_queue(registration_key)
+            members = signup_queue.members()
+            signup_queue.delete()
+            if members:
+                user_info = members[0]
+                user = User(user_info)
+                username = user.uname
+
+                STORAGE.user.save(username, user)
+                return make_api_response({"success": True})
+        except (KeyError, ValueError):
+            pass
+    else:
+        return make_api_response({"success": False}, "Not enough information to proceed with user creation", 400)
+
+    return make_api_response({"success": False}, "Invalid registration key", 400)
 
 
 @auth_api.route("/validate_otp/<token>/", methods=["GET"])
