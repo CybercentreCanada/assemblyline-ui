@@ -458,7 +458,7 @@ def reset_pwd(**_):
 
     if reset_id and password and password_confirm:
         if password != password_confirm:
-            return make_api_response({"success": False}, err="Password mismatch", status_code=400)
+            return make_api_response({"success": False}, err="Password mismatch", status_code=469)
 
         password_requirements = config.auth.internal.password_requirements.as_primitives()
         if not check_password_requirements(password, **password_requirements):
@@ -476,12 +476,12 @@ def reset_pwd(**_):
                     user = STORAGE.user.get(res['items'][0].uname)
                     user.password = get_password_hash(password)
                     STORAGE.user.save(user.uname, user)
-        except Exception:
-            return make_api_response({"success": False}, err="Invalid parameters passed", status_code=400)
+                    return make_api_response({"success": True})
 
-        return make_api_response({"success": True})
-    else:
-        return make_api_response({"success": False}, err="Invalid parameters passed", status_code=400)
+        except Exception:
+            pass
+
+    return make_api_response({"success": False}, err="Invalid parameters passed", status_code=400)
 
 
 @auth_api.route("/setup_otp/", methods=["GET"])
