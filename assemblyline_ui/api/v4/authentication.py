@@ -205,18 +205,13 @@ def login(**_):
     webauthn_auth_resp = data.get('webauthn_auth_resp', None)
     oauth_provider = data.get('oauth_provider', None)
     oauth_token = data.get('oauth_token', None)
-    redirect_to_login = data.get('redirect_to_login', 'true').lower() == 'true'
 
     if config.auth.oauth.enabled and oauth_provider:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
         provider = oauth.create_client(oauth_provider)
 
         if provider:
-            if redirect_to_login:
-                redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
-            else:
-                redirect_uri = f'https://{request.host}/?provider={oauth_provider}'
-
+            redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
