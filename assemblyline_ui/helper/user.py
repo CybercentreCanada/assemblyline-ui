@@ -1,4 +1,4 @@
-
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
@@ -295,6 +295,9 @@ def login(uname, path=None):
                                    path.startswith("/dashboard.html"))
             user["kibana_dashboards"] = []
             user["admin_menu"] = []
+
+    if not config.ui.tos:
+        user['agrees_with_tos'] = now_as_iso()
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
