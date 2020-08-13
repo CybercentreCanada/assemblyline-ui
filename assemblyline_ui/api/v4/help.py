@@ -169,3 +169,26 @@ def get_systems_constants(**_):
     out['file_types'].insert(0, ["*", default_list])
 
     return make_api_response(out)
+
+
+@help_api.route("/tos/")
+@api_login(audit=False, check_xsrf_token=False)
+def get_terms_of_service(**_):
+    """
+    Return the current system terms of service
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    Terms of service as markdown format
+    """
+    return make_api_response(config.ui.tos)
+
+
