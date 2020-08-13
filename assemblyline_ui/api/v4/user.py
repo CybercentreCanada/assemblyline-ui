@@ -71,6 +71,9 @@ def who_am_i(**kwargs):
                 "uname"]}
 
     data['avatar'] = STORAGE.user_avatar.get(data['uname'])
+    data['username'] = data.pop('uname')
+    data['is_admin'] = "admin" in data['type']
+    data['roles'] = data.pop('type')
     return make_api_response(data)
 
 
