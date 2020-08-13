@@ -94,7 +94,8 @@ class api_login(BaseSecurityRenderer):
 
             # Terms of Service
             if request.path not in ["/api/v4/help/tos/", "/api/v4/user/whoami/",
-                                    f"/api/v4/user/tos/{logged_in_uname}/"] \
+                                    f"/api/v4/user/tos/{logged_in_uname}/",
+                                    "/api/v4/auth/logout/"] \
                     and not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                 abort(403, "Agree to Terms of Service before you can make any API calls")
                 return
