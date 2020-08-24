@@ -1,5 +1,4 @@
-
-import yaml
+import yaml, json
 
 from flask import request
 
@@ -12,6 +11,8 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER
+
+from assemblyline_ui.api.v4.signature import delete_signature_source, add_signature_source
 
 config = forge.get_config()
 
@@ -170,28 +171,28 @@ def check_for_service_updates(**_):
 def get_service_constants(**_):
     """
     Get global service constants.
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {
         "categories": [
-          "Antivirus", 
-          "Extraction", 
-          "Static Analysis", 
+          "Antivirus",
+          "Extraction",
+          "Static Analysis",
           "Dynamic Analysis"
-        ], 
+        ],
         "stages": [
-          "FILTER", 
-          "EXTRACT", 
-          "SECONDARY", 
+          "FILTER",
+          "EXTRACT",
+          "SECONDARY",
           "TEARDOWN"
         ]
     }
@@ -233,16 +234,16 @@ def get_potential_versions(servicename, **_):
 def get_service(servicename, **_):
     """
     Load the configuration for a given service
-    
-    Variables: 
+
+    Variables:
     servicename       => Name of the service to get the info
-    
+
     Arguments:
     version           => Specific version of the service to get
-    
+
     Data Block:
     None
-    
+
     Result example:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
@@ -325,16 +326,16 @@ def list_all_services(**_):
 def remove_service(servicename, **_):
     """
     Remove a service configuration
-    
-    Variables: 
+
+    Variables:
     servicename       => Name of the service to remove
-    
+
     Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {"success": true}  # Has the deletion succeeded
     """
@@ -361,13 +362,13 @@ def set_service(servicename, **_):
     Calculate the delta between the original service config and
     the posted service config then saves that delta as the current
     service delta.
-    
-    Variables: 
+
+    Variables:
     servicename    => Name of the service to save
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
@@ -393,7 +394,7 @@ def set_service(servicename, **_):
        'type': 'bool',
        'value': False}],
      'timeout': 60}
-    
+
     Result example:
     {"success": true }    #Saving the user info succeded
     """
@@ -415,7 +416,25 @@ def set_service(servicename, **_):
     delta = get_recursive_delta(current_service, data)
     delta['version'] = version
 
-    return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
+    # Check if any changes we made to update_config
+    new_sources = delta['update_config']['sources']
+    orig_sources = current_service['update_config']['sources']
+    total_sources = set(new_sources + orig_sources)
+
+    # Track success/failure
+    source_added = {}
+    source_removed = {}
+
+    for src in total_sources:
+        if src not in new_sources and src in orig_sources:  # Remove of signatures
+            source_removed[f"{src['name']}"] = delete_signature_source(servicename, src['name']).status_code()
+        else:  # Otherwise, consider additions
+            source_added[f"{src['name']}"] = add_signature_source(servicename, request=src).status_code()
+
+    return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
+                              "sources_added": json.dumps(source_added),
+                              "sources_removed": json.dumps(source_removed)
+                              })
 
 
 @service_api.route("/update/", methods=["PUT"])
