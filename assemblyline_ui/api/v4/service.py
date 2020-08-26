@@ -428,7 +428,7 @@ def set_service(servicename, **_):
     for src in total_sources:
         if src not in new_sources and src in orig_sources:  # Remove of signatures
             source_removed[src['name']] = delete_signature_source(servicename, src['name']).status_code
-        else:  # Otherwise, consider additions
+        elif src not in new_sources:  # Otherwise, consider additions
             source_added[src['name']] = add_signature_source(servicename, svc_source=src).status_code
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
