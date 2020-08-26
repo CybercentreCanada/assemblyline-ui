@@ -419,7 +419,7 @@ def set_service(servicename, **_):
     # Check if any changes we made to update_config
     new_sources = delta['update_config']['sources']
     orig_sources = current_service['update_config']['sources']
-    total_sources = set(new_sources + orig_sources)
+    total_sources = new_sources + orig_sources
 
     # Track success/failure
     source_added = {}
@@ -427,9 +427,9 @@ def set_service(servicename, **_):
 
     for src in total_sources:
         if src not in new_sources and src in orig_sources:  # Remove of signatures
-            source_removed[f"{src['name']}"] = delete_signature_source(servicename, src['name']).status_code()
+            source_removed[src['name']] = delete_signature_source(servicename, src['name']).status_code
         else:  # Otherwise, consider additions
-            source_added[f"{src['name']}"] = add_signature_source(servicename, request=src).status_code()
+            source_added[src['name']] = add_signature_source(servicename, svc_source=src).status_code
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
                               "sources_added": json.dumps(source_added),

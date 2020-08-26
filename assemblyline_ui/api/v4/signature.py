@@ -170,7 +170,7 @@ def add_update_many_signature(**_):
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
-def add_signature_source(service, **_):
+def add_signature_source(service, svc_source=None, **_):
     """
     Add a signature source for a given service
 
@@ -196,8 +196,9 @@ def add_signature_source(service, **_):
     Result example:
     {"success": True/False}   # if the operation succeeded of not
     """
+
     try:
-        data = request.json
+        data = svc_source if svc_source else request.json
     except (ValueError, KeyError):
         return make_api_response({"success": False},
                                  err="Invalid source object data",
@@ -227,7 +228,8 @@ def add_signature_source(service, **_):
     _reset_service_updates(service)
 
     # Save the signature
-    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta),
+                              "source": data})
 
 
 # noinspection PyPep8Naming
