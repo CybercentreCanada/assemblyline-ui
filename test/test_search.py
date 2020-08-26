@@ -89,10 +89,10 @@ def test_deep_search(datastore, login_session):
         res = []
         while True:
             resp = get_api_data(session, f"{host}/api/v4/search/{collection}/", params=params)
-            params['deep_paging_id'] = resp['next_deep_paging_id']
-            if len(resp['items']) == 0:
-                break
             res.extend(resp['items'])
+            if len(resp['items']) == 0 or 'next_deep_paging_id' not in resp:
+                break
+            params['deep_paging_id'] = resp['next_deep_paging_id']
         assert len(res) >= TEST_SIZE
 
 
