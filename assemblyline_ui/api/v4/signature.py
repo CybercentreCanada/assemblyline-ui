@@ -228,8 +228,7 @@ def add_signature_source(service, svc_source=None, **_):
     _reset_service_updates(service)
 
     # Save the signature
-    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta),
-                              "source": data})
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
 
 # noinspection PyPep8Naming
