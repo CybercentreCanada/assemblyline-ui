@@ -416,26 +416,29 @@ def set_service(servicename, **_):
     delta = get_recursive_delta(current_service, data)
     delta['version'] = version
 
-    # Check if any changes we made to update_config
-    new_sources = data['update_config']['sources']
-    orig_sources = current_service['update_config']['sources']
+    try:
+        # Check if any changes were made to update_config
+        new_sources = data['update_config']['sources']
+        orig_sources = current_service['update_config']['sources']
 
-    # Track success/failure
-    source_added = {}
-    source_removed = {}
+        # Track success/failure
+        source_added = {}
+        source_removed = {}
 
-    #Out with the old
-    for src in orig_sources:
-        source_removed[src['name']] = delete_signature_source(servicename, src['name']).status_code
+        #Out with the old
+        for src in orig_sources:
+            source_removed[src['name']] = delete_signature_source(servicename, src['name']).status_code
 
-    #In with the new
-    for src in new_sources:
-        source_added[src['name']] = add_signature_source(servicename, svc_source=src).status_code
+        #In with the new
+        for src in new_sources:
+            source_added[src['name']] = add_signature_source(servicename, svc_source=src).status_code
 
-    return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
-                              "sources_new": json.dumps(source_added),
-                              "sources_old": json.dumps(source_removed)
-                              })
+        return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
+                                  "sources_new": json.dumps(source_added),
+                                  "sources_old": json.dumps(source_removed)
+                                  })
+    except TypeError:
+        return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
 
 
 @service_api.route("/update/", methods=["PUT"])
