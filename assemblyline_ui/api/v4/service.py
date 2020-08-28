@@ -1,4 +1,3 @@
-
 import yaml
 
 from flask import request
@@ -12,6 +11,7 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER
+from assemblyline_ui.api.v4.signature import add_signature_source_function, delete_signature_source_function
 
 config = forge.get_config()
 
@@ -415,7 +415,35 @@ def set_service(servicename, **_):
     delta = get_recursive_delta(current_service, data)
     delta['version'] = version
 
-    return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
+    try:
+        # Check if any changes were made to update_config
+
+        # Need to know what the service is currently using to see what got removed
+        data_sources = data['update_config']['sources']
+        svc_delta_sources = STORAGE.service_delta.get(servicename, as_obj=False)['update_config']['sources']
+
+        sources = {x['name']: x
+                   for x in svc_delta_sources + data_sources}.values()
+
+        # Track success/failure/already exists
+        source_added = {}
+        source_removed = {}
+
+        for source in sources:
+            if source in data_sources:
+                # Add
+                source_added[source['name']] = add_signature_source_function(servicename, source).status_code
+            else:
+                # Remove
+                source_removed[source['name']] = delete_signature_source_function(servicename,
+                                                                                  source['name']).status_code
+
+        return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
+                                  "sources_added": source_added,
+                                  "sources_removed": source_removed
+                                  })
+    except:
+        return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
 
 
 @service_api.route("/update/", methods=["PUT"])
