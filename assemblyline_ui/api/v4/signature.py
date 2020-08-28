@@ -203,31 +203,7 @@ def add_signature_source(service, **_):
                                  err="Invalid source object data",
                                  status_code=400)
 
-    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
-    if not service_data.get('update_config', {}).get('generates_signatures', False):
-        return make_api_response({"success": False},
-                                 err="This service does not generate alerts therefor "
-                                     "you cannot add a source to get the alerts from.",
-                                 status_code=400)
-
-    current_sources = service_data.get('update_config', {}).get('sources', [])
-    for source in current_sources:
-        if source['name'] == data['name']:
-            return make_api_response({"success": False},
-                                     err=f"Update source name already exist: {data['name']}",
-                                     status_code=400)
-
-    current_sources.append(data)
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
-    if service_delta.get('update_config') is None:
-        service_delta['update_config'] = {"sources": current_sources}
-    else:
-        service_delta['update_config']['sources'] = current_sources
-
-    _reset_service_updates(service)
-
-    # Save the signature
-    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
+    return add_signature_source_function(service, data)
 
 
 # noinspection PyPep8Naming
@@ -357,43 +333,7 @@ def delete_signature_source(service, name, **_):
 
     }
     """
-    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
-    current_sources = service_data.get('update_config', {}).get('sources', [])
-
-    if not service_data.get('update_config', {}).get('generates_signatures', False):
-        return make_api_response({"success": False},
-                                 err="This service does not generate alerts therefor "
-                                     "you cannot delete one of its sources.",
-                                 status_code=400)
-
-    new_sources = []
-    found = False
-    for source in current_sources:
-        if name == source['name']:
-            found = True
-        else:
-            new_sources.append(source)
-
-    if not found:
-        return make_api_response({"success": False},
-                                 err=f"Could not found source '{name}' in service {service}.",
-                                 status_code=404)
-
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
-    if service_delta.get('update_config') is None:
-        service_delta['update_config'] = {"sources": new_sources}
-    else:
-        service_delta['update_config']['sources'] = new_sources
-
-    # Save the new sources
-    success = STORAGE.service_delta.save(service, service_delta)
-    if success:
-        # Remove old source signatures
-        STORAGE.signature.delete_matching(f"type:{service.lower()} AND source:{name}")
-
-    _reset_service_updates(service)
-
-    return make_api_response({"success": success})
+    return delete_signature_source_function(service, name)
 
 
 # noinspection PyBroadException
@@ -684,3 +624,115 @@ def update_available(**_):
     last_modified = iso_to_epoch(STORAGE.get_signature_last_modified(sig_type))
 
     return make_api_response({"update_available": last_modified > last_update})
+
+
+def add_signature_source_function(service, data=None, **_):
+    """
+    Add a signature source for a given service
+
+    Variables:
+    service           =>      Service to which we want to add the source to
+    data              =>      Dict containing details for signature source
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True/False}   # if the operation succeeded of not
+    """
+    if data is None:
+        return make_api_response({"success": False},
+                                 err="Invalid source object data",
+                                 status_code=400)
+
+    # Make sure source name is valid (no spaces)
+    data['name'] = str(data['name']).replace(" ", "_")
+
+    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+    if not service_data.get('update_config', {}).get('generates_signatures', False):
+        return make_api_response({"success": False},
+                                 err="This service does not generate alerts therefore "
+                                     "you cannot add a source to get the alerts from.",
+                                 status_code=400)
+
+    current_sources = service_data.get('update_config', {}).get('sources', [])
+    for source in current_sources:
+        if source['name'] == data['name']:
+            return make_api_response({"success": False},
+                                     err=f"Update source name already exist: {data['name']}",
+                                     status_code=400)
+
+    current_sources.append(data)
+    service_delta = STORAGE.service_delta.get(service, as_obj=False)
+    if service_delta.get('update_config') is None:
+        service_delta['update_config'] = {"sources": current_sources}
+    else:
+        service_delta['update_config']['sources'] = current_sources
+
+    _reset_service_updates(service)
+
+    # Save the signature
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
+
+
+def delete_signature_source_function(service, name, **_):
+    """
+    Delete a signature source by name for a given service
+
+    Variables:
+    service           =>      Service to which we want to delete the source from
+    name              =>      Name of the source you want to remove
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "source": True,       # if deleting the source succeeded or not
+     "signatures": False   # if deleting associated signatures deleted or not
+
+    }
+    """
+    service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+    current_sources = service_data.get('update_config', {}).get('sources', [])
+
+    if not service_data.get('update_config', {}).get('generates_signatures', False):
+        return make_api_response({"success": False},
+                                 err="This service does not generate alerts therefor "
+                                     "you cannot delete one of its sources.",
+                                 status_code=400)
+
+    new_sources = []
+    found = False
+    for source in current_sources:
+        if name == source['name']:
+            found = True
+        else:
+            new_sources.append(source)
+
+    if not found:
+        return make_api_response({"success": False},
+                                 err=f"Could not found source '{name}' in service {service}.",
+                                 status_code=404)
+
+    service_delta = STORAGE.service_delta.get(service, as_obj=False)
+    if service_delta.get('update_config') is None:
+        service_delta['update_config'] = {"sources": new_sources}
+    else:
+        service_delta['update_config']['sources'] = new_sources
+
+    # Save the new sources
+    success = STORAGE.service_delta.save(service, service_delta)
+    if success:
+        # Remove old source signatures
+        STORAGE.signature.delete_matching(f"type:{service.lower()} AND source:{name}")
+
+    _reset_service_updates(service)
+
+    return make_api_response({"success": success})
