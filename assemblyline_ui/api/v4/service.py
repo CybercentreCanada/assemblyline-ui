@@ -420,28 +420,21 @@ def set_service(servicename, **_):
 
         # Need to know what the service is currently using to see what got removed
         data_sources = data['update_config']['sources']
+        service_delta = STORAGE.service_delta.get(servicename, as_obj=False)
         svc_delta_sources = STORAGE.service_delta.get(servicename, as_obj=False)['update_config']['sources']
 
         sources = {x['name']: x
                    for x in svc_delta_sources + data_sources}.values()
 
-        # Track success/failure/already exists
-        source_added = {}
-        source_removed = {}
-
         for source in sources:
             if source in data_sources:
                 # Add
-                source_added[source['name']] = add_signature_source_function(servicename, source).status_code
+                add_signature_source_function(servicename, source, service_delta)
             else:
                 # Remove
-                source_removed[source['name']] = delete_signature_source_function(servicename,
-                                                                                  source['name']).status_code
+                delete_signature_source_function(servicename, source['name'], service_delta)
 
-        return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
-                                  "sources_added": source_added,
-                                  "sources_removed": source_removed
-                                  })
+        return make_api_response({"success": STORAGE.service_delta.save(servicename, service_delta)})
     except:
         return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
 

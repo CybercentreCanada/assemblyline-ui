@@ -203,7 +203,11 @@ def add_signature_source(service, **_):
                                  err="Invalid source object data",
                                  status_code=400)
 
-    return add_signature_source_function(service, data)
+    service_delta = STORAGE.get_service_with_delta(service, as_obj=False)
+    service_delta = add_signature_source_function(service, data, service_delta)
+
+    # Save the signature
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
 
 # noinspection PyPep8Naming
@@ -333,8 +337,11 @@ def delete_signature_source(service, name, **_):
 
     }
     """
-    return delete_signature_source_function(service, name)
+    service_delta = STORAGE.get_service_with_delta(service, as_obj=False)
+    service_delta = delete_signature_source_function(service, name, service_delta)
 
+    # Save the signature
+    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
 
 # noinspection PyBroadException
 def _get_cached_signatures(signature_cache, query_hash):
@@ -626,7 +633,7 @@ def update_available(**_):
     return make_api_response({"update_available": last_modified > last_update})
 
 
-def add_signature_source_function(service, data=None, **_):
+def add_signature_source_function(service, data, service_delta, **_):
     """
     Add a signature source for a given service
 
@@ -666,7 +673,6 @@ def add_signature_source_function(service, data=None, **_):
                                      status_code=400)
 
     current_sources.append(data)
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
     if service_delta.get('update_config') is None:
         service_delta['update_config'] = {"sources": current_sources}
     else:
@@ -675,10 +681,10 @@ def add_signature_source_function(service, data=None, **_):
     _reset_service_updates(service)
 
     # Save the signature
-    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
+    return service_delta
 
 
-def delete_signature_source_function(service, name, **_):
+def delete_signature_source_function(service, name, service_delta, **_):
     """
     Delete a signature source by name for a given service
 
@@ -721,7 +727,6 @@ def delete_signature_source_function(service, name, **_):
                                  err=f"Could not found source '{name}' in service {service}.",
                                  status_code=404)
 
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
     if service_delta.get('update_config') is None:
         service_delta['update_config'] = {"sources": new_sources}
     else:
@@ -735,4 +740,4 @@ def delete_signature_source_function(service, name, **_):
 
     _reset_service_updates(service)
 
-    return make_api_response({"success": success})
+    return service_delta
