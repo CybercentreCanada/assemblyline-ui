@@ -31,6 +31,10 @@ service_update = Hash('container-update', get_client(
     private=False,
 ))
 
+def sanitize_source_names(source_list):
+    for source in source_list:
+        source['name'] = source['name'].replace(" ", "_")
+    return source_list
 
 @service_api.route("/", methods=["PUT"])
 @api_login(require_type=['admin'], allow_readonly=False)
@@ -410,10 +414,16 @@ def set_service(servicename, **_):
     if 'name' in data and servicename != data['name']:
         return make_api_response({"success": False}, "You cannot change the service name", 400)
 
+    try:
+        data['update_config']['sources'] = sanitize_source_names(data['update_config']['sources'])
+    except TypeError:
+        pass
+
     # Do not allow user to edit the docker_config.image since we will use the default image for each versions
     data['docker_config']['image'] = current_service['docker_config']['image']
     delta = get_recursive_delta(current_service, data)
     delta['version'] = version
+
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
 
