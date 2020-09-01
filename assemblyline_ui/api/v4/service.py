@@ -11,7 +11,8 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER
-from assemblyline_ui.api.v4.signature import add_signature_source_function, delete_signature_source_function
+
+from assemblyline_ui.api.v4.signature import _reset_service_updates
 
 config = forge.get_config()
 
@@ -415,28 +416,18 @@ def set_service(servicename, **_):
     delta = get_recursive_delta(current_service, data)
     delta['version'] = version
 
-    try:
-        # Check if any changes were made to update_config
+    removed_sources = {}
+    # Check sources, especially to remove old sources
+    if delta.get("update_config", None):
+        delta['update_config']['sources'] = data['update_config']['sources']
+        current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False)['update_config']['sources']
+        for source in current_sources:
+            if source not in delta['update_config']['sources']:
+                removed_sources[source['name']] = STORAGE.signature.delete_matching(f"type:{servicename.lower()} AND source:{source['name']}")
+        _reset_service_updates(servicename)
 
-        # Need to know what the service is currently using to see what got removed
-        data_sources = data['update_config']['sources']
-        service_delta = STORAGE.service_delta.get(servicename, as_obj=False)
-        svc_delta_sources = STORAGE.service_delta.get(servicename, as_obj=False)['update_config']['sources']
-
-        sources = {x['name']: x
-                   for x in svc_delta_sources + data_sources}.values()
-
-        for source in sources:
-            if source in data_sources:
-                # Add
-                add_signature_source_function(servicename, source, service_delta)
-            else:
-                # Remove
-                delete_signature_source_function(servicename, source['name'], service_delta)
-
-        return make_api_response({"success": STORAGE.service_delta.save(servicename, service_delta)})
-    except:
-        return make_api_response({"success": STORAGE.service_delta.save(servicename, delta)})
+    return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
+                              "removed_sources": removed_sources})
 
 
 @service_api.route("/update/", methods=["PUT"])
