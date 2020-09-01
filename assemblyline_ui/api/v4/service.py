@@ -418,13 +418,15 @@ def set_service(servicename, **_):
 
     removed_sources = {}
     # Check sources, especially to remove old sources
-    if delta.get("update_config", None):
+    try:
         delta['update_config']['sources'] = data['update_config']['sources']
         current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False)['update_config']['sources']
         for source in current_sources:
             if source not in delta['update_config']['sources']:
                 removed_sources[source['name']] = STORAGE.signature.delete_matching(f"type:{servicename.lower()} AND source:{source['name']}")
         _reset_service_updates(servicename)
+    except TypeError:
+        pass
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
                               "removed_sources": removed_sources})
