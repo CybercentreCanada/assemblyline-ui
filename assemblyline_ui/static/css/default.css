@@ -1467,6 +1467,7 @@ figure.front{
 	margin: 0.2em 0em;
 	border-radius: 4px;
 	display: flex;
+	width: 50em;
 }
 
 .card {
