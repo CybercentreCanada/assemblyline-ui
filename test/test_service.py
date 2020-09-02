@@ -1,7 +1,6 @@
 import json
 import pytest
 import random
-from time import sleep
 
 from conftest import get_api_data
 

@@ -10,9 +10,8 @@ from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER
-
 from assemblyline_ui.api.v4.signature import _reset_service_updates
+from assemblyline_ui.config import STORAGE, LOGGER
 
 config = forge.get_config()
 
@@ -419,10 +418,12 @@ def set_service(servicename, **_):
     removed_sources = {}
     # Check sources, especially to remove old sources
     if delta.get("update_config", None):
-        current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get('update_config', {}).get('sources', [])
+        current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get(
+            'update_config', {}).get('sources', [])
         for source in current_sources:
             if source not in delta['update_config']['sources']:
-                removed_sources[source['name']] = STORAGE.signature.delete_matching(f"type:{servicename.lower()} AND source:{source['name']}")
+                removed_sources[source['name']] = STORAGE.signature.delete_matching(
+                    f"type:{servicename.lower()} AND source:{source['name']}")
         _reset_service_updates(servicename)
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
