@@ -168,10 +168,8 @@ def test_edit_service_source(datastore, login_session):
     ds.service_delta.commit()
     ds.service.commit()
 
-    sleep(120)  # Give updater enough time to download source
-
-    sig_list = get_api_data(session, f"{host}/api/v4/search/signature/?offset=0&rows=1&query=source:old")
-    assert sig_list['items']
+    delta = ds.get_service_with_delta("Suricata", as_obj=False)
+    assert delta['update_config']['sources'][0]['name'] == "old"
 
     # Changed; add new, remove old
     service_conf['update_config']['sources'][0] = {
@@ -187,9 +185,16 @@ def test_edit_service_source(datastore, login_session):
     ds.service_delta.commit()
     ds.service.commit()
 
-    sleep(300)  # Plenty of time for updater to download new source
+    delta = ds.get_service_with_delta("Suricata", as_obj=False)
 
-    old_sig_list = get_api_data(session, f"{host}/api/v4/search/signature/?offset=0&rows=1&query=source:old")
-    new_sig_list = get_api_data(session, f"{host}/api/v4/search/signature/?offset=0&rows=1&query=source:new")
-    assert new_sig_list['items'] and not old_sig_list['items']
+    new_found = False
+    old_not_found = True
+    for src in delta['update_config']['sources']:
+        if src['name'] == "old":
+            old_not_found = False
+            break
+        elif src['name'] == "new":
+            new_found = True
+
+    assert old_not_found and new_found
     # New source should be added, the old should be removed from signature list
