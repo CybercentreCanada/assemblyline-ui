@@ -419,8 +419,7 @@ def set_service(servicename, **_):
     removed_sources = {}
     # Check sources, especially to remove old sources
     if delta.get("update_config", None):
-        delta['update_config']['sources'] = data['update_config']['sources']
-        current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False)['update_config']['sources']
+        current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get('update_config', {}).get('sources', [])
         for source in current_sources:
             if source not in delta['update_config']['sources']:
                 removed_sources[source['name']] = STORAGE.signature.delete_matching(f"type:{servicename.lower()} AND source:{source['name']}")

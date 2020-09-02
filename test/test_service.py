@@ -1,6 +1,7 @@
 import json
 import pytest
 import random
+from time import sleep
 
 from conftest import get_api_data
 
@@ -123,3 +124,74 @@ def test_edit_service(datastore, login_session):
             assert svc['version'] == '3.3.0'
         else:
             assert svc['version'] == '4.0.0'
+
+
+def test_edit_service_source(datastore, login_session):
+    _, session, host = login_session
+    ds = datastore
+
+    delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
+    svc_data = ds.service.search("id:*", rows=100, as_obj=False)
+
+    service = "Suricata"
+
+    # Init
+    service_conf = {
+        "name": service,
+        "enabled": True,
+        "category": SERVICES[service][0],
+        "stage": SERVICES[service][1],
+        "version": "4.0.0",
+        "docker_config": {
+            "image": f"cccs/assemblyline-service-suricata:4.0.0.dev69",
+        },
+        "update_config": {
+            "generates_signatures": True,
+            "method": "run",
+            "run_options": {
+                "allow_internet_access": True,
+                "command": ["python", "-m", "suricata_.suricata_updater"],
+                "image": "${REGISTRY}cccs/assemblyline-service-suricata:4.0.0.dev69"
+            },
+            "sources": [
+                {
+                    "name": "old",
+                    "pattern": ".*\\.rules",
+                    "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
+                }
+            ],
+            "update_interval_seconds": 60  # Quarter-day (every 6 hours)
+        }
+    }
+    service_data = Service(service_conf).as_primitives()
+    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
+    assert resp['success']
+
+    ds.service_delta.commit()
+    ds.service.commit()
+
+    sleep(120)  # Give updater enough time to download source
+
+    sig_list = get_api_data(session, f"{host}/api/v4/search/signature/?offset=0&rows=1&query=source:old")
+    assert sig_list['items']
+
+    # Changed; add new, remove old
+    service_conf['update_config']['sources'][0] = {
+        "name": "new",
+        "pattern": ".*\\.rules",
+        "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
+    }
+
+    service_data = Service(service_conf).as_primitives()
+    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
+    assert resp['success']
+
+    ds.service_delta.commit()
+    ds.service.commit()
+
+    sleep(300)  # Plenty of time for updater to download new source
+
+    old_sig_list = get_api_data(session, f"{host}/api/v4/search/signature/?offset=0&rows=1&query=source:old")
+    new_sig_list = get_api_data(session, f"{host}/api/v4/search/signature/?offset=0&rows=1&query=source:new")
+    assert new_sig_list['items'] and not old_sig_list['items']
+    # New source should be added, the old should be removed from signature list
