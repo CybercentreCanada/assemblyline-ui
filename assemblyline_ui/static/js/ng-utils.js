@@ -818,12 +818,11 @@ utils.directive('ncSection', function () {
 
                         // "Container" that will contain the card
                         let card = document.createElement("div");
-                        card.className = "process_card";
 
+                        // Process pid details
                         let pid_section = document.createElement("div");
                         pid_section.style.padding = "5px";
                         pid_section.style.backgroundColor = "#EEE";
-                        // Process name details
                         let process_pid = document.createTextNode(process["process_pid"]);
                         pid_section.appendChild(process_pid);
 
@@ -834,7 +833,6 @@ utils.directive('ncSection', function () {
                         let header = document.createElement("div");
                         header.className = "text-heavy";
                         header.style.paddingBottom = "5px";
-                        header.style.backgroundColor = "white";
 
                         // Process name details
                         let process_name = document.createTextNode(String(process["process_name"]).breakableStr());
@@ -851,12 +849,49 @@ utils.directive('ncSection', function () {
                         samp.appendChild(small);
                         footer.appendChild(samp);
 
+                        // changing the card colour based on how high the total signature score is
+                        let signatures = process["signatures"];
+                        let total_signature_score = 0;
+                        for (let signature in signatures) {
+                            total_signature_score += signatures[signature];
+                        }
+                        if (total_signature_score > 1000) {
+                            card.className = "process_card alert-danger";
+                        } else if (total_signature_score > 100 && total_signature_score <= 1000) {
+                            card.className = "process_card alert-warning";
+                        } else {
+                            card.className = "process_card alert-light";
+                        }
+
+                        // adding a tool tip and message for signatures
+                        let sig_section = document.createElement("div");
+                        let signature_count = Object.keys(signatures).length;
+
+                        if (signature_count > 0) {
+                            let sig_message;
+                            if (signature_count === 1) {
+                                sig_message = document.createTextNode("Hit 1 signature");
+                            } else {
+                                sig_message = document.createTextNode("Hit " + signature_count + " signatures");
+                            }
+                            // Signature section
+                            sig_section.style.padding = "5px";
+                            // let alert_icon = document.createElement("span");
+                            // alert_icon.className = "glyphicon glyphicon-info";
+                            let sig_tooltip = document.createElement("div");
+                            sig_tooltip.className = "btn";
+                            sig_tooltip.title = Object.keys(signatures).join(", ");
+                            // sig_tooltip.appendChild(alert_icon);
+                            sig_tooltip.appendChild(sig_message);
+                            sig_section.appendChild(sig_tooltip);
+                        }
                         // Add header and footer to detail section
                         detail_section.appendChild(header);
                         detail_section.appendChild(footer);
 
                         // Adding the card components
                         card.appendChild(pid_section);
+                        card.appendChild(sig_section);
                         card.appendChild(detail_section);
 
                         // Adding the card to the list
