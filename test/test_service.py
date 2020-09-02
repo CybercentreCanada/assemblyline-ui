@@ -133,14 +133,12 @@ def test_edit_service_source(datastore, login_session):
     delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
-    service = "Suricata"
-
     # Init
     service_conf = {
-        "name": service,
+        "name": "Suricata",
         "enabled": True,
-        "category": SERVICES[service][0],
-        "stage": SERVICES[service][1],
+        "category": "Networking",
+        "stage": "CORE",
         "version": "4.0.0",
         "docker_config": {
             "image": f"cccs/assemblyline-service-suricata:4.0.0.dev69",
@@ -164,7 +162,7 @@ def test_edit_service_source(datastore, login_session):
         }
     }
     service_data = Service(service_conf).as_primitives()
-    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
+    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
     assert resp['success']
 
     ds.service_delta.commit()
@@ -183,7 +181,7 @@ def test_edit_service_source(datastore, login_session):
     }
 
     service_data = Service(service_conf).as_primitives()
-    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
+    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
     assert resp['success']
 
     ds.service_delta.commit()
