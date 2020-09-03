@@ -10,6 +10,7 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, STORAGE
+
 Classification = forge.get_classification()
 config = forge.get_config()
 
@@ -236,17 +237,17 @@ def add_signature_source(service, **_):
 def change_status(sid, status, **kwargs):
     """
     Change the status of a signature
-       
+
     Variables:
     sid    =>  ID of the signature
     status  =>  New state
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     { "success" : true }      #If saving the rule was a success or not
     """
@@ -262,7 +263,7 @@ def change_status(sid, status, **kwargs):
         if not Classification.is_accessible(user['classification'],
                                             data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "You are not allowed change status on this signature", 403)
-    
+
         if data['status'] in STALE_STATUSES and status not in DRAFT_STATUSES:
             return make_api_response("",
                                      f"Only action available while signature in {data['status']} "
@@ -326,7 +327,7 @@ def delete_signature(sid, **kwargs):
                                             data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to delete this signature.", 403)
 
-        ret_val =STORAGE.signature.delete(sid)
+        ret_val = STORAGE.signature.delete(sid)
 
         _reset_service_updates(data['type'])
         return make_api_response({"success": ret_val})
@@ -417,17 +418,17 @@ def _get_cached_signatures(signature_cache, query_hash):
 def download_signatures(**kwargs):
     """
     Download signatures from the system.
-    
+
     Variables:
-    None 
-    
-    Arguments: 
+    None
+
+    Arguments:
     query       => Query used to filter the signatures
                    Default: All deployed signatures
 
     Data Block:
     None
-    
+
     Result example:
     <A zip file containing all signatures files from the different sources>
     """
@@ -480,16 +481,16 @@ def download_signatures(**kwargs):
 def get_signature(sid, **kwargs):
     """
     Get the detail of a signature based of its ID and revision
-    
+
     Variables:
     sid    =>     Signature ID
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-     
+
     Result example:
     {}
     """
