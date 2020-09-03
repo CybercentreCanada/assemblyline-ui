@@ -204,6 +204,9 @@ def add_signature_source(service, **_):
                                  err="Invalid source object data",
                                  status_code=400)
 
+    # Ensure data source doesn't have spaces in name
+    data['name'] = data['name'].replace(" ", "_")
+
     service_data = STORAGE.get_service_with_delta(service, as_obj=False)
     if not service_data.get('update_config', {}).get('generates_signatures', False):
         return make_api_response({"success": False},
