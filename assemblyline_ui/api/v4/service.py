@@ -32,6 +32,12 @@ service_update = Hash('container-update', get_client(
 ))
 
 
+def sanitize_source_names(source_list):
+    for source in source_list:
+        source['name'] = source['name'].replace(" ", "_")
+    return source_list
+
+
 @service_api.route("/", methods=["PUT"])
 @api_login(require_type=['admin'], allow_readonly=False)
 def add_service(**_):
@@ -418,6 +424,7 @@ def set_service(servicename, **_):
     removed_sources = {}
     # Check sources, especially to remove old sources
     if delta.get("update_config", None):
+        delta = sanitize_source_names(delta.get("update_config", {}).get("sources", []))
         current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get(
             'update_config', {}).get('sources', [])
         for source in current_sources:
