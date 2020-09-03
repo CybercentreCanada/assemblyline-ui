@@ -203,8 +203,6 @@ def add_signature_source(service, **_):
         return make_api_response({"success": False},
                                  err="Invalid source object data",
                                  status_code=400)
-    # Ensure data source doesn't have spaces in name
-    data['name'] = str(data['name']).replace(" ", "_")
 
     # Ensure data source doesn't have spaces in name
     data['name'] = data['name'].replace(" ", "_")
