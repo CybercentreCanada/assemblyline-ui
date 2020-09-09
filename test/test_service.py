@@ -203,3 +203,68 @@ def test_edit_service_source(datastore, login_session):
 
     assert old_not_found and new_found
     # New source should be added, the old should be removed from signature list
+
+def test_remove_service_sources(datastore, login_session):
+    _, session, host = login_session
+    ds = datastore
+
+    delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
+    svc_data = ds.service.search("id:*", rows=100, as_obj=False)
+
+    # Init
+    service_conf = {
+        "name": "Suricata",
+        "enabled": True,
+        "category": "Networking",
+        "stage": "CORE",
+        "version": "4.0.0",
+        "docker_config": {
+            "image": f"cccs/assemblyline-service-suricata:4.0.0.dev69",
+        },
+        "update_config": {
+            "generates_signatures": True,
+            "method": "run",
+            "run_options": {
+                "allow_internet_access": True,
+                "command": ["python", "-m", "suricata_.suricata_updater"],
+                "image": "${REGISTRY}cccs/assemblyline-service-suricata:4.0.0.dev69"
+            },
+            "sources": [
+                {
+                    "name": "old",
+                    "pattern": ".*\\.rules",
+                    "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
+                }
+            ],
+            "update_interval_seconds": 60  # Quarter-day (every 6 hours)
+        }
+    }
+    service_data = Service(service_conf).as_primitives()
+    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
+    assert resp['success']
+
+    ds.service_delta.commit()
+    ds.service.commit()
+
+    delta = ds.get_service_with_delta("Suricata", as_obj=False)
+    assert delta['update_config']['sources'][0]['name'] == "old"
+
+    # Wipe all sources
+    service_conf['update_config']['sources'] = []
+
+    service_data = Service(service_conf).as_primitives()
+    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
+    assert resp['success']
+
+    ds.service_delta.commit()
+    ds.service.commit()
+
+    delta = ds.get_service_with_delta("Suricata", as_obj=False)
+
+    old_not_found = True
+    for src in delta['update_config']['sources']:
+        if src['name'] == "old":
+            old_not_found = False
+            break
+
+    assert old_not_found
