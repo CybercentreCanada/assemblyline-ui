@@ -116,7 +116,15 @@ function SearchBaseCtrl($scope, $http, $timeout) {
 
                 $scope.loading_extra = false;
 
-                if (status === 400) {
+                if (data.api_error_message.indexOf("Rewrite first") !== -1 && !$scope.scoped_search){
+                    callback(bucket, {
+                        items: [],
+                        offset: 0,
+                        rows: $scope.rows,
+                        total: 0
+                    })
+                }
+                else if (status === 400) {
                     $timeout(function () {
                         $("#search-term").addClass("has-error");
                         let sb = $("#search-box");
@@ -232,9 +240,11 @@ function SearchBaseCtrl($scope, $http, $timeout) {
         $scope.result_list = null;
         $scope.alert_list = null;
         $scope.export_btn = false;
+        $scope.invalid_query = null;
+        $("#search-term").removeClass("has-error");
         $scope.query = this.new_query;
         $scope.search_scope = this.search_scope;
-        $scope.scoped_search = $scope.search_scope != 'all';
+        $scope.scoped_search = $scope.search_scope !== 'all';
         $scope.start();
     };
 
