@@ -155,6 +155,11 @@ def test_edit_service_source(datastore, login_session):
                     "name": "old",
                     "pattern": ".*\\.rules",
                     "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
+                },
+                {
+                    "name": "old with space",
+                    "pattern": ".*\\.rules",
+                    "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
                 }
             ],
             "update_interval_seconds": 60  # Quarter-day (every 6 hours)
@@ -169,6 +174,7 @@ def test_edit_service_source(datastore, login_session):
 
     delta = ds.get_service_with_delta("Suricata", as_obj=False)
     assert delta['update_config']['sources'][0]['name'] == "old"
+    assert delta['update_config']['sources'][1]['name'] == "old_with_space"
 
     # Changed; add new, remove old
     service_conf['update_config']['sources'][0] = {
