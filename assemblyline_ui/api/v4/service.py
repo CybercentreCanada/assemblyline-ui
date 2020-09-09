@@ -423,8 +423,11 @@ def set_service(servicename, **_):
 
     removed_sources = {}
     # Check sources, especially to remove old sources
-    if delta.get("update_config", {}).get("sources", []):
-        delta["update_config"]["sources"] = sanitize_source_names(delta["update_config"]["sources"])
+    if delta.get("update_config", None):
+
+        if delta.get("update_config", {}).get("sources", None):
+            delta["update_config"]["sources"] = sanitize_source_names(delta["update_config"]["sources"])
+            
         current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get(
             'update_config', {}).get('sources', [])
         for source in current_sources:
