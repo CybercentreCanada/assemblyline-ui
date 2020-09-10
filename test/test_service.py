@@ -20,7 +20,9 @@ def datastore(datastore_connection):
         wipe_services(datastore_connection)
 
 
-def suricata_push_config(session, host, ds, source_change=None):
+@pytest.fixture
+def suricata_init_config(datastore, login_session):
+    _, session, host = login_session
     service_conf = {
         "name": "Suricata",
         "enabled": True,
@@ -54,25 +56,23 @@ def suricata_push_config(session, host, ds, source_change=None):
         }
     }
 
-    if source_change is None:
-        service_data = Service(service_conf).as_primitives()
-        resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
-        assert resp['success']
+    service_data = Service(service_conf).as_primitives()
+    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
+    if resp['success']:
+        datastore.service_delta.commit()
+        datastore.service.commit()
 
-        ds.service_delta.commit()
-        ds.service.commit()
+        delta_sources = datastore.get_service_with_delta("Suricata", as_obj=False)['update_config']['sources']
+        passed = delta_sources[0]['name'] == "old" and delta_sources[1]['name'] == "old_with_space"
+        return passed, service_conf
+    return False
 
-        delta = ds.get_service_with_delta("Suricata", as_obj=False)
-        assert delta['update_config']['sources'][0]['name'] == "old"
-        assert delta['update_config']['sources'][1]['name'] == "old_with_space"
-    else:
-        service_conf['update_config']['sources'] = source_change
-        service_data = Service(service_conf).as_primitives()
-        resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
-        assert resp['success']
 
-        ds.service_delta.commit()
-        ds.service.commit()
+def suricata_change_config(service_conf, login_session):
+    _, session, host = login_session
+    service_data = Service(service_conf).as_primitives()
+    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
+    return resp['success']
 
 
 # noinspection PyUnusedLocal
@@ -180,20 +180,22 @@ def test_edit_service(datastore, login_session):
             assert svc['version'] == '4.0.0'
 
 
-def test_edit_service_source(datastore, login_session):
-    _, session, host = login_session
+def test_edit_service_source(datastore, login_session, suricata_init_config):
     ds = datastore
+    init_pass, service_conf = suricata_init_config
 
-    # Init config
-    suricata_push_config(session, host, ds)
+    assert init_pass
 
     # Changed; add new, remove old
-    suricata_push_config(session, host, ds,
-                         source_change=[{
-                             "name": "new",
-                             "pattern": ".*\\.rules",
-                             "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
-                         }])
+    service_conf['update_config']['sources'] = [{
+        "name": "new",
+        "pattern": ".*\\.rules",
+        "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
+    }]
+    assert suricata_change_config(service_conf, login_session)
+
+    ds.service_delta.commit()
+    ds.service.commit()
 
     delta = ds.get_service_with_delta("Suricata", as_obj=False)
 
@@ -209,15 +211,18 @@ def test_edit_service_source(datastore, login_session):
     assert old_not_found and new_found
 
 
-def test_remove_service_sources(datastore, login_session):
-    _, session, host = login_session
+def test_remove_service_sources(datastore, login_session, suricata_init_config):
     ds = datastore
+    init_pass, service_conf = suricata_init_config
 
-    # Init config
-    suricata_push_config(session, host, ds)
+    assert init_pass
 
     # Wipe all sources
-    suricata_push_config(session, host, ds, source_change=[])
+    service_conf['update_config']['sources'] = []
+    assert suricata_change_config(service_conf, login_session)
+
+    ds.service_delta.commit()
+    ds.service.commit()
 
     delta = ds.get_service_with_delta("Suricata", as_obj=False)
 
