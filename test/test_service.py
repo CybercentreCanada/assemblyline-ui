@@ -182,9 +182,9 @@ def test_edit_service(datastore, login_session):
 
 def test_edit_service_source(datastore, login_session, suricata_init_config):
     ds = datastore
-    init_pass, service_conf = suricata_init_config
+    config_initiated, service_conf = suricata_init_config
 
-    assert init_pass
+    assert config_initiated
 
     # Changed; add new, remove old
     service_conf['update_config']['sources'] = [{
@@ -192,7 +192,9 @@ def test_edit_service_source(datastore, login_session, suricata_init_config):
         "pattern": ".*\\.rules",
         "uri": "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
     }]
-    assert suricata_change_config(service_conf, login_session)
+
+    config_changed = suricata_change_config(service_conf, login_session)
+    assert config_changed
 
     ds.service_delta.commit()
     ds.service.commit()
@@ -213,13 +215,14 @@ def test_edit_service_source(datastore, login_session, suricata_init_config):
 
 def test_remove_service_sources(datastore, login_session, suricata_init_config):
     ds = datastore
-    init_pass, service_conf = suricata_init_config
+    config_initiated, service_conf = suricata_init_config
 
-    assert init_pass
+    assert config_initiated
 
     # Wipe all sources
     service_conf['update_config']['sources'] = []
-    assert suricata_change_config(service_conf, login_session)
+    config_changed = suricata_change_config(service_conf, login_session)
+    assert config_changed
 
     ds.service_delta.commit()
     ds.service.commit()
