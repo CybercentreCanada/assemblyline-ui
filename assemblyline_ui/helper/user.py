@@ -296,9 +296,6 @@ def login(uname, path=None):
             user["kibana_dashboards"] = []
             user["admin_menu"] = []
 
-    if not config.ui.tos:
-        user['agrees_with_tos'] = now_as_iso()
-
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
@@ -306,6 +303,7 @@ def login(uname, path=None):
     user['apikeys'] = list(user.get('apikeys', {}).keys())
     user['c12n_enforcing'] = CLASSIFICATION.enforce
     user['has_password'] = user.pop('password', "") != ""
+    user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
     user['internal_auth_enabled'] = config.auth.internal.enabled
     security_tokens = user.get('security_tokens', {})
     user['security_tokens'] = list(security_tokens.keys())

@@ -47,6 +47,7 @@ def who_am_i(**kwargs):
      "classification": "TLP:W",                 # Classification of the user
      "email": "basic.user@assemblyline.local",  # Email of the user
      "groups": ["USERS"],                       # Groups the user if member of
+     "has_tos": False,                          # True if there are terms of service set in the system
      "is_active": True,                         # Is the user active
      "name": "Basic user",                      # Name of the user
      "read_only": False,                        # Is the interface to be displayed in read-only mode
@@ -64,6 +65,7 @@ def who_am_i(**kwargs):
                 "classification",
                 "email",
                 "groups",
+                "has_tos",
                 "is_active",
                 "name",
                 "read_only",
