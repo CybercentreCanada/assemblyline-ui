@@ -1,4 +1,3 @@
-from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
@@ -304,6 +303,7 @@ def login(uname, path=None):
     user['c12n_enforcing'] = CLASSIFICATION.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
+    user['tos_auto_notify'] = config.ui.tos_lockout_notify is not None and config.ui.tos_lockout_notify != []
     user['internal_auth_enabled'] = config.auth.internal.enabled
     security_tokens = user.get('security_tokens', {})
     user['security_tokens'] = list(security_tokens.keys())

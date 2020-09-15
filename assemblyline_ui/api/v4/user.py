@@ -69,6 +69,7 @@ def who_am_i(**kwargs):
                 "is_active",
                 "name",
                 "read_only",
+                "tos_auto_notify",
                 "type",
                 "uname"]}
 
