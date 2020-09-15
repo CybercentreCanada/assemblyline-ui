@@ -34,7 +34,14 @@ def handle_401(e):
         msg = str(e)
 
     if request.path.startswith("/api/"):
-        return make_api_response("", msg, 401)
+        data = {
+            "oauth_providers": [name for name, p in config.auth.oauth.providers.items()
+                                if p['client_id'] and p['client_secret']],
+            "allow_userpass_login": config.auth.ldap.enabled or config.auth.internal.enabled,
+            "allow_signup": config.auth.internal.signup.enabled,
+            "allow_pw_rest": config.auth.internal.signup.enabled
+        }
+        return make_api_response(data, msg, 401)
     else:
         resp = redirect(redirect_helper(f"/login.html?next={quote(request.full_path)}"))
         resp.set_cookie('next_url', request.full_path)
