@@ -865,7 +865,10 @@ utils.directive('ncSection', function () {
 
                         // adding a tool tip and message for signatures
                         let sig_section = document.createElement("div");
-                        let signature_count = Object.keys(signatures).length;
+                        let signature_count = 0;
+                        if (signatures !== undefined) {
+                            signature_count = Object.keys(signatures).length;
+                        }
 
                         if (signature_count > 0) {
                             let sig_message;
