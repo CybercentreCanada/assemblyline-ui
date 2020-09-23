@@ -90,18 +90,23 @@ def get_system_configuration(**_):
         "core.ingester.default_max_extracted",
         "core.ingester.default_max_supplementary",
         "services.categories",
+        "services.min_service_workers",
+        "services.preferred_update_channel",
         "services.stages",
         "submission.default_max_extracted",
         "submission.default_max_supplementary",
         "submission.dtl",
+        "submission.max_extraction_depth",
         "submission.max_file_size",
+        "submission.max_metadata_length",
         "submission.tag_types.attribution",
         "submission.tag_types.behavior",
         "submission.tag_types.ioc",
         "ui.allow_raw_downloads",
         "ui.audit",
         "ui.download_encoding",
-        "ui.enforce_quota"
+        "ui.enforce_quota",
+        "ui.ingest_max_priority"
     ]
 
     out = {}
@@ -190,5 +195,3 @@ def get_terms_of_service(**_):
     Terms of service as markdown format
     """
     return make_api_response(config.ui.tos)
-
-

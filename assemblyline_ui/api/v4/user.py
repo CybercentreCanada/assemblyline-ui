@@ -8,6 +8,7 @@ from assemblyline.common.security import get_password_hash, check_password_requi
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, config, LOGGER
+from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.user import load_user_settings, save_user_settings, save_user_account
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
@@ -19,13 +20,14 @@ user_api = make_subapi_blueprint(SUB_API, api_version=4)
 user_api._doc = "Manage the different users of the system"
 
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
+classification_definition = CLASSIFICATION.get_parsed_classification_definition()
 
 
 @user_api.route("/whoami/", methods=["GET"])
 @api_login()
 def who_am_i(**kwargs):
     """
-    Add a user to the system
+    Return the currently logged in user as well as the system configuration
 
     Variables:
     None
@@ -39,45 +41,68 @@ def who_am_i(**kwargs):
     Result example:
     {
      "agrees_with_tos": None,                   # Date the user agreed with TOS
-     "allow_2fa": True,                         # Is 2fa Allowed for the user
-     "allow_apikeys": True,                     # Are APIKeys allowed for the user
-     "allow_security_tokens": True,             # Are Security tokens allowed for the user
      "avatar": "data:image/jpg...",             # Avatar data block
-     "c12n_enforcing": False,                   # Are we enforcing classification engine
+     "c12nDef": {},                             # Classification definition block
      "classification": "TLP:W",                 # Classification of the user
+     "configuration": {                         # Configuration block
+       "auth": {                                  # Authentication Configuration
+         "allow_2fa": True,                         # Is 2fa Allowed for the user
+         "allow_apikeys": True,                     # Are APIKeys allowed for the user
+         "allow_security_tokens": True,             # Are Security tokens allowed for the user
+       },
+       "ui": {                                    # UI Configuration
+         "allow_url_submissions": True,             # Are URL submissions allowed
+         "read_only": False,                        # Is the interface to be displayed in read-only mode
+         "tos": True,                               # Are terms of service set in the system
+         "tos_lockout": False,                      # Will agreeing to TOS lockout the user
+         "tos_lockout_notify": False                # Will admin be auto-notified when a user is locked out
+       }
+     },
      "email": "basic.user@assemblyline.local",  # Email of the user
      "groups": ["USERS"],                       # Groups the user if member of
-     "has_tos": False,                          # True if there are terms of service set in the system
+     "indexes": {},                             # Search indexes definitions
      "is_active": True,                         # Is the user active
      "name": "Basic user",                      # Name of the user
-     "read_only": False,                        # Is the interface to be displayed in read-only mode
      "type": ["user", "admin"],                 # Roles the user is member of
      "uname": "sgaron-cyber"                    # Username of the current user
     }
-    """
-    data = {k: v for k, v in kwargs['user'].items()
-            if k in [
-                "agrees_with_tos",
-                "allow_2fa",
-                "allow_apikeys",
-                "allow_security_tokens",
-                "c12n_enforcing",
-                "classification",
-                "email",
-                "groups",
-                "has_tos",
-                "is_active",
-                "name",
-                "read_only",
-                "tos_auto_notify",
-                "type",
-                "uname"]}
 
-    data['avatar'] = STORAGE.user_avatar.get(data['uname'])
-    data['username'] = data.pop('uname')
-    data['is_admin'] = "admin" in data['type']
-    data['roles'] = data.pop('type')
-    return make_api_response(data)
+    """
+    user_data = {k: v for k, v in kwargs['user'].items()
+                 if k in [
+                    "agrees_with_tos",
+                    "classification",
+                    "email",
+                    "groups",
+                    "is_active",
+                    "name",
+                    "type",
+                    "uname"]}
+
+    user_data['avatar'] = STORAGE.user_avatar.get(user_data['uname'])
+    user_data['username'] = user_data.pop('uname')
+    user_data['is_admin'] = "admin" in user_data['type']
+    user_data['roles'] = user_data.pop('type')
+
+    # System configuration
+    user_data['c12nDef'] = classification_definition
+    user_data['configuration'] = {
+        "auth": {
+            "allow_2fa": config.auth.allow_2fa,
+            "allow_apikeys": config.auth.allow_apikeys,
+            "allow_security_tokens": config.auth.allow_security_tokens,
+            },
+        "ui": {
+            "allow_url_submissions": config.ui.allow_url_submissions,
+            "read_only": config.ui.read_only,
+            "tos": config.ui.tos not in [None, ""],
+            "tos_lockout": config.ui.tos_lockout,
+            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
+            },
+        }
+    user_data['indexes'] = list_all_fields()
+
+    return make_api_response(user_data)
 
 
 @user_api.route("/<username>/", methods=["PUT"])
