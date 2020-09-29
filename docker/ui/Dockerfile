@@ -32,4 +32,4 @@ COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.loc
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "assemblyline_ui.app:app", "--config=/var/lib/assemblyline/.local/lib/python3.7/site-packages/assemblyline_ui/gunicorn_config.py"]
+CMD ["gunicorn", "assemblyline_ui.app:app", "--config=python:assemblyline_ui.gunicorn_config"]
