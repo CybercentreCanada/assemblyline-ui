@@ -41,6 +41,8 @@ stages:
       inputs: {versionSpec: 3.8}
     - script: |
         export VERSION=${BUILD_SOURCEBRANCH#"refs/tags/v"}
+        export VERSION=${VERSION/stable}
+        export VERSION=${VERSION/beta/b}
         echo $VERSION > assemblyline_ui/VERSION
         sudo env "PATH=$PATH" python -m pip install --no-cache-dir -U wheel cython pip
         python setup.py bdist_wheel
@@ -81,6 +83,8 @@ stages:
         sudo apt-get update
         sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
         export VERSION=${BUILD_SOURCEBRANCH#"refs/tags/v"}
+        export VERSION=${VERSION/stable}
+        export VERSION=${VERSION/beta/b}
         sudo -E env "PATH=$PATH" python -m pip install --no-cache-dir -f $(Pipeline.Workspace)/dist/ "assemblyline-ui==${VERSION}"
         sudo -E env "PATH=$PATH" python -m pip install --no-cache-dir -r $(Pipeline.Workspace)/test/requirements.txt
         sudo mkdir -p /etc/assemblyline/
@@ -138,9 +142,11 @@ stages:
     - script: |
         set -xv  # Echo commands before they are run
         export TAG=${BUILD_SOURCEBRANCH#"refs/tags/v"}
-        until sudo env "PATH=$PATH" python -m pip download "assemblyline-ui==$TAG" --pre --no-deps &> /dev/null; do sleep 2; done
-        docker build --build-arg version=$TAG -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
-        docker build --build-arg version=$TAG -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
+        export VERSION=${TAG/stable}
+        export VERSION=${VERSION/beta/b}
+        until sudo env "PATH=$PATH" python -m pip download "assemblyline-ui==$VERSION" --pre --no-deps &> /dev/null; do sleep 2; done
+        docker build --build-arg version=$VERSION -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
+        docker build --build-arg version=$VERSION -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
         docker push cccs/assemblyline-ui
         docker push cccs/assemblyline-socketio
       displayName: Deploy to Docker Hub
