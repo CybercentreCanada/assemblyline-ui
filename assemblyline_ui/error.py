@@ -70,7 +70,21 @@ def handle_403(e):
         log_with_traceback(AUDIT_LOG, trace, f"Access Denied. (U:{uname} - IP:{ip}) [{error_message}]")
 
     if request.path.startswith("/api/"):
-        return make_api_response("", "Access Denied (%s) [%s]" % (request.path, error_message), 403)
+        config_block = {
+            "auth": {
+                "allow_2fa": config.auth.allow_2fa,
+                "allow_apikeys": config.auth.allow_apikeys,
+                "allow_security_tokens": config.auth.allow_security_tokens,
+                },
+            "ui": {
+                "allow_url_submissions": config.ui.allow_url_submissions,
+                "read_only": config.ui.read_only,
+                "tos": config.ui.tos not in [None, ""],
+                "tos_lockout": config.ui.tos_lockout,
+                "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
+                }
+        }
+        return make_api_response(config_block, "Access Denied (%s) [%s]" % (request.path, error_message), 403)
     else:
         if error_message.startswith("User") and str(e).endswith("is disabled"):
             return render_template('403e.html', exception=error_message,
