@@ -79,7 +79,7 @@ def who_am_i(**kwargs):
                     "type",
                     "uname"]}
 
-    user_data['avatar'] = STORAGE.user_avatar.get(user_data['uname'])
+    user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
     user_data['is_admin'] = "admin" in user_data['type']
     user_data['roles'] = user_data.pop('type')
@@ -101,6 +101,7 @@ def who_am_i(**kwargs):
             },
         }
     user_data['indexes'] = list_all_fields()
+    user_data['settings'] = load_user_settings(kwargs['user'])
 
     return make_api_response(user_data)
 
