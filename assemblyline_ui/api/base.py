@@ -73,7 +73,8 @@ class api_login(BaseSecurityRenderer):
             return
 
         if "E" in session.get("privileges", []) and self.check_xsrf_token and \
-                session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN', ""):
+                session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN',
+                                                                     request.args.get("XSRF_TOKEN", "")):
             abort(403, "Invalid XSRF token")
             return
 
