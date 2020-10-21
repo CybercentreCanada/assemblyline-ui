@@ -142,11 +142,12 @@ stages:
     - script: |
         set -xv  # Echo commands before they are run
         export TAG=${BUILD_SOURCEBRANCH#"refs/tags/v"}
+        if [[ "$TAG" == *stable* ]]; then export BUILD_TYPE=stable; else export BUILD_TYPE=latest; fi
         export VERSION=${TAG/stable}
         export VERSION=${VERSION/beta/b}
         until sudo env "PATH=$PATH" python -m pip download "assemblyline-ui==$VERSION" --pre --no-deps &> /dev/null; do sleep 2; done
-        docker build --build-arg version=$VERSION -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:latest docker/ui
-        docker build --build-arg version=$VERSION -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:latest docker/socketio
+        docker build --build-arg version=$VERSION --build-arg branch=$BUILD_TYPE -t cccs/assemblyline-ui:$TAG -t cccs/assemblyline-ui:$BUILD_TYPE docker/ui
+        docker build --build-arg version=$VERSION --build-arg branch=$BUILD_TYPE -t cccs/assemblyline-socketio:$TAG -t cccs/assemblyline-socketio:$BUILD_TYPE docker/socketio
         docker push cccs/assemblyline-ui
         docker push cccs/assemblyline-socketio
       displayName: Deploy to Docker Hub
