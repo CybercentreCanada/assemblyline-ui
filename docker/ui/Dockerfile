@@ -1,4 +1,5 @@
-FROM cccs/assemblyline:latest AS base
+ARG branch=latest
+FROM cccs/assemblyline:$branch AS base
 # Switch to root to install common dependancies
 USER root
 RUN apt-get update && apt-get install -yy libldap-2.4-2 libsasl2-2 && rm -rf /var/lib/apt/lists/*
