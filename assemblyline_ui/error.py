@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 from assemblyline_ui.api.base import make_api_response
 from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config, KV_SESSION
 from assemblyline_ui.helper.views import redirect_helper
-from assemblyline_ui.http_exceptions import AccessDeniedException, QuotaExceededException, AuthenticationException
+from assemblyline_ui.http_exceptions import AccessDeniedException, AuthenticationException
 from assemblyline_ui.logger import log_with_traceback
 
 errors = Blueprint("errors", __name__)
@@ -109,9 +109,6 @@ def handle_500(e):
 
     if isinstance(e.original_exception, AuthenticationException):
         return handle_401(e.original_exception)
-
-    if isinstance(e.original_exception, QuotaExceededException):
-        return make_api_response("", str(e.original_exception), 503)
 
     oe = e.original_exception or e
 

@@ -10,9 +10,5 @@ class InvalidDataException(Exception):
     pass
 
 
-class QuotaExceededException(Exception):
-    pass
-
-
 class AuthenticationException(Exception):
     pass

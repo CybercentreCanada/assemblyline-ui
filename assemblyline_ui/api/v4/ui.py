@@ -232,7 +232,9 @@ def start_ui_submission(ui_sid, **kwargs):
     """
     user = kwargs['user']
 
-    check_submission_quota(user)
+    quota_response = check_submission_quota(user)
+    if quota_response:
+        return quota_response
 
     ui_params = request.json
     ui_params['groups'] = kwargs['user']['groups']

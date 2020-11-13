@@ -210,8 +210,10 @@ def submit(**kwargs):
     <Submission message object as a json dictionary>
     """
     user = kwargs['user']
-    check_submission_quota(user)
-        
+    quota_response = check_submission_quota(user)
+    if quota_response:
+        return quota_response
+
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
     with forge.get_filestore() as f_transport:
