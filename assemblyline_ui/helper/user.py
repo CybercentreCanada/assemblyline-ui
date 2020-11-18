@@ -1,3 +1,5 @@
+from typing import Optional
+
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
@@ -5,8 +7,7 @@ from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_ui.config import LOGGER, STORAGE, CLASSIFICATION
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
-from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, QuotaExceededException, \
-    AuthenticationException
+from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "groups", "password"]
 config = forge.get_config()
@@ -43,7 +44,7 @@ def add_access_control(user):
     user['access_control'] = safe_str(query)
      
 
-def check_submission_quota(user, num=1):
+def check_submission_quota(user, num=1) -> Optional[str]:
     quota_user = user['uname']
     quota = user.get('submission_quota', 5)
     count = num + Hash('submissions-' + quota_user, **persistent).length()
@@ -52,8 +53,9 @@ def check_submission_quota(user, num=1):
             "User %s exceeded their submission quota. [%s/%s]",
             quota_user, count, quota
         )
-        raise QuotaExceededException("You've exceeded your maximum submission quota of %s " % quota)
-        
+        return "You've exceeded your maximum submission quota of %s " % quota
+    return None
+
 
 def create_menu(user, path):
     user['groups'].insert(0, "ALL")

@@ -60,7 +60,7 @@ def test_resubmit_dynamic(datastore, login_session):
     assert resp['sid'] != submission.sid
     for f in resp['files']:
         assert f['sha256'] == sha256
-    assert resp['params']['services']['resubmit'] == ['Dynamic Analysis']
+    assert 'Dynamic Analysis' in resp['params']['services']['selected']
 
     msg = SubmissionTask(sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']

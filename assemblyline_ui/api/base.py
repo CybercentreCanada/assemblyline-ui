@@ -10,7 +10,7 @@ from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, RATE_LIMITER, STORAGE
 from assemblyline_ui.helper.user import login
-from assemblyline_ui.http_exceptions import QuotaExceededException, AuthenticationException
+from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
@@ -145,7 +145,7 @@ class api_login(BaseSecurityRenderer):
                 if config.ui.enforce_quota:
                     LOGGER.info("User %s was prevented from using the api due to exceeded quota. [%s/%s]" %
                                 (quota_user, count, quota))
-                    raise QuotaExceededException("You've exceeded your maximum quota of %s " % quota)
+                    return make_api_response("", "You've exceeded your maximum quota of %s " % quota, 503)
                 else:
                     LOGGER.debug("Quota exceeded for user %s. [%s/%s]" % (quota_user, count, quota))
             else:
@@ -161,7 +161,7 @@ class api_login(BaseSecurityRenderer):
         return base
 
 
-def make_api_response(data, err="", status_code=200, cookies=None):
+def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
     quota_user = flsk_session.pop("quota_user", None)
     quota_id = flsk_session.pop("quota_id", None)
     quota_set = flsk_session.pop("quota_set", False)
