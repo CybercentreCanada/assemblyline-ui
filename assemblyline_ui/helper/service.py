@@ -76,5 +76,7 @@ def ui_to_submission_params(params):
     params.pop('download_encoding', None)
     params.pop('expand_min_score', None)
     params.pop('submission_view', None)
+    params.pop('ui4', None)
+    params.pop('ui4_ask', None)
 
     return params
