@@ -70,13 +70,23 @@ class protected_renderer(BaseSecurityRenderer):
                                             email=user.get('email', None),
                                             user_id=user.get('uname', None))
 
+            settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+
+            if config.ui.ui4_path is not None:
+                if settings.get('ui4', False):
+                    return redirect(redirect_helper(config.ui.ui4_path))
+                user['ui4_ask'] = settings.get('ui4_ask', True)
+            else:
+                user['ui4_ask'] = settings.get('ui4_ask', False)
+            user['ui4_allow'] = config.ui.ui4_path is not None
+
             kwargs['user_js'] = json.dumps(user)
             kwargs['debug'] = str(DEBUG).lower()
             kwargs['menu'] = create_menu(user, path)
             kwargs['avatar'] = STORAGE.user_avatar.get(user['uname'])
             kwargs['is_prod'] = SYSTEM_TYPE == "production"
             kwargs['is_readonly'] = config.ui.read_only
-            settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+
             if not request.path == "/terms.html":
                 if not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                     return redirect(redirect_helper("/terms.html"))

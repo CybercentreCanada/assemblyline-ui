@@ -27,6 +27,35 @@
 	    {% block js_import %}
 		<script src="/static/js/blank.js"></script>
 		{% endblock %}
+		<script>
+			function getXSRFCookie() {
+			  let xsrfToken = null;
+			  if (document.cookie !== undefined) {
+				try {
+				  // eslint-disable-next-line prefer-destructuring
+				  xsrfToken = document.cookie
+					.split('; ')
+					.find(row => row.startsWith('XSRF-TOKEN'))
+					.split('=')[1];
+				} catch (ex) {
+				  // Ignore... we will return null
+				}
+			  }
+			  return xsrfToken;
+			}
+
+			function ui4(answer){
+				let fetchData = {
+					method: 'PUT',
+					body: answer,
+					headers: {
+						'Content-Type': 'application/json',
+						'X-XSRF-TOKEN': getXSRFCookie()
+					}
+				}
+				fetch('/api/v4/user/ui4/', fetchData).then(() => answer ? window.location.replace('/') : console.log("Will stop asking for ui4..."));
+			}
+		</script>
 	</head>
 	<body {% block body_param %}{% endblock %} {% block ng_init %}ng-controller="ALController" ng-init="user={{user_js}};debug={{debug}};start();"{% endblock %} ng-cloak role="document">
 		{%raw%}
@@ -50,7 +79,16 @@
 		<div ng-hide="!debug" class="hidden-print">
 			<button class="debug btn btn-sm btn-warning " ng-click="showParams()"><span class="glyphicon glyphicon-record">&nbsp;</span>Debug Log</button>
 		</div>
-		
+
+		<div id="ui4" ng-show="user.ui4_allow && user.ui4_ask" class="fade-animate hidden-xs">
+			<div class="popup-info alert alert-info" ng-click="user.ui4_ask=false">
+				<div style="padding-bottom: 20px"><strong>Did you know that there is a fresh new version of Assemblyline 4 UI?</strong></div>
+
+				<button class="btn btn-sm btn-primary " onclick="ui4(true)">Let me try it!</button>
+				<button class="btn btn-sm btn-default " onclick="ui4(false)" style="float: right">I don't care...</button>
+			</div>
+		</div>
+
 		<div class="loading ng-hide" {% block loading_menu %}{% endblock %}>
 			<div class="throbber">
 				Loading
@@ -117,6 +155,16 @@
 											</a>
 										</li>
 									{% endfor %}
+									{% if user.ui4_allow%}
+                                        <li class="divider"></li>
+										<li class="dropdown-header">User Interface</li>
+										<li>
+											<a href="" onclick="ui4(true)">
+												<i class="glyphicon glyphicon-certificate"></i>
+												Switch to new UI
+											</a>
+										</li>
+									{% endif %}
 									{% if 'admin' in user.type %}
                                         <li class="divider"></li>
 										<li class="dropdown-header">Administration</li>
