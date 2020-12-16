@@ -6,8 +6,8 @@ services:
     ports:
       - '5000:5000'
     volumes:
-      - ./config/:/etc/assemblyline/
-      - ../../:/opt/alv4/
+      - ${PATH_REWRITE:-.}/config/:/etc/assemblyline/
+      - ${ROOT_REWRITE:-../..}:/opt/alv4/
     working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
     command: python3 app.py
     depends_on:
@@ -23,8 +23,8 @@ services:
     ports:
       - '5002:5002'
     volumes:
-      - ./config/:/etc/assemblyline/
-      - ../../:/opt/alv4/
+      - ${PATH_REWRITE:-.}/config/:/etc/assemblyline/
+      - ${ROOT_REWRITE:-../..}:/opt/alv4/
     working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
     command: python3 socketsrv.py
     depends_on:

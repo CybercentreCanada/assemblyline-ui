@@ -174,6 +174,12 @@ def heuristics_stats(*_, **kwargs):
 
 @views.route("/login.html")
 def login():
+    ui4_path = request.cookies.get('ui4_path', None)
+    if ui4_path is not None:
+        resp = redirect(redirect_helper(f"{ui4_path}?{request.query_string.decode()}"))
+        resp.delete_cookie("ui4_path")
+        return resp
+
     registration_key = request.args.get('registration_key', None)
 
     avatar = None
