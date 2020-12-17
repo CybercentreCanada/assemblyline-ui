@@ -71,6 +71,13 @@
 
 <section class="row">
 	<div class="col-md-12" class="form-group" style="margin-top: 10px;">
+		<label class="control-label">Proxy</label>
+        <input class="form-control input-sm" ng-model="current_source.proxy" placeholder="scheme://user:pass@proxy:port"></input>
+	</div>
+</section>
+
+<section class="row">
+	<div class="col-md-12" class="form-group" style="margin-top: 10px;">
 		<label class="control-label">CA Certificate</label>
         <textarea class="form-control input-sm" ng-model="current_source.ca_cert" rows="10" style="font-family: monospace"></textarea>
 	</div>
@@ -80,3 +87,4 @@
         </label>
     </div>
 </section>
+
