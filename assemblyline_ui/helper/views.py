@@ -72,12 +72,15 @@ class protected_renderer(BaseSecurityRenderer):
 
             settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
 
-            if config.ui.ui4_path is not None:
-                if settings.get('ui4', False):
-                    return redirect(redirect_helper(config.ui.ui4_path))
-                user['ui4_ask'] = settings.get('ui4_ask', True)
+            if settings:
+                if config.ui.ui4_path is not None:
+                    if settings.get('ui4', False):
+                        return redirect(redirect_helper(config.ui.ui4_path))
+                    user['ui4_ask'] = settings.get('ui4_ask', True)
+                else:
+                    user['ui4_ask'] = settings.get('ui4_ask', False)
             else:
-                user['ui4_ask'] = settings.get('ui4_ask', False)
+                user['ui4_ask'] = False
             user['ui4_allow'] = config.ui.ui4_path is not None
 
             kwargs['user_js'] = json.dumps(user)
