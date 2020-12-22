@@ -467,7 +467,7 @@ def update_service(**_):
 
     # Check is the version we are trying to update to already exists
     if STORAGE.service.get_if_exists(service_key):
-        operations = [(STORAGE.service_delta.UPDATE_SET, 'version', data['update_data']['latest_tag'])]
+        operations = [(STORAGE.service_delta.UPDATE_SET, 'version', data['update_data']['latest_tag'].replace('stable', ''))]
         if STORAGE.service_delta.update(data['name'], operations):
             return make_api_response({'success': True, 'status': "updated"})
 
