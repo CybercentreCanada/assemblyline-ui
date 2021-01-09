@@ -54,7 +54,8 @@ def get_multiple_service_results(**kwargs):
 
     for r_key in list(results.keys()):
         r_value = format_result(user['classification'], results[r_key],
-                                file_infos.get(r_key[:64], {}).get('classification', CLASSIFICATION.UNRESTRICTED))
+                                file_infos.get(r_key[:64], {}).get('classification', CLASSIFICATION.UNRESTRICTED),
+                                build_hierarchy=True)
         if not r_value:
             del results[r_key]
         else:
