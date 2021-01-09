@@ -26,7 +26,8 @@ class BasicLDAPWrapper(object):
         self.base = ldap_config.base
         self.uid_lookup = f"{ldap_config.uid_field}=%s"
         self.group_lookup = ldap_config.group_lookup_query
-
+        self.bind_user = ldap_config.bind_user
+        self.bind_pass = ldap_config.bind_pass
         self.admin_dn = ldap_config.admin_dn
         self.sm_dn = ldap_config.signature_manager_dn
         self.si_dn = ldap_config.signature_importer_dn
@@ -42,6 +43,8 @@ class BasicLDAPWrapper(object):
         ldap_server = ldap.initialize(self.ldap_uri)
         ldap_server.protocol_version = ldap.VERSION3
         ldap_server.set_option(ldap.OPT_REFERRALS, 0)
+        if self.bind_user and self.bind_pass:
+            ldap_server.simple_bind_s(self.bind_user,self.bind_pass)
         return ldap_server
 
     def get_group_list(self, dn, ldap_server=None):
