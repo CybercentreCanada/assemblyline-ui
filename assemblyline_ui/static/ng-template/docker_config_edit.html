@@ -1,4 +1,10 @@
 <section class="row pad">
+	<div ng-show="docker_type=='dependency'" class="col-md-12">
+		<div id="docker_name" class="form-group">
+			<label class="control-label">Dependency name</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config_name">
+		</div>
+	</div>
 	<div class="col-md-12">
 		<div id="docker_image" class="form-group">
 			<label class="control-label">Container Image</label>&nbsp;&nbsp;<label class="label label-danger">required</label>

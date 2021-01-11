@@ -13,6 +13,8 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.loading_extra = false;
         $scope.current_service = null;
         $scope.current_source = null;
+        $scope.current_docker_config_name = null;
+        $scope.current_docker_config_name_old = null;
         $scope.update_data = {};
         $scope.started = false;
         //DEBUG MODE
@@ -26,6 +28,10 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         $scope.success = '';
         $scope.yaml = '';
 
+        $scope.obj_len = function (o) {
+            if (o === undefined || o == null) return 0;
+            return Object.keys(o).length;
+        };
 
         $scope.typeOf = function (val) {
             return typeof val;
@@ -117,6 +123,9 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $scope.editmode = false;
             $("#docker_image").removeClass('has-error');
             $scope.comp_temp_error = null;
+            $("#docker_name").removeClass('has-error');
+            $scope.current_docker_config_name = null;
+            $scope.current_docker_config_name_old= null;
             $scope.conf_temp = {
                 key: "",
                 val: ""
@@ -136,14 +145,10 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
         };
 
         $scope.remove_dependency = function (dep) {
-            for (let i in $scope.current_service.dependencies){
-                if (dep === $scope.current_service.dependencies[i]){
-                    $scope.current_service.dependencies.splice(i, 1);
-                }
-            }
+            delete $scope.current_service.dependencies[dep];
         };
 
-        $scope.edit_docker_config = function (type, docker_config) {
+        $scope.edit_docker_config = function (type, docker_config, name) {
             $scope.editmode = true;
             $("#docker_image").removeClass('has-error');
             $scope.comp_temp_error = null;
@@ -155,12 +160,19 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $scope.backup_docker = docker_config;
             $scope.current_docker_config = JSON.parse(JSON.stringify(docker_config));
             $scope.docker_type = type;
+            $("#docker_name").removeClass('has-error');
+            $scope.current_docker_config_name = name;
+            $scope.current_docker_config_name_old = name;
             $("#dockerModal").modal('show');
         };
 
         $scope.save_docker_config = function(){
             if ($scope.current_docker_config.image === "" || $scope.current_docker_config.image === null || $scope.current_docker_config.image === undefined){
                 $("#docker_image").addClass('has-error');
+                return;
+            }
+            if ($scope.docker_type === "dependency" && ($scope.current_docker_config_name === "" || $scope.current_docker_config_name === null || $scope.current_docker_config_name === undefined)){
+                $("#docker_name").addClass('has-error');
                 return;
             }
             if ($scope.docker_type === "service_container"){
@@ -170,16 +182,10 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
                 $scope.current_service.update_config.run_options = $scope.current_docker_config;
             }
             else if ($scope.docker_type === "dependency"){
-                if ($scope.editmode){
-                    for (let i in $scope.current_service.dependencies){
-                        if ($scope.backup_docker === $scope.current_service.dependencies[i]){
-                            $scope.current_service.dependencies.splice(i, 1, $scope.current_docker_config);
-                        }
-                    }
-                }
-                else{
-                    $scope.current_service.dependencies.push($scope.current_docker_config);
-                }
+                delete $scope.current_service.dependencies[$scope.current_docker_config_name_old];
+                $scope.current_service.dependencies[$scope.current_docker_config_name] = {
+                    container: $scope.current_docker_config
+                };
             }
 
             $("#dockerModal").modal('hide');

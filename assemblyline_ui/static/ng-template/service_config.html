@@ -110,15 +110,15 @@
         <div docker-config src="current_service.docker_config" type="'service_container'" style="margin-bottom: 10px"></div>
         <label>Container dependancies</label>
         <div class="row">
-            <div ng-repeat="dep in current_service.dependencies track by $index">
-                <div class="col-xs-10 col-sm-11" docker-config src="dep" type="'dependency'"></div>
+            <div ng-repeat="(name, dep) in current_service.dependencies | orderBy:name">
+                <div class="col-xs-10 col-sm-11" docker-config src="dep.container" type="'dependency'" name="name"></div>
                 <div class="col-xs-2 col-sm-1" style="margin-top: 5px">
-                    <span class="btn btn-sm btn-danger" ng-click="remove_dependency(dep);"><span class="glyphicon glyphicon-minus"></span></span>
+                    <span class="btn btn-sm btn-danger" ng-click="remove_dependency(name);"><span class="glyphicon glyphicon-minus"></span></span>
                 </div>
             </div>
         </div>
 
-        <div ng-show="current_service.dependencies.length===0" class="text-muted">No dependencies</div>
+        <div ng-show="obj_len(current_service.dependencies)===0" class="text-muted">No dependencies</div>
         <span class="btn btn-sm btn-success" ng-click="add_dependency();" style="margin-top: 15px">Add dependency&nbsp;&nbsp;<span class="glyphicon glyphicon-plus"></span></span>
 
     </section>

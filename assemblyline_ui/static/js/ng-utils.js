@@ -266,7 +266,8 @@ utils.directive('dockerConfig', function () {
     return {
         scope: {
             docker_config: '=src',
-            docker_type: '=type'
+            docker_type: '=type',
+            docker_name: '=name'
         },
         templateUrl: '/static/ng-template/docker_config.html'
     }

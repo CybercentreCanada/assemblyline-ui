@@ -1,6 +1,7 @@
 <section class="row">
     <div class="col-sm-12">
-        <div class="docker_card" ng-click="$parent.edit_docker_config(docker_type, docker_config)">
+        <div class="docker_card" ng-click="$parent.edit_docker_config(docker_type, docker_config, docker_name)">
+            <div ng-if="docker_name" class="text-icon text-heavy">{{ docker_name }}</div>
             <div class="text-icon text-fixed">{{ docker_config.image }}</div>
             <div ng-show="docker_config.registry_username||docker_config.registry_password" style="padding-bottom: 5px"><i>Using private credentials for this registry</i></div>
             <div style="margin-bottom: 10px;">
