@@ -40,6 +40,7 @@ def parse_profile(profile, provider):
         alternate = None
 
     # Compute access, roles and classification using auto_properties
+    first_access = True
     access = True
     roles = ['user']
     classification = cl_engine.UNRESTRICTED
@@ -53,12 +54,20 @@ def parse_profile(profile, provider):
                     # Check access
                     if auto_prop.value == "True":
                         # If its a positive access pattern
-                        access = re.match(auto_prop.pattern, value) is not None
-                        break
+                        if first_access:
+                            access = False
+                            first_access = False
+                        if re.match(auto_prop.pattern, value) is not None:
+                            access = True
+                            break
                     else:
                         # If its a negative access pattern
-                        access = re.match(auto_prop.pattern, value) is None
-                        break
+                        if first_access:
+                            access = True
+                            first_access = False
+                        if re.match(auto_prop.pattern, value) is not None:
+                            access = False
+                            break
                 elif auto_prop.type == "role":
                     # Append roles from matching patterns
                     if re.match(auto_prop.pattern, value):
