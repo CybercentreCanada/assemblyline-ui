@@ -111,7 +111,7 @@
         <label>Container dependancies</label>
         <div class="row">
             <div ng-repeat="(name, dep) in current_service.dependencies | orderBy:name">
-                <div class="col-xs-10 col-sm-11" docker-config src="dep.container" type="'dependency'" name="name"></div>
+                <div class="col-xs-10 col-sm-11" docker-config src="dep.container" type="'dependency'" name="name" volumes="dep.volumes"></div>
                 <div class="col-xs-2 col-sm-1" style="margin-top: 5px">
                     <span class="btn btn-sm btn-danger" ng-click="remove_dependency(name);"><span class="glyphicon glyphicon-minus"></span></span>
                 </div>

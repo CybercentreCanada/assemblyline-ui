@@ -1,6 +1,6 @@
 <section class="row">
     <div class="col-sm-12">
-        <div class="docker_card" ng-click="$parent.edit_docker_config(docker_type, docker_config, docker_name)">
+        <div class="docker_card" ng-click="$parent.edit_docker_config(docker_type, docker_config, docker_name, docker_volumes)">
             <div ng-if="docker_name" class="text-icon text-heavy">{{ docker_name }}</div>
             <div class="text-icon text-fixed">{{ docker_config.image }}</div>
             <div ng-show="docker_config.registry_username||docker_config.registry_password" style="padding-bottom: 5px"><i>Using private credentials for this registry</i></div>
@@ -22,6 +22,10 @@
             <div ng-show="docker_config.environment.length != 0">
                 <label>Environment variables:</label>
                 <div class="indent text-fixed" ng-repeat="env in docker_config.environment">{{ env.name }} = {{ env.value }}</div>
+            </div>
+            <div ng-if="docker_volumes&&$parent.obj_len(docker_volumes)!==0">
+                <label>Volumes:</label>
+                <div class="indent text-fixed" ng-repeat="(name, vol) in docker_volumes">{{ name }} = {{ vol.mount_path }} ({{vol.capacity}})</div>
             </div>
         </div>
     </div>

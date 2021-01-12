@@ -126,9 +126,18 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $("#docker_name").removeClass('has-error');
             $scope.current_docker_config_name = null;
             $scope.current_docker_config_name_old= null;
+            $scope.current_docker_volumes = null;
             $scope.conf_temp = {
                 key: "",
                 val: ""
+            };
+            $("#new_vol_name").removeClass('has-error');
+            $("#new_vol").removeClass('has-error');
+            $scope.vol_name_temp = "";
+            $scope.vol_temp = {
+                mount_path: "",
+                capacity: "",
+                storage_class: "",
             };
 
             $scope.current_docker_config = {
@@ -148,13 +157,19 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             delete $scope.current_service.dependencies[dep];
         };
 
-        $scope.edit_docker_config = function (type, docker_config, name) {
+        $scope.edit_docker_config = function (type, docker_config, name, volumes) {
             $scope.editmode = true;
             $("#docker_image").removeClass('has-error');
             $scope.comp_temp_error = null;
             $scope.conf_temp = {
                 key: "",
                 val: ""
+            };
+            $scope.vol_name_temp = "";
+            $scope.vol_temp = {
+                mount_path: "",
+                capacity: "",
+                storage_class: "",
             };
 
             $scope.backup_docker = docker_config;
@@ -163,7 +178,41 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $("#docker_name").removeClass('has-error');
             $scope.current_docker_config_name = name;
             $scope.current_docker_config_name_old = name;
+            $scope.current_docker_volumes = volumes
             $("#dockerModal").modal('show');
+        };
+
+        $scope.add_volume = function (){
+            $("#new_vol_name").removeClass('has-error');
+            $("#new_vol").removeClass('has-error');
+            if ($scope.vol_name_temp === "" || $scope.vol_name_temp === null || $scope.vol_name_temp === undefined ){
+                $("#new_vol_name").addClass('has-error');
+                return
+            }
+            if ($scope.vol_temp.mount_path === "" || $scope.vol_temp.mount_path === null || $scope.vol_temp.mount_path === undefined ){
+                $("#new_vol").addClass('has-error');
+                return
+            }
+            if ($scope.vol_temp.capacity === "" || $scope.vol_temp.capacity === null || $scope.vol_temp.capacity === undefined ){
+                $("#new_vol").addClass('has-error');
+                return
+            }
+            if ($scope.vol_temp.storage_class === "" || $scope.vol_temp.storage_class === null || $scope.vol_temp.storage_class === undefined ){
+                $("#new_vol").addClass('has-error');
+                return
+            }
+            $scope.current_docker_volumes[$scope.vol_name_temp] = $scope.vol_temp;
+
+            $scope.vol_name_temp = "";
+            $scope.vol_temp = {
+                mount_path: "",
+                capacity: "",
+                storage_class: "",
+            };
+        };
+
+        $scope.remove_volume = function (vol_name){
+            delete $scope.current_docker_volumes[vol_name]
         };
 
         $scope.save_docker_config = function(){
@@ -184,7 +233,8 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             else if ($scope.docker_type === "dependency"){
                 delete $scope.current_service.dependencies[$scope.current_docker_config_name_old];
                 $scope.current_service.dependencies[$scope.current_docker_config_name] = {
-                    container: $scope.current_docker_config
+                    container: $scope.current_docker_config,
+                    volumes: $scope.current_docker_volumes
                 };
             }
 
