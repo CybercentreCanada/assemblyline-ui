@@ -1,4 +1,10 @@
 <section class="row pad">
+	<div ng-show="docker_type=='dependency'" class="col-md-12">
+		<div id="docker_name" class="form-group">
+			<label class="control-label">Dependency name</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
+			<input type="text" class="form-control input-sm input-medium" ng-model="current_docker_config_name">
+		</div>
+	</div>
 	<div class="col-md-12">
 		<div id="docker_image" class="form-group">
 			<label class="control-label">Container Image</label>&nbsp;&nbsp;<label class="label label-danger">required</label>
@@ -59,14 +65,14 @@
     </div>
 </section>
 
-<section class="row">
+<section class="row pad">
 	<div class="col-md-12" class="form-group">
 		<label class="control-label">Environment variable</label>
 	</div>
 	<div class="col-md-12">
 		<div ng-repeat="env in current_docker_config.environment | orderBy:env.name" class="row" style="padding: 2px 0px">
 			<div class="col-xs-10 col-sm-3">
-				<label class="control-lablel">{{env.name}}:</label>
+				<label class="control-label">{{env.name}}:</label>
 			</div>
 			<div class="col-xs-10 col-sm-8">
 				<input type="text" class="form-control input-sm" ng-model="env.value"/>
@@ -88,4 +94,36 @@
 		</div>
 	</div>
 	<div id="conf_temp_error" class="col-md-12 text-danger">{{conf_temp_error}}</div>
+</section>
+
+<section ng-show="docker_type=='dependency'" class="row pad">
+	<div class="col-md-12" class="form-group">
+		<label class="control-label">Persistent Volumes</label>
+	</div>
+	<div class="col-md-12">
+		<div ng-repeat="(vol_name, vol) in current_docker_volumes | orderBy:vol_name" class="row" style="padding: 2px 0px">
+			<div class="col-xs-10 col-sm-3">
+				<label class="control-label">{{vol_name}}:</label>
+			</div>
+			<div class="col-xs-10 col-sm-8">
+				<span class="control-label">{{vol.mount_path}} ({{vol.capacity}}) :: <span class="text-muted">{{vol.storage_class}}</span></span>
+			</div>
+			<div class="col-xs-2 col-sm-1" style="padding-left: 0px">
+				<span class="btn btn-sm btn-danger" ng-click="remove_volume(vol_name);"><span class="glyphicon glyphicon-minus"></span></span>
+			</div>
+		</div>
+		<div class="row" style="margin-top: 10px;">
+			<div id="new_vol_name" class="col-xs-10 col-sm-3">
+				<input id="vol_name" type="text" class="form-control input-sm" ng-model="vol_name_temp" placeholder="Volume name"/>
+			</div>
+			<div id="new_vol" class="col-xs-10 col-sm-8">
+				<input id="new_vol_mount_path" type="text" class="form-control input-sm" ng-model="vol_temp.mount_path" placeholder="Mount path"/>
+				<input id="new_vol_capacity" type="text" class="form-control input-sm" ng-model="vol_temp.capacity" placeholder="Capacity"/>
+				<input id="new_vol_storage_class" type="text" class="form-control input-sm" ng-model="vol_temp.storage_class" placeholder="Storage Class"/>
+			</div>
+			<div class="col-xs-2 col-sm-1" style="padding-left: 0px">
+				<span class="btn btn-sm btn-success" ng-click="add_volume();"><span class="glyphicon glyphicon-plus"></span></span>
+			</div>
+		</div>
+	</div>
 </section>
