@@ -211,7 +211,11 @@ def login(**_):
         provider = oauth.create_client(oauth_provider)
 
         if provider:
-            redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
+            oauth_provider_config = config.auth.oauth.providers[oauth_provider]
+            if oauth_provider_config.use_new_callback_format:
+                redirect_uri = f'https://{request.host}/oauth/{oauth_provider}/'
+            else:
+                redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
@@ -316,8 +320,7 @@ def oauth_validate(**_):
      "username": "user"
     }
     """
-    data = request.values
-    oauth_provider = data.get('provider', None)
+    oauth_provider = request.values.get('provider', None)
     avatar = None
     username = None
     oauth_token = None
@@ -329,29 +332,74 @@ def oauth_validate(**_):
         if provider:
             # noinspection PyBroadException
             try:
-                # Test oauth access token
-                token = provider.authorize_access_token()
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
+                if oauth_provider_config.app_provider:
+                    from authlib.integrations.requests_client import OAuth2Session
+                    app_provider = OAuth2Session(
+                        oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
+                        oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
+                        scope=oauth_provider_config.app_provider.scope)
+                    app_provider.fetch_token(
+                        oauth_provider_config.app_provider.access_token_url,
+                        grant_type="client_credentials")
 
-                # Get user data
-                resp = provider.get(oauth_provider_config.user_get)
-                if resp.ok:
-                    user_data = resp.json()
+                else:
+                    app_provider = None
 
-                    # Add group data if API is configured for it
-                    if oauth_provider_config.user_groups:
+                # Test oauth access token
+                try:
+                    token = provider.authorize_access_token()
+                except Exception:
+                    token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
+
+                user_data = None
+                if oauth_provider_config.jwks_uri:
+                    user_data = provider.parse_id_token(token)
+
+                # Get user data from endpoint
+                if app_provider and oauth_provider_config.app_provider.user_get:
+                    url = oauth_provider_config.app_provider.user_get
+                    uid = user_data.get('id', None)
+                    if not uid and user_data and oauth_provider_config.uid_field:
+                        uid = user_data.get(oauth_provider_config.uid_field, None)
+                    if uid:
+                        url = url.format(id=uid)
+                    resp = app_provider.get(url)
+                    if resp.ok:
+                        user_data = resp.json()
+                elif not user_data:
+                    resp = provider.get(oauth_provider_config.user_get)
+                    if resp.ok:
+                        user_data = resp.json()
+
+                # Add group data if API is configured for it
+                if oauth_provider_config.user_groups:
+                    groups = []
+                    if app_provider and oauth_provider_config.app_provider.group_get:
+                        url = oauth_provider_config.app_provider.group_get
+                        uid = user_data.get('id', None)
+                        if not uid and user_data and oauth_provider_config.uid_field:
+                            uid = user_data.get(oauth_provider_config.uid_field, None)
+                        if uid:
+                            url = url.format(id=uid)
+                        resp_grp = app_provider.get(url)
+                        if resp_grp.ok:
+                            groups = resp_grp.json()
+                    else:
                         resp_grp = provider.get(oauth_provider_config.user_groups)
                         if resp_grp.ok:
                             groups = resp_grp.json()
 
-                            if oauth_provider_config.user_groups_data_field:
-                                groups = groups[oauth_provider_config.user_groups_data_field]
+                    if oauth_provider_config.user_groups_data_field:
+                        groups = groups[oauth_provider_config.user_groups_data_field]
 
-                            if oauth_provider_config.user_groups_name_field:
-                                groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
+                    if oauth_provider_config.user_groups_name_field:
+                        groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
 
-                            user_data['groups'] = groups
+                    if groups:
+                        user_data['groups'] = groups
 
+                if user_data:
                     data = parse_profile(user_data, oauth_provider_config)
                     has_access = data.pop('access', False)
                     if has_access:
@@ -409,8 +457,15 @@ def oauth_validate(**_):
                         return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
                                                  status_code=403)
 
-            except Exception as _:
-                return make_api_response({"err_code": 1}, err="Invalid oAuth2 token, try again", status_code=401)
+            except Exception as err:
+                if hasattr(err, 'description'):
+                    return make_api_response({"err_code": 1},
+                                             err=err.description,
+                                             status_code=401)
+
+                return make_api_response({"err_code": 1},
+                                         err=request.args.get('error_description', "Invalid oAuth2 token, try again"),
+                                         status_code=401)
 
     if username is None:
         return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)

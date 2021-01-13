@@ -18,13 +18,17 @@ def reorder_name(name):
 
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
-    email_adr = profile.get('email', profile.get('upn', None))
+    email_adr = profile.get('email', profile.get('emails', profile.get('upn', None)))
+
+    if isinstance(email_adr, list):
+        email_adr = email_adr[0]
+
     if email_adr:
         email_adr = email_adr.lower()
 
     # Find username or compute it from email
     uname = profile.get('uname', email_adr)
-    if uname == email_adr and provider.uid_regex:
+    if uname is not None and uname == email_adr and provider.uid_regex:
         match = re.match(provider.uid_regex, uname)
         if match:
             if provider.uid_format:
@@ -33,7 +37,7 @@ def parse_profile(profile, provider):
                 uname = ''.join([x for x in match.groups() if x is not None]).lower()
 
     # Get avatar from gravatar
-    if config.auth.oauth.gravatar_enabled:
+    if config.auth.oauth.gravatar_enabled and email_adr:
         email_hash = hashlib.md5(email_adr.encode('utf-8')).hexdigest()
         alternate = f"https://www.gravatar.com/avatar/{email_hash}?s=256&d=404&r=pg"
     else:
@@ -84,7 +88,7 @@ def parse_profile(profile, provider):
         type=roles,
         classification=classification,
         uname=uname,
-        name=reorder_name(profile.get('name', None)),
+        name=reorder_name(profile.get('name', profile.get('displayName', None))),
         email=email_adr,
         password="__NO_PASSWORD__",
         avatar=profile.get('picture', alternate)

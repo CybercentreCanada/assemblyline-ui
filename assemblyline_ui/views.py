@@ -172,6 +172,11 @@ def heuristics_stats(*_, **kwargs):
     return custom_render("heuristics_stats.html", **kwargs)
 
 
+@views.route("/oauth/<provider>/")
+def oauth(provider):
+    return redirect(redirect_helper(f"/login.html?provider={provider}&{request.query_string.decode()}"))
+
+
 @views.route("/login.html")
 def login():
     ui4_path = request.cookies.get('ui4_path', None)
@@ -219,29 +224,74 @@ def login():
             if provider:
                 # noinspection PyBroadException
                 try:
-                    # Test oauth access token
-                    token = provider.authorize_access_token()
                     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
+                    if oauth_provider_config.app_provider:
+                        from authlib.integrations.requests_client import OAuth2Session
+                        app_provider = OAuth2Session(
+                            oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
+                            oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
+                            scope=oauth_provider_config.app_provider.scope)
+                        app_provider.fetch_token(
+                            oauth_provider_config.app_provider.access_token_url,
+                            grant_type="client_credentials")
 
-                    # Get user data
-                    resp = provider.get(oauth_provider_config.user_get)
-                    if resp.ok:
-                        user_data = resp.json()
+                    else:
+                        app_provider = None
 
-                        # Add group data if API is configured for it
-                        if oauth_provider_config.user_groups:
+                    # Test oauth access token
+                    try:
+                        token = provider.authorize_access_token()
+                    except Exception:
+                        token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
+
+                    user_data = None
+                    if oauth_provider_config.jwks_uri:
+                        user_data = provider.parse_id_token(token)
+
+                    # Get user data from endpoint
+                    if app_provider and oauth_provider_config.app_provider.user_get:
+                        url = oauth_provider_config.app_provider.user_get
+                        uid = user_data.get('id', None)
+                        if not uid and user_data and oauth_provider_config.uid_field:
+                            uid = user_data.get(oauth_provider_config.uid_field, None)
+                        if uid:
+                            url = url.format(id=uid)
+                        resp = app_provider.get(url)
+                        if resp.ok:
+                            user_data = resp.json()
+                    elif not user_data:
+                        resp = provider.get(oauth_provider_config.user_get)
+                        if resp.ok:
+                            user_data = resp.json()
+
+                    # Add group data if API is configured for it
+                    if oauth_provider_config.user_groups:
+                        groups = []
+                        if app_provider and oauth_provider_config.app_provider.group_get:
+                            url = oauth_provider_config.app_provider.group_get
+                            uid = user_data.get('id', None)
+                            if not uid and user_data and oauth_provider_config.uid_field:
+                                uid = user_data.get(oauth_provider_config.uid_field, None)
+                            if uid:
+                                url = url.format(id=uid)
+                            resp_grp = app_provider.get(url)
+                            if resp_grp.ok:
+                                groups = resp_grp.json()
+                        else:
                             resp_grp = provider.get(oauth_provider_config.user_groups)
                             if resp_grp.ok:
                                 groups = resp_grp.json()
 
-                                if oauth_provider_config.user_groups_data_field:
-                                    groups = groups[oauth_provider_config.user_groups_data_field]
+                        if oauth_provider_config.user_groups_data_field:
+                            groups = groups[oauth_provider_config.user_groups_data_field]
 
-                                if oauth_provider_config.user_groups_name_field:
-                                    groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
+                        if oauth_provider_config.user_groups_name_field:
+                            groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
 
-                                user_data['groups'] = groups
+                        if groups:
+                            user_data['groups'] = groups
 
+                    if user_data:
                         data = parse_profile(user_data, oauth_provider_config)
                         has_access = data.pop('access', False)
                         if has_access:
