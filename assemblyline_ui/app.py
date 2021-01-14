@@ -87,11 +87,24 @@ if config.config.auth.oauth.enabled:
     providers = []
     for name, p in config.config.auth.oauth.providers.items():
         p = p.as_primitives()
-        p.pop('auto_create', None)
-        p.pop('auto_sync', None)
-        p.pop('user_get', None)
-        p['name'] = name
         if p['client_id'] and p['client_secret']:
+            # Set provider name
+            p['name'] = name
+
+            # Remove AL specific fields
+            p.pop('auto_create', None)
+            p.pop('auto_sync', None)
+            p.pop('user_get', None)
+            p.pop('auto_properties', None)
+            p.pop('uid_field', None)
+            p.pop('uid_regex', None)
+            p.pop('uid_format', None)
+            p.pop('user_groups', None)
+            p.pop('user_groups_data_field', None)
+            p.pop('user_groups_name_field', None)
+            p.pop('app_provider', None)
+
+            # Add the provider to the list of providers
             providers.append(p)
 
     if providers:
