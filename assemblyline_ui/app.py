@@ -2,6 +2,7 @@
 import logging
 import os.path
 
+from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
 from flask.logging import default_handler
@@ -108,7 +109,6 @@ if config.config.auth.oauth.enabled:
             providers.append(p)
 
     if providers:
-        from authlib.integrations.flask_client import OAuth
         oauth = OAuth()
         for p in providers:
             oauth.register(**p)

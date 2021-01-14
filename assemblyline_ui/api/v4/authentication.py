@@ -3,6 +3,7 @@ import hashlib
 import pyqrcode
 import re
 
+from authlib.integrations.requests_client import OAuth2Session
 from flask import request, session as flsk_session, current_app
 from io import BytesIO
 from passlib.hash import bcrypt
@@ -334,7 +335,6 @@ def oauth_validate(**_):
             try:
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
                 if oauth_provider_config.app_provider:
-                    from authlib.integrations.requests_client import OAuth2Session
                     app_provider = OAuth2Session(
                         oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
                         oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
@@ -458,6 +458,7 @@ def oauth_validate(**_):
                                                  status_code=403)
 
             except Exception as err:
+                LOGGER.exception(err)
                 if hasattr(err, 'description'):
                     return make_api_response({"err_code": 1},
                                              err=err.description,

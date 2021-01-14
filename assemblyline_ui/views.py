@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, abort, redirect, Markup, 
 
 from assemblyline.common.isotime import iso_to_local
 from assemblyline.common import forge
-from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, get_token_store
+from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, get_token_store, LOGGER
 from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
@@ -350,7 +350,8 @@ def login():
                             oauth_validation = False
                             oauth_error = "This user is not allowed access to the system"
 
-                except Exception as _:
+                except Exception as err:
+                    LOGGER.exception(err)
                     oauth_validation = False
                     oauth_error = "Invalid oAuth2 token, try again"
     else:
