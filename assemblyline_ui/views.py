@@ -2,11 +2,12 @@ import hashlib
 import json
 import markdown
 
+from authlib.integrations.requests_client import OAuth2Session
 from flask import Blueprint, render_template, request, abort, redirect, Markup, current_app
 
 from assemblyline.common.isotime import iso_to_local
 from assemblyline.common import forge
-from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, get_token_store, LOGGER
+from assemblyline_ui.config import STORAGE, ORGANISATION, get_signup_queue, get_reset_queue, get_token_store
 from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.views import protected_renderer, custom_render, redirect_helper, angular_safe
@@ -226,7 +227,10 @@ def login():
                 try:
                     oauth_provider_config = config.auth.oauth.providers[oauth_provider]
                     if oauth_provider_config.app_provider:
-                        from authlib.integrations.requests_client import OAuth2Session
+                        # Validate the token that we've received using the secret
+                        token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
+
+                        # Initialize the app_provider
                         app_provider = OAuth2Session(
                             oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
                             oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
@@ -236,13 +240,9 @@ def login():
                             grant_type="client_credentials")
 
                     else:
-                        app_provider = None
-
-                    # Test oauth access token
-                    try:
+                        # Validate the token
                         token = provider.authorize_access_token()
-                    except Exception:
-                        token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
+                        app_provider = None
 
                     user_data = None
                     if oauth_provider_config.jwks_uri:
@@ -350,8 +350,7 @@ def login():
                             oauth_validation = False
                             oauth_error = "This user is not allowed access to the system"
 
-                except Exception as err:
-                    LOGGER.exception(err)
+                except Exception as _:
                     oauth_validation = False
                     oauth_error = "Invalid oAuth2 token, try again"
     else:

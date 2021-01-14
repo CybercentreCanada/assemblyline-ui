@@ -458,7 +458,6 @@ def oauth_validate(**_):
                                                  status_code=403)
 
             except Exception as err:
-                LOGGER.exception(err)
                 if hasattr(err, 'description'):
                     return make_api_response({"err_code": 1},
                                              err=err.description,
