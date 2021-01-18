@@ -126,7 +126,7 @@ let app = angular.module('app', ['search', 'utils', 'ui.bootstrap'])
             $("#docker_name").removeClass('has-error');
             $scope.current_docker_config_name = null;
             $scope.current_docker_config_name_old= null;
-            $scope.current_docker_volumes = null;
+            $scope.current_docker_volumes = {};
             $scope.conf_temp = {
                 key: "",
                 val: ""
