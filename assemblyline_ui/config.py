@@ -1,11 +1,13 @@
 import logging
 import os
+import functools
     
 from assemblyline.common import version
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
 from assemblyline.remote.datatypes.counters import Counters
 from assemblyline.remote.datatypes.hash import Hash
+from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 
 config = forge.get_config()
@@ -47,6 +49,13 @@ RATE_LIMITER = Counters(prefix="quota",
 KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
                   port=config.core.redis.nonpersistent.port)
+
+
+@functools.lru_cache()
+def get_submission_traffic_channel():
+    return CommsQueue('submissions',
+                      host=config.core.redis.nonpersistent.host,
+                      port=config.core.redis.nonpersistent.port)
 
 
 def get_token_store(key):
