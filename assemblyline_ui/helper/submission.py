@@ -8,8 +8,8 @@ from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
-from assemblyline_ui.config import STORAGE, CLASSIFICATION
-
+from assemblyline.odm.messages.submission import SubmissionMessage
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, get_submission_traffic_channel
 
 config = forge.get_config()
 try:
@@ -126,3 +126,12 @@ def get_or_create_summary(sid, results, user_classification):
             "filtered": summary_cache["filtered"],
             "partial": False
         }
+
+
+def submission_received(submission):
+    channel = get_submission_traffic_channel()
+    channel.publish(SubmissionMessage({
+        'msg': submission,
+        'msg_type': 'SubmissionReceived',
+        'sender': 'ui',
+    }).as_primitives())
