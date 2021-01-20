@@ -7,13 +7,14 @@ from flask import request
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, get_submission_traffic_channel
+from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
+from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
+    ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, get_default_user_settings
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
-from assemblyline.odm.messages.submission import Submission, SubmissionMessage, from_datastore_submission
+from assemblyline.odm.messages.submission import Submission
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
 Classification = forge.get_classification()
@@ -22,15 +23,6 @@ config = forge.get_config()
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
 submit_api._doc = "Submit files to the system"
-
-
-def submission_received(submission):
-    channel = get_submission_traffic_channel()
-    channel.publish(SubmissionMessage({
-        'msg': from_datastore_submission(submission),
-        'msg_type': 'SubmissionReceived',
-        'sender': 'dispatcher',
-    }).as_primitives())
 
 
 # noinspection PyUnusedLocal
@@ -98,7 +90,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         try:
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
-            submission_received(submit_result)
+            submission_received(submission_obj)
         except SubmissionException as e:
             return make_api_response("", err=str(e), status_code=400)
 
@@ -152,7 +144,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         try:
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
-            submission_received(submit_result)
+            submission_received(submission_obj)
         except SubmissionException as e:
             return make_api_response("", err=str(e), status_code=400)
 
@@ -331,7 +323,7 @@ def submit(**kwargs):
             try:
                 result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                           config=config).submit(submission_obj, local_files=[out_file], cleanup=False)
-                submission_received(result)
+                submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
 
