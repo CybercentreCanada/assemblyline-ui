@@ -133,5 +133,5 @@ def submission_received(submission):
     channel.publish(SubmissionMessage({
         'msg': submission,
         'msg_type': 'SubmissionReceived',
-        'sender': 'dispatcher',
+        'sender': 'ui',
     }).as_primitives())
