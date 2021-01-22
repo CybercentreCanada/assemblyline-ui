@@ -8,13 +8,12 @@ from traceback import format_tb
 
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
-from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, RATE_LIMITER, STORAGE
+from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, QUOTA_TRACKER, STORAGE
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common.uid import get_random_id
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -132,24 +131,19 @@ class api_login(BaseSecurityRenderer):
 
             # Check current user quota
             quota_user = user['uname']
-            quota_id = "%s [%s] => %s" % (quota_user, get_random_id(), request.path)
-            count = int(RATE_LIMITER.inc(quota_user, track_id=quota_id))
-            RATE_LIMITER.inc("__global__", track_id=quota_id)
 
             flsk_session['quota_user'] = quota_user
-            flsk_session['quota_id'] = quota_id
             flsk_session['quota_set'] = True
 
             quota = user.get('api_quota', 10)
-            if count > quota:
+            if not QUOTA_TRACKER.begin(quota_user, quota):
                 if config.ui.enforce_quota:
-                    LOGGER.info("User %s was prevented from using the api due to exceeded quota. [%s/%s]" %
-                                (quota_user, count, quota))
-                    return make_api_response("", "You've exceeded your maximum quota of %s " % quota, 503)
+                    LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
+                    return make_api_response("", f"You've exceeded your maximum quota of {quota}", 503)
                 else:
-                    LOGGER.debug("Quota exceeded for user %s. [%s/%s]" % (quota_user, count, quota))
+                    LOGGER.debug(f"Quota of {quota} exceeded for user {quota_user}.")
             else:
-                LOGGER.debug("%s's quota is under or equal its limit. [%s/%s]" % (quota_user, count, quota))
+                LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {quota}")
 
             return func(*args, **kwargs)
         base.protected = True
@@ -163,11 +157,9 @@ class api_login(BaseSecurityRenderer):
 
 def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
     quota_user = flsk_session.pop("quota_user", None)
-    quota_id = flsk_session.pop("quota_id", None)
     quota_set = flsk_session.pop("quota_set", False)
     if quota_user and quota_set:
-        RATE_LIMITER.dec(quota_user, track_id=quota_id)
-        RATE_LIMITER.dec("__global__", track_id=quota_id)
+        QUOTA_TRACKER.end(quota_user)
 
     if type(err) is Exception:
         trace = exc_info()[2]
@@ -190,11 +182,9 @@ def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
 
 def make_file_response(data, name, size, status_code=200, content_type="application/octet-stream"):
     quota_user = flsk_session.pop("quota_user", None)
-    quota_id = flsk_session.pop("quota_id", None)
     quota_set = flsk_session.pop("quota_set", False)
     if quota_user and quota_set:
-        RATE_LIMITER.dec(quota_user, track_id=quota_id)
-        RATE_LIMITER.dec("__global__", track_id=quota_id)
+        QUOTA_TRACKER.end(quota_user)
 
     response = make_response(data, status_code)
     response.headers["Content-Type"] = content_type
@@ -205,11 +195,9 @@ def make_file_response(data, name, size, status_code=200, content_type="applicat
 
 def stream_file_response(reader, name, size, status_code=200):
     quota_user = flsk_session.pop("quota_user", None)
-    quota_id = flsk_session.pop("quota_id", None)
     quota_set = flsk_session.pop("quota_set", False)
     if quota_user and quota_set:
-        RATE_LIMITER.dec(quota_user, track_id=quota_id)
-        RATE_LIMITER.dec("__global__", track_id=quota_id)
+        QUOTA_TRACKER.end(quota_user)
 
     chunk_size = 65535
 
@@ -230,11 +218,9 @@ def stream_file_response(reader, name, size, status_code=200):
 
 def make_binary_response(data, size, status_code=200):
     quota_user = flsk_session.pop("quota_user", None)
-    quota_id = flsk_session.pop("quota_id", None)
     quota_set = flsk_session.pop("quota_set", False)
     if quota_user and quota_set:
-        RATE_LIMITER.dec(quota_user, track_id=quota_id)
-        RATE_LIMITER.dec("__global__", track_id=quota_id)
+        QUOTA_TRACKER.end(quota_user)
 
     response = make_response(data, status_code)
     response.headers["Content-Type"] = 'application/octet-stream'
@@ -244,11 +230,9 @@ def make_binary_response(data, size, status_code=200):
 
 def stream_binary_response(reader, status_code=200):
     quota_user = flsk_session.pop("quota_user", None)
-    quota_id = flsk_session.pop("quota_id", None)
     quota_set = flsk_session.pop("quota_set", False)
     if quota_user and quota_set:
-        RATE_LIMITER.dec(quota_user, track_id=quota_id)
-        RATE_LIMITER.dec("__global__", track_id=quota_id)
+        QUOTA_TRACKER.end(quota_user)
 
     chunk_size = 4096
 
