@@ -9,7 +9,7 @@ from flask import request
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.user import check_submission_quota
+from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
@@ -232,10 +232,6 @@ def start_ui_submission(ui_sid, **kwargs):
     """
     user = kwargs['user']
 
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
-
     ui_params = request.json
     ui_params['groups'] = kwargs['user']['groups']
     ui_params['quota_item'] = True
@@ -244,7 +240,12 @@ def start_ui_submission(ui_sid, **kwargs):
     if not Classification.is_accessible(user['classification'], ui_params['classification']):
         return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
                                                                   "classification then you're allowed to see", 403)
-    
+
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
+    submit_result = None
     request_files = []
     request_dirs = []
     fnames = []
@@ -275,17 +276,21 @@ def start_ui_submission(ui_sid, **kwargs):
 
             with forge.get_filestore() as f_transport:
                 try:
-                    result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                              config=config).submit(submission_obj,
-                                                                    local_files=request_files, cleanup=False)
+                    submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
+                                                     config=config).submit(submission_obj,
+                                                                           local_files=request_files,
+                                                                           cleanup=False)
                 except SubmissionException as e:
                     return make_api_response("", err=str(e), status_code=400)
 
-            return make_api_response({"started": True, "sid": result.sid})
+            return make_api_response({"started": True, "sid": submit_result.sid})
         else:
             return make_api_response({"started": False, "sid": None}, "No files where found for ID %s. "
                                                                       "Try again..." % ui_sid, 404)
     finally:
+        if submit_result is None:
+            decrement_submission_quota(user)
+
         # Remove files
         for myfile in request_files:
             try:
