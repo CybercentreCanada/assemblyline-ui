@@ -4,7 +4,7 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.common import forge
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline.remote.datatypes.hash import Hash
+from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 from assemblyline_ui.config import LOGGER, STORAGE, CLASSIFICATION
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
@@ -44,16 +44,17 @@ def add_access_control(user):
     user['access_control'] = safe_str(query)
      
 
-def check_submission_quota(user, num=1) -> Optional[str]:
+def check_submission_quota(user) -> Optional[str]:
     quota_user = user['uname']
-    quota = user.get('submission_quota', 5)
-    count = num + Hash('submissions-' + quota_user, **persistent).length()
-    if count > quota:
+    max_quota = user.get('submission_quota', 5)
+    quota_tracker = UserQuotaTracker('submissions', timeout=60 * 60, **persistent)
+
+    if not quota_tracker.begin(quota_user, max_quota):
         LOGGER.info(
-            "User %s exceeded their submission quota. [%s/%s]",
-            quota_user, count, quota
+            "User %s exceeded their submission quota of %s.",
+            quota_user, max_quota
         )
-        return "You've exceeded your maximum submission quota of %s " % quota
+        return "You've exceeded your maximum submission quota of %s " % max_quota
     return None
 
 

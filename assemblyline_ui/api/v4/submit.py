@@ -45,6 +45,10 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     copy_sid = request.args.get('copy_sid', None)
     name = request.args.get('name', sha256)
     
@@ -72,6 +76,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         files = [{'name': name, 'sha256': sha256}]
 
         submission_params['submitter'] = user['uname']
+        submission_params['quota_item'] = True
         if 'priority' not in submission_params:
             submission_params['priority'] = 500
         submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
@@ -115,6 +120,10 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     submission = STORAGE.submission.get(sid, as_obj=False)
 
     if submission:
@@ -128,6 +137,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         return make_api_response({}, "Submission %s does not exists." % sid, status_code=404)
 
     submission_params['submitter'] = user['uname']
+    submission_params['quota_item'] = True
     submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name'] for x in submission["files"]])
 
     try:
