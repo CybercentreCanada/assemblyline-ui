@@ -39,9 +39,13 @@ TEMP_DIR_CHUNKED = "/var/lib/assemblyline/flowjs/chunked/"
 TEMP_DIR = "/var/lib/assemblyline/flowjs/full/"
 TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
-QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,
+QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
                                  host=config.core.redis.nonpersistent.host,
                                  port=config.core.redis.nonpersistent.port)
+
+SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minutes timout
+                                      host=config.core.redis.persistent.host,
+                                      port=config.core.redis.persistent.port)
 
 KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
