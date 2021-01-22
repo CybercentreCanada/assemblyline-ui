@@ -83,6 +83,11 @@ stages:
         sudo apt-get update
         sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
         export VERSION=${BUILD_SOURCEBRANCH#"refs/tags/v"}
+        if [[ "$VERSION" == *stable* ]]; then
+          sudo -E env "PATH=$PATH" python -m pip install "assemblyline" "assemblyline-core"
+        else
+          sudo -E env "PATH=$PATH" python -m pip install --pre "assemblyline" "assemblyline-core"
+        fi
         export VERSION=${VERSION/stable}
         export VERSION=${VERSION/beta/b}
         sudo -E env "PATH=$PATH" python -m pip install --no-cache-dir -f $(Pipeline.Workspace)/dist/ "assemblyline-ui==${VERSION}"
