@@ -4,9 +4,9 @@ import os
 from assemblyline.common import version
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
-from assemblyline.remote.datatypes.counters import Counters
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.set import ExpiringSet
+from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 
 config = forge.get_config()
     
@@ -39,10 +39,9 @@ TEMP_DIR_CHUNKED = "/var/lib/assemblyline/flowjs/chunked/"
 TEMP_DIR = "/var/lib/assemblyline/flowjs/full/"
 TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
-RATE_LIMITER = Counters(prefix="quota",
-                        host=config.core.redis.nonpersistent.host,
-                        port=config.core.redis.nonpersistent.port,
-                        track_counters=True)
+QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,
+                                 host=config.core.redis.nonpersistent.host,
+                                 port=config.core.redis.nonpersistent.port)
 
 KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
