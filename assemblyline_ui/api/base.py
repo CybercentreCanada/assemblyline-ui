@@ -136,7 +136,7 @@ class api_login(BaseSecurityRenderer):
             flsk_session['quota_set'] = True
 
             quota = user.get('api_quota', 10)
-            if QUOTA_TRACKER.begin(quota_user, quota):
+            if not QUOTA_TRACKER.begin(quota_user, quota):
                 if config.ui.enforce_quota:
                     LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                     return make_api_response("", f"You've exceeded your maximum quota of {quota}", 503)
