@@ -1,5 +1,6 @@
 
 import hashlib
+
 import pyqrcode
 import re
 
@@ -253,6 +254,15 @@ def login(**_):
             session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
             current_session['expire_at'] = cur_time + session_duration
             flsk_session['session_id'] = session_id
+
+            # Cleanup expired sessions
+            for k, v in KV_SESSION.items().items():
+                expire_at = v.get('expire_at', 0)
+                if expire_at < cur_time:
+                    KV_SESSION.pop(k)
+                    LOGGER.info(f"The following session ID was removed because of a timeout. "
+                                f"[User: {v.get('username', 'unknown')}, SessionID: {k[:16]}...]")
+
             KV_SESSION.add(session_id, current_session)
             return make_api_response({
                 "username": logged_in_uname,
