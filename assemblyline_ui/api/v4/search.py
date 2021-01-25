@@ -55,24 +55,25 @@ def search(bucket, **kwargs):
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
     user = kwargs['user']
-    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id", "use_archive"]
+    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id"]
     multi_fields = ['filters']
+    boolean_fields = ['use_archive']
 
     if request.method == "POST":
         req_data = request.json
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
-        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
-        query = req_data.get('query', None)
-
+        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
     else:
         req_data = request.args
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
-        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
-        query = request.args.get('query', None)
+        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+    params.update({k: req_data.get(k, 'false').lower() == 'true'
+                   for k in boolean_fields
+                   if req_data.get(k, None) is not None})
     params.update({'access_control': user['access_control'], 'as_obj': False})
     params.setdefault('sort', BUCKET_ORDER_MAP[bucket])
 
+    query = req_data.get('query', None)
     if not query:
         return make_api_response("", "There was no search query.", 400)
 
