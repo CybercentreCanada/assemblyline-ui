@@ -6,7 +6,6 @@ import tempfile
 from flask import request
 
 from assemblyline.common import forge
-from assemblyline.common.attack_map import attack_map
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import hexdump
@@ -24,6 +23,8 @@ FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] e
 SUB_API = 'file'
 file_api = make_subapi_blueprint(SUB_API, api_version=4)
 file_api._doc = "Perform operations on files"
+
+API_MAX_SIZE = 10 * 1024 * 1024
 
 
 def list_file_active_keys(sha256, access_control=None):
@@ -108,6 +109,9 @@ def get_file_ascii(sha256, **kwargs):
 
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if file_obj['size'] > API_MAX_SIZE:
+        return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
@@ -241,6 +245,9 @@ def get_file_hex(sha256, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
+    if file_obj['size'] > API_MAX_SIZE:
+        return make_api_response({}, "This file is too big to be seen through this API.", 403)
+
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
     
@@ -277,6 +284,9 @@ def get_file_strings(sha256, **kwargs):
     user = kwargs['user']
     hlen = request.args.get('len', "6")
     file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if file_obj['size'] > API_MAX_SIZE:
+        return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
@@ -475,7 +485,6 @@ def get_file_results(sha256, **kwargs):
         output['errors'] = [] 
         output['file_viewer_only'] = True
 
-        heuristics = STORAGE.get_all_heuristics()
         for res in output['results']:
             for sec in res['result']['sections']:
                 h_type = "info"
