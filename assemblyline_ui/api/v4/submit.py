@@ -9,7 +9,8 @@ from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
+from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
+    ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, get_default_user_settings, decrement_submission_quota
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
@@ -96,8 +97,9 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
-
+            submission_received(submission_obj)
         return make_api_response(submit_result.as_primitives())
+
     except SubmissionException as e:
         return make_api_response("", err=str(e), status_code=400)
     finally:
@@ -160,6 +162,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         with forge.get_filestore() as f_transport:
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
+            submission_received(submission_obj)
 
         return make_api_response(submit_result.as_primitives())
     except SubmissionException as e:
@@ -340,10 +343,9 @@ def submit(**kwargs):
 
             # Submit the task to the system
             try:
-                submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                                 config=config).submit(submission_obj,
-                                                                       local_files=[out_file],
-                                                                       cleanup=False)
+                submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
+                    .submit(submission_obj, local_files=[out_file], cleanup=False)
+                submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
 

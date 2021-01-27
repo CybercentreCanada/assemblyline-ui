@@ -9,7 +9,8 @@ from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, ForbiddenLocation
+from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
+    ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import get_default_user_settings
 from assemblyline.common import forge, identify
 from assemblyline.common.isotime import now_as_iso
@@ -331,6 +332,8 @@ def ingest_single_file(**kwargs):
 
             # Send submission object for processing
             ingest.push(submission_obj.as_primitives())
+            submission_received(submission_obj)
+
             return make_api_response({"ingest_id": ingest_id})
 
         finally:

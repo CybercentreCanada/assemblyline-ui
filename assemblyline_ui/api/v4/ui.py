@@ -9,6 +9,7 @@ from flask import request
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
 from assemblyline_ui.helper.service import ui_to_submission_params
+from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
@@ -276,10 +277,9 @@ def start_ui_submission(ui_sid, **kwargs):
 
             with forge.get_filestore() as f_transport:
                 try:
-                    submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                                     config=config).submit(submission_obj,
-                                                                           local_files=request_files,
-                                                                           cleanup=False)
+                    submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
+                        .submit(submission_obj, local_files=request_files, cleanup=False)
+                    submission_received(submission_obj)
                 except SubmissionException as e:
                     return make_api_response("", err=str(e), status_code=400)
 
