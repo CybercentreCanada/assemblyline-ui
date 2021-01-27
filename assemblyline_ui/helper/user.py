@@ -42,7 +42,7 @@ def check_submission_quota(user) -> Optional[str]:
     quota_user = user['uname']
     max_quota = user.get('submission_quota', 5)
 
-    if not SUBMISSION_TRACKER.begin(quota_user, max_quota):
+    if config.ui.enforce_quota and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
         LOGGER.info(
             "User %s exceeded their submission quota of %s.",
             quota_user, max_quota
