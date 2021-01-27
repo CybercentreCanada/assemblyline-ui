@@ -17,7 +17,6 @@ from assemblyline_core.dispatching.dispatcher import SubmissionTask
 config = forge.get_config()
 sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
-sqt = UserQuotaTracker('submissions', host=config.core.redis.persistent.host, port=config.core.redis.persistent.port)
 submission = None
 
 
@@ -38,7 +37,6 @@ def datastore(datastore_connection, filestore):
 def test_resubmit(datastore, login_session):
     _, session, host = login_session
 
-    sqt.end('admin')
     sq.delete()
     submission_files = [f.sha256 for f in submission.files]
     resp = get_api_data(session, f"{host}/api/v4/submit/resubmit/{submission.sid}/")
@@ -55,7 +53,6 @@ def test_resubmit(datastore, login_session):
 def test_resubmit_dynamic(datastore, login_session):
     _, session, host = login_session
 
-    sqt.end('admin')
     sq.delete()
     sha256 = random.choice(submission.results)[:64]
     resp = get_api_data(session, f"{host}/api/v4/submit/dynamic/{sha256}/")
@@ -74,7 +71,6 @@ def test_resubmit_dynamic(datastore, login_session):
 def test_submit_hash(datastore, login_session):
     _, session, host = login_session
 
-    sqt.end('admin')
     sq.delete()
     data = {
         'sha256': random.choice(submission.results)[:64],
@@ -95,7 +91,6 @@ def test_submit_hash(datastore, login_session):
 def test_submit_url(datastore, login_session):
     _, session, host = login_session
 
-    sqt.end('admin')
     sq.delete()
     data = {
         'url': 'https://www.cyber.gc.ca/en/theme-gcwu-fegc/assets/wmms.svg',
@@ -115,7 +110,6 @@ def test_submit_url(datastore, login_session):
 def test_submit_binary(datastore, login_session):
     _, session, host = login_session
 
-    sqt.end('admin')
     sq.delete()
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
     fd, temp_path = tempfile.mkstemp()
