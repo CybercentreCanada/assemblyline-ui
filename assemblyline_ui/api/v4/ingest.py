@@ -259,6 +259,8 @@ def ingest_single_file(**kwargs):
 
             # Apply provided params
             s_params.update(data.get("params", {}))
+            if 'groups' not in s_params:
+                s_params['groups'] = user['groups']
 
             # Override final parameters
             s_params.update({

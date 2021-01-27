@@ -11,7 +11,7 @@ from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
-from assemblyline_ui.helper.user import check_submission_quota, get_default_user_settings
+from assemblyline_ui.helper.user import check_submission_quota, get_default_user_settings, decrement_submission_quota
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -46,55 +46,65 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
-    copy_sid = request.args.get('copy_sid', None)
-    name = request.args.get('name', sha256)
-    
-    if copy_sid:
-        submission = STORAGE.submission.get(copy_sid, as_obj=False)
-    else:
-        submission = None
-        
-    if submission:
-        if not Classification.is_accessible(user['classification'], submission['classification']):
-            return make_api_response("", "You are not allowed to re-submit a submission that you don't have access to",
-                                     403)
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
 
-        submission_params = submission['params']
-        submission_params['classification'] = submission['classification']
-        
-    else:
-        submission_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
+    submit_result = None
+    try:
+        copy_sid = request.args.get('copy_sid', None)
+        name = request.args.get('name', sha256)
 
-    with forge.get_filestore() as f_transport:
-        if not f_transport.exists(sha256):
-            return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
-                                         % sha256, status_code=404)
+        if copy_sid:
+            submission = STORAGE.submission.get(copy_sid, as_obj=False)
+        else:
+            submission = None
 
-        files = [{'name': name, 'sha256': sha256}]
+        if submission:
+            if not Classification.is_accessible(user['classification'], submission['classification']):
+                return make_api_response("",
+                                         "You are not allowed to re-submit a submission that you don't have access to",
+                                         403)
 
-        submission_params['submitter'] = user['uname']
-        if 'priority' not in submission_params:
-            submission_params['priority'] = 500
-        submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
-        if "Dynamic Analysis" not in submission_params['services']['selected']:
-            submission_params['services']['selected'].append("Dynamic Analysis")
+            submission_params = submission['params']
+            submission_params['classification'] = submission['classification']
 
-        try:
-            submission_obj = Submission({
-                "files": files,
-                "params": submission_params
-            })
-        except (ValueError, KeyError) as e:
-            return make_api_response("", err=str(e), status_code=400)
+        else:
+            submission_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
 
-        try:
+        with forge.get_filestore() as f_transport:
+            if not f_transport.exists(sha256):
+                return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
+                                             % sha256, status_code=404)
+
+            files = [{'name': name, 'sha256': sha256}]
+
+            submission_params['submitter'] = user['uname']
+            submission_params['quota_item'] = True
+            if 'priority' not in submission_params:
+                submission_params['priority'] = 500
+            submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
+            if "Dynamic Analysis" not in submission_params['services']['selected']:
+                submission_params['services']['selected'].append("Dynamic Analysis")
+
+            try:
+                submission_obj = Submission({
+                    "files": files,
+                    "params": submission_params
+                })
+            except (ValueError, KeyError) as e:
+                return make_api_response("", err=str(e), status_code=400)
+
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
             submission_received(submission_obj)
-        except SubmissionException as e:
-            return make_api_response("", err=str(e), status_code=400)
+        return make_api_response(submit_result.as_primitives())
 
-    return make_api_response(submit_result.as_primitives())
+    except SubmissionException as e:
+        return make_api_response("", err=str(e), status_code=400)
+    finally:
+        if submit_result is None:
+            decrement_submission_quota(user)
 
 
 # noinspection PyUnusedLocal
@@ -117,38 +127,49 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
-    submission = STORAGE.submission.get(sid, as_obj=False)
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
 
-    if submission:
-        if not Classification.is_accessible(user['classification'], submission['classification']):
-            return make_api_response("", "You are not allowed to re-submit a submission that you don't have access to",
-                                     403)
-
-        submission_params = submission['params']
-        submission_params['classification'] = submission['classification']
-    else:
-        return make_api_response({}, "Submission %s does not exists." % sid, status_code=404)
-
-    submission_params['submitter'] = user['uname']
-    submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name'] for x in submission["files"]])
-
+    submit_result = None
     try:
-        submission_obj = Submission({
-            "files": submission["files"],
-            "params": submission_params
-        })
-    except (ValueError, KeyError) as e:
-        return make_api_response("", err=str(e), status_code=400)
+        submission = STORAGE.submission.get(sid, as_obj=False)
 
-    with forge.get_filestore() as f_transport:
+        if submission:
+            if not Classification.is_accessible(user['classification'], submission['classification']):
+                return make_api_response("",
+                                         "You are not allowed to re-submit a submission that you don't have access to",
+                                         403)
+
+            submission_params = submission['params']
+            submission_params['classification'] = submission['classification']
+        else:
+            return make_api_response({}, "Submission %s does not exists." % sid, status_code=404)
+
+        submission_params['submitter'] = user['uname']
+        submission_params['quota_item'] = True
+        submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name']
+                                                                                   for x in submission["files"]])
+
         try:
+            submission_obj = Submission({
+                "files": submission["files"],
+                "params": submission_params
+            })
+        except (ValueError, KeyError) as e:
+            return make_api_response("", err=str(e), status_code=400)
+
+        with forge.get_filestore() as f_transport:
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
             submission_received(submission_obj)
-        except SubmissionException as e:
-            return make_api_response("", err=str(e), status_code=400)
 
-    return make_api_response(submit_result.as_primitives())
+        return make_api_response(submit_result.as_primitives())
+    except SubmissionException as e:
+        return make_api_response("", err=str(e), status_code=400)
+    finally:
+        if submit_result is None:
+            decrement_submission_quota(user)
 
 
 # noinspection PyBroadException
@@ -213,13 +234,14 @@ def submit(**kwargs):
     <Submission message object as a json dictionary>
     """
     user = kwargs['user']
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
-
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
     with forge.get_filestore() as f_transport:
+        quota_error = check_submission_quota(user)
+        if quota_error:
+            return make_api_response("", quota_error, 503)
+
+        submit_result = None
         try:
             # Get data block and binary blob
             if 'multipart/form-data' in request.content_type:
@@ -321,15 +343,18 @@ def submit(**kwargs):
 
             # Submit the task to the system
             try:
-                result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                          config=config).submit(submission_obj, local_files=[out_file], cleanup=False)
+                submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
+                    .submit(submission_obj, local_files=[out_file], cleanup=False)
                 submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
 
-            return make_api_response(result.as_primitives())
+            return make_api_response(submit_result.as_primitives())
 
         finally:
+            if submit_result is None:
+                decrement_submission_quota(user)
+
             try:
                 # noinspection PyUnboundLocalVariable
                 os.unlink(out_file)
