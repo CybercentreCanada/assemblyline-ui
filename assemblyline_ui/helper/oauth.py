@@ -4,9 +4,12 @@ import re
 import requests
 
 from assemblyline.common import forge
+from assemblyline.common.random_user import random_user
 from assemblyline_ui.config import config
 
 cl_engine = forge.get_classification()
+VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + \
+              [chr(x + 97) for x in range(26)] + ["_", "-", ".", "@"]
 
 
 def reorder_name(name):
@@ -18,7 +21,7 @@ def reorder_name(name):
 
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
-    email_adr = profile.get('email', profile.get('emails', profile.get('upn', None)))
+    email_adr = profile.get('email', profile.get('emails', profile.get('preferred_username', profile.get('upn', None))))
 
     if isinstance(email_adr, list):
         email_adr = email_adr[0]
@@ -26,15 +29,33 @@ def parse_profile(profile, provider):
     if email_adr:
         email_adr = email_adr.lower()
 
+    if "@" not in email_adr:
+        email_adr = None
+
+    # Find the name of the user
+    name = reorder_name(profile.get('name', profile.get('displayName', None)))
+
     # Find username or compute it from email
-    uname = profile.get('uname', email_adr)
-    if uname is not None and uname == email_adr and provider.uid_regex:
-        match = re.match(provider.uid_regex, uname)
-        if match:
-            if provider.uid_format:
-                uname = provider.uid_format.format(*[x or "" for x in match.groups()]).lower()
-            else:
-                uname = ''.join([x for x in match.groups() if x is not None]).lower()
+    if provider.uid_randomize:
+        uname = random_user(digits=provider.uid_randomize_digits, delimiter=provider.uid_randomize_delimiter)
+    else:
+        uname = profile.get('uname', email_adr)
+        if uname is not None and uname == email_adr and provider.uid_regex:
+            match = re.match(provider.uid_regex, uname)
+            if match:
+                if provider.uid_format:
+                    uname = provider.uid_format.format(*[x or "" for x in match.groups()]).lower()
+                else:
+                    uname = ''.join([x for x in match.groups() if x is not None]).lower()
+
+        # Use name as username if there are no username or the username is the email address
+        if (uname is None or uname == email_adr) and name is not None:
+            uname = name
+
+        # Cleanup username
+        if uname:
+            uname = uname.replace(" ", "-")
+            uname = "".join([c for c in uname if c in VALID_CHARS])
 
     # Get avatar from gravatar
     if config.auth.oauth.gravatar_enabled and email_adr:
@@ -88,7 +109,7 @@ def parse_profile(profile, provider):
         type=roles,
         classification=classification,
         uname=uname,
-        name=reorder_name(profile.get('name', profile.get('displayName', None))),
+        name=name,
         email=email_adr,
         password="__NO_PASSWORD__",
         avatar=profile.get('picture', alternate)

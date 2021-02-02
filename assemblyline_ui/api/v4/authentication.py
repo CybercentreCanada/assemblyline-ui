@@ -334,6 +334,7 @@ def oauth_validate(**_):
     oauth_provider = request.values.get('provider', None)
     avatar = None
     username = None
+    email_adr = None
     oauth_token = None
 
     if config.auth.oauth.enabled:
@@ -437,6 +438,7 @@ def oauth_validate(**_):
                             cur_user = {}
 
                         username = data['uname']
+                        email_adr = data['email']
 
                         # Make sure the user exists in AL and is in sync
                         if (not cur_user and oauth_provider_config.auto_create) or \
@@ -479,7 +481,13 @@ def oauth_validate(**_):
 
     if username is None:
         return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)
-    return make_api_response({"avatar": avatar, "username": username, "oauth_token": oauth_token})
+
+    return make_api_response({
+        "avatar": avatar,
+        "username": username,
+        "oauth_token": oauth_token,
+        "email_adr": email_adr
+    })
 
 
 # noinspection PyBroadException
