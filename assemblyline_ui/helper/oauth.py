@@ -4,6 +4,7 @@ import re
 import requests
 
 from assemblyline.common import forge
+from assemblyline.common.random_user import random_user
 from assemblyline_ui.config import config
 
 cl_engine = forge.get_classification()
@@ -35,23 +36,26 @@ def parse_profile(profile, provider):
     name = reorder_name(profile.get('name', profile.get('displayName', None)))
 
     # Find username or compute it from email
-    uname = profile.get('uname', email_adr)
-    if uname is not None and uname == email_adr and provider.uid_regex:
-        match = re.match(provider.uid_regex, uname)
-        if match:
-            if provider.uid_format:
-                uname = provider.uid_format.format(*[x or "" for x in match.groups()]).lower()
-            else:
-                uname = ''.join([x for x in match.groups() if x is not None]).lower()
+    if provider.uid_randomize:
+        uname = random_user(digits=provider.uid_randomize_digits, delimiter=provider.uid_randomize_delimiter)
+    else:
+        uname = profile.get('uname', email_adr)
+        if uname is not None and uname == email_adr and provider.uid_regex:
+            match = re.match(provider.uid_regex, uname)
+            if match:
+                if provider.uid_format:
+                    uname = provider.uid_format.format(*[x or "" for x in match.groups()]).lower()
+                else:
+                    uname = ''.join([x for x in match.groups() if x is not None]).lower()
 
-    # Use name as username if there are no username
-    if uname is None:
-        uname = name
+        # Use name as username if there are no username
+        if uname is None:
+            uname = name
 
-    # Cleanup username
-    if uname:
-        uname = uname.replace(" ", "-")
-        uname = "".join([c for c in uname if c in VALID_CHARS])
+        # Cleanup username
+        if uname:
+            uname = uname.replace(" ", "-")
+            uname = "".join([c for c in uname if c in VALID_CHARS])
 
     # Get avatar from gravatar
     if config.auth.oauth.gravatar_enabled and email_adr:
