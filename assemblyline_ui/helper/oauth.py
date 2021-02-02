@@ -48,8 +48,8 @@ def parse_profile(profile, provider):
                 else:
                     uname = ''.join([x for x in match.groups() if x is not None]).lower()
 
-        # Use name as username if there are no username
-        if uname is None:
+        # Use name as username if there are no username or the username is the email address
+        if (uname is None or uname == email_adr) and name is not None:
             uname = name
 
         # Cleanup username
