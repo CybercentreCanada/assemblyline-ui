@@ -42,7 +42,10 @@ def get_heuristic(heuristic_id, **kwargs):
         return make_api_response("", "Heuristic not found", 404)
 
     if user and Classification.is_accessible(user['classification'], h['classification']):
-        h.update(STORAGE.get_stat_for_heuristic(h['heur_id'], h['name'], h['classification']))
+        stats = STORAGE.get_stat_for_heuristic(h['heur_id'], h['name'], h['classification'])
+        for x in ['classification', 'heur_id', 'name']:
+            stats.pop(x)
+        h.update({'stats': stats})
         return make_api_response(h)
     else:
         return make_api_response("", "You are not allowed to see this heuristic...", 403)
