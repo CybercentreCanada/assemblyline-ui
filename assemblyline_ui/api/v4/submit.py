@@ -98,7 +98,6 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
             submission_received(submission_obj)
-
         return make_api_response(submit_result.as_primitives())
     except SubmissionException as e:
         return make_api_response("", err=str(e), status_code=400)
@@ -163,6 +162,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
             submission_received(submission_obj)
+
         return make_api_response(submit_result.as_primitives())
     except SubmissionException as e:
         return make_api_response("", err=str(e), status_code=400)
