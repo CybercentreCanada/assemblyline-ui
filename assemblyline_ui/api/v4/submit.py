@@ -163,7 +163,6 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
             submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
                                              config=config).submit(submission_obj)
             submission_received(submission_obj)
-
         return make_api_response(submit_result.as_primitives())
     except SubmissionException as e:
         return make_api_response("", err=str(e), status_code=400)
@@ -343,10 +342,8 @@ def submit(**kwargs):
 
             # Submit the task to the system
             try:
-                submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                                 config=config).submit(submission_obj,
-                                                                       local_files=[out_file],
-                                                                       cleanup=False)
+                submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
+                    .submit(submission_obj, local_files=[out_file], cleanup=False)
                 submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
