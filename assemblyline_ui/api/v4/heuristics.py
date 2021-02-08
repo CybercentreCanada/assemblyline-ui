@@ -79,7 +79,19 @@ def heuritics_statistics(**kwargs):
 
     user = kwargs['user']
 
-    stats = forge.get_statistics_cache().get('heuristics') or []
+    stats = []
+    for heur in STORAGE.heuristic.stream_search("id:*", access_control=user['access_control'], as_obj=False):
+        stats.append({
+            'avg': heur.get('stats', {}).get('avg', 0),
+            'classification': heur['classification'],
+            'count': heur.get('stats', {}).get('count', 0),
+            'heur_id': heur['heur_id'],
+            'first_hit': heur.get('stats', {}).get('first_hit', None),
+            'last_hit': heur.get('stats', {}).get('last_hit', None),
+            'max': heur.get('stats', {}).get('max', 0),
+            'min': heur.get('stats', {}).get('min', 0),
+            'name': heur['name'],
+            'sum': heur.get('stats', {}).get('sum', 0)
+        })
 
-    return make_api_response([x for x in stats
-                              if Classification.is_accessible(user['classification'], x['classification'])])
+    return make_api_response(stats)
