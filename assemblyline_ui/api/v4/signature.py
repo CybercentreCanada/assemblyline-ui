@@ -504,11 +504,13 @@ def get_signature(sid, **kwargs):
         if not Classification.is_accessible(user['classification'],
                                             data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
-        stats = STORAGE.get_stat_for_signature(data['signature_id'], data['source'], data['name'],
-                                               data['type'], data['classification'])
-        for x in ['classification', 'id', 'name', 'source', 'type']:
-            stats.pop(x)
-        data.update({'stats': stats})
+
+        if 'stats' not in data:
+            stats = STORAGE.get_stat_for_signature(data['signature_id'], data['source'], data['name'],
+                                                   data['type'], data['classification'])
+            for x in ['classification', 'id', 'name', 'source', 'type']:
+                stats.pop(x)
+            data.update({'stats': stats})
 
         return make_api_response(data)
     else:
