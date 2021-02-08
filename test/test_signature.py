@@ -289,21 +289,18 @@ def test_set_signature_source(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):
     _, session, host = login_session
-    cache = forge.get_statistics_cache()
-    cache.delete()
 
     resp = get_api_data(session, f"{host}/api/v4/signature/stats/")
     assert len(resp) == 0
 
-    stats = datastore.calculate_signature_stats()
-    cache.set('signatures', stats)
+    datastore.calculate_signature_stats()
 
     signature_count = datastore.signature.search("id:*", rows=0)['total']
     resp = get_api_data(session, f"{host}/api/v4/signature/stats/")
     assert len(resp) == signature_count
     for sig_stat in resp:
-        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'id',
-                                                 'max', 'min', 'name', 'source', 'type']
+        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'id', 'first_hit',
+                                                 'last_hit', 'max', 'min', 'name', 'source', 'type']
 
 
 # noinspection PyUnusedLocal
