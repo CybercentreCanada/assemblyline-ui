@@ -34,9 +34,6 @@ def test_get_heuristics(datastore, login_session):
 def test_heuristic_stats(datastore, login_session):
     _, session, host = login_session
 
-    resp = get_api_data(session, f"{host}/api/v4/heuristics/stats/")
-    assert len(resp) == 0
-
     datastore.calculate_heuristic_stats()
 
     heuristic_count = datastore.heuristic.search("id:*", rows=0)['total']

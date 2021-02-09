@@ -290,9 +290,6 @@ def test_set_signature_source(datastore, login_session):
 def test_signature_stats(datastore, login_session):
     _, session, host = login_session
 
-    resp = get_api_data(session, f"{host}/api/v4/signature/stats/")
-    assert len(resp) == 0
-
     datastore.calculate_signature_stats()
 
     signature_count = datastore.signature.search("id:*", rows=0)['total']
@@ -300,7 +297,7 @@ def test_signature_stats(datastore, login_session):
     assert len(resp) == signature_count
     for sig_stat in resp:
         assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'id', 'first_hit',
-                                                 'last_hit', 'max', 'min', 'name', 'source', 'type']
+                                                 'last_hit', 'max', 'min', 'name', 'source', 'sum', 'type']
 
 
 # noinspection PyUnusedLocal
