@@ -226,8 +226,8 @@ def test_download_signatures(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v4/signature/download/", raw=True)
     assert resp.startswith(b"PK")
-    assert b".yar" in resp
-    assert b"suricata" in resp
+    assert b"YAR_SAMPLE" in resp
+    assert b"ET_SAMPLE" in resp
 
 
 # noinspection PyUnusedLocal
