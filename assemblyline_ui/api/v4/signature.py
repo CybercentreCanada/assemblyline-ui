@@ -505,6 +505,9 @@ def get_signature(sid, **kwargs):
                                             data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
 
+        # Always refresh stats when someone get a signature
+        data.update({'stats': STORAGE.get_stat_for_signature(sid, data['source'], data['name'], data['type'])})
+
         return make_api_response(data)
     else:
         return make_api_response("", f"Signature not found. ({sid})", 404)
@@ -657,10 +660,25 @@ def signature_statistics(**kwargs):
     ]"""
     user = kwargs['user']
 
-    stats = forge.get_statistics_cache().get('signatures') or []
+    stats = []
+    for sig in STORAGE.signature.stream_search("id:*", access_control=user['access_control'], fl='id,*', as_obj=False):
+        stats.append({
+            'avg': sig.get('stats', {}).get('avg', 0),
+            'classification': sig['classification'],
+            'count': sig.get('stats', {}).get('count', 0),
+            'first_hit': sig.get('stats', {}).get('first_hit', None),
+            'id': sig['id'],
+            'last_hit': sig.get('stats', {}).get('last_hit', None),
+            'max': sig.get('stats', {}).get('max', 0),
+            'min': sig.get('stats', {}).get('min', 0),
+            'name': sig['name'],
+            'source': sig['source'],
+            'sum': sig.get('stats', {}).get('sum', 0),
+            'type': sig['type'],
 
-    return make_api_response([x for x in stats
-                              if Classification.is_accessible(user['classification'], x['classification'])])
+        })
+
+    return make_api_response(stats)
 
 
 @signature_api.route("/update_available/", methods=["GET"])

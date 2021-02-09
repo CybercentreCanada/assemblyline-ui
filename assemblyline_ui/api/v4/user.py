@@ -635,6 +635,7 @@ def list_users(**_):
     offset        =>  Offset in the user bucket
     query         =>  Filter to apply to the user list
     rows          =>  Max number of user returned
+    sort          =>  Sort order
 
     Data Block:
     None
@@ -658,9 +659,10 @@ def list_users(**_):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "id:*") or "id:*"
+    sort = request.args.get('sort', "id asc")
 
     try:
-        return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, as_obj=False))
+        return make_api_response(STORAGE.user.search(query, offset=offset, rows=rows, sort=sort, as_obj=False))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
