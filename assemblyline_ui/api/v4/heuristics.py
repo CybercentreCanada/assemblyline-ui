@@ -43,10 +43,7 @@ def get_heuristic(heuristic_id, **kwargs):
 
     if user and Classification.is_accessible(user['classification'], h['classification']):
         # Always refresh stats when someone get a heuristic
-        stats = STORAGE.get_stat_for_heuristic(h['heur_id'], h['name'], h['classification'])
-        for x in ['classification', 'heur_id', 'name']:
-            stats.pop(x)
-        h.update({'stats': stats})
+        h.update({'stats': STORAGE.get_stat_for_heuristic(heuristic_id)})
 
         return make_api_response(h)
     else:

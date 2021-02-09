@@ -506,11 +506,7 @@ def get_signature(sid, **kwargs):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
 
         # Always refresh stats when someone get a signature
-        stats = STORAGE.get_stat_for_signature(sid, data['source'], data['name'],
-                                               data['type'], data['classification'])
-        for x in ['classification', 'id', 'name', 'source', 'type']:
-            stats.pop(x)
-        data.update({'stats': stats})
+        data.update({'stats': STORAGE.get_stat_for_signature(sid, data['source'], data['name'], data['type'])})
 
         return make_api_response(data)
     else:
