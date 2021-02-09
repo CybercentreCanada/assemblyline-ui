@@ -161,12 +161,12 @@ stages:
         for IMAGE in "cccs/assemblyline-ui" "docker.pkg.github.com/cybercentrecanada/assemblyline/assemblyline-ui"
         do
           docker build --build-arg version=$VERSION --build-arg branch=$BUILD_TYPE -t $IMAGE:$TAG -t $IMAGE:$BUILD_TYPE -t $IMAGE:$SERIES docker/ui
-          docker push $IMAGE
+          docker push $IMAGE --all-tags
         done
         for IMAGE in "cccs/assemblyline-socketio" "docker.pkg.github.com/cybercentrecanada/assemblyline/assemblyline-socketio"
         do
           docker build --build-arg version=$VERSION --build-arg branch=$BUILD_TYPE -t $IMAGE:$TAG -t $IMAGE:$BUILD_TYPE -t $IMAGE:$SERIES docker/socketio
-          docker push $IMAGE
+          docker push $IMAGE --all-tags
         done
       displayName: Deploy to Docker Hub
 
