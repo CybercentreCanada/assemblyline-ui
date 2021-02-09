@@ -53,8 +53,9 @@ def datastore(datastore_connection):
             ds.submission.save(s.sid, s)
         ds.submission.commit()
 
-        for _ in range(TEST_SIZE):
+        for x in range(TEST_SIZE):
             h = random_model_obj(Heuristic)
+            h.heur_id = f"AL_TEST_{x}"
             ds.heuristic.save(h.heur_id, h)
         ds.heuristic.commit()
 
