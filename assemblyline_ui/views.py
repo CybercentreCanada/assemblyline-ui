@@ -265,31 +265,31 @@ def login():
                             user_data = resp.json()
 
                     # Add group data if API is configured for it
-                    if oauth_provider_config.user_groups:
-                        groups = []
-                        if app_provider and oauth_provider_config.app_provider.group_get:
-                            url = oauth_provider_config.app_provider.group_get
-                            uid = user_data.get('id', None)
-                            if not uid and user_data and oauth_provider_config.uid_field:
-                                uid = user_data.get(oauth_provider_config.uid_field, None)
-                            if uid:
-                                url = url.format(id=uid)
-                            resp_grp = app_provider.get(url)
-                            if resp_grp.ok:
-                                groups = resp_grp.json()
-                        else:
-                            resp_grp = provider.get(oauth_provider_config.user_groups)
-                            if resp_grp.ok:
-                                groups = resp_grp.json()
 
+                    groups = []
+                    if app_provider and oauth_provider_config.app_provider.group_get:
+                        url = oauth_provider_config.app_provider.group_get
+                        uid = user_data.get('id', None)
+                        if not uid and user_data and oauth_provider_config.uid_field:
+                            uid = user_data.get(oauth_provider_config.uid_field, None)
+                        if uid:
+                            url = url.format(id=uid)
+                        resp_grp = app_provider.get(url)
+                        if resp_grp.ok:
+                            groups = resp_grp.json()
+                    elif oauth_provider_config.user_groups:
+                        resp_grp = provider.get(oauth_provider_config.user_groups)
+                        if resp_grp.ok:
+                            groups = resp_grp.json()
+
+                    if groups:
                         if oauth_provider_config.user_groups_data_field:
                             groups = groups[oauth_provider_config.user_groups_data_field]
 
                         if oauth_provider_config.user_groups_name_field:
                             groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
 
-                        if groups:
-                            user_data['groups'] = groups
+                        user_data['groups'] = groups
 
                     if user_data:
                         data = parse_profile(user_data, oauth_provider_config)
