@@ -11,7 +11,7 @@ from assemblyline_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
-from assemblyline_ui.helper.user import get_default_user_settings
+from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.common import forge, identify
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
@@ -243,9 +243,7 @@ def ingest_single_file(**kwargs):
                     my_file.write(binary.read())
 
             # Load default user params
-            s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
-            if not s_params:
-                s_params = get_default_user_settings(user)
+            s_params = ui_to_submission_params(load_user_settings(user))
 
             # Reset dangerous user settings to safe values
             s_params.update({
