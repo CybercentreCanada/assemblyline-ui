@@ -404,7 +404,7 @@ def delete_signature_source(service, name, **_):
 def _get_cached_signatures(signature_cache, query_hash):
     try:
         s = signature_cache.get(query_hash)
-        if s is None:
+        if s is None or s == b'':
             return s
         return make_file_response(
             s, f"al_signatures_{query_hash[:7]}.zip", len(s), content_type="application/zip"
