@@ -28,9 +28,8 @@ def parse_profile(profile, provider):
 
     if email_adr:
         email_adr = email_adr.lower()
-
-    if "@" not in email_adr:
-        email_adr = None
+        if "@" not in email_adr:
+            email_adr = None
 
     # Find the name of the user
     name = reorder_name(profile.get('name', profile.get('displayName', None)))
