@@ -33,18 +33,13 @@ def test_get_heuristics(datastore, login_session):
 
 def test_heuristic_stats(datastore, login_session):
     _, session, host = login_session
-    cache = forge.get_statistics_cache()
-    cache.delete()
 
-    resp = get_api_data(session, f"{host}/api/v4/heuristics/stats/")
-    assert len(resp) == 0
-
-    stats = datastore.calculate_heuristic_stats()
-    cache.set('heuristics', stats)
+    datastore.calculate_heuristic_stats()
 
     heuristic_count = datastore.heuristic.search("id:*", rows=0)['total']
     resp = get_api_data(session, f"{host}/api/v4/heuristics/stats/")
     assert len(resp) == heuristic_count
 
     for sig_stat in resp:
-        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'heur_id', 'max', 'min', 'name']
+        assert sorted(list(sig_stat.keys())) == ['avg', 'classification', 'count', 'first_hit', 'heur_id',
+                                                 'last_hit', 'max', 'min', 'name', 'sum']

@@ -57,6 +57,7 @@ def list_errors(**_):
     offset       => Offset at which we start giving errors
     query        => Query to apply to the error list
     rows         => Numbers of errors to return
+    sort         => Sort order
     
     Data Block:
     None
@@ -71,9 +72,10 @@ def list_errors(**_):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "id:*") or "id:*"
+    sort = request.args.get('sort', "created desc")
 
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
-                                                      sort="created desc"))
+                                                      sort=sort))
     except SearchException as e:
         return make_api_response("", f"The specified search query is not valid. ({e})", 400)
