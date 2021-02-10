@@ -4,15 +4,17 @@
 import glob
 import os
 
+from cart import is_cart, get_metadata_only
 from flask import request
 
+from assemblyline.common import forge
+from assemblyline.common.bundling import import_bundle
+from assemblyline.odm.messages.submission import Submission
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
-from assemblyline.common import forge
-from assemblyline.odm.messages.submission import Submission
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
 Classification = forge.get_classification()
@@ -261,7 +263,17 @@ def start_ui_submission(ui_sid, **kwargs):
                     request_files.append(os.path.join(fpath, myfile))
                     if myfile not in fnames:
                         fnames.append(myfile)
-                        
+
+            with open(request_files[0], 'rb') as fh:
+                if is_cart(fh.read(256)):
+                    meta = get_metadata_only(request_files[0])
+                    if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
+                        try:
+                            submission = import_bundle(request_files[0])
+                        except Exception as e:
+                            return make_api_response("", err=str(e), status_code=400)
+                        return make_api_response({"started": True, "sid": submission['sid']})
+
             if not ui_params['description']:
                 ui_params['description'] = "Inspection of file%s: %s" % ({True: "s", False: ""}[len(fnames) > 1],
                                                                          ", ".join(fnames))
