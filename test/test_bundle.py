@@ -1,6 +1,7 @@
 import pytest
 import random
 
+from cart import is_cart
 from conftest import get_api_data
 
 from assemblyline.common.bundling import create_bundle, BUNDLE_MAGIC
@@ -24,7 +25,7 @@ def test_create_bundle(datastore, login_session):
 
     sid = random.choice(datastore.submission.search('id:*', rows=100, as_obj=False)['items'])['sid']
     resp = get_api_data(session, f"{host}/api/v4/bundle/{sid}/", raw=True)
-    assert resp[:3] == BUNDLE_MAGIC
+    assert is_cart(resp[:256])
 
 
 # noinspection PyUnusedLocal

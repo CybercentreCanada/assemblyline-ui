@@ -2,6 +2,7 @@ import base64
 import binascii
 import os
 
+from cart import is_cart
 from flask import request
 
 from assemblyline.common import forge
@@ -92,7 +93,7 @@ def import_bundle(**_):
     current_bundle = os.path.join(BUNDLING_DIR, f"{get_random_id()}.bundle")
 
     with open(current_bundle, 'wb') as fh:
-        if request.data[:3] == BUNDLE_MAGIC:
+        if request.data[:3] == BUNDLE_MAGIC or is_cart(request.data[:256]):
             fh.write(request.data)
         else:
             try:
