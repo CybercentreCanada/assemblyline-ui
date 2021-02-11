@@ -412,7 +412,7 @@ def oauth_validate(**_):
                 if user_data:
                     data = parse_profile(user_data, oauth_provider_config)
                     has_access = data.pop('access', False)
-                    if has_access:
+                    if has_access and data['email'] is not None:
                         oauth_avatar = data.pop('avatar', None)
 
                         # Find if user already exists
