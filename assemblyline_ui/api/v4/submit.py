@@ -11,7 +11,7 @@ from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
-from assemblyline_ui.helper.user import check_submission_quota, get_default_user_settings, decrement_submission_quota
+from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 from assemblyline.common import forge
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -70,7 +70,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_params['classification'] = submission['classification']
 
         else:
-            submission_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
+            submission_params = ui_to_submission_params(load_user_settings(user))
 
         with forge.get_filestore() as f_transport:
             if not f_transport.exists(sha256):
@@ -276,10 +276,7 @@ def submit(**kwargs):
             if "ui_params" in data:
                 s_params = ui_to_submission_params(data['ui_params'])
             else:
-                s_params = ui_to_submission_params(STORAGE.user_settings.get(user['uname'], as_obj=False))
-
-            if not s_params:
-                s_params = get_default_user_settings(user)
+                s_params = ui_to_submission_params(load_user_settings(user))
 
             s_params.update(data.get("params", {}))
             if 'groups' not in s_params:
