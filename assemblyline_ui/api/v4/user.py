@@ -1,4 +1,4 @@
-
+from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from flask import request
 
 from assemblyline.common.comms import send_authorize_email, send_activated_email
@@ -92,6 +92,11 @@ def who_am_i(**kwargs):
             "allow_apikeys": config.auth.allow_apikeys,
             "allow_security_tokens": config.auth.allow_security_tokens,
             },
+        "system": {
+            "organisation": config.system.organisation,
+            "type": config.system.type,
+            "version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}"
+        },
         "ui": {
             "allow_url_submissions": config.ui.allow_url_submissions,
             "banner": config.ui.banner,
