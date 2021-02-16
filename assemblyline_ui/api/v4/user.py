@@ -94,6 +94,8 @@ def who_am_i(**kwargs):
             },
         "ui": {
             "allow_url_submissions": config.ui.allow_url_submissions,
+            "banner": config.ui.banner,
+            "banner_level": config.ui.banner_level,
             "read_only": config.ui.read_only,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
