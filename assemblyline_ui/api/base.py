@@ -115,7 +115,7 @@ class api_login(BaseSecurityRenderer):
                 target_user = STORAGE.user.get(headers['user'], as_obj=False)
                 if target_user:
                     target_token = target_user.get('apps', {}).get(headers['token_id'], {})
-                    if target_token == decoded:
+                    if target_token == decoded and target_token['client_id'] == logged_in_uname:
                         impersonator = logged_in_uname
                         logged_in_uname = headers['user']
                         LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
