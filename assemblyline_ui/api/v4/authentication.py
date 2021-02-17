@@ -223,7 +223,7 @@ def get_obo_token(**kwargs):
 
     token = jwt.encode(token_data, hashlib.sha256(f"{SECRET_KEY}_{token_id}".encode()).hexdigest(),
                        algorithm="HS256", headers={'token_id': token_id, 'user': uname})
-    return redirect(f"{redirect_url}token={token.decode()}")
+    return redirect(f"{redirect_url}token={token}")
 
 
 @auth_api.route("/get_reset_link/", methods=["GET", "POST"])
