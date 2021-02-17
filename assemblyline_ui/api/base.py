@@ -103,22 +103,22 @@ class api_login(BaseSecurityRenderer):
                     decoded = jwt.decode(bearer_token,
                                          hashlib.sha256(f"{SECRET_KEY}_{headers['token_id']}".encode()).hexdigest(),
                                          algorithm="HS256")
-                    target_user = STORAGE.user.get(headers['user'], as_obj=False)
-                    if target_user:
-                        target_token = target_user.get('apps', {}).get(headers['token_id'], {})
-                        if target_token == decoded:
-                            impersonator = logged_in_uname
-                            logged_in_uname = headers['user']
-                            LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
-                        else:
-                            abort(403, "Invalid bearer token")
-                            return
-                    else:
-                        abort(404, "User not found")
-                        return
-
                 except Exception:
                     abort(400, "Malformed bearer token")
+                    return
+
+                target_user = STORAGE.user.get(headers['user'], as_obj=False)
+                if target_user:
+                    target_token = target_user.get('apps', {}).get(headers['token_id'], {})
+                    if target_token == decoded:
+                        impersonator = logged_in_uname
+                        logged_in_uname = headers['user']
+                        LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
+                    else:
+                        abort(403, "Invalid bearer token")
+                        return
+                else:
+                    abort(404, "User not found")
                     return
 
             user = login(logged_in_uname)
