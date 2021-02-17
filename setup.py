@@ -50,7 +50,8 @@ setup(
         'markdown',
         'python-ldap',
         'authlib',
-        'fido2'
+        'fido2',
+        'PyJWT'
     ],
     extras_require={
         'test': [

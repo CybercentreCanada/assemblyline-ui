@@ -1,6 +1,8 @@
 
 import elasticapm
 import functools
+import hashlib
+import jwt
 
 from flask import current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response, abort
 from sys import exc_info
@@ -8,7 +10,7 @@ from traceback import format_tb
 
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
-from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, QUOTA_TRACKER, STORAGE
+from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
@@ -19,6 +21,11 @@ API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
 XSRF_ENABLED = True
+SCOPES = {
+    'r': ["R"],
+    'w': ["W"],
+    'rw': ["R", "W"],
+}
 
 
 def make_subapi_blueprint(name, api_version=4):
@@ -89,6 +96,39 @@ class api_login(BaseSecurityRenderer):
 
             self.test_readonly("API")
             logged_in_uname = self.get_logged_in_user()
+            impersonator = None
+
+            # Impersonate
+            authorization = request.environ.get("HTTP_AUTHORIZATION", None)
+            if authorization:
+                # noinspection PyBroadException
+                try:
+                    bearer_token = authorization.split(" ")[-1]
+                    headers = jwt.get_unverified_header(bearer_token)
+                    decoded = jwt.decode(bearer_token,
+                                         hashlib.sha256(f"{SECRET_KEY}_{headers['token_id']}".encode()).hexdigest(),
+                                         algorithm="HS256")
+                except Exception:
+                    abort(400, "Malformed bearer token")
+                    return
+
+                target_user = STORAGE.user.get(headers['user'], as_obj=False)
+                if target_user:
+                    target_token = target_user.get('apps', {}).get(headers['token_id'], {})
+                    if target_token == decoded and target_token['client_id'] == logged_in_uname:
+                        impersonator = logged_in_uname
+                        logged_in_uname = headers['user']
+                        LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
+
+                        if not set(self.required_priv).intersection(set(SCOPES[decoded["scope"]])):
+                            abort(403, "The method you've used to login does not give you access to this API")
+                            return
+                    else:
+                        abort(403, "Invalid bearer token")
+                        return
+                else:
+                    abort(404, "User not found")
+                    return
 
             user = login(logged_in_uname)
 
@@ -119,7 +159,7 @@ class api_login(BaseSecurityRenderer):
                         and 'admin' not in user['type']:
                     return make_api_response({}, "Your username does not match requested username", 403)
 
-            self.audit_if_required(args, kwargs, logged_in_uname, user, func)
+            self.audit_if_required(args, kwargs, logged_in_uname, user, func, impersonator=impersonator)
 
             # Save user credential in user kwarg for future reference
             kwargs['user'] = user

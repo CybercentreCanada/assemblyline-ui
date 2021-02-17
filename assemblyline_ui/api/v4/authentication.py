@@ -1,23 +1,25 @@
 
 import hashlib
-
+import jwt
 import pyqrcode
 import re
 
 from authlib.integrations.requests_client import OAuth2Session
-from flask import request, session as flsk_session, current_app
+from flask import request, session as flsk_session, current_app, redirect
 from io import BytesIO
 from passlib.hash import bcrypt
+from urllib.parse import urlparse
 
 from assemblyline.common import forge
 from assemblyline.common.comms import send_signup_email, send_reset_email
 from assemblyline.common.isotime import now
 from assemblyline.common.security import generate_random_secret, get_totp_token, \
     check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
+from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER, \
-    get_token_store
+    get_token_store, SECRET_KEY
 from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
@@ -98,6 +100,35 @@ def delete_apikey(name, **kwargs):
     return make_api_response({"success": True})
 
 
+@auth_api.route("/obo_token/<token_id>/", methods=["DELETE"])
+@api_login(audit=False)
+def delete_obo_token(token_id, **kwargs):
+    """
+    Delete an application access to your profile
+
+    Variables:
+    None
+
+    Arguments:
+    token_id     =>   ID of the application token to delete
+
+    Data Block:
+    None
+
+    Result example:
+    {'success': true}
+    """
+
+    uname = kwargs['user']['uname']
+    user_data = STORAGE.user.get(uname, as_obj=False)
+    if token_id not in user_data.get('apps', {}):
+        return make_api_response({"success": False}, "Token ID does not exist", 404)
+
+    user_data['apps'].pop(token_id)
+    STORAGE.user.save(uname, user_data)
+    return make_api_response({"success": True})
+
+
 @auth_api.route("/disable_otp/", methods=["GET"])
 @api_login(audit=False)
 def disable_otp(**kwargs):
@@ -124,6 +155,75 @@ def disable_otp(**kwargs):
     user_data.security_tokens = {}
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
+
+
+@auth_api.route("/obo_token/", methods=["GET"])
+@api_login(audit=False)
+def get_obo_token(**kwargs):
+    """
+    Get or create a token to allow an external application to impersonate your
+    user account while querying Assemblyline's API.
+
+    Variables:
+    None
+
+    Arguments:
+    client_id     =>   User account of the application that will be allowed to use the token
+    redirect_url  =>   URL that AL will send to token to
+    scope         =>   Authorization scope (either r, w or rw)
+    server        =>   Name of the server requesting access
+
+    Data Block:
+    None
+
+    Result example:
+    <A JWT TOKEN>
+    """
+    if request.referrer is None or request.host not in request.referrer:
+        return make_api_response({"success": False}, "Forbidden", 403)
+
+    params = request.values
+    client_id = params.get('client_id', None)
+    redirect_url = params.get('redirect_url', None)
+    scope = params.get('scope', None)
+    server = params.get('server', None)
+
+    if not redirect_url:
+        return make_api_response({"success": False}, "redirect_url missing", 400)
+
+    parsed_url = urlparse(redirect_url)
+    if parsed_url.scheme != 'https':
+        return make_api_response({"success": False}, "Insecure redirect-url, ignored...", 400)
+
+    if parsed_url.query:
+        redirect_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{parsed_url.query}&"
+    else:
+        redirect_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?"
+
+    if not client_id or not scope or not server:
+        err_type = "missing_arguments"
+        err_description = "client_id, scope and server are required arguments"
+        return redirect(f"{redirect_url}error={err_type}&error_description={err_description}")
+
+    uname = kwargs['user']['uname']
+    user_data = STORAGE.user.get(uname, as_obj=False)
+
+    token_data = {'client_id': client_id, 'scope': scope, 'netloc': parsed_url.netloc, 'server': server}
+    token_id = None
+    for k, v in user_data.get('apps', {}).items():
+        if v == token_data:
+            token_id = k
+            break
+
+    if not token_id:
+        user_data.setdefault('apps', {})
+        token_id = get_random_id()
+        user_data['apps'][token_id] = token_data
+        STORAGE.user.save(uname, user_data)
+
+    token = jwt.encode(token_data, hashlib.sha256(f"{SECRET_KEY}_{token_id}".encode()).hexdigest(),
+                       algorithm="HS256", headers={'token_id': token_id, 'user': uname})
+    return redirect(f"{redirect_url}token={token.decode()}")
 
 
 @auth_api.route("/get_reset_link/", methods=["GET", "POST"])
