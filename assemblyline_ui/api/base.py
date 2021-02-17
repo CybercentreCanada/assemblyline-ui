@@ -107,7 +107,7 @@ class api_login(BaseSecurityRenderer):
                     headers = jwt.get_unverified_header(bearer_token)
                     decoded = jwt.decode(bearer_token,
                                          hashlib.sha256(f"{SECRET_KEY}_{headers['token_id']}".encode()).hexdigest(),
-                                         algorithm="HS256")
+                                         algorithms=[headers.get('alg', "HS256")])
                 except Exception:
                     abort(400, "Malformed bearer token")
                     return
