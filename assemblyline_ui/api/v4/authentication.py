@@ -104,13 +104,13 @@ def delete_apikey(name, **kwargs):
 @api_login(audit=False)
 def delete_obo_token(token_id, **kwargs):
     """
-    Delete a security token to be use for on-behalf-of queries
+    Delete an application access to your profile
 
     Variables:
     None
 
     Arguments:
-    token_id     =>   Token to delete
+    token_id     =>   ID of the application token to delete
 
     Data Block:
     None
@@ -158,16 +158,17 @@ def disable_otp(**kwargs):
 
 
 @auth_api.route("/obo_token/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False)  # TODO: remove disable xsrf
+@api_login(audit=False)
 def get_obo_token(**kwargs):
     """
-    Get a security token to be use for on-behalf-of queries
+    Get or create a token to allow an external application to impersonate your
+    user account while querying Assemblyline's API.
 
     Variables:
     None
 
     Arguments:
-    client_id     =>   Username that will be allowed to use the token
+    client_id     =>   User account of the application that will be allowed to use the token
     redirect_url  =>   URL that AL will send to token to
     scope         =>   Authorization scope (either r, w or rw)
     server        =>   Name of the server requesting access
@@ -188,13 +189,6 @@ def get_obo_token(**kwargs):
     server = params.get('server', None)
 
     if not redirect_url:
-        # TODO: remove
-        token = params.get('token', None)
-        if token:
-            decoded = jwt.decode(token, SECRET_KEY, algorithm="HS256")
-            return make_api_response({"decoded": decoded, "headers": jwt.get_unverified_header(token)})
-        # END TODO;
-
         return make_api_response({"success": False}, "redirect_url missing", 400)
 
     parsed_url = urlparse(redirect_url)
