@@ -121,10 +121,10 @@ def delete_obo_token(token_id, **kwargs):
 
     uname = kwargs['user']['uname']
     user_data = STORAGE.user.get(uname, as_obj=False)
-    if token_id not in user_data.get('registered_apps', {}):
+    if token_id not in user_data.get('apps', {}):
         return make_api_response({"success": False}, "Token ID does not exist", 404)
 
-    user_data['registered_apps'].pop(token_id)
+    user_data['apps'].pop(token_id)
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
 
@@ -178,6 +178,9 @@ def get_obo_token(**kwargs):
     Result example:
     <A JWT TOKEN>
     """
+    if request.referrer is None or request.host not in request.referrer:
+        return make_api_response({"success": False}, "Forbidden", 403)
+
     params = request.values
     client_id = params.get('client_id', None)
     redirect_url = params.get('redirect_url', None)
@@ -213,14 +216,15 @@ def get_obo_token(**kwargs):
 
     token_data = {'client_id': client_id, 'scope': scope, 'netloc': parsed_url.netloc, 'server': server}
     token_id = None
-    for k, v in user_data['registered_apps'].items():
+    for k, v in user_data.get('apps', {}).items():
         if v == token_data:
             token_id = k
             break
 
     if not token_id:
+        user_data.setdefault('apps', {})
         token_id = get_random_id()
-        user_data['registered_apps'][token_id] = token_data
+        user_data['apps'][token_id] = token_data
         STORAGE.user.save(uname, user_data)
 
     token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256", headers={'token_id': token_id})
