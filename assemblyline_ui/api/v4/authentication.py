@@ -222,7 +222,7 @@ def get_obo_token(**kwargs):
         STORAGE.user.save(uname, user_data)
 
     token = jwt.encode(token_data, hashlib.sha256(f"{SECRET_KEY}_{token_id}".encode()).hexdigest(),
-                       algorithm="HS256", headers={'token_id': token_id})
+                       algorithm="HS256", headers={'token_id': token_id, 'user': uname})
     return redirect(f"{redirect_url}token={token.decode()}")
 
 
