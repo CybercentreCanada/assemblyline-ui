@@ -1,7 +1,7 @@
 import logging
 import os
 import functools
-    
+
 from assemblyline.common import version
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
@@ -118,6 +118,9 @@ AUDIT_KW_TARGET = ["sid",
 
 AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 LOGGER = logging.getLogger('assemblyline.ui')
+
+if AUDIT:
+    AUDIT_LOG.setLevel(logging.INFO)
 
 if DEBUG:
     if not os.path.exists(config.logging.log_directory):
