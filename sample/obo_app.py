@@ -26,16 +26,25 @@ def get_token():
 
 @app.route("/", methods=["GET"])
 def index():
+    global TOKEN
+    error = None
+    headers = {}
+    whoami = None
+
     if TOKEN:
         try:
             whoami = CLIENT._connection.get("api/v4/user/whoami/", headers={"Authorization": f"Bearer {TOKEN}"})
-            return render_template("loaded.html", token=TOKEN, headers=jwt.get_unverified_header(TOKEN),
-                                   user=whoami['username'])
-        except Exception:
-            pass
+            headers = jwt.get_unverified_header(TOKEN)
+        except Exception as e:
+            # Token is invalid call whoami without token
+            TOKEN = None
+            error = str(e)
 
-    whoami = CLIENT._connection.get("api/v4/user/whoami/")
-    return render_template("index.html", user=whoami['username'], server=request.host[:-5])
+    if not whoami:
+        whoami = CLIENT._connection.get("api/v4/user/whoami/")
+
+    return render_template("index.html", user=whoami['username'], server=request.host[:-5],
+                           error=error, token_headers=headers)
 
 
 def main():
