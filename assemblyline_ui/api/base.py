@@ -21,6 +21,11 @@ API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
 XSRF_ENABLED = True
+SCOPES = {
+    'r': ["R"],
+    'w': ["W"],
+    'rw': ["R", "W"],
+}
 
 
 def make_subapi_blueprint(name, api_version=4):
@@ -114,6 +119,10 @@ class api_login(BaseSecurityRenderer):
                         impersonator = logged_in_uname
                         logged_in_uname = headers['user']
                         LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
+
+                        if not set(self.required_priv).intersection(set(SCOPES[decoded["scope"]])):
+                            abort(403, "The method you've used to login does not give you access to this API")
+                            return
                     else:
                         abort(403, "Invalid bearer token")
                         return
