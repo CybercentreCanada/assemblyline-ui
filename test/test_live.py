@@ -1,6 +1,6 @@
 import pytest
 
-from conftest import get_api_data
+from conftest import get_api_data, APIError
 
 from assemblyline.common import forge
 from assemblyline.odm.models.result import Result
@@ -68,8 +68,5 @@ def test_outstanding_services(datastore, login_session):
 def test_setup_watch_queue(datastore, login_session):
     _, session, host = login_session
 
-    resp = get_api_data(session, f"{host}/api/v4/live/setup_watch_queue/{test_submission.sid}/")
-    assert resp['wq_id'].startswith("D-") and resp['wq_id'].endswith("-WQ")
-
-    resp = get_api_data(session, f"{host}/api/v4/live/get_message/{resp['wq_id']}/")
-    assert resp['type'] == 'start'
+    with pytest.raises(APIError, match="No dispatchers are processing this submission."):
+        get_api_data(session, f"{host}/api/v4/live/setup_watch_queue/{test_submission.sid}/")

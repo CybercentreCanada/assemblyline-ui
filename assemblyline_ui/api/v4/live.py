@@ -154,6 +154,9 @@ def setup_watch_queue(sid, **kwargs):
     user = kwargs['user']
     
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response({"wq_id": DispatchClient(datastore=STORAGE).setup_watch_queue(sid)})
+        wq_id = DispatchClient(datastore=STORAGE).setup_watch_queue(sid)
+        if wq_id:
+            return make_api_response({"wq_id": wq_id})
+        return make_api_response("", "No dispatchers are processing this submission.", 404)
     else:
         return make_api_response("", "You are not allowed to access this submissions.", 403)
