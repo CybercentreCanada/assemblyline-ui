@@ -64,41 +64,36 @@ def parse_profile(profile, provider):
         alternate = None
 
     # Compute access, roles and classification using auto_properties
-    first_access = True
     access = True
     roles = ['user']
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
+            if auto_prop.type == "access":
+                # Set default access value for access pattern
+                access = auto_prop.value != "True"
+
+            # Get values for field
             field_data = profile.get(auto_prop.field, "")
             if not isinstance(field_data, list):
                 field_data = [field_data]
+
+            # Analyse field values
             for value in field_data:
+                # Check access
                 if auto_prop.type == "access":
-                    # Check access
-                    if auto_prop.value == "True":
-                        # If its a positive access pattern
-                        if first_access:
-                            access = False
-                            first_access = False
-                        if re.match(auto_prop.pattern, value) is not None:
-                            access = True
-                            break
-                    else:
-                        # If its a negative access pattern
-                        if first_access:
-                            access = True
-                            first_access = False
-                        if re.match(auto_prop.pattern, value) is not None:
-                            access = False
-                            break
+                    if re.match(auto_prop.pattern, value) is not None:
+                        access = auto_prop.value == "True"
+                        break
+
+                # Append roles from matching patterns
                 elif auto_prop.type == "role":
-                    # Append roles from matching patterns
                     if re.match(auto_prop.pattern, value):
                         roles.append(auto_prop.value)
                         break
+
+                # Compute classification from matching patterns
                 elif auto_prop.type == "classification":
-                    # Compute classification from matching patterns
                     if re.match(auto_prop.pattern, value):
                         classification = cl_engine.build_user_classification(classification, auto_prop.value)
                         break
