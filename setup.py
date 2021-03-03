@@ -62,6 +62,12 @@ setup(
     package_data={
         'assemblyline_ui': [
             "templates/*",
+            "static_next/*",
+            "static_next/images/*",
+            "static_next/static/*",
+            "static_next/static/css/*",
+            "static_next/static/js/*",
+            "static_next/static/media/*",
             "static/css/*",
             "static/fonts/*",
             "static/images/*",
