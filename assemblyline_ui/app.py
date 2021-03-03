@@ -4,9 +4,7 @@ import os.path
 
 from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
-from flask import Flask, request, redirect
-
-from assemblyline_ui.helper.views import redirect_helper
+from flask import Flask
 from flask.logging import default_handler
 
 from assemblyline_ui.api.base import api
@@ -92,15 +90,7 @@ app.register_blueprint(user_api)
 app.register_blueprint(webauthn_api)
 app.register_blueprint(workflow_api)
 
-if AL_NEXT_ONLY:
-    @app.route('/')
-    def index():
-        return app.send_static_file('index.html')
-
-    @app.route("/oauth/<provider>/")
-    def oauth(provider):
-        return redirect(redirect_helper(f"/?provider={provider}&{request.query_string.decode()}"))
-else:
+if not AL_NEXT_ONLY:
     from assemblyline_ui.views import views
     app.register_blueprint(views)
 

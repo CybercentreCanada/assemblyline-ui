@@ -1,5 +1,7 @@
 
-from flask import Blueprint, render_template, request, redirect, session as flsk_session
+import os
+
+from flask import Blueprint, render_template, request, redirect, session as flsk_session, current_app
 from sys import exc_info
 from traceback import format_tb
 from urllib.parse import quote
@@ -13,6 +15,7 @@ from assemblyline_ui.http_exceptions import AccessDeniedException, Authenticatio
 from assemblyline_ui.logger import log_with_traceback
 
 errors = Blueprint("errors", __name__)
+AL_NEXT_ONLY = os.environ.get('AL_NEXT_ONLY', 'false').lower() == 'true'
 
 
 ######################################
@@ -98,7 +101,11 @@ def handle_403(e):
 def handle_404(_):
     if request.path.startswith("/api/"):
         return make_api_response("", "Api does not exist (%s)" % request.path, 404)
+
     else:
+        if AL_NEXT_ONLY:
+            return current_app.send_static_file('index.html')
+
         return render_template('404.html', url=request.path), 404
 
 
