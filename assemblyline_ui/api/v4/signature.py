@@ -92,8 +92,8 @@ def add_update_signature(**_):
             return make_api_response({"success": True, "id": key})
 
         # If rule has been deprecated/disabled after initial deployment, then disable it
-        if not (rule['status'] != old['status'] and rule['status'] == "DISABLED"):
-            rule['status'] = old['status']
+        if not (data['status'] != old['status'] and data['status'] == "DISABLED"):
+            data['status'] = old['status']
         data['state_change_date'] = old['state_change_date']
         data['state_change_user'] = old['state_change_user']
 
