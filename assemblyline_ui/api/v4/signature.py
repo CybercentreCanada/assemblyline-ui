@@ -91,7 +91,9 @@ def add_update_signature(**_):
         if old['data'] == data['data']:
             return make_api_response({"success": True, "id": key})
 
-        data['status'] = old['status']
+        # If rule has been deprecated/disabled after initial deployment, then disable it
+        if not (rule['status'] != old['status'] and rule['status'] == "DISABLED"):
+            rule['status'] = old['status']
         data['state_change_date'] = old['state_change_date']
         data['state_change_user'] = old['state_change_user']
 
@@ -156,7 +158,9 @@ def add_update_many_signature(**_):
     for rule in data:
         key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
         if key in old_data:
-            rule['status'] = old_data[key]['status']
+            # If rule has been deprecated/disabled after initial deployment, then disable it
+            if not (rule['status'] != old_data[key]['status'] and rule['status'] == "DISABLED"):
+                rule['status'] = old_data[key]['status']
             rule['state_change_date'] = old_data[key]['state_change_date']
             rule['state_change_user'] = old_data[key]['state_change_user']
 
