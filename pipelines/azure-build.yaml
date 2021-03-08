@@ -102,7 +102,7 @@ stages:
     - script: |
         python -m assemblyline_ui.app &
         python -m assemblyline_ui.socketsrv &
-        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl
+        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
         wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
         pytest -rsx -vv
       workingDirectory: $(Pipeline.Workspace)/test

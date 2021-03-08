@@ -61,7 +61,7 @@ services:
       retries: 3
 
   nginx:
-    image: cccs/nginx-ssl
+    image: cccs/nginx-ssl-frontend
     environment:
       TEMPLATE: minimal
     ports:
