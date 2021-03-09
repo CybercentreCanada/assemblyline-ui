@@ -313,11 +313,7 @@ def login(**_):
         provider = oauth.create_client(oauth_provider)
 
         if provider:
-            oauth_provider_config = config.auth.oauth.providers[oauth_provider]
-            if oauth_provider_config.use_new_callback_format:
-                redirect_uri = f'https://{request.host}/oauth/{oauth_provider}/'
-            else:
-                redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
+            redirect_uri = f'https://{request.host}/oauth/{oauth_provider}/'
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
