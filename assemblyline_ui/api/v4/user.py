@@ -113,41 +113,6 @@ def who_am_i(**kwargs):
     return make_api_response(user_data)
 
 
-@user_api.route("/ui4/", methods=["PUT"])
-@api_login()
-def set_ui4(**kwargs):
-    """
-    Set the UI 4 redirect ON or OFF
-
-    Variables:
-    None
-
-    Arguments:
-    None
-
-    Data Block:
-    True/False
-
-    Result example:
-    {
-     "success": True
-    }
-
-    """
-    ui4 = request.json
-
-    if not isinstance(ui4, bool):
-        return make_api_response("", err="Invalid data block", status_code=400)
-
-    user_settings = STORAGE.user_settings.get(kwargs['user']['uname'])
-    if not user_settings:
-        return make_api_response("", err="Cannot find user", status_code=404)
-
-    user_settings.ui4 = ui4
-    user_settings.ui4_ask = False
-    return make_api_response({"success": STORAGE.user_settings.save(kwargs['user']['uname'], user_settings)})
-
-
 @user_api.route("/<username>/", methods=["PUT"])
 @api_login(require_type=['admin'])
 def add_user_account(username, **_):
