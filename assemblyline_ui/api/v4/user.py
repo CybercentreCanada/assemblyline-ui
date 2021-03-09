@@ -817,7 +817,7 @@ def agree_with_tos(username, **kwargs):
                 for adr in config.ui.tos_lockout_notify:
                     send_authorize_email(adr, username, user.email or "")
             except Exception as e:
-                LOGGER.error(f"An error occured while sending confirmation emails: {str(e)}")
+                LOGGER.error(f"An error occurred while sending confirmation emails: {str(e)}")
                 return make_api_response({"success": False}, "The system was unable to send confirmation emails "
                                                              "to the administrators. Retry again later...", 400)
 
