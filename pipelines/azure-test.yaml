@@ -19,17 +19,6 @@ resources:
       DISCOVERY_TYPE: 'single-node'
     ports:
       - 9200:9200
-#  - container: nginx
-#    image: cccs/nginx-ssl
-#    ports:
-#      - 443:443
-#    env:
-#      UI_HOST: localhost
-#      SOCKET_HOST: localhost
-#      KIBANA_HOST: localhost
-#      FQDN: localhost
-#      TEMPLATE: minimal
-#    options:  --restart on-failure
   - container: minio
     image: cccs/minio
     env:
@@ -109,7 +98,8 @@ jobs:
     - script: |
         python -m assemblyline_ui.app &
         python -m assemblyline_ui.socketsrv &
-        sudo docker run -d --name nginx --network host --restart on-failure -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl
+        sudo docker run -d --name frontend --network host --restart on-failure cccs/assemblyline-ui-frontend &
+        sudo docker run -d --name nginx --network host --restart on-failure -e "FRONTEND_HOST=localhost" -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
         wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
         pytest -rsx -vv
       workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui

@@ -1,8 +1,8 @@
-# Assemblyline 4 - User Interface
+# Assemblyline 4 - API and Socket IO server
 
 This component provides the User Interface as well as the different APIs and socketio endpoints for the Assemblyline 4 framework.
 
-### UI Components
+### Components
 
 #### APIs
 
@@ -18,16 +18,6 @@ All APIs in Assemblyline output their result in the same manner for consistency:
     }
 
  **NOTE**: All response codes return this output layout
-
-#### Views
-
-The views are built in layers:
-
-1. It all starts with the python code which takes care of the authentication and loads information about the page and about the user
-2. It then passes that information to the Jinja template for the page to be rendered
-3. When it reaches the browser, the page in loaded into the angular controller which then in turn calls more APIs to load the data
-4. The angular layer loads the data received from the API into angular specific templates to render the page's final components
-
 
 #### SocketIO endpoints
 
