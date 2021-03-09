@@ -18,7 +18,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
     name="assemblyline-ui",
     version=package_version,
-    description="Assemblyline 4 - User Interface",
+    description="Assemblyline 4 - API and Socket IO server",
     long_description=long_description,
     long_description_content_type='text/markdown',
     url="https://github.com/CybercentreCanada/assemblyline-ui/",
@@ -61,28 +61,7 @@ setup(
     },
     package_data={
         'assemblyline_ui': [
-            "templates/*",
-            "static/css/*",
-            "static/fonts/*",
-            "static/images/*",
-            "static/js/*",
-            "static/js/ace/*",
-            "static/js/ace/snippets/*",
-            "static/js/angular/*",
-            "static/js/bootstrap/*",
-            "static/js/cbor/*",
-            "static/js/d3/*",
-            "static/js/flow/*",
-            "static/js/flow/directives/*",
-            "static/js/infinite-scroll/*",
-            "static/js/jquery/*",
-            "static/js/jsoneditor/*",
-            "static/js/socket.io/*",
-            "static/js/swal/*",
-            "static/js/ui-select/*",
-            "static/ng-template/*",
-            "static/pdf/*",
-            "VERSION",
+            "VERSION"
         ]
     }
 )

@@ -30,7 +30,6 @@ from assemblyline_ui.api.v4.user import user_api
 from assemblyline_ui.api.v4.webauthn import webauthn_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
-from assemblyline_ui.views import views
 
 from assemblyline_ui import config
 
@@ -39,11 +38,7 @@ AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 ##########################
 # App settings
 current_directory = os.path.dirname(__file__)
-app = Flask(
-    "assemblyline_ui",
-    static_folder=os.path.join(current_directory, 'static'),
-    template_folder=os.path.join(current_directory, 'templates'),
-)
+app = Flask("assemblyline_ui")
 app.logger.setLevel(60)  # This completely turns off the flask logger
 if AL_UNSECURED_UI:
     app.config.update(
@@ -79,9 +74,9 @@ app.register_blueprint(submission_api)
 app.register_blueprint(submit_api)
 app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
-app.register_blueprint(views)
 app.register_blueprint(webauthn_api)
 app.register_blueprint(workflow_api)
+
 
 # Setup OAuth providers
 if config.config.auth.oauth.enabled:
