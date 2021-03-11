@@ -125,7 +125,7 @@ def test_delete_service(datastore, login_session):
     _, session, host = login_session
 
     ds = datastore
-    service = random.choice(list(TEMP_SERVICES.keys()))
+    service = random.choice([x for x in TEMP_SERVICES.keys() if x != 'Suricata'])
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
 
