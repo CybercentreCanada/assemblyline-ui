@@ -69,7 +69,7 @@ def filter_sections(sections, user_classification, min_classification):
             title_text="WARNING: Service sections have been sanitized",
             depth=0,
             classification=CLASSIFICATION.UNRESTRICTED,
-            tags={},
+            tags=[],
             heuristic=None,
             body_format="TEXT"
         )
