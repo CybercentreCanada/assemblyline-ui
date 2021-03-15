@@ -44,7 +44,7 @@ class BasicLDAPWrapper(object):
         ldap_server.protocol_version = ldap.VERSION3
         ldap_server.set_option(ldap.OPT_REFERRALS, 0)
         if self.bind_user and self.bind_pass:
-            ldap_server.simple_bind_s(self.bind_user,self.bind_pass)
+            ldap_server.simple_bind_s(self.bind_user, self.bind_pass)
         return ldap_server
 
     def get_group_list(self, dn, ldap_server=None):
@@ -169,14 +169,20 @@ def validate_ldapuser(username, password, storage):
 
             # Make sure the user exists in AL and is in sync
             if (not cur_user and config.auth.ldap.auto_create) or (cur_user and config.auth.ldap.auto_sync):
+                u_classification = ldap_info['classification']
+
                 # Normalize email address
                 email = get_attribute(ldap_info, config.auth.ldap.email_field)
                 if email is not None:
                     email = email.lower()
+                    if CLASSIFICATION.dynamic_groups:
+                        dyn_group = email.upper().split('@')[1]
+                        u_classification = CLASSIFICATION.max_classification(
+                            u_classification, f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
 
                 # Generate user data from ldap
                 data = dict(
-                    classification=ldap_info['classification'],
+                    classification=u_classification,
                     uname=username,
                     name=get_attribute(ldap_info, config.auth.ldap.name_field) or username,
                     email=email,

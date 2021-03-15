@@ -17,7 +17,7 @@ from assemblyline.common.security import generate_random_secret, get_totp_token,
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER, \
-    get_token_store
+    get_token_store, CLASSIFICATION
 from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
@@ -173,13 +173,13 @@ def get_reset_link(**_):
 def login(**_):
     """
     Login the user onto the system
-    
+
     Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     {
      "user": <UID>,
@@ -285,7 +285,7 @@ def logout(**_):
     Variables:
     None
 
-    Arguments: 
+    Arguments:
     None
 
     Data Block:
@@ -435,6 +435,12 @@ def oauth_validate(**_):
                         username = data['uname']
                         email_adr = data['email']
 
+                        # Add add dynamic classification group
+                        if CLASSIFICATION.dynamic_groups and email_adr:
+                            dyn_group = email_adr.upper().split('@')[1]
+                            data['classification'] = CLASSIFICATION.max_classification(
+                                data['classification'], f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+
                         # Make sure the user exists in AL and is in sync
                         if (not cur_user and oauth_provider_config.auto_create) or \
                                 (cur_user and oauth_provider_config.auto_sync):
@@ -557,7 +563,7 @@ def setup_otp(**kwargs):
     Variables:
     None
 
-    Arguments: 
+    Arguments:
     None
 
     Data Block:
@@ -725,6 +731,13 @@ def signup_validate(**_):
             signup_queue.delete()
             if members:
                 user_info = members[0]
+
+                # Add dynamic classification group
+                if CLASSIFICATION.dynamic_groups and user_info['email']:
+                    dyn_group = user_info['email'].upper().split('@')[1]
+                    user_info['classification'] = CLASSIFICATION.max_classification(
+                        user_info['classification'], f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+
                 user = User(user_info)
                 username = user.uname
 
