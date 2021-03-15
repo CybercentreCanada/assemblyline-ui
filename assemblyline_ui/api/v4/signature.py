@@ -618,10 +618,12 @@ def update_signature_source(service, name, **_):
 
     new_sources = []
     found = False
+    classification_changed = False
     for source in current_sources:
         if data['name'] == source['name']:
             new_sources.append(data)
             found = True
+            classification_changed = data['default_classification'] != source['default_classification']
         else:
             new_sources.append(source)
 
@@ -635,6 +637,11 @@ def update_signature_source(service, name, **_):
         service_delta['update_config'] = {"sources": new_sources}
     else:
         service_delta['update_config']['sources'] = new_sources
+
+    # Has the classification changed?
+    if classification_changed:
+        STORAGE.signature.update_by_query(query=f"source: {data['name']}",
+                                          operations=[("SET", "classification", data['default_classification'])])
 
     _reset_service_updates(service)
 

@@ -39,6 +39,17 @@ def check_private_keys(source_list):
             source['private_key'] += "\n"
     return source_list
 
+def check_for_source_change(delta_list, source):
+    change_list = {}
+    for delta in delta_list:
+        if delta['name'] == source['name']:
+            # Classification update
+            if delta['default_classification'] != source['default_classification']:
+                change_list['default_classification'] = STORAGE.signature.update_by_query(
+                    query=f"source: {source['name']}",
+                    operations=[("SET", "classification", delta['default_classification'])])
+
+    return change_list
 
 def preprocess_sources(source_list):
     source_list = sanitize_source_names(source_list)
@@ -445,8 +456,10 @@ def set_service(servicename, **_):
                 'update_config', {}).get('sources', [])
             for source in current_sources:
                 if source not in delta['update_config']['sources']:
-                    removed_sources[source['name']] = STORAGE.signature.delete_matching(
-                        f"type:{servicename.lower()} AND source:{source['name']}")
+                    # If not a minor change, then assume change is drastically different (ie. removal)
+                    if not check_for_source_change(delta['update_config']['sources'], source):
+                        removed_sources[source['name']] = \
+                            STORAGE.signature.delete_matching(f"type:{servicename.lower()} AND source:{source['name']}")
             _reset_service_updates(servicename)
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
