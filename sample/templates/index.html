@@ -1,0 +1,19 @@
+<!doctype html>
+{% if token_headers.token_id %}
+<h1>A Token is loaded</h1>
+{% else %}
+<h1>There are not loaded tokens</h1>
+{% endif %}
+
+<div style="margin-bottom: 16px">Current connected user: {{ user }}</div>
+
+{% if token_headers.token_id %}
+<div>Token ID: {{ token_headers.token_id }}</div>
+{% else %}
+<a href="https://{{ server }}/next/authorize?client_id=admin&scope=r&server=OBO Test&redirect_url=https%3A%2F%2F{{ server }}:5100%2Ftoken%2F">
+    Connect to AL to get a OBO token
+</a>
+{% endif %}
+
+
+{% if error %}<div style="margin-top: 16px">A previously loaded token generated and error: {{ error }}</div>{% endif %}
