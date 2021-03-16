@@ -310,6 +310,9 @@ def set_user_account(username, **kwargs):
         else:
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
+        # Apply dynamic classification
+        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+
         ret_val = save_user_account(username, data, kwargs['user'])
 
         if ret_val and \
