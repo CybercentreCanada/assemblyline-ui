@@ -6,6 +6,7 @@ import time
 
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.config import config, CLASSIFICATION
+from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 log = logging.getLogger('assemblyline.ldap_authenticator')
@@ -175,10 +176,7 @@ def validate_ldapuser(username, password, storage):
                 email = get_attribute(ldap_info, config.auth.ldap.email_field)
                 if email is not None:
                     email = email.lower()
-                    if CLASSIFICATION.dynamic_groups:
-                        dyn_group = email.upper().split('@')[1]
-                        u_classification = CLASSIFICATION.max_classification(
-                            u_classification, f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+                    u_classification = get_dynamic_classification(u_classification, email)
 
                 # Generate user data from ldap
                 data = dict(

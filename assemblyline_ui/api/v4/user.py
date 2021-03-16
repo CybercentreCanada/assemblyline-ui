@@ -1,19 +1,19 @@
-from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from flask import request
 
-from assemblyline.common.comms import send_authorize_email, send_activated_email
+from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.security import get_password_hash, check_password_requirements, \
-    get_password_requirement_message
+from assemblyline.common.security import (check_password_requirements, get_password_hash,
+                                          get_password_requirement_message)
+from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore import SearchException
+from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, config, LOGGER
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.user import load_user_settings, save_user_settings, save_user_account
+from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
+                                         save_user_settings)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
-
-from assemblyline.odm.models.user import User
 
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -156,10 +156,7 @@ def add_user_account(username, **_):
             data['name'] = data['uname']
 
         # Add add dynamic classification group
-        if CLASSIFICATION.dynamic_groups and data['email']:
-            dyn_group = data['email'].upper().split('@')[1]
-            data['classification'] = CLASSIFICATION.max_classification(
-                data['classification'], f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
 
         # Clear non user account data
         avatar = data.pop('avatar', None)

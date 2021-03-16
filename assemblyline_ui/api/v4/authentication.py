@@ -1,24 +1,25 @@
 
 import hashlib
-
 import pyqrcode
 import re
 
 from authlib.integrations.requests_client import OAuth2Session
-from flask import request, session as flsk_session, current_app
+from flask import current_app, request
+from flask import session as flsk_session
 from io import BytesIO
 from passlib.hash import bcrypt
 
 from assemblyline.common import forge
-from assemblyline.common.comms import send_signup_email, send_reset_email
+from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
-from assemblyline.common.security import generate_random_secret, get_totp_token, \
-    check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
+from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
+                                          get_password_requirement_message, get_random_password, get_totp_token)
 from assemblyline.odm.models.user import User
-from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER, \
-    get_token_store, CLASSIFICATION
-from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.config import (KV_SESSION, LOGGER, STORAGE, config, get_reset_queue,
+                                    get_signup_queue, get_token_store)
+from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
+from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
@@ -436,10 +437,7 @@ def oauth_validate(**_):
                         email_adr = data['email']
 
                         # Add add dynamic classification group
-                        if CLASSIFICATION.dynamic_groups and email_adr:
-                            dyn_group = email_adr.upper().split('@')[1]
-                            data['classification'] = CLASSIFICATION.max_classification(
-                                data['classification'], f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+                        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
 
                         # Make sure the user exists in AL and is in sync
                         if (not cur_user and oauth_provider_config.auto_create) or \
@@ -733,10 +731,8 @@ def signup_validate(**_):
                 user_info = members[0]
 
                 # Add dynamic classification group
-                if CLASSIFICATION.dynamic_groups and user_info['email']:
-                    dyn_group = user_info['email'].upper().split('@')[1]
-                    user_info['classification'] = CLASSIFICATION.max_classification(
-                        user_info['classification'], f"{CLASSIFICATION.UNRESTRICTED}//{dyn_group}")
+                user_info['classification'] = get_dynamic_classification(
+                    user_info['classification'], user_info['email'])
 
                 user = User(user_info)
                 username = user.uname
