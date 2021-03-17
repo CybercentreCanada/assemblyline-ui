@@ -117,6 +117,7 @@ def get_dynamic_classification(current_c12n, email):
     if Classification.dynamic_groups and email:
         dyn_group = email.upper().split('@')[1]
         return Classification.build_user_classification(current_c12n, f"{Classification.UNRESTRICTED}//{dyn_group}")
+    return current_c12n
 
 
 def get_default_user_settings(user):
