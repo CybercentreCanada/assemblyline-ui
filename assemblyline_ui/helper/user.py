@@ -1,16 +1,13 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common import forge
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import LOGGER, STORAGE, CLASSIFICATION, SUBMISSION_TRACKER
+from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "groups", "password"]
-config = forge.get_config()
-Classification = forge.get_classification()
 
 
 ###########################
@@ -18,25 +15,25 @@ Classification = forge.get_classification()
 def add_access_control(user):
     user.update(Classification.get_access_control_parts(user.get("classification", Classification.UNRESTRICTED),
                                                         user_classification=True))
-    
+
     gl2_query = " OR ".join(['__access_grp2__:__EMPTY__'] + ['__access_grp2__:"%s"' % x
                                                              for x in user["__access_grp2__"]])
     gl2_query = "(%s) AND " % gl2_query
-    
+
     gl1_query = " OR ".join(['__access_grp1__:__EMPTY__'] + ['__access_grp1__:"%s"' % x
                                                              for x in user["__access_grp1__"]])
     gl1_query = "(%s) AND " % gl1_query
-    
+
     req = list(set(Classification.get_access_control_req()).difference(set(user["__access_req__"])))
     req_query = " OR ".join(['__access_req__:"%s"' % r for r in req])
     if req_query:
         req_query = "-(%s) AND " % req_query
-    
+
     lvl_query = "__access_lvl__:[0 TO %s]" % user["__access_lvl__"]
-    
+
     query = "".join([gl2_query, gl1_query, req_query, lvl_query])
     user['access_control'] = safe_str(query)
-     
+
 
 def check_submission_quota(user) -> Optional[str]:
     quota_user = user['uname']
@@ -59,18 +56,18 @@ def login(uname, path=None):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
-    
+
     if not user['is_active']:
         raise AccessDeniedException("User %s is disabled" % uname)
-    
+
     add_access_control(user)
-    
+
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_security_tokens'] = config.auth.allow_security_tokens
     user['apikeys'] = list(user.get('apikeys', {}).keys())
-    user['c12n_enforcing'] = CLASSIFICATION.enforce
+    user['c12n_enforcing'] = Classification.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
     user['tos_auto_notify'] = config.ui.tos_lockout_notify is not None and config.ui.tos_lockout_notify != []
@@ -116,6 +113,12 @@ def save_user_account(username, data, user):
     return STORAGE.user.save(username, data)
 
 
+def get_dynamic_classification(current_c12n, email):
+    if Classification.dynamic_groups and email:
+        dyn_group = email.upper().split('@')[1]
+        return Classification.build_user_classification(current_c12n, f"{Classification.UNRESTRICTED}//{dyn_group}")
+
+
 def get_default_user_settings(user):
     return UserSettings({"classification": Classification.default_user_classification(user)}).as_primitives()
 
@@ -133,14 +136,14 @@ def load_user_settings(user):
         for key, item in default_settings.items():
             if key not in settings:
                 settings[key] = item
-        
+
         # Remove all obsolete keys
         for key in list(settings.keys()):
             if key not in default_settings:
                 del settings[key]
-                
+
         def_srv_list = settings.get('services', {}).get('selected', None)
-    
+
     settings['service_spec'] = get_default_service_spec(srv_list)
     settings['services'] = get_default_service_list(srv_list, def_srv_list)
 
@@ -153,5 +156,5 @@ def load_user_settings(user):
 def save_user_settings(username, data):
     data["service_spec"] = {}
     data["services"] = {'selected': simplify_services(data["services"])}
-    
+
     return STORAGE.user_settings.save(username, data)
