@@ -571,11 +571,11 @@ def oauth_validate(**_):
 
             except Exception as err:
                 if hasattr(err, 'description'):
-                    return make_api_response({"err_code": 1},
+                    return make_api_response({"err_code": 1, "exception": str(err)},
                                              err=err.description,
                                              status_code=401)
 
-                return make_api_response({"err_code": 1},
+                return make_api_response({"err_code": 1, "exception": str(err)},
                                          err=request.args.get('error_description', "Invalid oAuth2 token, try again"),
                                          status_code=401)
 
