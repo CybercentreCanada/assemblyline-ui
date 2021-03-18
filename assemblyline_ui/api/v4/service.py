@@ -13,6 +13,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.api.v4.signature import _reset_service_updates
 from assemblyline_ui.config import STORAGE, LOGGER
 
+Classification = forge.get_classification()
 config = forge.get_config()
 
 SUB_API = 'service'
@@ -45,9 +46,10 @@ def check_for_source_change(delta_list, source):
         if delta['name'] == source['name']:
             # Classification update
             if delta['default_classification'] != source['default_classification']:
+                class_norm = Classification.normalize_classification(delta['default_classification'])
                 change_list['default_classification'] = STORAGE.signature.update_by_query(
-                    query=f"source: {source['name']}",
-                    operations=[("SET", "classification", delta['default_classification'])])
+                    query=f'source:"{source["name"]}"',
+                    operations=[("SET", "classification", class_norm)])
 
     return change_list
 
@@ -459,7 +461,7 @@ def set_service(servicename, **_):
                     # If not a minor change, then assume change is drastically different (ie. removal)
                     if not check_for_source_change(delta['update_config']['sources'], source):
                         removed_sources[source['name']] = \
-                            STORAGE.signature.delete_matching(f"type:{servicename.lower()} AND source:{source['name']}")
+                            STORAGE.signature.delete_matching(f'type:"{servicename.lower()}" AND source:"{source["name"]}"')
             _reset_service_updates(servicename)
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),

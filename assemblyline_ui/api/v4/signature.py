@@ -401,7 +401,7 @@ def delete_signature_source(service, name, **_):
     success = STORAGE.service_delta.save(service, service_delta)
     if success:
         # Remove old source signatures
-        STORAGE.signature.delete_matching(f"type:{service.lower()} AND source:{name}")
+        STORAGE.signature.delete_matching(f'type:"{service.lower()}" AND source:"{name}"')
 
     _reset_service_updates(service)
 
@@ -640,8 +640,9 @@ def update_signature_source(service, name, **_):
 
     # Has the classification changed?
     if classification_changed:
-        STORAGE.signature.update_by_query(query=f"source: {data['name']}",
-                                          operations=[("SET", "classification", data['default_classification'])])
+        class_norm = Classification.normalize_classification(data['default_classification'])
+        STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
+                                          operations=[("SET", "classification", class_norm)])
 
     _reset_service_updates(service)
 
