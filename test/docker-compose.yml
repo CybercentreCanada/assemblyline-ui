@@ -1,6 +1,11 @@
 version: '2.4'
 
 services:
+  al_frontend:
+    image: cccs/assemblyline-ui-frontend
+    ports:
+      - '3000:3000'
+
   al_ui:
     image: cccs/assemblyline_dev:4.0.18
     ports:
@@ -61,7 +66,7 @@ services:
       retries: 3
 
   nginx:
-    image: cccs/nginx-ssl
+    image: cccs/nginx-ssl-frontend
     environment:
       TEMPLATE: minimal
     ports:

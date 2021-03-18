@@ -8,6 +8,8 @@ from assemblyline.odm.models.service import Service
 from assemblyline.odm.randomizer import SERVICES
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 
+TEMP_SERVICES = SERVICES
+
 
 @pytest.fixture(scope="module")
 def datastore(datastore_connection):
@@ -79,7 +81,7 @@ def suricata_change_config(service_conf, login_session):
 def test_get_versions(datastore, login_session):
     _, session, host = login_session
 
-    service = random.choice(list(SERVICES.keys()))
+    service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/versions/{service}/")
     assert resp == ['3.3.0', '4.0.0']
 
@@ -88,7 +90,7 @@ def test_get_versions(datastore, login_session):
 def test_get_service(datastore, login_session):
     _, session, host = login_session
 
-    service = random.choice(list(SERVICES.keys()))
+    service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/")
     service_data = datastore.get_service_with_delta(service, as_obj=False)
     assert resp == service_data
@@ -110,7 +112,7 @@ def test_get_service_constants(datastore, login_session, config):
 def test_get_all_services(datastore, login_session):
     _, session, host = login_session
 
-    svc_list = sorted(list(SERVICES.keys()))
+    svc_list = sorted(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/all/")
     assert len(resp) == len(svc_list)
     for svc in resp:
@@ -119,28 +121,29 @@ def test_get_all_services(datastore, login_session):
 
 # noinspection PyUnusedLocal
 def test_delete_service(datastore, login_session):
+    global TEMP_SERVICES
     _, session, host = login_session
 
     ds = datastore
-    service = random.choice(list(SERVICES.keys()))
+    service = random.choice([x for x in TEMP_SERVICES.keys() if x != 'Suricata'])
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
 
     ds.service_delta.commit()
     delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
 
-    assert delta_data['total'] == (len(SERVICES) - 1)
+    assert delta_data['total'] == (len(TEMP_SERVICES) - 1)
     for svc in delta_data['items']:
         assert svc['id'] != service
 
     ds.service.commit()
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
-    assert (svc_data['total'] / 2) == (len(SERVICES) - 1)
+    assert (svc_data['total'] / 2) == (len(TEMP_SERVICES) - 1)
     for svc in svc_data['items']:
         assert svc['id'] != service
 
-    SERVICES.pop(service, None)
+    TEMP_SERVICES.pop(service, None)
 
 
 # noinspection PyUnusedLocal
@@ -151,12 +154,12 @@ def test_edit_service(datastore, login_session):
     delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
-    service = random.choice(list(SERVICES.keys()))
+    service = random.choice(list(TEMP_SERVICES.keys()))
     service_data = Service({
         "name": service,
         "enabled": True,
-        "category": SERVICES[service][0],
-        "stage": SERVICES[service][1],
+        "category": TEMP_SERVICES[service][0],
+        "stage": TEMP_SERVICES[service][1],
         "version": "3.3.0",
         "docker_config": {
             "image": f"cccs/alsvc_{service.lower()}:latest",

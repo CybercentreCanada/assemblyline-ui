@@ -91,7 +91,9 @@ def add_update_signature(**_):
         if old['data'] == data['data']:
             return make_api_response({"success": True, "id": key})
 
-        data['status'] = old['status']
+        # If rule has been deprecated/disabled after initial deployment, then disable it
+        if not (data['status'] != old['status'] and data['status'] == "DISABLED"):
+            data['status'] = old['status']
         data['state_change_date'] = old['state_change_date']
         data['state_change_user'] = old['state_change_user']
 
@@ -156,7 +158,9 @@ def add_update_many_signature(**_):
     for rule in data:
         key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
         if key in old_data:
-            rule['status'] = old_data[key]['status']
+            # If rule has been deprecated/disabled after initial deployment, then disable it
+            if not (rule['status'] != old_data[key]['status'] and rule['status'] == "DISABLED"):
+                rule['status'] = old_data[key]['status']
             rule['state_change_date'] = old_data[key]['state_change_date']
             rule['state_change_user'] = old_data[key]['state_change_user']
 
@@ -206,6 +210,10 @@ def add_signature_source(service, **_):
 
     # Ensure data source doesn't have spaces in name
     data['name'] = data['name'].replace(" ", "_")
+
+    # Ensure private_key (if any) ends with a \n
+    if data.get('private_key', None) and not data['private_key'].endswith("\n"):
+        data['private_key'] += "\n"
 
     service_data = STORAGE.get_service_with_delta(service, as_obj=False)
     if not service_data.get('update_config', {}).get('generates_signatures', False):
@@ -588,6 +596,10 @@ def update_signature_source(service, name, **_):
     data = request.json
     service_data = STORAGE.get_service_with_delta(service, as_obj=False)
     current_sources = service_data.get('update_config', {}).get('sources', [])
+
+    # Ensure private_key (if any) ends with a \n
+    if data.get('private_key', None) and not data['private_key'].endswith("\n"):
+        data['private_key'] += "\n"
 
     if name != data['name']:
         return make_api_response({"success": False},

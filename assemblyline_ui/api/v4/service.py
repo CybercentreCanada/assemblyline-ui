@@ -32,6 +32,20 @@ service_update = Hash('container-update', get_client(
 ))
 
 
+def check_private_keys(source_list):
+    # Check format of private_key(if any) in sources
+    for source in source_list:
+        if source.get('private_key', None) and not source['private_key'].endswith("\n"):
+            source['private_key'] += "\n"
+    return source_list
+
+
+def preprocess_sources(source_list):
+    source_list = sanitize_source_names(source_list)
+    source_list = check_private_keys(source_list)
+    return source_list
+
+
 def sanitize_source_names(source_list):
     for source in source_list:
         source['name'] = source['name'].replace(" ", "_")
@@ -425,7 +439,7 @@ def set_service(servicename, **_):
     # Check sources, especially to remove old sources
     if "update_config" in delta:
         if delta["update_config"].get("sources"):
-            delta["update_config"]["sources"] = sanitize_source_names(delta["update_config"]["sources"])
+            delta["update_config"]["sources"] = preprocess_sources(delta["update_config"]["sources"])
 
             current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get(
                 'update_config', {}).get('sources', [])

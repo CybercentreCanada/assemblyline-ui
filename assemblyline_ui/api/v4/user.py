@@ -1,20 +1,19 @@
-
 from flask import request
 
-from assemblyline.common.comms import send_authorize_email, send_activated_email
+from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.security import get_password_hash, check_password_requirements, \
-    get_password_requirement_message
+from assemblyline.common.security import (check_password_requirements, get_password_hash,
+                                          get_password_requirement_message)
 from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, config, LOGGER
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.user import load_user_settings, save_user_settings, save_user_account
+from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
+                                         save_user_settings)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
-
 
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -70,15 +69,7 @@ def who_am_i(**kwargs):
 
     """
     user_data = {k: v for k, v in kwargs['user'].items()
-                 if k in [
-                    "agrees_with_tos",
-                    "classification",
-                    "email",
-                    "groups",
-                    "is_active",
-                    "name",
-                    "type",
-                    "uname"]}
+                 if k in ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "type", "uname"]}
 
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
@@ -92,7 +83,7 @@ def who_am_i(**kwargs):
             "allow_2fa": config.auth.allow_2fa,
             "allow_apikeys": config.auth.allow_apikeys,
             "allow_security_tokens": config.auth.allow_security_tokens,
-            },
+        },
         "system": {
             "organisation": config.system.organisation,
             "type": config.system.type,
@@ -106,47 +97,12 @@ def who_am_i(**kwargs):
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
-            },
-        }
+        },
+    }
     user_data['indexes'] = list_all_fields()
     user_data['settings'] = load_user_settings(kwargs['user'])
 
     return make_api_response(user_data)
-
-
-@user_api.route("/ui4/", methods=["PUT"])
-@api_login()
-def set_ui4(**kwargs):
-    """
-    Set the UI 4 redirect ON or OFF
-
-    Variables:
-    None
-
-    Arguments:
-    None
-
-    Data Block:
-    True/False
-
-    Result example:
-    {
-     "success": True
-    }
-
-    """
-    ui4 = request.json
-
-    if not isinstance(ui4, bool):
-        return make_api_response("", err="Invalid data block", status_code=400)
-
-    user_settings = STORAGE.user_settings.get(kwargs['user']['uname'])
-    if not user_settings:
-        return make_api_response("", err="Cannot find user", status_code=404)
-
-    user_settings.ui4 = ui4
-    user_settings.ui4_ask = False
-    return make_api_response({"success": STORAGE.user_settings.save(kwargs['user']['uname'], user_settings)})
 
 
 @user_api.route("/<username>/", methods=["PUT"])
@@ -154,15 +110,15 @@ def set_ui4(**kwargs):
 def add_user_account(username, **_):
     """
     Add a user to the system
-    
-    Variables: 
+
+    Variables:
     username    => Name of the user to add
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
-    {                        
+    {
      "name": "Test user",        # Name of the user
      "is_active": true,          # Is the user active?
      "classification": "",       # Max classification for user
@@ -170,14 +126,14 @@ def add_user_account(username, **_):
      "type": ['user'],           # List of all types the user is member of
      "avatar": null,             # Avatar of the user
      "groups": ["TEST"]          # Groups the user is member of
-    } 
-    
+    }
+
     Result example:
     {
-     "success": true             # Saving the user info succeded 
+     "success": true             # Saving the user info succeded
     }
     """
-    
+
     data = request.json
 
     if "{" in username or "}" in username:
@@ -199,6 +155,9 @@ def add_user_account(username, **_):
         if not data['name']:
             data['name'] = data['uname']
 
+        # Add add dynamic classification group
+        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+
         # Clear non user account data
         avatar = data.pop('avatar', None)
 
@@ -219,18 +178,18 @@ def add_user_account(username, **_):
 def get_user_account(username, **kwargs):
     """
     Load the user account information.
-    
-    Variables: 
+
+    Variables:
     username       => Name of the user to get the account info
-    
-    Arguments: 
+
+    Arguments:
     load_avatar    => If exists, this will load the avatar as well
-    
+
     Data Block:
     None
-    
+
     Result example:
-    {                        
+    {
      "name": "Test user",        # Name of the user
      "is_active": true,          # Is the user active?
      "classification": "",            # Max classification for user
@@ -238,7 +197,7 @@ def get_user_account(username, **kwargs):
      "type": ['user'],           # List of all types the user is member of
      "avatar": null,             # Avatar of the user
      "groups": ["TEST"]          # Groups the user is member of
-    } 
+    }
     """
     if username != kwargs['user']['uname'] and 'admin' not in kwargs['user']['type']:
         return make_api_response({}, "You are not allow to view other users then yourself.", 403)
@@ -256,7 +215,7 @@ def get_user_account(username, **kwargs):
 
     if "load_avatar" in request.args:
         user['avatar'] = STORAGE.user_avatar.get(username)
-        
+
     return make_api_response(user)
 
 
@@ -265,20 +224,20 @@ def get_user_account(username, **kwargs):
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
-    
-    Variables: 
+
+    Variables:
     username       => Name of the user to get the account info
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
-    {                        
+    {
      "success": true  # Was the remove successful?
-    } 
+    }
     """
 
     user_data = STORAGE.user.get(username)
@@ -303,15 +262,15 @@ def remove_user_account(username, **_):
 def set_user_account(username, **kwargs):
     """
     Save the user account information.
-    
-    Variables: 
+
+    Variables:
     username    => Name of the user to get the account info
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
-    {                        
+    {
      "name": "Test user",        # Name of the user
      "is_active": true,          # Is the user active?
      "classification": "",            # Max classification for user
@@ -319,11 +278,11 @@ def set_user_account(username, **kwargs):
      "type": ['user'],           # List of all types the user is member of
      "avatar": null,             # Avatar of the user
      "groups": ["TEST"]          # Groups the user is member of
-    } 
-    
+    }
+
     Result example:
     {
-     "success": true             # Saving the user info succeded 
+     "success": true             # Saving the user info succeded
     }
     """
     try:
@@ -350,6 +309,9 @@ def set_user_account(username, **kwargs):
             data.pop('new_pass_confirm', None)
         else:
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
+
+        # Apply dynamic classification
+        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
@@ -723,13 +685,13 @@ def get_user_settings(username, **kwargs):
 def set_user_settings(username, **_):
     """
     Save the user's settings.
-    
-    Variables: 
+
+    Variables:
     username    => Name of the user you want to set the settings for
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     {
      "profile": true,              # Should submissions be profiled
@@ -737,7 +699,7 @@ def set_user_settings(username, **_):
      "description": "",            # Default description for this user's submissions
      "download_encoding": "blah",  # Default encoding for downloaded files
      "expand_min_score": 100,      # Default minimum score to auto-expand sections
-     "priority": 1000,             # Default submission priority 
+     "priority": 1000,             # Default submission priority
      "service_spec": [],           # Default Service specific parameters
      "ignore_cache": true,         # Should file be reprocessed even if there are cached results
      "groups": [ ... ],            # Default groups selection for the user scans
@@ -745,7 +707,7 @@ def set_user_settings(username, **_):
      "services": [ ... ],          # Default list of selected services
      "ignore_filtering": false     # Should filtering services by ignored?
     }
-    
+
     Result example:
     {
      "success"': True              # Was saving the params successful ?
@@ -853,7 +815,7 @@ def agree_with_tos(username, **kwargs):
                 for adr in config.ui.tos_lockout_notify:
                     send_authorize_email(adr, username, user.email or "")
             except Exception as e:
-                LOGGER.error(f"An error occured while sending confirmation emails: {str(e)}")
+                LOGGER.error(f"An error occurred while sending confirmation emails: {str(e)}")
                 return make_api_response({"success": False}, "The system was unable to send confirmation emails "
                                                              "to the administrators. Retry again later...", 400)
 

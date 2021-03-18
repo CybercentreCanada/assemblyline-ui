@@ -8,8 +8,7 @@ from assemblyline.common.random_user import random_user
 from assemblyline_ui.config import config
 
 cl_engine = forge.get_classification()
-VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + \
-              [chr(x + 97) for x in range(26)] + ["_", "-", ".", "@"]
+VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + [chr(x + 97) for x in range(26)] + ["-"]
 
 
 def reorder_name(name):
@@ -34,11 +33,15 @@ def parse_profile(profile, provider):
     # Find the name of the user
     name = reorder_name(profile.get('name', profile.get('displayName', None)))
 
-    # Find username or compute it from email
+    # Generate a username
     if provider.uid_randomize:
+        # Use randomizer
         uname = random_user(digits=provider.uid_randomize_digits, delimiter=provider.uid_randomize_delimiter)
     else:
+        # Generate it from email address
         uname = profile.get('uname', email_adr)
+
+        # 1. Use provided regex matcher
         if uname is not None and uname == email_adr and provider.uid_regex:
             match = re.match(provider.uid_regex, uname)
             if match:
@@ -47,13 +50,17 @@ def parse_profile(profile, provider):
                 else:
                     uname = ''.join([x for x in match.groups() if x is not None]).lower()
 
-        # Use name as username if there are no username or the username is the email address
-        if (uname is None or uname == email_adr) and name is not None:
-            uname = name
+        # 2. Parse name and domain form email if regex failed or missing
+        if uname is not None and uname == email_adr:
+            e_name, e_dom = uname.split("@", 1)
+            uname = f"{e_name}-{e_dom.split('.')[0]}"
+
+        # 3. Use name as username if there are no username found yet
+        if uname is None and name is not None:
+            uname = name.replace(" ", "-")
 
         # Cleanup username
         if uname:
-            uname = uname.replace(" ", "-")
             uname = "".join([c for c in uname if c in VALID_CHARS])
 
     # Get avatar from gravatar
@@ -64,41 +71,36 @@ def parse_profile(profile, provider):
         alternate = None
 
     # Compute access, roles and classification using auto_properties
-    first_access = True
     access = True
     roles = ['user']
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
+            if auto_prop.type == "access":
+                # Set default access value for access pattern
+                access = auto_prop.value != "True"
+
+            # Get values for field
             field_data = profile.get(auto_prop.field, "")
             if not isinstance(field_data, list):
                 field_data = [field_data]
+
+            # Analyse field values
             for value in field_data:
+                # Check access
                 if auto_prop.type == "access":
-                    # Check access
-                    if auto_prop.value == "True":
-                        # If its a positive access pattern
-                        if first_access:
-                            access = False
-                            first_access = False
-                        if re.match(auto_prop.pattern, value) is not None:
-                            access = True
-                            break
-                    else:
-                        # If its a negative access pattern
-                        if first_access:
-                            access = True
-                            first_access = False
-                        if re.match(auto_prop.pattern, value) is not None:
-                            access = False
-                            break
+                    if re.match(auto_prop.pattern, value) is not None:
+                        access = auto_prop.value == "True"
+                        break
+
+                # Append roles from matching patterns
                 elif auto_prop.type == "role":
-                    # Append roles from matching patterns
                     if re.match(auto_prop.pattern, value):
                         roles.append(auto_prop.value)
                         break
+
+                # Compute classification from matching patterns
                 elif auto_prop.type == "classification":
-                    # Compute classification from matching patterns
                     if re.match(auto_prop.pattern, value):
                         classification = cl_engine.build_user_classification(classification, auto_prop.value)
                         break

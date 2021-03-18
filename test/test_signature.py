@@ -49,8 +49,9 @@ def test_add_signature_source(datastore, login_session):
     new_service_data = ds.get_service_with_delta(service['name'], as_obj=False)
     found = False
     for source in new_service_data['update_config']['sources']:
-        if source == data:
+        if source['name'] == data['name']:
             found = True
+            break
 
     assert found
 
@@ -280,7 +281,11 @@ def test_set_signature_source(datastore, login_session):
         if source['name'] == original_source['name']:
             found = True
             assert original_source != source
-            assert source == new_source
+            if source.get('private_key', None) and source['private_key'].endswith("\n"):
+                assert source['private_key'] != new_source['private_key']
+                assert all(source[k] == new_source[k] for k in source.keys() if k != 'private_key')
+            else:
+                assert source == new_source
             break
 
     assert found

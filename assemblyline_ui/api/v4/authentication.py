@@ -5,22 +5,24 @@ import pyqrcode
 import re
 
 from authlib.integrations.requests_client import OAuth2Session
-from flask import request, session as flsk_session, current_app, redirect
+from flask import current_app, redirect, request
+from flask import session as flsk_session
 from io import BytesIO
 from passlib.hash import bcrypt
 from urllib.parse import urlparse
 
 from assemblyline.common import forge
-from assemblyline.common.comms import send_signup_email, send_reset_email
+from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
-from assemblyline.common.security import generate_random_secret, get_totp_token, \
-    check_password_requirements, get_password_hash, get_password_requirement_message, get_random_password
+from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
+                                          get_password_requirement_message, get_random_password, get_totp_token)
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import User
-from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config, KV_SESSION, get_signup_queue, get_reset_queue, LOGGER, \
-    get_token_store, SECRET_KEY
-from assemblyline_ui.helper.oauth import parse_profile, fetch_avatar
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
+                                    get_signup_queue, get_token_store)
+from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
+from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
@@ -273,13 +275,13 @@ def get_reset_link(**_):
 def login(**_):
     """
     Login the user onto the system
-    
+
     Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     {
      "user": <UID>,
@@ -313,11 +315,7 @@ def login(**_):
         provider = oauth.create_client(oauth_provider)
 
         if provider:
-            oauth_provider_config = config.auth.oauth.providers[oauth_provider]
-            if oauth_provider_config.use_new_callback_format:
-                redirect_uri = f'https://{request.host}/oauth/{oauth_provider}/'
-            else:
-                redirect_uri = f'https://{request.host}/login.html?provider={oauth_provider}'
+            redirect_uri = f'https://{request.host}/oauth/{oauth_provider}/'
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
@@ -389,7 +387,7 @@ def logout(**_):
     Variables:
     None
 
-    Arguments: 
+    Arguments:
     None
 
     Data Block:
@@ -539,6 +537,9 @@ def oauth_validate(**_):
                         username = data['uname']
                         email_adr = data['email']
 
+                        # Add add dynamic classification group
+                        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+
                         # Make sure the user exists in AL and is in sync
                         if (not cur_user and oauth_provider_config.auto_create) or \
                                 (cur_user and oauth_provider_config.auto_sync):
@@ -570,11 +571,11 @@ def oauth_validate(**_):
 
             except Exception as err:
                 if hasattr(err, 'description'):
-                    return make_api_response({"err_code": 1},
+                    return make_api_response({"err_code": 1, "exception": str(err)},
                                              err=err.description,
                                              status_code=401)
 
-                return make_api_response({"err_code": 1},
+                return make_api_response({"err_code": 1, "exception": str(err)},
                                          err=request.args.get('error_description', "Invalid oAuth2 token, try again"),
                                          status_code=401)
 
@@ -661,7 +662,7 @@ def setup_otp(**kwargs):
     Variables:
     None
 
-    Arguments: 
+    Arguments:
     None
 
     Data Block:
@@ -829,6 +830,11 @@ def signup_validate(**_):
             signup_queue.delete()
             if members:
                 user_info = members[0]
+
+                # Add dynamic classification group
+                user_info['classification'] = get_dynamic_classification(
+                    user_info['classification'], user_info['email'])
+
                 user = User(user_info)
                 username = user.uname
 
