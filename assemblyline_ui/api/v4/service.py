@@ -40,6 +40,7 @@ def check_private_keys(source_list):
             source['private_key'] += "\n"
     return source_list
 
+
 def check_for_source_change(delta_list, source):
     change_list = {}
     for delta in delta_list:
@@ -52,6 +53,7 @@ def check_for_source_change(delta_list, source):
                     operations=[("SET", "classification", class_norm)])
 
     return change_list
+
 
 def preprocess_sources(source_list):
     source_list = sanitize_source_names(source_list)
@@ -105,6 +107,16 @@ def add_service(**_):
         service.pop('tool_version', None)
         service.pop('file_required', None)
         heuristics = service.pop('heuristics', [])
+
+        # Validate submission params
+        for sp in service.get('submission_params', []):
+            if sp['type'] == 'list' and 'list' not in sp:
+                return make_api_response(
+                    "", err=f"Missing list field for submission param: {sp['name']}", status_code=400)
+
+            if sp['default'] != sp['value']:
+                return make_api_response(
+                    "", err=f"Default and value mismatch for submission param: {sp['name']}", status_code=400)
 
         # Fix update_channel with the system default
         service['update_channel'] = config.services.preferred_update_channel
@@ -203,28 +215,28 @@ def check_for_service_updates(**_):
 def get_service_constants(**_):
     """
     Get global service constants.
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {
         "categories": [
-          "Antivirus", 
-          "Extraction", 
-          "Static Analysis", 
+          "Antivirus",
+          "Extraction",
+          "Static Analysis",
           "Dynamic Analysis"
-        ], 
+        ],
         "stages": [
-          "FILTER", 
-          "EXTRACT", 
-          "SECONDARY", 
+          "FILTER",
+          "EXTRACT",
+          "SECONDARY",
           "TEARDOWN"
         ]
     }
@@ -266,16 +278,16 @@ def get_potential_versions(servicename, **_):
 def get_service(servicename, **_):
     """
     Load the configuration for a given service
-    
-    Variables: 
+
+    Variables:
     servicename       => Name of the service to get the info
-    
+
     Arguments:
     version           => Specific version of the service to get
-    
+
     Data Block:
     None
-    
+
     Result example:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
@@ -358,16 +370,16 @@ def list_all_services(**_):
 def remove_service(servicename, **_):
     """
     Remove a service configuration
-    
-    Variables: 
+
+    Variables:
     servicename       => Name of the service to remove
-    
+
     Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {"success": true}  # Has the deletion succeeded
     """
@@ -394,13 +406,13 @@ def set_service(servicename, **_):
     Calculate the delta between the original service config and
     the posted service config then saves that delta as the current
     service delta.
-    
-    Variables: 
+
+    Variables:
     servicename    => Name of the service to save
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
@@ -426,7 +438,7 @@ def set_service(servicename, **_):
        'type': 'bool',
        'value': False}],
      'timeout': 60}
-    
+
     Result example:
     {"success": true }    #Saving the user info succeded
     """
@@ -460,8 +472,8 @@ def set_service(servicename, **_):
                 if source not in delta['update_config']['sources']:
                     # If not a minor change, then assume change is drastically different (ie. removal)
                     if not check_for_source_change(delta['update_config']['sources'], source):
-                        removed_sources[source['name']] = \
-                            STORAGE.signature.delete_matching(f'type:"{servicename.lower()}" AND source:"{source["name"]}"')
+                        removed_sources[source['name']] = STORAGE.signature.delete_matching(
+                            f'type:"{servicename.lower()}" AND source:"{source["name"]}"')
             _reset_service_updates(servicename)
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
@@ -496,7 +508,8 @@ def update_service(**_):
 
     # Check is the version we are trying to update to already exists
     if STORAGE.service.get_if_exists(service_key):
-        operations = [(STORAGE.service_delta.UPDATE_SET, 'version', data['update_data']['latest_tag'].replace('stable', ''))]
+        operations = [(STORAGE.service_delta.UPDATE_SET, 'version',
+                       data['update_data']['latest_tag'].replace('stable', ''))]
         if STORAGE.service_delta.update(data['name'], operations):
             return make_api_response({'success': True, 'status': "updated"})
 
