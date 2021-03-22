@@ -90,6 +90,7 @@ def who_am_i(**kwargs):
             "version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}"
         },
         "ui": {
+            "allow_malicious_hinting": config.ui.allow_malicious_hinting,
             "allow_url_submissions": config.ui.allow_url_submissions,
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
