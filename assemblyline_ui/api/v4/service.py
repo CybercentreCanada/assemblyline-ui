@@ -1,3 +1,4 @@
+import json
 import yaml
 
 from flask import request
@@ -9,9 +10,9 @@ from assemblyline.odm.models.service import Service
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.signature import _reset_service_updates
-from assemblyline_ui.config import STORAGE, LOGGER
+from assemblyline_ui.config import LOGGER, STORAGE
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -167,6 +168,84 @@ def add_service(**_):
             new_heuristics=new_heuristics
         ))
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/backup/", methods=["GET"])
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+def backup(**_):
+    """
+    Create a backup of the current system configuration
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <SERVICE BACKUP>
+    """
+    services = {'type': 'backup', 'server': config.ui.fqdn, 'data': {}}
+
+    for service in STORAGE.service_delta.stream_search("*:*", fl="id", as_obj=False):
+        name = service['id']
+        service_output = {
+            'config': STORAGE.service_delta.get(name, as_obj=False),
+            'versions': {}
+        }
+        for service_version in STORAGE.service.stream_search(f"name:{name}", fl="id", as_obj=False):
+            version_id = service_version['id']
+            service_output['versions'][version_id] = STORAGE.service.get(version_id, as_obj=False)
+
+        services['data'][name] = service_output
+
+    out = json.dumps(services, indent=2)
+    return make_file_response(
+        out, name=f"{config.ui.fqdn}_service_backup.json", size=len(out),
+        content_type="application/json")
+
+
+@service_api.route("/restore/", methods=["PUT", "POST"])
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+def restore(**_):
+    """
+    Restore an old backup of the system configuration
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <SERVICE BACKUP>
+
+    Result example:
+    {'success': true}
+    """
+    data = request.data
+
+    try:
+        backup = yaml.safe_load(data)
+        if "type" not in backup or "server" not in backup or "data" not in backup:
+            return make_api_response("", err="Invalid service configuration backup.", status_code=400)
+
+        if backup["server"] != config.ui.fqdn:
+            return make_api_response(
+                "", err="This backup was not created on this server, restore operation cancelled.", status_code=400)
+
+        for service_name, service in backup['data'].items():
+            for v_id, v_data in service['versions'].items():
+                STORAGE.service.save(v_id, v_data)
+
+            STORAGE.service_delta.save(service_name, service['config'])
+
+        return make_api_response({"success": True})
+    except ValueError as e:
         return make_api_response("", err=str(e), status_code=400)
 
 
