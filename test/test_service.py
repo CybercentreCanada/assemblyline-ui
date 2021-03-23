@@ -81,7 +81,7 @@ def suricata_change_config(service_conf, login_session):
 def test_backup_and_restore(datastore, login_session):
     _, session, host = login_session
 
-    backup = get_api_data(session, f"{host}/api/v4/service/backup/")
+    backup = get_api_data(session, f"{host}/api/v4/service/backup/", raw=True)
     assert isinstance(backup, str)
     backup_data = yaml.safe_load(backup)
     assert isinstance(backup_data, dict)
@@ -92,9 +92,11 @@ def test_backup_and_restore(datastore, login_session):
     service = random.choice(TEMP_SERVICES)
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
+    datastore.service.commit()
     assert not datastore.service.exists(service)
 
     resp = get_api_data(session, f"{host}/api/v4/service/restore/", data=backup, method="PUT")
+    datastore.service.commit()
     assert datastore.service.exists(service)
 
 
