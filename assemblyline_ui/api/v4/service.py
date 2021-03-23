@@ -203,9 +203,9 @@ def backup(**_):
 
         services['data'][name] = service_output
 
-    out = json.dumps(services, indent=2)
+    out = yaml.dump(services, indent=2)
     return make_file_response(
-        out, name=f"{config.ui.fqdn}_service_backup.json", size=len(out),
+        out, name=f"{config.ui.fqdn}_service_backup.yml", size=len(out),
         content_type="application/json")
 
 
