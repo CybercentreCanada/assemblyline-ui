@@ -1,12 +1,12 @@
 import json
 import pytest
 import random
-
-from conftest import get_api_data
+import yaml
 
 from assemblyline.odm.models.service import Service
+from assemblyline.odm.random_data import create_services, create_users, wipe_services, wipe_users
 from assemblyline.odm.randomizer import SERVICES
-from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
+from conftest import get_api_data
 
 TEMP_SERVICES = SERVICES
 
@@ -32,7 +32,7 @@ def suricata_init_config(datastore, login_session):
         "stage": "CORE",
         "version": "4.0.0",
         "docker_config": {
-            "image": f"cccs/assemblyline-service-suricata:4.0.0.dev69",
+            "image": "cccs/assemblyline-service-suricata:4.0.0.dev69",
         },
         "update_config": {
             "generates_signatures": True,
@@ -75,6 +75,27 @@ def suricata_change_config(service_conf, login_session):
     service_data = Service(service_conf).as_primitives()
     resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
     return resp['success']
+
+
+# noinspection PyUnusedLocal
+def test_backup_and_restore(datastore, login_session):
+    _, session, host = login_session
+
+    backup = get_api_data(session, f"{host}/api/v4/service/backup/")
+    assert isinstance(backup, str)
+    backup_data = yaml.safe_load(backup)
+    assert isinstance(backup_data, dict)
+    assert 'type' in backup_data
+    assert 'server' in backup_data
+    assert 'data' in backup_data
+
+    service = random.choice(TEMP_SERVICES)
+    resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
+    assert resp['success']
+    assert not datastore.service.exists(service)
+
+    resp = get_api_data(session, f"{host}/api/v4/service/restore/", data=backup, method="PUT")
+    assert datastore.service.exists(service)
 
 
 # noinspection PyUnusedLocal
