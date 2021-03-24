@@ -92,11 +92,11 @@ def test_backup_and_restore(datastore, login_session):
     service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
-    datastore.service.commit()
+    datastore.service_delta.commit()
     assert datastore.service_delta.search(f"id:{service}", rows=0)['total'] == 0
 
     resp = get_api_data(session, f"{host}/api/v4/service/restore/", data=backup, method="PUT")
-    datastore.service.commit()
+    datastore.service_delta.commit()
     assert datastore.service_delta.search(f"id:{service}", rows=0)['total'] == 1
 
 
