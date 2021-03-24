@@ -93,11 +93,11 @@ def test_backup_and_restore(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
     datastore.service.commit()
-    assert not datastore.service.exists(service)
+    assert datastore.service_delta.search(f"id:{service}", rows=0)['total'] == 0
 
     resp = get_api_data(session, f"{host}/api/v4/service/restore/", data=backup, method="PUT")
     datastore.service.commit()
-    assert datastore.service.exists(service)
+    assert datastore.service_delta.search(f"id:{service}", rows=0)['total'] == 1
 
 
 # noinspection PyUnusedLocal
