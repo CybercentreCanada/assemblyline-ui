@@ -89,7 +89,7 @@ def test_backup_and_restore(datastore, login_session):
     assert 'server' in backup_data
     assert 'data' in backup_data
 
-    service = random.choice(TEMP_SERVICES)
+    service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
     datastore.service.commit()
