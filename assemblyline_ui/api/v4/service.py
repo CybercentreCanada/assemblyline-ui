@@ -1,4 +1,3 @@
-import json
 import yaml
 
 from flask import request
@@ -66,6 +65,18 @@ def sanitize_source_names(source_list):
     for source in source_list:
         source['name'] = source['name'].replace(" ", "_")
     return source_list
+
+
+def synchronize_sources(service_name, current_sources, new_sources):
+    removed_sources = {}
+    for source in current_sources:
+        if source not in new_sources:
+            # If not a minor change, then assume change is drastically different (ie. removal)
+            if not check_for_source_change(new_sources, source):
+                removed_sources[source['name']] = STORAGE.signature.delete_matching(
+                    f'type:"{service_name.lower()}" AND source:"{source["name"]}"')
+    _reset_service_updates(service_name)
+    return removed_sources
 
 
 @service_api.route("/", methods=["PUT"])
@@ -239,10 +250,21 @@ def restore(**_):
                 "", err="This backup was not created on this server, restore operation cancelled.", status_code=400)
 
         for service_name, service in backup['data'].items():
+            # Grab the old value for a service
+            old_service = STORAGE.get_service_with_delta(service_name, as_obj=False)
+
+            # Restore the service
             for v_id, v_data in service['versions'].items():
                 STORAGE.service.save(v_id, v_data)
-
             STORAGE.service_delta.save(service_name, service['config'])
+
+            # Grab the new value for the service
+            new_service = STORAGE.get_service_with_delta(service_name, as_obj=False)
+
+            # Synchronize the sources if needed
+            if old_service and old_service.get("update_config", {}).get("sources", None) is not None:
+                synchronize_sources(service_name, old_service.get("update_config", {}).get(
+                    "sources", []), new_service.get("update_config", {}).get("sources", []))
 
         return make_api_response({"success": True})
     except ValueError as e:
@@ -541,19 +563,11 @@ def set_service(servicename, **_):
 
     removed_sources = {}
     # Check sources, especially to remove old sources
-    if "update_config" in delta:
-        if delta["update_config"].get("sources"):
-            delta["update_config"]["sources"] = preprocess_sources(delta["update_config"]["sources"])
+    if delta.get("update_config", {}).get("sources", None) is not None:
+        delta["update_config"]["sources"] = preprocess_sources(delta["update_config"]["sources"])
 
-            current_sources = STORAGE.get_service_with_delta(servicename, as_obj=False).get(
-                'update_config', {}).get('sources', [])
-            for source in current_sources:
-                if source not in delta['update_config']['sources']:
-                    # If not a minor change, then assume change is drastically different (ie. removal)
-                    if not check_for_source_change(delta['update_config']['sources'], source):
-                        removed_sources[source['name']] = STORAGE.signature.delete_matching(
-                            f'type:"{servicename.lower()}" AND source:"{source["name"]}"')
-            _reset_service_updates(servicename)
+        c_srcs = STORAGE.get_service_with_delta(servicename, as_obj=False).get('update_config', {}).get('sources', [])
+        removed_sources = synchronize_sources(servicename, c_srcs, delta["update_config"]["sources"])
 
     return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
                               "removed_sources": removed_sources})
