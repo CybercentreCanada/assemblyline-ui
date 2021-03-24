@@ -24,7 +24,7 @@ classification_definition = CLASSIFICATION.get_parsed_classification_definition(
 
 
 @user_api.route("/whoami/", methods=["GET"])
-@api_login()
+@api_login(required_priv=["R"])
 def who_am_i(**kwargs):
     """
     Return the currently logged in user as well as the system configuration
