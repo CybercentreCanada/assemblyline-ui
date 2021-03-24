@@ -82,7 +82,7 @@ def test_backup_and_restore(datastore, login_session):
     _, session, host = login_session
 
     backup = get_api_data(session, f"{host}/api/v4/service/backup/", raw=True)
-    assert isinstance(backup, str)
+    assert isinstance(backup, bytes)
     backup_data = yaml.safe_load(backup)
     assert isinstance(backup_data, dict)
     assert 'type' in backup_data
