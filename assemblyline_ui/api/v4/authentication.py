@@ -33,6 +33,9 @@ API_PRIV_MAP = {
     "WRITE": ["W"]
 }
 
+if config.auth.allow_extended_apikeys:
+    API_PRIV_MAP["EXTENDED"] = ["R", "W", "E"]
+
 SUB_API = 'auth'
 auth_api = make_subapi_blueprint(SUB_API, api_version=4)
 auth_api._doc = "Allow user to authenticate to the web server"

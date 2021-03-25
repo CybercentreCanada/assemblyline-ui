@@ -82,6 +82,7 @@ def who_am_i(**kwargs):
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
             "allow_apikeys": config.auth.allow_apikeys,
+            "allow_extended_apikeys": config.auth.allow_extended_apikeys,
             "allow_security_tokens": config.auth.allow_security_tokens,
         },
         "system": {

@@ -50,7 +50,7 @@ class api_login(BaseSecurityRenderer):
 
         if apikey is not None and uname is not None:
             ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-            with elasticapm.capture_span(name=f"@api_login:auto_auth_check()", span_type="authentication"):
+            with elasticapm.capture_span(name="@api_login:auto_auth_check()", span_type="authentication"):
                 try:
                     # TODO: apikey_handler is slow to verify the password (bcrypt's fault)
                     #       We could fix this by saving the hash of the combinaison of the
@@ -149,7 +149,7 @@ class api_login(BaseSecurityRenderer):
             #    the logged in user or the user has to be ADMIN
             #
             #    API that needs this special validation need to make sure their
-            #    variable name for the username is as an optional parameter 
+            #    variable name for the username is as an optional parameter
             #    inside 'username_key'. Default: 'username'
             if self.username_key in kwargs:
                 if kwargs[self.username_key] != user['uname'] \
@@ -295,16 +295,16 @@ def stream_binary_response(reader, status_code=200):
 def api_version_list(**_):
     """
     List all available API versions.
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     ["v1", "v2", "v3"]         #List of API versions available
     """
@@ -328,16 +328,16 @@ def api_version_list(**_):
 def site_map(**_):
     """
     Check if all pages have been protected by a login decorator
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     unsafe_only                    => Only show unsafe pages
-    
+
     Data Block:
     None
-    
+
     Result example:
     [                                #List of pages dictionary containing...
      {"function": views.default,     #Function name
