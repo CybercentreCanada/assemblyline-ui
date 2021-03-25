@@ -6,7 +6,7 @@ from fido2.utils import websafe_decode
 from fido2.webauthn import PublicKeyCredentialRpEntity
 
 from assemblyline.common.security import get_totp_token
-from assemblyline_ui.config import config, APP_ID
+from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 rp = PublicKeyCredentialRpEntity(config.ui.fqdn, "Assemblyline server")
