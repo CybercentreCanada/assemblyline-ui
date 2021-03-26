@@ -789,7 +789,8 @@ def signup(**_):
             "groups": ['USERS'],
             "name": uname
         })
-    except Exception:
+    except Exception as e:
+        LOGGER.warning(f"Sending email for signup process failed: {str(e)}")
         return make_api_response({"success": False}, "The system failed to send signup confirmation link.", 400)
 
     return make_api_response({"success": True})
@@ -836,14 +837,15 @@ def signup_validate(**_):
 
                 # Add dynamic classification group
                 user_info['classification'] = get_dynamic_classification(
-                    user_info['classification'], user_info['email'])
+                    user_info.get('classification', Classification.UNRESTRICTED), user_info['email'])
 
                 user = User(user_info)
                 username = user.uname
 
                 STORAGE.user.save(username, user)
                 return make_api_response({"success": True})
-        except (KeyError, ValueError):
+        except (KeyError, ValueError) as e:
+            LOGGER.warning(f"Fail to signup user: {str(e)}")
             pass
     else:
         return make_api_response({"success": False}, "Not enough information to proceed with user creation", 400)
