@@ -161,7 +161,7 @@ def default_authenticator(auth, req, ses, storage):
             validate_2fa(validated_user, otp, state, webauthn_auth_resp, storage)
             return validated_user, priv
 
-    except AuthenticationException as ae:
+    except AuthenticationException:
         # Failure appended, push failure parameters
         auth_fail_queue.push({
             'remote_addr': req.remote_addr,
