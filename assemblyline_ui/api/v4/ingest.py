@@ -6,6 +6,7 @@ from flask import request
 
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
+from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
 from assemblyline_ui.helper.service import ui_to_submission_params
@@ -204,7 +205,7 @@ def ingest_single_file(**kwargs):
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
-            name = os.path.basename(name)
+            name = safe_str(os.path.basename(name))
             if not name:
                 return make_api_response({}, "Invalid filename", 400)
 

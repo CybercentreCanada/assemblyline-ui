@@ -9,6 +9,7 @@ from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.bundling import import_bundle
+from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
@@ -30,7 +31,7 @@ ui_api._doc = "UI specific operations"
 def read_chunk(f, chunk_size=F_READ_CHUNK_SIZE):
     while True:
         data = f.read(chunk_size)
-        if not data: 
+        if not data:
             break
         yield data
 
@@ -44,12 +45,12 @@ def reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks):
         os.makedirs(target_dir)
     except Exception:
         pass
-    
+
     try:
         os.unlink(target_file)
     except Exception:
         pass
-    
+
     for my_file in range(int(flow_total_chunks)):
         with open(target_file, "ab") as t:
             chunk = str(my_file + 1)
@@ -57,7 +58,7 @@ def reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks):
             with open(cur_chunk_file, "rb") as s:
                 t.write(s.read())
             os.unlink(cur_chunk_file)
-    
+
     os.removedirs(mydir)
 
 
@@ -66,23 +67,23 @@ def validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
         last_chunk_size = int(flow_total_size) - ((int(flow_total_chunks) - 1) * int(flow_chunk_size))
     else:
         last_chunk_size = int(flow_total_size)
-    
+
     in_dir_files = os.listdir(mydir)
-    
+
     if len(in_dir_files) != int(flow_total_chunks):
         return False
-    
+
     for i in range(int(flow_total_chunks) - 1):
         myfile = os.path.join(mydir, 'chunk.part' + str(i + 1))
         if not os.path.getsize(myfile) == int(flow_chunk_size):
             return False
-        
+
     myfile = os.path.join(mydir, 'chunk.part' + flow_total_chunks)
     if not os.path.getsize(myfile) == int(last_chunk_size):
         return False
-    
+
     return True
-    
+
 
 ##############################
 # APIs
@@ -93,27 +94,27 @@ def validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
 def flowjs_check_chunk(**kwargs):
     """
     Flowjs check file chunk.
-    
-    This API is reserved for the FLOWJS file uploader. It allows FLOWJS 
+
+    This API is reserved for the FLOWJS file uploader. It allows FLOWJS
     to check if the file chunk already exists on the server.
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments (REQUIRED): 
+
+    Arguments (REQUIRED):
     flowChunkNumber      => Current chunk number
     flowFilename         => Original filename
     flowTotalChunks      => Total number of chunks
     flowIdentifier       => File unique identifier
     flowCurrentChunkSize => Size of the current chunk
-    
+
     Data Block:
     None
-    
+
     Result example:
     {'exists': True}     #Does the chunk exists on the server?
     """
-    
+
     flow_chunk_number = request.args.get("flowChunkNumber", None)
     flow_chunk_size = request.args.get("flowChunkSize", None)
     flow_total_size = request.args.get("flowTotalSize", None)
@@ -121,13 +122,13 @@ def flowjs_check_chunk(**kwargs):
     flow_total_chunks = request.args.get("flowTotalChunks", None)
     flow_identifier = request.args.get("flowIdentifier", None)
     flow_current_chunk_size = request.args.get("flowCurrentChunkSize", None)
-    
+
     if not flow_chunk_number or not flow_identifier or not flow_current_chunk_size or not flow_filename \
             or not flow_total_chunks or not flow_chunk_size or not flow_total_size:
         return make_api_response("", "Required arguments missing. flowChunkNumber, flowIdentifier, "
                                      "flowCurrentChunkSize, flowChunkSize and flowTotalSize "
                                      "should always be present.", 412)
-    
+
     mydir = os.path.join(TEMP_DIR_CHUNKED, flow_identifier)
     myfile = os.path.join(mydir, 'chunk.part' + flow_chunk_number)
     if os.path.exists(myfile):
@@ -147,14 +148,14 @@ def flowjs_check_chunk(**kwargs):
 def flowjs_upload_chunk(**kwargs):
     """
     Flowjs upload file chunk.
-    
-    This API is reserved for the FLOWJS file uploader. It allows 
+
+    This API is reserved for the FLOWJS file uploader. It allows
     FLOWJS to upload a file chunk to the server.
-    
-    Variables: 
+
+    Variables:
     None
-    
-    Arguments (REQUIRED): 
+
+    Arguments (REQUIRED):
     flowChunkNumber      => Current chunk number
     flowChunkSize        => Usual size of the chunks
     flowCurrentChunkSize => Size of the current chunk
@@ -163,33 +164,33 @@ def flowjs_upload_chunk(**kwargs):
     flowFilename         => Original filename
     flowRelativePath     => Relative path of the file on the client
     flowTotalChunks      => Total number of chunks
-    
+
     Data Block:
     None
-    
+
     Result example:
     {
      'success': True,     #Did the upload succeeded?
      'completed': False   #Are all chunks received by the server?
      }
     """
-    
+
     flow_chunk_number = request.form.get("flowChunkNumber", None)
     flow_chunk_size = request.form.get("flowChunkSize", None)
     flow_current_chunk_size = request.form.get("flowCurrentChunkSize", None)
     flow_total_size = request.form.get("flowTotalSize", None)
     flow_identifier = request.form.get("flowIdentifier", None)
-    flow_filename = request.form.get("flowFilename", None)
+    flow_filename = safe_str(request.form.get("flowFilename", None))
     flow_relative_path = request.form.get("flowRelativePath", None)
     flow_total_chunks = request.form.get("flowTotalChunks", None)
     completed = False
-    
+
     if not flow_chunk_number or not flow_chunk_size or not flow_current_chunk_size or not flow_total_size \
             or not flow_identifier or not flow_filename or not flow_relative_path or not flow_total_chunks:
         return make_api_response("", "Required arguments missing. flowChunkNumber, flowChunkSize, "
                                      "flowCurrentChunkSize, flowTotalSize, flowIdentifier, flowFilename, "
                                      "flowRelativePath and flowTotalChunks should always be present.", 412)
-    
+
     mydir = os.path.join(TEMP_DIR_CHUNKED, flow_identifier)
     myfile = os.path.join(mydir, 'chunk.part' + flow_chunk_number)
     try:
@@ -203,9 +204,9 @@ def flowjs_upload_chunk(**kwargs):
 
     if validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
         reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks)
-        
+
         completed = True
-        
+
     return make_api_response({'success': True, 'completed': completed})
 
 
@@ -215,18 +216,18 @@ def flowjs_upload_chunk(**kwargs):
 def start_ui_submission(ui_sid, **kwargs):
     """
     Start UI submission.
-    
-    Starts processing after files where uploaded to the server. 
-    
+
+    Starts processing after files where uploaded to the server.
+
     Variables:
     ui_sid     => UUID for the current UI file upload
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block (REQUIRED):
     Dictionary of UI specific user settings
-    
+
     Result example:
     {
      'started': True,                    # Has the submission started processing?
@@ -239,7 +240,7 @@ def start_ui_submission(ui_sid, **kwargs):
     ui_params['groups'] = kwargs['user']['groups']
     ui_params['quota_item'] = True
     ui_params['submitter'] = user['uname']
-    
+
     if not Classification.is_accessible(user['classification'], ui_params['classification']):
         return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
                                                                   "classification then you're allowed to see", 403)
@@ -309,7 +310,7 @@ def start_ui_submission(ui_sid, **kwargs):
                 os.unlink(myfile)
             except Exception:
                 pass
-        
+
         # Remove dirs
         for fpath in request_dirs:
             try:
