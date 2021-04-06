@@ -155,6 +155,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         try:
             submission_obj = Submission({
                 "files": submission["files"],
+                "metadata": submission['metadata'],
                 "params": submission_params
             })
         except (ValueError, KeyError) as e:
