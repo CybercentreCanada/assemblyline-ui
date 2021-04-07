@@ -6,6 +6,7 @@ import shutil
 from flask import request
 
 from assemblyline.common.dict_utils import flatten
+from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
 from assemblyline_ui.helper.service import ui_to_submission_params
@@ -31,17 +32,17 @@ submit_api._doc = "Submit files to the system"
 def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     Resubmit a file for dynamic analysis
-    
+
     Variables:
     sha256         => Resource locator (SHA256)
-    
-    Arguments (Optional): 
+
+    Arguments (Optional):
     copy_sid    => Mimic the attributes of this SID.
     name        => Name of the file for the submission
-    
+
     Data Block:
     None
-    
+
     Result example:
     # Submission message object as a json dictionary
     """
@@ -53,7 +54,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     submit_result = None
     try:
         copy_sid = request.args.get('copy_sid', None)
-        name = request.args.get('name', sha256)
+        name = safe_str(request.args.get('name', sha256))
 
         if copy_sid:
             submission = STORAGE.submission.get(copy_sid, as_obj=False)
@@ -154,6 +155,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         try:
             submission_obj = Submission({
                 "files": submission["files"],
+                "metadata": submission['metadata'],
                 "params": submission_params
             })
         except (ValueError, KeyError) as e:
@@ -194,10 +196,10 @@ def submit(**kwargs):
 
     Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block (SHA256 or URL):
     {
       // REQUIRED: One of the two following
@@ -268,7 +270,7 @@ def submit(**kwargs):
             if not name:
                 return make_api_response({}, "Filename missing", 400)
 
-            name = os.path.basename(name)
+            name = safe_str(os.path.basename(name))
             if not name:
                 return make_api_response({}, "Invalid filename", 400)
 
