@@ -245,11 +245,11 @@ def get_file_hex(sha256, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    if file_obj['size'] > API_MAX_SIZE:
-        return make_api_response({}, "This file is too big to be seen through this API.", 403)
-
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
+
+    if file_obj['size'] > API_MAX_SIZE:
+        return make_api_response({}, "This file is too big to be seen through this API.", 403)
     
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         with forge.get_filestore() as f_transport:
