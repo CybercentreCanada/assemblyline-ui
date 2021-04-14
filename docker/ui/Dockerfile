@@ -36,4 +36,4 @@ COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.loc
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "assemblyline_ui.app:app", "--config=python:assemblyline_ui.gunicorn_config"]
+CMD ["gunicorn", "assemblyline_ui.patched:app", "--config=python:assemblyline_ui.gunicorn_config", "--worker-class", "gevent"]
