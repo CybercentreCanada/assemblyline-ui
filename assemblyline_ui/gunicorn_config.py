@@ -3,5 +3,6 @@ import multiprocessing
 
 # Gunicorn config
 bind = f":{int(env.get('PORT', 5000))}"
-workers = int(env.get('WORKERS', multiprocessing.cpu_count() * 2 + 1))
-threads = int(env.get('THREADS', 2 * multiprocessing.cpu_count()))
+workers = int(env.get('WORKERS', multiprocessing.cpu_count()))
+threads = int(env.get('THREADS', 4))
+max_requests = int(env.get('MAX_REQUESTS', '1000'))
