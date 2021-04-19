@@ -137,9 +137,9 @@ def flowjs_check_chunk(**kwargs):
                 reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks)
             return make_api_response({"exist": True})
         else:
-            return make_api_response({"exist": False}, "Chunk wrong size, please resend!", 404)
+            return make_api_response({"exist": False, "msg": "Chunk wrong size, please resend!"}, status_code=206)
     else:
-        return make_api_response({"exist": False}, "Chunk does not exist, please send it!", 404)
+        return make_api_response({"exist": False, "msg": "Chunk does not exist, please send it!"}, status_code=204)
 
 
 # noinspection PyBroadException, PyUnusedLocal
