@@ -11,7 +11,7 @@ from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 
 config = forge.get_config()
-    
+
 #################################################################
 # Configuration
 
@@ -133,7 +133,7 @@ if DEBUG:
 
 AUDIT_LOG.debug('Audit logger ready!')
 LOGGER.debug('Logger ready!')
-    
+
 # End of prepare logger
 #################################################################
 
