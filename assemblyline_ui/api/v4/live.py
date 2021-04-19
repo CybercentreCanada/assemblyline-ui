@@ -17,30 +17,30 @@ live_api._doc = "Interact with live processing messages"
 @api_login(required_priv=['W'], allow_readonly=False)
 def get_message(wq_id, **_):
     """
-    Get a message from a live watch queue. 
+    Get a message from a live watch queue.
     Note: This method is not optimal because it requires the
           UI to pull the information. The prefered method is the
           socket server.
-    
+
     Variables:
     wq_id       => Queue to get the message from
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {
      "type": "",         # Type of message
      "err_msg": "",      # Error message
      "status_code": 400, # Status code of the error
      "msg": ""           # Message
-    } 
+    }
     """
     msg = NamedQueue(wq_id).pop(blocking=False)
-    
+
     if msg is None:
         response = {'type': 'timeout', 'err_msg': 'Timeout waiting for a message.', 'status_code': 408, 'msg': None}
     elif msg['status'] == 'STOP':
@@ -54,7 +54,7 @@ def get_message(wq_id, **_):
         response = {'type': 'cachekeyerr', 'err_msg': None, 'status_code': 200, 'msg': msg['cache_key']}
     else:
         response = {'type': 'error', 'err_msg': "Unknown message", 'status_code': 400, 'msg': msg}
-        
+
     return make_api_response(response)
 
 
@@ -62,26 +62,26 @@ def get_message(wq_id, **_):
 @api_login(required_priv=['W'], allow_readonly=False)
 def get_messages(wq_id, **_):
     """
-    Get all messages currently on a watch queue. 
+    Get all messages currently on a watch queue.
     Note: This method is not optimal because it requires the
           UI to pull the information. The prefered method is the
           socket server when possible.
-    
+
     Variables:
     wq_id       => Queue to get the message from
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     []            # List of messages
     """
     resp_list = []
     u = NamedQueue(wq_id)
-    
+
     while True:
         msg = u.pop(blocking=False)
         if msg is None:
@@ -98,9 +98,9 @@ def get_messages(wq_id, **_):
             response = {'type': 'cachekeyerr', 'err_msg': None, 'status_code': 200, 'msg': msg['cache_key']}
         else:
             response = {'type': 'error', 'err_msg': "Unknown message", 'status_code': 400, 'msg': msg}
-        
+
         resp_list.append(response)
-            
+
     return make_api_response(resp_list)
 
 
@@ -110,22 +110,22 @@ def outstanding_services(sid, **kwargs):
     """
     List outstanding services and the number of file each
     of them still have to process.
-    
+
     Variables:
     sid      => Submission ID
-    
+
     Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {"MY SERVICE": 1, ... } # Dictionnary of services and number of files
     """
     data = STORAGE.submission.get(sid, as_obj=False)
     user = kwargs['user']
-    
+
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
         return make_api_response(DispatchClient(datastore=STORAGE).outstanding_services(sid))
     else:
@@ -137,22 +137,22 @@ def outstanding_services(sid, **kwargs):
 def setup_watch_queue(sid, **kwargs):
     """
     Starts a watch queue to get live results
-    
+
     Variables:
     sid      => Submission ID
-    
+
     Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {"wq_id": "D-c7668cfa-...-c4132285142e-WQ"} #ID of the watch queue
     """
     data = STORAGE.submission.get(sid, as_obj=False)
     user = kwargs['user']
-    
+
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
         wq_id = DispatchClient(datastore=STORAGE).setup_watch_queue(sid)
         if wq_id:

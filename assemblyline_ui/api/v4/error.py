@@ -20,16 +20,16 @@ error_api._doc = "Perform operations on service errors"
 def get_error(error_key, **kwargs):
     """
     Get the error details for a given error key
-    
+
     Variables:
     error_key         => Error key to get the details for
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {
         KEY: VALUE,   # All fields of an error in key/value pair
@@ -37,7 +37,7 @@ def get_error(error_key, **kwargs):
     """
     user = kwargs['user']
     data = STORAGE.error.get(error_key, as_obj=False)
-    
+
     if user and data:
         return make_api_response(data)
     else:
@@ -49,19 +49,19 @@ def get_error(error_key, **kwargs):
 def list_errors(**_):
     """
     List all error in the system (per page)
-    
+
     Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     offset       => Offset at which we start giving errors
     query        => Query to apply to the error list
     rows         => Numbers of errors to return
     sort         => Sort order
-    
+
     Data Block:
     None
-    
+
     Result example:
     {"total": 201,                # Total errors found
      "offset": 0,                 # Offset in the error list
