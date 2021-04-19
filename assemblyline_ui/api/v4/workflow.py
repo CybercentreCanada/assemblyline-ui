@@ -27,29 +27,29 @@ def verify_query(query):
 def add_workflow(**kwargs):
     """
     Add a workflow to the system
-    
-    Variables: 
+
+    Variables:
     None
 
-    Arguments: 
+    Arguments:
     None
-    
+
     Data Block:
-    {                        
+    {
      "name": "Workflow name",    # Name of the workflow
      "classification": "",       # Max classification for workflow
      "label": ['label1'],        # Labels for the workflow
      "priority": "LOW",          # Priority of the workflow
      "status": "MALICIOUS",      # Status of the workflow
      "query": "*:*"              # Query to match the data
-    } 
-    
+    }
+
     Result example:
     {
-     "success": true             # Saving the user info succeded 
+     "success": true             # Saving the user info succeded
     }
     """
-    
+
     data = request.json
 
     name = data.get('name', None)
@@ -142,18 +142,18 @@ def edit_workflow(workflow_id, **kwargs):
 def get_workflow(workflow_id, **kwargs):
     """
     Load the user account information.
-    
-    Variables: 
+
+    Variables:
     workflow_id       => ID of the workflow
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
-    {                        
+    {
      "name": "Workflow name",    # Name of the workflow
      "classification": "",       # Max classification for workflow
      "label": ['label1'],        # Labels for the workflow
@@ -207,20 +207,20 @@ def list_workflow_labels(**kwargs):
 def remove_workflow(workflow_id, **_):
     """
     Remove the specified workflow.
-    
-    Variables: 
+
+    Variables:
     workflow_id       => ID of the workflow to remove
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
-    {                        
+    {
      "success": true  # Was the remove successful?
-    } 
+    }
     """
     wf = STORAGE.workflow.get(workflow_id)
     if wf:
