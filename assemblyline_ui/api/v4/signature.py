@@ -451,7 +451,7 @@ def download_signatures(**kwargs):
 
     query_hash = sha256(f'{query}.{access}.{last_modified}'.encode('utf-8')).hexdigest()
 
-    with forge.get_cachestore('al_ui.signature') as signature_cache:
+    with forge.get_cachestore('signatures') as signature_cache:
         response = _get_cached_signatures(signature_cache, query_hash)
         if response:
             return response

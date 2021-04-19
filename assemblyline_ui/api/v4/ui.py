@@ -79,7 +79,7 @@ def flowjs_check_chunk(**kwargs):
                                      "should always be present.", 412)
 
     filename = get_cache_name(flow_identifier, flow_chunk_number)
-    with forge.get_cachestore("API", config) as cache:
+    with forge.get_cachestore("flowjs", config) as cache:
         if cache.exists(filename):
             return make_api_response({"exist": True})
         else:
@@ -137,7 +137,7 @@ def flowjs_upload_chunk(**kwargs):
 
     filename = get_cache_name(flow_identifier, flow_chunk_number)
 
-    with forge.get_cachestore("API", config) as cache:
+    with forge.get_cachestore("flowjs", config) as cache:
         file_obj = request.files['file']
         cache.save(filename, file_obj.stream.read())
 
@@ -221,7 +221,7 @@ def start_ui_submission(ui_sid, **kwargs):
 
     try:
         # Download the file from the cache
-        with forge.get_cachestore("API", config) as cache:
+        with forge.get_cachestore("flowjs", config) as cache:
             ui_sid = get_cache_name(ui_sid)
             if cache.exists(ui_sid):
                 target_dir = os.path.join(TEMP_DIR, ui_sid)
