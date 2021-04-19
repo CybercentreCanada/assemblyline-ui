@@ -52,7 +52,9 @@ def test_ui_submission(datastore, login_session):
             if resp['exist']:
                 counter += 1
         except APIError as e:
-            if str(e) == "Chunk does not exist, please send it!":
+            if str(e) == "Chunk does not exist, please send it!" \
+                    or str(e).startswith("204: ") \
+                    or str(e).startswith("206: "):
                 params = {
                     'flowChunkNumber': f'{x + 1}',
                     'flowChunkSize': f'{chunk_size}',
