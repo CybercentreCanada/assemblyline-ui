@@ -75,6 +75,7 @@ def test_ui_submission(datastore, login_session):
                 raise
 
     ui_params = get_api_data(session, f"{host}/api/v4/user/settings/admin/")
+    ui_params['filename'] = 'test.txt'
     resp = get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(ui_params))
     assert resp['started']
 
