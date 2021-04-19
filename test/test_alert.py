@@ -114,6 +114,8 @@ def test_ownership(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/alert/ownership/batch/", params={'q': "id:*"})
     assert resp.get('success', 0) > 0
 
+    datastore.alert.commit()
+
 
 # noinspection PyUnusedLocal
 def test_labeling(datastore, login_session):
@@ -128,6 +130,8 @@ def test_labeling(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/alert/label/batch/", data=json.dumps(['BATCH1', 'BATCH2']),
                         params={'q': "id:*"}, method='POST')
     assert resp.get('success', 0) > 0
+
+    datastore.alert.commit()
 
 
 # noinspection PyUnusedLocal
@@ -144,6 +148,8 @@ def test_priorities(datastore, login_session):
                         params={'q': "id:*"}, method='POST')
     assert resp.get('success', 0) > 0
 
+    datastore.alert.commit()
+
 
 # noinspection PyUnusedLocal
 def test_statuses(datastore, login_session):
@@ -158,6 +164,8 @@ def test_statuses(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/alert/status/batch/", data=json.dumps("MALICIOUS"),
                         params={'q': "id:*"}, method='POST')
     assert resp.get('success', 0) > 0
+
+    datastore.alert.commit()
 
 
 # noinspection PyUnusedLocal
@@ -191,3 +199,5 @@ def test_set_verdict(datastore, login_session):
     submission_data = datastore.submission.get(test_alert.sid)
     assert 'admin' not in submission_data['verdict']['malicious']
     assert 'admin' in submission_data['verdict']['non_malicious']
+
+    datastore.alert.commit()
