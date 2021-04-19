@@ -1,7 +1,6 @@
 #####################################
 # UI ONLY APIs
 
-import glob
 import os
 
 from cart import is_cart, get_metadata_only
@@ -12,7 +11,7 @@ from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import TEMP_DIR, TEMP_DIR_CHUNKED, F_READ_CHUNK_SIZE, STORAGE
+from assemblyline_ui.config import TEMP_DIR, STORAGE
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
@@ -28,61 +27,11 @@ ui_api._doc = "UI specific operations"
 
 #############################
 # Files Functions
-def read_chunk(f, chunk_size=F_READ_CHUNK_SIZE):
-    while True:
-        data = f.read(chunk_size)
-        if not data:
-            break
-        yield data
 
-
-# noinspection PyBroadException
-def reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks):
-    # Reconstruct the file
-    target_dir = os.path.join(TEMP_DIR, flow_identifier)
-    target_file = os.path.join(target_dir, flow_filename)
-    try:
-        os.makedirs(target_dir)
-    except Exception:
-        pass
-
-    try:
-        os.unlink(target_file)
-    except Exception:
-        pass
-
-    for my_file in range(int(flow_total_chunks)):
-        with open(target_file, "ab") as t:
-            chunk = str(my_file + 1)
-            cur_chunk_file = os.path.join(mydir, "chunk.part%s" % chunk)
-            with open(cur_chunk_file, "rb") as s:
-                t.write(s.read())
-            os.unlink(cur_chunk_file)
-
-    os.removedirs(mydir)
-
-
-def validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
-    if int(flow_total_chunks) > 1:
-        last_chunk_size = int(flow_total_size) - ((int(flow_total_chunks) - 1) * int(flow_chunk_size))
-    else:
-        last_chunk_size = int(flow_total_size)
-
-    in_dir_files = os.listdir(mydir)
-
-    if len(in_dir_files) != int(flow_total_chunks):
-        return False
-
-    for i in range(int(flow_total_chunks) - 1):
-        myfile = os.path.join(mydir, 'chunk.part' + str(i + 1))
-        if not os.path.getsize(myfile) == int(flow_chunk_size):
-            return False
-
-    myfile = os.path.join(mydir, 'chunk.part' + flow_total_chunks)
-    if not os.path.getsize(myfile) == int(last_chunk_size):
-        return False
-
-    return True
+def get_cache_name(identifier, chunk_number=None):
+    if chunk_number is None:
+        return identifier[:36].replace('-', '_')
+    return f"{identifier[:36].replace('-', '_')}_part{chunk_number}"
 
 
 ##############################
@@ -129,17 +78,12 @@ def flowjs_check_chunk(**kwargs):
                                      "flowCurrentChunkSize, flowChunkSize and flowTotalSize "
                                      "should always be present.", 412)
 
-    mydir = os.path.join(TEMP_DIR_CHUNKED, flow_identifier)
-    myfile = os.path.join(mydir, 'chunk.part' + flow_chunk_number)
-    if os.path.exists(myfile):
-        if os.path.getsize(myfile) == int(flow_current_chunk_size):
-            if validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
-                reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks)
+    filename = get_cache_name(flow_identifier, flow_chunk_number)
+    with forge.get_cachestore("API", config) as cache:
+        if cache.exists(filename):
             return make_api_response({"exist": True})
         else:
-            return make_api_response({"exist": False, "msg": "Chunk wrong size, please resend!"}, status_code=206)
-    else:
-        return make_api_response({"exist": False, "msg": "Chunk does not exist, please send it!"}, status_code=204)
+            return make_api_response({"exist": False, "msg": "Chunk does not exist, please send it!"}, status_code=204)
 
 
 # noinspection PyBroadException, PyUnusedLocal
@@ -183,7 +127,7 @@ def flowjs_upload_chunk(**kwargs):
     flow_filename = safe_str(request.form.get("flowFilename", None))
     flow_relative_path = request.form.get("flowRelativePath", None)
     flow_total_chunks = request.form.get("flowTotalChunks", None)
-    completed = False
+    completed = True
 
     if not flow_chunk_number or not flow_chunk_size or not flow_current_chunk_size or not flow_total_size \
             or not flow_identifier or not flow_filename or not flow_relative_path or not flow_total_chunks:
@@ -191,21 +135,44 @@ def flowjs_upload_chunk(**kwargs):
                                      "flowCurrentChunkSize, flowTotalSize, flowIdentifier, flowFilename, "
                                      "flowRelativePath and flowTotalChunks should always be present.", 412)
 
-    mydir = os.path.join(TEMP_DIR_CHUNKED, flow_identifier)
-    myfile = os.path.join(mydir, 'chunk.part' + flow_chunk_number)
-    try:
-        os.makedirs(mydir)
-    except Exception:
-        pass
-    f = open(myfile, "wb")
-    file_obj = request.files['file']
-    f.write(file_obj.stream.read())
-    f.close()
+    filename = get_cache_name(flow_identifier, flow_chunk_number)
 
-    if validate_chunks(mydir, flow_total_chunks, flow_chunk_size, flow_total_size):
-        reconstruct_file(mydir, flow_identifier, flow_filename, flow_total_chunks)
+    with forge.get_cachestore("API", config) as cache:
+        file_obj = request.files['file']
+        cache.save(filename, file_obj.stream.read())
 
-        completed = True
+        # Test in reverse order to fail fast
+        for chunk in range(int(flow_total_chunks), 0, -1):
+            chunk_name = get_cache_name(flow_identifier, chunk)
+            if not cache.exists(chunk_name):
+                completed = False
+                break
+
+        if completed:
+            # Reconstruct the file
+            ui_sid = get_cache_name(flow_identifier)
+            target_file = os.path.join(TEMP_DIR, ui_sid)
+            try:
+                os.makedirs(TEMP_DIR)
+            except Exception:
+                pass
+
+            try:
+                os.unlink(target_file)
+            except Exception:
+                pass
+
+            for chunk in range(int(flow_total_chunks)):
+                chunk_name = get_cache_name(flow_identifier, chunk+1)
+                with open(target_file, "ab") as t:
+                    t.write(cache.get(chunk_name))
+                cache.delete(chunk_name)
+
+            # Save the reconstructed file
+            with open(target_file, "rb") as t:
+                cache.save(ui_sid, t.read())
+
+            os.unlink(target_file)
 
     return make_api_response({'success': True, 'completed': completed})
 
@@ -250,34 +217,41 @@ def start_ui_submission(ui_sid, **kwargs):
         return make_api_response("", quota_error, 503)
 
     submit_result = None
-    request_files = []
-    request_dirs = []
-    fnames = []
-    try:
-        flist = glob.glob(TEMP_DIR + ui_sid + "*")
-        if len(flist) > 0:
-            # Generate file list
-            for fpath in flist:
-                request_dirs.append(fpath)
-                files = os.listdir(fpath)
-                for myfile in files:
-                    request_files.append(os.path.join(fpath, myfile))
-                    if myfile not in fnames:
-                        fnames.append(myfile)
+    submitted_file = None
 
-            with open(request_files[0], 'rb') as fh:
+    try:
+        # Download the file from the cache
+        with forge.get_cachestore("API", config) as cache:
+            ui_sid = get_cache_name(ui_sid)
+            if cache.exists(ui_sid):
+                target_dir = os.path.join(TEMP_DIR, ui_sid)
+                os.makedirs(target_dir, exist_ok=True)
+
+                target_file = os.path.join(target_dir, ui_params.get('filename', ui_sid))
+
+                if os.path.exists(target_file):
+                    os.unlink(target_file)
+
+                # Save the reconstructed file
+                with open(target_file, "wb") as t:
+                    t.write(cache.get(ui_sid))
+
+                submitted_file = target_file
+
+        # Submit the file
+        if submitted_file is not None:
+            with open(submitted_file, 'rb') as fh:
                 if is_cart(fh.read(256)):
-                    meta = get_metadata_only(request_files[0])
+                    meta = get_metadata_only(submitted_file)
                     if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
                         try:
-                            submission = import_bundle(request_files[0])
+                            submission = import_bundle(submitted_file)
                         except Exception as e:
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})
 
             if not ui_params['description']:
-                ui_params['description'] = "Inspection of file%s: %s" % ({True: "s", False: ""}[len(fnames) > 1],
-                                                                         ", ".join(fnames))
+                ui_params['description'] = f"Inspection of file: {os.path.basename(submitted_file)}"
 
             # Submit to dispatcher
             try:
@@ -291,7 +265,7 @@ def start_ui_submission(ui_sid, **kwargs):
             with forge.get_filestore() as f_transport:
                 try:
                     submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
-                        .submit(submission_obj, local_files=request_files, cleanup=False)
+                        .submit(submission_obj, local_files=[submitted_file], cleanup=False)
                     submission_received(submission_obj)
                 except SubmissionException as e:
                     return make_api_response("", err=str(e), status_code=400)
@@ -304,16 +278,10 @@ def start_ui_submission(ui_sid, **kwargs):
         if submit_result is None:
             decrement_submission_quota(user)
 
-        # Remove files
-        for myfile in request_files:
-            try:
-                os.unlink(myfile)
-            except Exception:
-                pass
+        # Remove file
+        if os.path.exists(submitted_file):
+            os.unlink(submitted_file)
 
-        # Remove dirs
-        for fpath in request_dirs:
-            try:
-                os.rmdir(fpath)
-            except Exception:
-                pass
+        # Remove dir
+        if os.path.exists(target_dir) and os.path.isdir(target_dir):
+            os.removedirs(target_dir)
