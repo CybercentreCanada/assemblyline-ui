@@ -284,4 +284,4 @@ def start_ui_submission(ui_sid, **kwargs):
 
         # Remove dir
         if os.path.exists(target_dir) and os.path.isdir(target_dir):
-            os.removedirs(target_dir)
+            os.rmdir(target_dir)
