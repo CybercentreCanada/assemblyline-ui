@@ -65,7 +65,7 @@ def add_update_signature(**_):
     dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
 
     if data.get('type', None) is None or data['name'] is None or data['data'] is None:
-        return make_api_response("", f"Signature id, name, type and data are mandatory fields.", 400)
+        return make_api_response("", "Signature id, name, type and data are mandatory fields.", 400)
 
     # Compute signature ID if missing
     data['signature_id'] = data.get('signature_id', data['name'])
@@ -135,7 +135,7 @@ def add_update_many_signature(**_):
     sig_type = request.args.get('sig_type', None)
 
     if source is None or sig_type is None or not isinstance(data, list):
-        return make_api_response("", f"Source, source type and data are mandatory fields.", 400)
+        return make_api_response("", "Source, source type and data are mandatory fields.", 400)
 
     # Test signature names
     names_map = {x['name']: f"{x['type']}_{x['source']}_{x.get('signature_id', x['name'])}" for x in data}
@@ -451,7 +451,7 @@ def download_signatures(**kwargs):
 
     query_hash = sha256(f'{query}.{access}.{last_modified}'.encode('utf-8')).hexdigest()
 
-    with forge.get_cachestore('al_ui.signature') as signature_cache:
+    with forge.get_cachestore('signatures') as signature_cache:
         response = _get_cached_signatures(signature_cache, query_hash)
         if response:
             return response

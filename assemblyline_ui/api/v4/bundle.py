@@ -28,13 +28,13 @@ bundle_api._doc = "Create and restore submission bundles"
 def create_bundle(sid, **kwargs):
     """
     Creates a bundle containing the submission results and the associated files
-    
+
     Variables:
     sid         => ID of the submission to create the bundle for
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
 
@@ -46,7 +46,7 @@ def create_bundle(sid, **kwargs):
     """
     user = kwargs['user']
     submission = STORAGE.submission.get(sid, as_obj=False)
-    
+
     if user and submission and Classification.is_accessible(user['classification'], submission['classification']):
         temp_target_file = None
         try:

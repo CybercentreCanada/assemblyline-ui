@@ -196,11 +196,11 @@ def facet(bucket, field, **kwargs):
     Perform field analysis on the selected field. (Also known as facetting in lucene)
     This essentially counts the number of instances a field is seen with each specific values
     where the documents matches the specified queries.
-    
+
     Variables:
     bucket       =>   Bucket to search in (alert, submission,...)
     field        =>   Field to analyse
-    
+
     Optional Arguments:
     query        =>   Query to search for
     mincount    =>   Minimum item count for the fieldvalue to be returned
@@ -210,7 +210,7 @@ def facet(bucket, field, **kwargs):
     {"query": "id:*",
      "mincount": "10",
      "filters": ['fq']}
-    
+
     Result example:
     {                 # Facetting results
      "value_0": 2,
@@ -241,7 +241,7 @@ def facet(bucket, field, **kwargs):
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     params.update({'access_control': user['access_control']})
-    
+
     try:
         return make_api_response(collection.facet(field, **params))
     except SearchException as e:
@@ -253,7 +253,7 @@ def facet(bucket, field, **kwargs):
 def histogram(bucket, field, **kwargs):
     """
     Generate an histogram based on a time or and int field using a specific gap size
-    
+
     Variables:
     bucket       =>   Bucket to search in (alert, submission,...)
     field        =>   Field to generate the histogram from

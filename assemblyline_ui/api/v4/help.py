@@ -130,15 +130,15 @@ def get_systems_constants(**_):
         * Service tag types
         * Service tag contexts
 
-    Variables: 
+    Variables:
     None
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {
         "priorities": {},

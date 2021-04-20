@@ -11,7 +11,7 @@ from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 
 config = forge.get_config()
-    
+
 #################################################################
 # Configuration
 
@@ -35,10 +35,7 @@ BUILD_NO = version.BUILD_MINOR
 
 BUNDLING_DIR = "/var/lib/assemblyline/bundling"
 
-F_READ_CHUNK_SIZE = 1024 * 1024
-
-TEMP_DIR_CHUNKED = "/var/lib/assemblyline/flowjs/chunked/"
-TEMP_DIR = "/var/lib/assemblyline/flowjs/full/"
+TEMP_DIR = "/var/lib/assemblyline/flowjs/"
 TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
 QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
@@ -133,7 +130,7 @@ if DEBUG:
 
 AUDIT_LOG.debug('Audit logger ready!')
 LOGGER.debug('Logger ready!')
-    
+
 # End of prepare logger
 #################################################################
 

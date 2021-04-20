@@ -134,10 +134,10 @@ def download_file(sha256, **kwargs):
     """
     Download the file using the default encoding method. This api
     will force the browser in download mode.
-    
-    Variables: 
+
+    Variables:
     sha256       => A resource locator for the file (sha256)
-    
+
     Arguments (optional):
     encoding     => Type of encoding use for the resulting file
     name         => Name of the file to download
@@ -160,7 +160,7 @@ def download_file(sha256, **kwargs):
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         params = load_user_settings(user)
-    
+
         name = request.args.get('name', sha256) or sha256
         name = os.path.basename(name)
         name = safe_str(name)
@@ -226,13 +226,13 @@ def download_file(sha256, **kwargs):
 def get_file_hex(sha256, **kwargs):
     """
     Returns the file hex representation
-    
-    Variables: 
+
+    Variables:
     sha256       => A resource locator for the file (sha256)
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
 
@@ -250,7 +250,7 @@ def get_file_hex(sha256, **kwargs):
 
     if file_obj['size'] > API_MAX_SIZE:
         return make_api_response({}, "This file is too big to be seen through this API.", 403)
-    
+
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         with forge.get_filestore() as f_transport:
             data = f_transport.get(sha256)
@@ -415,22 +415,22 @@ def get_file_information(sha256, **kwargs):
 def get_file_results(sha256, **kwargs):
     """
     Get the all the file results of a specific file.
-    
+
     Variables:
     sha256         => A resource locator for the file (SHA256)
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
 
     API call example:
     /api/v4/file/result/123456...654321/
-    
+
     Result example:
     {"file_info": {},            # File info Block
-     "results": {},              # Full result list 
+     "results": {},              # Full result list
      "errors": {},               # Full error list
      "parents": {},              # List of possible parents
      "childrens": {},            # List of children files
@@ -467,7 +467,7 @@ def get_file_results(sha256, **kwargs):
         output['childrens'] = res_children.result()
         output['metadata'] = res_meta.result()
 
-        output['results'] = [] 
+        output['results'] = []
         output['alternates'] = {}
         res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
         for r in res:
@@ -481,8 +481,8 @@ def get_file_results(sha256, **kwargs):
                 output["alternates"][i['response']['service_name']] = []
             i['response']['service_version'] = i['id'].split(".", 3)[2].replace("_", ".")
             output["alternates"][i['response']['service_name']].append(i)
-        
-        output['errors'] = [] 
+
+        output['errors'] = []
         output['file_viewer_only'] = True
 
         for res in output['results']:

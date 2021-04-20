@@ -65,13 +65,13 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
 def get_alert(alert_id, **kwargs):
     """
     Get the alert details for a given alert key
-    
+
     Variables:
     alert_id         => ID of the alert to get the details for
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
 
@@ -88,7 +88,7 @@ def get_alert(alert_id, **kwargs):
 
     if not data:
         return make_api_response("", "This alert does not exists...", 404)
-    
+
     if user and Classification.is_accessible(user['classification'], data['classification']):
         return make_api_response(data)
     else:
@@ -225,10 +225,10 @@ def alerts_statuses(**kwargs):
 def list_alerts(**kwargs):
     """
     List all alert in the system (per page)
-    
+
     Variables:
     None
-    
+
     Arguments:
     fq         => Post filter queries (you can have multiple of those)
     q          => Query to apply to the alert list
@@ -237,7 +237,7 @@ def list_alerts(**kwargs):
     rows       => Numbers of alerts to return
     tc_start   => Time offset at which we start the time constraint
     tc         => Time constraint applied to the API
-    
+
     Data Block:
     None
 
@@ -252,7 +252,7 @@ def list_alerts(**kwargs):
     }
     """
     user = kwargs['user']
-    
+
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"

@@ -1,7 +1,4 @@
 
-import concurrent.futures
-
-
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
 from assemblyline.common import forge
@@ -18,16 +15,16 @@ heuristics_api._doc = "View the different heuristics of the system"
 def get_heuristic(heuristic_id, **kwargs):
     """
     Get a specific heuristic's detail from the system
-    
+
     Variables:
     heuristic_id  => ID of the heuristic
-    
-    Arguments: 
+
+    Arguments:
     None
-    
+
     Data Block:
     None
-    
+
     Result example:
     {"id": "AL_HEUR_001",               # Heuristics ID
      "filetype": ".*",                  # Target file type
