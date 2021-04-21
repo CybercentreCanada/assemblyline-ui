@@ -401,7 +401,7 @@ def delete_signature_source(service, name, **_):
     success = STORAGE.service_delta.save(service, service_delta)
     if success:
         # Remove old source signatures
-        STORAGE.signature.delete_matching(f'type:"{service.lower()}" AND source:"{name}"')
+        STORAGE.signature.delete_by_query(f'type:"{service.lower()}" AND source:"{name}"')
 
     _reset_service_updates(service)
 
