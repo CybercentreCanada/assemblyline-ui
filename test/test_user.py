@@ -158,7 +158,6 @@ def test_get_user_submission_params(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_list_users(datastore, login_session):
     _, session, host = login_session
-    username = random.choice(user_list)
 
     full_ulist = user_list + ['admin', 'user', 'TEST_ADD']
     resp = get_api_data(session, f"{host}/api/v4/user/list/")
@@ -195,7 +194,7 @@ def test_remove_user_favorite(datastore, login_session):
     to_be_removed = f"test_{random.randint(1, 10)}"
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
-                        method="DELETE", data=to_be_removed)
+                        method="DELETE", data=json.dumps(to_be_removed))
     assert resp['success']
 
     datastore.user_favorites.commit()
