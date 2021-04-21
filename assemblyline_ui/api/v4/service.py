@@ -73,7 +73,7 @@ def synchronize_sources(service_name, current_sources, new_sources):
         if source not in new_sources:
             # If not a minor change, then assume change is drastically different (ie. removal)
             if not check_for_source_change(new_sources, source):
-                removed_sources[source['name']] = STORAGE.signature.delete_matching(
+                removed_sources[source['name']] = STORAGE.signature.delete_by_query(
                     f'type:"{service_name.lower()}" AND source:"{source["name"]}"')
     _reset_service_updates(service_name)
     return removed_sources
@@ -490,9 +490,9 @@ def remove_service(servicename, **_):
         success = True
         if not STORAGE.service_delta.delete(servicename):
             success = False
-        if not STORAGE.service.delete_matching(f"id:{servicename}*"):
+        if not STORAGE.service.delete_by_query(f"id:{servicename}*"):
             success = False
-        STORAGE.heuristic.delete_matching(f"{servicename.upper()}*")
+        STORAGE.heuristic.delete_by_query(f"{servicename.upper()}*")
         return make_api_response({"success": success})
     else:
         return make_api_response({"success": False},
