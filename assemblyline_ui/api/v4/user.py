@@ -530,8 +530,7 @@ def remove_user_favorite(username, favorite_type, **_):
     if favorite_type not in ALLOWED_FAVORITE_TYPE:
         return make_api_response({}, "%s is not a valid favorite type" % favorite_type, 500)
 
-    name = request.data or b"None"
-    name = name.decode("utf-8")
+    name = request.json
     removed = False
     favorites = STORAGE.user_favorites.get(username, as_obj=False)
     if favorites:
