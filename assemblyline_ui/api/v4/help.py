@@ -96,6 +96,7 @@ def get_system_configuration(**_):
         "submission.default_max_extracted",
         "submission.default_max_supplementary",
         "submission.dtl",
+        "submission.max_dtl",
         "submission.max_extraction_depth",
         "submission.max_file_size",
         "submission.max_metadata_length",

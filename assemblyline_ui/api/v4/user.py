@@ -85,6 +85,10 @@ def who_am_i(**kwargs):
             "allow_extended_apikeys": config.auth.allow_extended_apikeys,
             "allow_security_tokens": config.auth.allow_security_tokens,
         },
+        "submission": {
+            "dtl": config.submission.dtl,
+            "max_dtl": config.submission.max_dtl
+        },
         "system": {
             "organisation": config.system.organisation,
             "type": config.system.type,
