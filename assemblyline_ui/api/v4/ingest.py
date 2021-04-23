@@ -270,6 +270,12 @@ def ingest_single_file(**kwargs):
                 'submitter': user['uname']
             })
 
+            # Enforce maximum DTL
+            if config.submission.max_dtl > 0:
+                s_params['ttl'] = min(
+                    s_params['ttl'],
+                    config.submission.max_dtl) if s_params['ttl'] else config.submission.max_dtl
+
             # Calculate file digest
             fileinfo = identify.fileinfo(out_file)
 
