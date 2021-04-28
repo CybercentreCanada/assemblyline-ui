@@ -255,9 +255,17 @@ def start_ui_submission(ui_sid, **kwargs):
 
             # Submit to dispatcher
             try:
+                params = ui_to_submission_params(ui_params)
+
+                # Enforce maximum DTL
+                if config.submission.max_dtl > 0:
+                    params['ttl'] = min(
+                        int(params['ttl']),
+                        config.submission.max_dtl) if int(params['ttl']) else config.submission.max_dtl
+
                 submission_obj = Submission({
                     "files": [],
-                    "params": ui_to_submission_params(ui_params)
+                    "params": params
                 })
             except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
