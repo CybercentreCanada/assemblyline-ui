@@ -273,8 +273,8 @@ def ingest_single_file(**kwargs):
             # Enforce maximum DTL
             if config.submission.max_dtl > 0:
                 s_params['ttl'] = min(
-                    s_params['ttl'],
-                    config.submission.max_dtl) if s_params['ttl'] else config.submission.max_dtl
+                    int(s_params['ttl']),
+                    config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
 
             # Calculate file digest
             fileinfo = identify.fileinfo(out_file)
