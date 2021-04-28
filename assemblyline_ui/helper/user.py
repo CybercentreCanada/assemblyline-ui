@@ -121,7 +121,8 @@ def get_dynamic_classification(current_c12n, email):
 
 
 def get_default_user_settings(user):
-    return UserSettings({"classification": Classification.default_user_classification(user)}).as_primitives()
+    return UserSettings({"classification": Classification.default_user_classification(user),
+                         "ttl": config.submission.dtl}).as_primitives()
 
 
 def load_user_settings(user):
