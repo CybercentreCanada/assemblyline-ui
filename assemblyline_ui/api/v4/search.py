@@ -32,7 +32,7 @@ def search(bucket, **kwargs):
     sort           =>   How to sort the results (not available in deep paging)
     fl             =>   List of fields to return
     timeout        =>   Maximum execution time (ms)
-    use_archive    =>   Allow access to the datastore achive (Default: True)
+    use_archive    =>   Allow access to the datastore achive (Default: False)
 
     Data Block (POST ONLY):
     {"query": "query",     # Query to search for

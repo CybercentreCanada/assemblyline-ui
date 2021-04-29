@@ -58,6 +58,7 @@ def list_errors(**_):
     query        => Query to apply to the error list
     rows         => Numbers of errors to return
     sort         => Sort order
+    use_archive  => List error from archive as well (Default: False)
 
     Data Block:
     None
@@ -73,9 +74,10 @@ def list_errors(**_):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "id:*") or "id:*"
     sort = request.args.get('sort', "created desc")
+    use_archive = request.args.get('use_archive', "false").lower() == 'true'
 
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
-                                                      sort=sort))
+                                                      sort=sort, use_archive=use_archive))
     except SearchException as e:
         return make_api_response("", f"The specified search query is not valid. ({e})", 400)
