@@ -243,7 +243,7 @@ def ingest_single_file(**kwargs):
                 binary.seek(0)
                 binary.save(out_file)
 
-            if os.path.getsize(out_file):
+            if os.path.getsize(out_file) == 0:
                 return make_api_response("", err="File empty. Ingestion failed", status_code=400)
 
             # Load default user params
