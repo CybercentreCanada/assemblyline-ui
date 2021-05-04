@@ -240,7 +240,6 @@ def ingest_single_file(**kwargs):
                     else:
                         return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
             else:
-                binary.seek(0)
                 binary.save(out_file)
 
             if os.path.getsize(out_file) == 0:
