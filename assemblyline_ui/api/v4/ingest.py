@@ -240,8 +240,10 @@ def ingest_single_file(**kwargs):
                     else:
                         return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
             else:
-                with open(out_file, "wb") as my_file:
-                    my_file.write(binary.read())
+                binary.save(out_file)
+
+            if os.path.getsize(out_file) == 0:
+                return make_api_response("", err="File empty. Ingestion failed", status_code=400)
 
             # Load default user params
             s_params = ui_to_submission_params(load_user_settings(user))
@@ -282,7 +284,7 @@ def ingest_single_file(**kwargs):
             # Validate file size
             if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
                 msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
-                return make_api_response("", err=msg, status_code=400)
+                return make_api_response("", err=msg, status_code=413)
             elif fileinfo['size'] == 0:
                 return make_api_response("", err="File empty. Ingestion failed", status_code=400)
 
