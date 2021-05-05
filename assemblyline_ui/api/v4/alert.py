@@ -230,13 +230,14 @@ def list_alerts(**kwargs):
     None
 
     Arguments:
-    fq         => Post filter queries (you can have multiple of those)
-    q          => Query to apply to the alert list
-    no_delay   => Do not delay alerts
-    offset     => Offset at which we start giving alerts
-    rows       => Numbers of alerts to return
-    tc_start   => Time offset at which we start the time constraint
-    tc         => Time constraint applied to the API
+    fq          => Post filter queries (you can have multiple of those)
+    q           => Query to apply to the alert list
+    no_delay    => Do not delay alerts
+    offset      => Offset at which we start giving alerts
+    rows        => Numbers of alerts to return
+    tc_start    => Time offset at which we start the time constraint
+    tc          => Time constraint applied to the API
+    use_archive => List alerts from archive as well (Default: False)
 
     Data Block:
     None
@@ -253,6 +254,7 @@ def list_alerts(**kwargs):
     """
     user = kwargs['user']
 
+    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
@@ -269,8 +271,10 @@ def list_alerts(**kwargs):
         filters.append(timming_filter)
 
     try:
-        res = STORAGE.alert.search(query, offset=offset, rows=rows, fl="alert_id", sort="reporting_ts desc",
-                                   access_control=user['access_control'], filters=filters, as_obj=False)
+        res = STORAGE.alert.search(
+            query, offset=offset, rows=rows, fl="alert_id", sort="reporting_ts desc",
+            access_control=user['access_control'],
+            filters=filters, as_obj=False, use_archive=use_archive)
         res['items'] = sorted(STORAGE.alert.multiget([v['alert_id'] for v in res['items']],
                                                      as_dictionary=False, as_obj=False),
                               key=lambda k: k['reporting_ts'], reverse=True)
