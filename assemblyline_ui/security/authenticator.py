@@ -30,7 +30,7 @@ class BaseSecurityRenderer(object):
         self.required_priv = required_priv
         self.allow_readonly = allow_readonly
 
-    def audit_if_required(self, args, kwargs, logged_in_uname, user, func):
+    def audit_if_required(self, args, kwargs, logged_in_uname, user, func, impersonator=None):
         if self.audit:
             # noinspection PyBroadException
             try:
@@ -46,7 +46,11 @@ class BaseSecurityRenderer(object):
                 ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
 
             if len(params_list) != 0:
-                AUDIT_LOG.info("%s [%s] :: %s(%s)" % (logged_in_uname,
+                if impersonator:
+                    audit_user = f"{impersonator} on behalf of {logged_in_uname}"
+                else:
+                    audit_user = logged_in_uname
+                AUDIT_LOG.info("%s [%s] :: %s(%s)" % (audit_user,
                                                       user['classification'],
                                                       func.__name__,
                                                       ", ".join(params_list)))
