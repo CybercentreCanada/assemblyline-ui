@@ -110,7 +110,7 @@ class BaseSecurityRenderer(object):
             if required_type in user['type']:
                 return
 
-        abort(403, f"{r_type} {request.path} requires ADMIN privileges")
+        abort(403, f"{r_type} {request.path} requires one of the following privileges: {', '.join(self.require_type)}")
 
     def test_readonly(self, r_type):
         if not self.allow_readonly and config.ui.read_only:
