@@ -5,13 +5,14 @@
 <h1>There are not loaded tokens</h1>
 {% endif %}
 
-<div style="margin-bottom: 16px">Current connected user: {{ user }}</div>
+<div style="margin-bottom: 8px">Current connected to Assemblyline server <b>{{ al_server }}</b> with user <b>{{ al_user }}</b></div>
+<div style="margin-bottom: 16px">Whoami API says the current user is: <b>{{ user }}</b></div>
 
 {% if token_headers.token_id %}
 <div>Token ID: {{ token_headers.token_id }}</div>
 {% else %}
-<a href="https://{{ server }}/authorize?client_id=admin&scope=r&server=OBO Test&redirect_url=https%3A%2F%2F{{ server }}:5100%2Ftoken%2F">
-    Connect to AL to get a OBO token
+<a href="https://{{ al_server }}/authorize?client_id={{ al_user }}&scope=r&server=OBO Test&redirect_url=https%3A%2F%2F{{ obo_server }}:5100%2Ftoken%2F">
+    Connect to AL using OBO token
 </a>
 {% endif %}
 

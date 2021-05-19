@@ -6,8 +6,11 @@ from assemblyline_client import get_client
 from flask import Flask, render_template, request, redirect
 
 TOKEN = None
-IP = os.environ.get("IP", "127.0.0.1")
-CLIENT = get_client(f"https://{IP}.nip.io", auth=('admin', 'admin'), verify=False)
+AL_HOST = os.environ.get("AL_HOST", "127.0.0.1.nip.io")
+AL_USER = os.environ.get("AL_USER", "admin")
+AL_APIKEY = os.environ.get("AL_APIKEY", "devkey:admin")
+OBO_HOST = os.environ.get("OBO_HOST", "127.0.0.1.nip.io")
+CLIENT = get_client(f"https://{AL_HOST}", apikey=(AL_USER, AL_APIKEY), verify=False)
 
 ##########################
 # App settings
@@ -45,8 +48,8 @@ def index():
     if not whoami:
         whoami = CLIENT._connection.get("api/v4/user/whoami/")
 
-    return render_template("index.html", user=whoami['username'], server=request.host[:-5],
-                           error=error, token_headers=headers)
+    return render_template("index.html", user=whoami['username'], al_server=AL_HOST, obo_server=OBO_HOST,
+                           al_user=AL_USER, error=error, token_headers=headers)
 
 
 def main():
