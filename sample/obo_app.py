@@ -1,11 +1,13 @@
 
 import jwt
+import os
 
 from assemblyline_client import get_client
 from flask import Flask, render_template, request, redirect
 
 TOKEN = None
-CLIENT = get_client("https://localhost", auth=('admin', 'admin'), verify=False)
+IP = os.environ.get("IP", "127.0.0.1")
+CLIENT = get_client(f"https://{IP}.nip.io", auth=('admin', 'admin'), verify=False)
 
 ##########################
 # App settings
