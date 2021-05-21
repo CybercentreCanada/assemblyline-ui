@@ -68,8 +68,8 @@ def get_api_documentation(**kwargs):
                     doc_string = func.__doc__
                     func_title = " ".join([x.capitalize()
                                            for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
-                    blueprint = rule.endpoint[rule.endpoint.index(".") + 1:rule.endpoint.rindex(".")]
-                    if not blueprint:
+                    blueprint = rule.endpoint[:rule.endpoint.rindex(".")]
+                    if blueprint == "apiv4":
                         blueprint = "documentation"
 
                     if blueprint not in api_blueprints:
@@ -85,17 +85,14 @@ def get_api_documentation(**kwargs):
                     except Exception:
                         description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
 
-                    if rule.endpoint == "apiv4.api_doc":
-                        api_id = "documentation_api_doc"
-                    else:
-                        api_id = rule.endpoint.replace("apiv4.", "").replace(".", "_")
+                    api_id = rule.endpoint.replace("apiv4.", "").replace(".", "_")
 
                     api_list.append({
                         "protected": func.__dict__.get('protected', False),
                         "require_type": require_type,
                         "name": func_title,
                         "id": api_id,
-                        "function": rule.endpoint,
+                        "function": f"api.v4.{rule.endpoint}",
                         "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
                         "methods": methods, "description": description,
                         "complete": "[INCOMPLETE]" not in description,
