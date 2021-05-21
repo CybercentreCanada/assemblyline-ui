@@ -30,7 +30,7 @@ SCOPES = {
 
 def make_subapi_blueprint(name, api_version=4):
     """ Create a flask Blueprint for a subapi in a standard way. """
-    return Blueprint(name, f"api.v{api_version}.{name}", url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
+    return Blueprint(name, name, url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
 
 
 ####################################
