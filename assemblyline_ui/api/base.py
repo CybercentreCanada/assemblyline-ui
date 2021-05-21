@@ -30,7 +30,7 @@ SCOPES = {
 
 def make_subapi_blueprint(name, api_version=4):
     """ Create a flask Blueprint for a subapi in a standard way. """
-    return Blueprint(f"apiv{api_version}.{name}", name, url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
+    return Blueprint(name, f"api.v{api_version}.{name}", url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
 
 
 ####################################
@@ -359,6 +359,10 @@ def site_map(**_):
         audit = func.__dict__.get('audit', False)
         priv = func.__dict__.get('required_priv', '')
         allow_readonly = func.__dict__.get('allow_readonly', True)
+        if "/api/v4/" in rule.rule:
+            prefix = "api.v4."
+        else:
+            prefix = ""
 
         if config.ui.read_only and not allow_readonly:
             continue
@@ -366,7 +370,7 @@ def site_map(**_):
         if "unsafe_only" in request.args and protected:
             continue
 
-        pages.append({"function": rule.endpoint,
+        pages.append({"function": f"{prefix}{rule.endpoint.replace('apiv4.', '')}",
                       "url": rule.rule,
                       "methods": methods,
                       "protected": protected,
@@ -374,4 +378,4 @@ def site_map(**_):
                       "audit": audit,
                       "req_priv": priv})
 
-    return make_api_response(pages)
+    return make_api_response(sorted(pages, key=lambda i: i['url']))
