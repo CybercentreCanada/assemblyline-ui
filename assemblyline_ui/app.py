@@ -30,6 +30,7 @@ from assemblyline_ui.api.v4.user import user_api
 from assemblyline_ui.api.v4.webauthn import webauthn_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
+from assemblyline_ui.healthz import healthz
 
 from assemblyline_ui import config
 
@@ -53,6 +54,7 @@ else:
         PREFERRED_URL_SCHEME='https'
     )
 
+app.register_blueprint(healthz)
 app.register_blueprint(api)
 app.register_blueprint(apiv4)
 app.register_blueprint(auth_api)
