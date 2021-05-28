@@ -10,11 +10,12 @@ import os
 from flask import Flask
 from flask_socketio import SocketIO
 
+from assemblyline.common import forge, log as al_log
+from assemblyline_ui.healthz import healthz
 from assemblyline_ui.sio.alert import AlertMonitoringNamespace
 from assemblyline_ui.sio.live_submission import LiveSubmissionNamespace
 from assemblyline_ui.sio.status import SystemStatusNamespace
 from assemblyline_ui.sio.submission import SubmissionMonitoringNamespace
-from assemblyline.common import forge, log as al_log
 
 config = forge.get_config()
 
@@ -26,6 +27,7 @@ LOGGER.info("SocketIO server ready to receive connections...")
 # Prepare the app
 app = Flask('socketio')
 app.config['SECRET_KEY'] = config.ui.secret_key
+app.register_blueprint(healthz)
 
 # If the environment says we should prefix our app by something, do so
 if 'APPLICATION_ROOT' in os.environ:
