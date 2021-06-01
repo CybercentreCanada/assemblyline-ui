@@ -293,6 +293,10 @@ def ingest_single_file(**kwargs):
             if extracted_path:
                 out_file = extracted_path
 
+            # Alter filename and classification based on CaRT output
+            s_params['classification'] = al_meta.pop('classification', s_params['classification'])
+            name = al_meta.pop('name', name)
+
             # Save the file to the filestore if needs be
             sha256 = fileinfo['sha256']
             if not f_transport.exists(sha256):
@@ -316,7 +320,6 @@ def ingest_single_file(**kwargs):
             metadata = flatten(data.get("metadata", {}))
             metadata['ingest_id'] = ingest_id
             metadata['type'] = s_params['type']
-            name = al_meta.pop('name', name)
             metadata.update(al_meta)
             if 'ts' not in metadata:
                 metadata['ts'] = now_as_iso()
