@@ -51,6 +51,14 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     if quota_error:
         return make_api_response("", quota_error, 503)
 
+    file_info = STORAGE.file.get(sha256, as_obj=False)
+    if not file_info:
+        return make_api_response({}, f"File {sha256} cannot be found on the server therefore it cannot be resubmitted.",
+                                 status_code=404)
+
+    if not Classification.is_accessible(user['classification'], file_info['classification']):
+        return make_api_response("", "You are not allowed to re-submit a file that you don't have access to", 403)
+
     submit_result = None
     try:
         copy_sid = request.args.get('copy_sid', None)
@@ -72,13 +80,14 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
         else:
             submission_params = ui_to_submission_params(load_user_settings(user))
+            submission_params['classification'] = file_info['classification']
 
         with forge.get_filestore() as f_transport:
             if not f_transport.exists(sha256):
                 return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
                                              % sha256, status_code=404)
 
-            files = [{'name': name, 'sha256': sha256}]
+            files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
 
             submission_params['submitter'] = user['uname']
             submission_params['quota_item'] = True
@@ -349,7 +358,7 @@ def submit(**kwargs):
             # Submit the task to the system
             try:
                 submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
-                    .submit(submission_obj, local_files=[out_file], cleanup=False)
+                    .submit(submission_obj, local_files=[out_file])
                 submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
