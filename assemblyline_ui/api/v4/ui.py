@@ -273,7 +273,7 @@ def start_ui_submission(ui_sid, **kwargs):
             with forge.get_filestore() as f_transport:
                 try:
                     submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
-                        .submit(submission_obj, local_files=[submitted_file], cleanup=False)
+                        .submit(submission_obj, local_files=[submitted_file])
                     submission_received(submission_obj)
                 except SubmissionException as e:
                     return make_api_response("", err=str(e), status_code=400)
