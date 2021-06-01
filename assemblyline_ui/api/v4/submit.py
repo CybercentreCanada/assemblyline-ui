@@ -6,6 +6,7 @@ import shutil
 from flask import request
 
 from assemblyline.common.dict_utils import flatten
+from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
@@ -77,10 +78,18 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
             submission_params = submission['params']
             submission_params['classification'] = submission['classification']
+            expiry = submission['expiry_ts']
 
         else:
             submission_params = ui_to_submission_params(load_user_settings(user))
             submission_params['classification'] = file_info['classification']
+            expiry = file_info['expiry_ts']
+
+        # Calculate original submit time
+        if submission_params['ttl'] and expiry:
+            submit_time = epoch_to_iso(iso_to_epoch(expiry) - submission_params['ttl'] * 24 * 60 * 60)
+        else:
+            submit_time = None
 
         with forge.get_filestore() as f_transport:
             if not f_transport.exists(sha256):
@@ -100,7 +109,8 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             try:
                 submission_obj = Submission({
                     "files": files,
-                    "params": submission_params
+                    "params": submission_params,
+                    "time": submit_time
                 })
             except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
@@ -161,11 +171,18 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name']
                                                                                    for x in submission["files"]])
 
+        # Calculate original submit time
+        if submission_params['ttl'] and submission['expiry_ts']:
+            submit_time = epoch_to_iso(iso_to_epoch(submission['expiry_ts']) - submission_params['ttl'] * 24 * 60 * 60)
+        else:
+            submit_time = None
+
         try:
             submission_obj = Submission({
                 "files": submission["files"],
                 "metadata": submission['metadata'],
-                "params": submission_params
+                "params": submission_params,
+                "time": submit_time
             })
         except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
