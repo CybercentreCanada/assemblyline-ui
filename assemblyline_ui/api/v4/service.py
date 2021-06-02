@@ -11,7 +11,7 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.signature import _reset_service_updates
-from assemblyline_ui.config import LOGGER, STORAGE, SERVICE_LIST
+from assemblyline_ui.config import LOGGER, STORAGE
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -296,7 +296,7 @@ def check_for_service_updates(**_):
     """
     output = {}
 
-    for service in SERVICE_LIST:
+    for service in STORAGE.list_all_services(full=True, as_obj=False):
         update_info = latest_service_tags.get(service['name']) or {}
         if update_info:
             latest_tag = update_info.get(service['update_channel'], None)
@@ -461,7 +461,7 @@ def list_all_services(**_):
              'rejects': x.get('rejects', None),
              'stage': x.get('stage', None),
              'version': x.get('version', None)}
-            for x in SERVICE_LIST]
+            for x in STORAGE.list_all_services(full=True, as_obj=False)]
 
     return make_api_response(resp)
 
