@@ -9,7 +9,7 @@ from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, STORAGE, SERVICE_LIST
+from assemblyline_ui.config import LOGGER, STORAGE
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -553,7 +553,7 @@ def get_signature_sources(**_):
       }, ...
     }
     """
-    services = SERVICE_LIST
+    services = STORAGE.list_all_services(full=True, as_obj=False)
 
     out = {}
     for service in services:
