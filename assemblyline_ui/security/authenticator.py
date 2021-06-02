@@ -70,20 +70,20 @@ class BaseSecurityRenderer(object):
 
         if not session_id:
             current_app.logger.debug('session_id cookie not found')
-            abort(401)
+            abort(401, "Session not found")
 
         session = KV_SESSION.get(session_id)
 
         if not session:
             current_app.logger.debug(f'[{session_id}] session_id not found in redis')
-            abort(401)
+            abort(401, "Session expired")
         else:
             cur_time = now()
             if session.get('expire_at', 0) < cur_time:
                 KV_SESSION.pop(session_id)
                 current_app.logger.debug(f'[{session_id}] session has expired '
                                          f'{session.get("expire_at", 0)} < {cur_time}')
-                abort(401)
+                abort(401, "Session expired")
             else:
                 session['expire_at'] = cur_time + session.get('duration', 3600)
 
@@ -91,13 +91,13 @@ class BaseSecurityRenderer(object):
                 request.headers.get("X-Forwarded-For", request.remote_addr) != session.get('ip', None):
             current_app.logger.debug(f'[{session_id}] X-Forwarded-For does not match session IP '
                                      f'{request.headers.get("X-Forwarded-For", None)} != {session.get("ip", None)}')
-            abort(401)
+            abort(401, "Invalid source IP for this session")
 
         if config.ui.validate_session_useragent and \
                 request.headers.get("User-Agent", None) != session.get('user_agent', None):
             current_app.logger.debug(f'[{session_id}] User-Agent does not match session user_agent '
                                      f'{request.headers.get("User-Agent", None)} != {session.get("user_agent", None)}')
-            abort(401)
+            abort(401, "Invalid user agent for this session")
 
         KV_SESSION.set(session_id, session)
 
