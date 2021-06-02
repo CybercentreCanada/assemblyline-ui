@@ -3,7 +3,8 @@ from typing import Optional
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
+    SERVICE_LIST
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
@@ -52,7 +53,7 @@ def decrement_submission_quota(user):
     SUBMISSION_TRACKER.end(user['uname'])
 
 
-def login(uname, path=None):
+def login(uname):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
@@ -128,8 +129,8 @@ def get_default_user_settings(user):
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
 
-    settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
-    srv_list = [x for x in STORAGE.list_all_services(as_obj=False, full=True) if x['enabled']]
+    settings = STORAGE.user_settings.get_if_exists(user['uname'], as_obj=False)
+    srv_list = [x for x in SERVICE_LIST if x['enabled']]
     if not settings:
         def_srv_list = None
         settings = default_settings
