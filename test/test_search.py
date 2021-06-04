@@ -11,7 +11,7 @@ from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.whitelist import Whitelist
 from assemblyline.odm.models.workflow import Workflow
-from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.randomizer import get_random_hash, random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
@@ -61,7 +61,7 @@ def datastore(datastore_connection):
         ds.heuristic.commit()
 
         for _ in range(TEST_SIZE):
-            w_id = get_random_id()
+            w_id = "0"+get_random_hash(63)
             w = random_model_obj(Whitelist)
             ds.whitelist.save(w_id, w)
         ds.whitelist.commit()

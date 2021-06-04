@@ -1,10 +1,49 @@
 
-import pytest
+import json
 import random
 
-from conftest import get_api_data, APIError
+import pytest
 
+from assemblyline.common.forge import get_classification
+from assemblyline.common.isotime import iso_to_epoch
 from assemblyline.odm.random_data import create_users, create_whitelists, wipe_users, wipe_whitelist
+from assemblyline.odm.randomizer import get_random_hash
+from conftest import APIError, get_api_data
+
+add_hash = "10" + get_random_hash(62)
+add_error_hash = "11" + get_random_hash(62)
+update_hash = "12" + get_random_hash(62)
+update_conflict_hash = "13" + get_random_hash(62)
+
+NSRL_SOURCE = {
+    "name": "NSRL",
+    "reason": [
+        "Found as test.txt on default windows 10 CD",
+        "Found as install.txt on default windows XP CD"
+    ],
+    "type": "external"}
+
+NSRL2_SOURCE = {
+    "name": "NSRL2",
+    "reason": [
+        "File contains only AAAAs..."
+    ],
+    "type": "external"}
+
+ADMIN_SOURCE = {
+    "name": "admin",
+    "reason": [
+        "Generates a lot of FPs",
+    ],
+    "type": "user"}
+
+USER_SOURCE = {
+    "name": "user",
+    "reason": [
+        "I just feel like it!",
+        "I just feel like it!",
+    ],
+    "type": "user"}
 
 
 @pytest.fixture(scope="module")
@@ -19,6 +58,119 @@ def datastore(datastore_connection):
 
 
 # noinspection PyUnusedLocal
+def test_whitelist_add(datastore, login_session):
+    _, session, host = login_session
+
+    # Generate a random whitelist
+    wl_data = {
+        'fileinfo': {'md5': get_random_hash(32),
+                     'sha1': get_random_hash(40),
+                     'sha256': add_hash,
+                     'size': random.randint(128, 4096),
+                     'type': 'document/text'},
+        'sources': [NSRL_SOURCE, ADMIN_SOURCE],
+    }
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/whitelist/{add_hash}/", method="PUT", data=json.dumps(wl_data))
+    assert resp['success']
+    assert resp['op'] == 'add'
+
+    # Load inserted data from DB
+    ds_wl = datastore.whitelist.get(add_hash, as_obj=False)
+
+    # Test dates
+    added = ds_wl.pop('added', None)
+    updated = ds_wl.pop('updated', None)
+    assert added == updated
+    assert added is not None and updated is not None
+
+    # Test classification
+    classification = ds_wl.pop('classification', None)
+    assert classification is not None
+
+    # Test rest
+    assert ds_wl == wl_data
+
+
+def test_whitelist_add_invalid(datastore, login_session):
+    _, session, host = login_session
+
+    # Generate a random whitelist
+    wl_data = {'sources': [USER_SOURCE]}
+
+    # Insert it and test return value
+    with pytest.raises(APIError) as conflict_exc:
+        get_api_data(session, f"{host}/api/v4/whitelist/{add_error_hash}/", method="PUT", data=json.dumps(wl_data))
+
+    assert 'for another user' in conflict_exc.value.args[0]
+
+
+def test_whitelist_update(datastore, login_session):
+    _, session, host = login_session
+    cl_eng = get_classification()
+
+    # Generate a random whitelist
+    wl_data = {
+        'classification': cl_eng.RESTRICTED,
+        'fileinfo': {'md5': get_random_hash(32),
+                     'sha1': get_random_hash(40),
+                     'sha256': update_hash,
+                     'size': random.randint(128, 4096),
+                     'type': 'document/text'},
+        'sources': [NSRL_SOURCE],
+    }
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_hash}/", method="PUT", data=json.dumps(wl_data))
+    assert resp['success']
+    assert resp['op'] == 'add'
+
+    # Load inserted data from DB
+    ds_wl = datastore.whitelist.get(update_hash, as_obj=False)
+
+    # Test rest
+    assert {k: v for k, v in ds_wl.items() if k not in ['added', 'updated']} == wl_data
+
+    u_data = {'sources': [NSRL2_SOURCE]}
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_hash}/", method="PUT", data=json.dumps(u_data))
+    assert resp['success']
+    assert resp['op'] == 'update'
+
+    # Load inserted data from DB
+    ds_u = datastore.whitelist.get(update_hash, as_obj=False)
+
+    assert ds_u['added'] == ds_wl['added']
+    assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_wl['updated'])
+    assert ds_u['classification'] == cl_eng.UNRESTRICTED
+    assert len(ds_u['sources']) == 2
+    assert NSRL2_SOURCE in ds_u['sources']
+    assert NSRL_SOURCE in ds_u['sources']
+
+
+def test_whitelist_update_conflict(datastore, login_session):
+    _, session, host = login_session
+
+    # Generate a random whitelist
+    wl_data = {'sources': [ADMIN_SOURCE]}
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_conflict_hash}/",
+                        method="PUT", data=json.dumps(wl_data))
+    assert resp['success']
+    assert resp['op'] == 'add'
+
+    # Insert the same source with a different type
+    wl_data['sources'][0]['type'] = 'external'
+    with pytest.raises(APIError) as conflict_exc:
+        get_api_data(session, f"{host}/api/v4/whitelist/{update_conflict_hash}/",
+                     method="PUT", data=json.dumps(wl_data))
+
+    assert 'Source type conflict' in conflict_exc.value.args[0]
+
+
 def test_whitelist_exist(datastore, login_session):
     _, session, host = login_session
 
@@ -29,10 +181,21 @@ def test_whitelist_exist(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
+def test_whitelist_invalid(datastore, login_session):
+    _, session, host = login_session
+
+    with pytest.raises(APIError) as invalid_exc:
+        get_api_data(session, f"{host}/api/v4/whitelist/{get_random_hash(32)}/")
+
+    assert 'hash length' in invalid_exc.value.args[0]
+
+
+# noinspection PyUnusedLocal
 def test_whitelist_missing(datastore, login_session):
     _, session, host = login_session
 
-    hash = "DOES NOT EXISTS"
+    missing_hash = "f" + get_random_hash(63)
+    with pytest.raises(APIError) as missing_exc:
+        get_api_data(session, f"{host}/api/v4/whitelist/{missing_hash}/")
 
-    with pytest.raises(APIError):
-        get_api_data(session, f"{host}/api/v4/whitelist/{hash}/")
+    assert 'not found' in missing_exc.value.args[0]
