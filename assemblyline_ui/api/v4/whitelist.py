@@ -9,7 +9,7 @@ whitelist_api._doc = "Perform operations on whitelisted hashes"
 
 @whitelist_api.route("/<sha256>/", methods=["GET"])
 @api_login()
-def exists(sha256, _):
+def exists(sha256, **_):
     """
     Check if a hash exists in the whitelist.
 
@@ -28,8 +28,8 @@ def exists(sha256, _):
     Result example:
     <Whitelisting object>
     """
-    whitelist = STORAGE.whitelist.get_if_exists(sha256)
+    whitelist = STORAGE.whitelist.get_if_exists(sha256, as_obj=False)
     if whitelist:
         return make_api_response(whitelist)
 
-    return make_api_response({}, "The hash was not found in the whitelist.", 404)
+    return make_api_response(None, "The hash was not found in the whitelist.", 404)

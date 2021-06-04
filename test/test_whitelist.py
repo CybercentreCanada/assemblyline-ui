@@ -2,12 +2,9 @@
 import pytest
 import random
 
-from conftest import get_api_data
+from conftest import get_api_data, APIError
 
 from assemblyline.odm.random_data import create_users, create_whitelists, wipe_users, wipe_whitelist
-
-
-workflow_list = []
 
 
 @pytest.fixture(scope="module")
@@ -22,10 +19,20 @@ def datastore(datastore_connection):
 
 
 # noinspection PyUnusedLocal
-def test_check_whitelist(datastore, login_session):
+def test_whitelist_exist(datastore, login_session):
     _, session, host = login_session
 
     hash = random.choice(datastore.whitelist.search("id:*", fl='id', rows=100, as_obj=False)['items'])['id']
 
     resp = get_api_data(session, f"{host}/api/v4/whitelist/{hash}/")
-    assert resp == datastore.whitelise.get(hash, as_obj=False)
+    assert resp == datastore.whitelist.get(hash, as_obj=False)
+
+
+# noinspection PyUnusedLocal
+def test_whitelist_missing(datastore, login_session):
+    _, session, host = login_session
+
+    hash = "DOES NOT EXISTS"
+
+    with pytest.raises(APIError):
+        get_api_data(session, f"{host}/api/v4/whitelist/{hash}/")
