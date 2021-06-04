@@ -130,7 +130,7 @@ def add_or_update(sha256, **kwargs):
 
 @whitelist_api.route("/<sha256>/", methods=["GET"])
 @api_login()
-def exists(sha256, **_):
+def exists(sha256, **kwargs):
     """
     Check if a hash exists in the whitelist.
 
@@ -153,7 +153,7 @@ def exists(sha256, **_):
         return make_api_response(None, "Invalid sha256 hash length", 400)
 
     whitelist = STORAGE.whitelist.get_if_exists(sha256, as_obj=False)
-    if whitelist:
+    if whitelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], whitelist['classification']):
         return make_api_response(whitelist)
 
     return make_api_response(None, "The hash was not found in the whitelist.", 404)
