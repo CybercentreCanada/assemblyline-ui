@@ -137,7 +137,7 @@ def test_histogram_search(datastore, login_session):
         'heuristic': False,
         'signature': 'last_modified',
         'submission': 'times.submitted',
-        'whitelist': 'date',
+        'whitelist': 'added',
         'workflow': 'last_edit'
     }
 

@@ -18,7 +18,7 @@ BUCKET_ORDER_MAP = {
     'result': "created desc",
     'signature': "type asc",
     'submission': "times.submitted desc",
-    'whitelist': "date desc",
+    'whitelist': "added desc",
     'workflow': "last_seen desc"
 }
 
