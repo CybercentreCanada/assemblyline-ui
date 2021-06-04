@@ -89,7 +89,7 @@ def add_or_update(sha256, **kwargs):
                 data['added'] = old['added']
 
                 # Use minimal classification
-                data['classification'] = CLASSIFICATION.min_classification(
+                data['classification'] = CLASSIFICATION.max_classification(
                     data['classification'], old['classification'])
 
                 # Merge file info (keep new values)

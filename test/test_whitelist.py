@@ -112,7 +112,6 @@ def test_whitelist_update(datastore, login_session):
 
     # Generate a random whitelist
     wl_data = {
-        'classification': cl_eng.RESTRICTED,
         'fileinfo': {'md5': get_random_hash(32),
                      'sha1': get_random_hash(40),
                      'sha256': update_hash,
@@ -130,9 +129,12 @@ def test_whitelist_update(datastore, login_session):
     ds_wl = datastore.whitelist.get(update_hash, as_obj=False)
 
     # Test rest
-    assert {k: v for k, v in ds_wl.items() if k not in ['added', 'updated']} == wl_data
+    assert {k: v for k, v in ds_wl.items() if k not in ['added', 'updated', 'classification']} == wl_data
 
-    u_data = {'sources': [NSRL2_SOURCE]}
+    u_data = {
+        'classification': cl_eng.RESTRICTED,
+        'sources': [NSRL2_SOURCE]
+    }
 
     # Insert it and test return value
     resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_hash}/", method="PUT", data=json.dumps(u_data))
@@ -144,7 +146,7 @@ def test_whitelist_update(datastore, login_session):
 
     assert ds_u['added'] == ds_wl['added']
     assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_wl['updated'])
-    assert ds_u['classification'] == cl_eng.UNRESTRICTED
+    assert ds_u['classification'] == cl_eng.RESTRICTED
     assert len(ds_u['sources']) == 2
     assert NSRL2_SOURCE in ds_u['sources']
     assert NSRL_SOURCE in ds_u['sources']
