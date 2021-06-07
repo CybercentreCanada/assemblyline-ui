@@ -6,7 +6,7 @@ import pytest
 
 from assemblyline.common.forge import get_classification
 from assemblyline.common.isotime import iso_to_epoch
-from assemblyline.odm.random_data import create_users, create_whitelists, wipe_users, wipe_whitelist
+from assemblyline.odm.random_data import create_users, create_safelists, wipe_users, wipe_safelist
 from assemblyline.odm.randomizer import get_random_hash
 from conftest import APIError, get_api_data
 
@@ -50,18 +50,18 @@ USER_SOURCE = {
 def datastore(datastore_connection):
     try:
         create_users(datastore_connection)
-        create_whitelists(datastore_connection)
+        create_safelists(datastore_connection)
         yield datastore_connection
     finally:
         wipe_users(datastore_connection)
-        wipe_whitelist(datastore_connection)
+        wipe_safelist(datastore_connection)
 
 
 # noinspection PyUnusedLocal
-def test_whitelist_add(datastore, login_session):
+def test_safelist_add(datastore, login_session):
     _, session, host = login_session
 
-    # Generate a random whitelist
+    # Generate a random safelist
     wl_data = {
         'fileinfo': {'md5': get_random_hash(32),
                      'sha1': get_random_hash(40),
@@ -72,12 +72,12 @@ def test_whitelist_add(datastore, login_session):
     }
 
     # Insert it and test return value
-    resp = get_api_data(session, f"{host}/api/v4/whitelist/{add_hash}/", method="PUT", data=json.dumps(wl_data))
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{add_hash}/", method="PUT", data=json.dumps(wl_data))
     assert resp['success']
     assert resp['op'] == 'add'
 
     # Load inserted data from DB
-    ds_wl = datastore.whitelist.get(add_hash, as_obj=False)
+    ds_wl = datastore.safelist.get(add_hash, as_obj=False)
 
     # Test dates
     added = ds_wl.pop('added', None)
@@ -93,24 +93,24 @@ def test_whitelist_add(datastore, login_session):
     assert ds_wl == wl_data
 
 
-def test_whitelist_add_invalid(datastore, login_session):
+def test_safelist_add_invalid(datastore, login_session):
     _, session, host = login_session
 
-    # Generate a random whitelist
+    # Generate a random safelist
     wl_data = {'sources': [USER_SOURCE]}
 
     # Insert it and test return value
     with pytest.raises(APIError) as conflict_exc:
-        get_api_data(session, f"{host}/api/v4/whitelist/{add_error_hash}/", method="PUT", data=json.dumps(wl_data))
+        get_api_data(session, f"{host}/api/v4/safelist/{add_error_hash}/", method="PUT", data=json.dumps(wl_data))
 
     assert 'for another user' in conflict_exc.value.args[0]
 
 
-def test_whitelist_update(datastore, login_session):
+def test_safelist_update(datastore, login_session):
     _, session, host = login_session
     cl_eng = get_classification()
 
-    # Generate a random whitelist
+    # Generate a random safelist
     wl_data = {
         'fileinfo': {'md5': get_random_hash(32),
                      'sha1': get_random_hash(40),
@@ -121,12 +121,12 @@ def test_whitelist_update(datastore, login_session):
     }
 
     # Insert it and test return value
-    resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_hash}/", method="PUT", data=json.dumps(wl_data))
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{update_hash}/", method="PUT", data=json.dumps(wl_data))
     assert resp['success']
     assert resp['op'] == 'add'
 
     # Load inserted data from DB
-    ds_wl = datastore.whitelist.get(update_hash, as_obj=False)
+    ds_wl = datastore.safelist.get(update_hash, as_obj=False)
 
     # Test rest
     assert {k: v for k, v in ds_wl.items() if k not in ['added', 'updated', 'classification']} == wl_data
@@ -137,12 +137,12 @@ def test_whitelist_update(datastore, login_session):
     }
 
     # Insert it and test return value
-    resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_hash}/", method="PUT", data=json.dumps(u_data))
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{update_hash}/", method="PUT", data=json.dumps(u_data))
     assert resp['success']
     assert resp['op'] == 'update'
 
     # Load inserted data from DB
-    ds_u = datastore.whitelist.get(update_hash, as_obj=False)
+    ds_u = datastore.safelist.get(update_hash, as_obj=False)
 
     assert ds_u['added'] == ds_wl['added']
     assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_wl['updated'])
@@ -152,14 +152,14 @@ def test_whitelist_update(datastore, login_session):
     assert NSRL_SOURCE in ds_u['sources']
 
 
-def test_whitelist_update_conflict(datastore, login_session):
+def test_safelist_update_conflict(datastore, login_session):
     _, session, host = login_session
 
-    # Generate a random whitelist
+    # Generate a random safelist
     wl_data = {'sources': [ADMIN_SOURCE]}
 
     # Insert it and test return value
-    resp = get_api_data(session, f"{host}/api/v4/whitelist/{update_conflict_hash}/",
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{update_conflict_hash}/",
                         method="PUT", data=json.dumps(wl_data))
     assert resp['success']
     assert resp['op'] == 'add'
@@ -167,37 +167,37 @@ def test_whitelist_update_conflict(datastore, login_session):
     # Insert the same source with a different type
     wl_data['sources'][0]['type'] = 'external'
     with pytest.raises(APIError) as conflict_exc:
-        get_api_data(session, f"{host}/api/v4/whitelist/{update_conflict_hash}/",
+        get_api_data(session, f"{host}/api/v4/safelist/{update_conflict_hash}/",
                      method="PUT", data=json.dumps(wl_data))
 
     assert 'Source type conflict' in conflict_exc.value.args[0]
 
 
-def test_whitelist_exist(datastore, login_session):
+def test_safelist_exist(datastore, login_session):
     _, session, host = login_session
 
-    hash = random.choice(datastore.whitelist.search("id:*", fl='id', rows=100, as_obj=False)['items'])['id']
+    hash = random.choice(datastore.safelist.search("id:*", fl='id', rows=100, as_obj=False)['items'])['id']
 
-    resp = get_api_data(session, f"{host}/api/v4/whitelist/{hash}/")
-    assert resp == datastore.whitelist.get(hash, as_obj=False)
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{hash}/")
+    assert resp == datastore.safelist.get(hash, as_obj=False)
 
 
 # noinspection PyUnusedLocal
-def test_whitelist_invalid(datastore, login_session):
+def test_safelist_invalid(datastore, login_session):
     _, session, host = login_session
 
     with pytest.raises(APIError) as invalid_exc:
-        get_api_data(session, f"{host}/api/v4/whitelist/{get_random_hash(32)}/")
+        get_api_data(session, f"{host}/api/v4/safelist/{get_random_hash(32)}/")
 
     assert 'hash length' in invalid_exc.value.args[0]
 
 
 # noinspection PyUnusedLocal
-def test_whitelist_missing(datastore, login_session):
+def test_safelist_missing(datastore, login_session):
     _, session, host = login_session
 
     missing_hash = "f" + get_random_hash(63)
     with pytest.raises(APIError) as missing_exc:
-        get_api_data(session, f"{host}/api/v4/whitelist/{missing_hash}/")
+        get_api_data(session, f"{host}/api/v4/safelist/{missing_hash}/")
 
     assert 'not found' in missing_exc.value.args[0]

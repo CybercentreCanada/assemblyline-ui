@@ -6,16 +6,16 @@ from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION, STORAGE
 
-SUB_API = 'whitelist'
-whitelist_api = make_subapi_blueprint(SUB_API, api_version=4)
-whitelist_api._doc = "Perform operations on whitelisted hashes"
+SUB_API = 'safelist'
+safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
+safelist_api._doc = "Perform operations on safelisted hashes"
 
 
-@whitelist_api.route("/<sha256>/", methods=["PUT"])
+@safelist_api.route("/<sha256>/", methods=["PUT"])
 @api_login(require_type=['user', 'signature_importer'])
 def add_or_update(sha256, **kwargs):
     """
-    Add a hash in the whitelist if it does not exist or update its list of sources if it does
+    Add a hash in the safelist if it does not exist or update its list of sources if it does
 
     Variables:
     sha256       => Hash to check
@@ -32,9 +32,9 @@ def add_or_update(sha256, **kwargs):
        "sha256": "12345....54321",     # SHA256 of the file (default: sha256 variable)
        "size": 12345,                  # Size of the file
        "type": "document/text"},       # Type of the file
-     "sources": [                    # List of sources for why the file is whitelisted, dedupped on name - Required
-       {"name": "NSRL",                # Name of external source or user who whitelisted it - Required
-        "reason": [                    # List of reasons why the source is whitelisted - Required
+     "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
+       {"name": "NSRL",                # Name of external source or user who safelisted it - Required
+        "reason": [                    # List of reasons why the source is safelisted - Required
           "Found as test.txt on default windows 10 CD",
           "Found as install.txt on default windows XP CD"
         ],
@@ -81,8 +81,8 @@ def add_or_update(sha256, **kwargs):
 
         src_map[src['name']] = src
 
-    with Lock(f'add_or_update-whitelist-{sha256}', 30):
-        old = STORAGE.whitelist.get_if_exists(sha256, as_obj=False)
+    with Lock(f'add_or_update-safelist-{sha256}', 30):
+        old = STORAGE.safelist.get_if_exists(sha256, as_obj=False)
         if old:
             try:
                 # Use old added date
@@ -115,24 +115,24 @@ def add_or_update(sha256, **kwargs):
                 data['sources'] = old_src_map.values()
 
                 # Save data to the DB
-                STORAGE.whitelist.save(sha256, data)
+                STORAGE.safelist.save(sha256, data)
                 return make_api_response({'success': True, "op": "update"})
             except Exception as e:
                 return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
         else:
             try:
                 data['sources'] = src_map.values()
-                STORAGE.whitelist.save(sha256, data)
+                STORAGE.safelist.save(sha256, data)
                 return make_api_response({'success': True, "op": "add"})
             except Exception as e:
                 return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
 
 
-@whitelist_api.route("/<sha256>/", methods=["GET"])
+@safelist_api.route("/<sha256>/", methods=["GET"])
 @api_login()
 def exists(sha256, **kwargs):
     """
-    Check if a hash exists in the whitelist.
+    Check if a hash exists in the safelist.
 
     Variables:
     sha256       => Hash to check
@@ -144,16 +144,43 @@ def exists(sha256, **kwargs):
     None
 
     API call example:
-    GET /api/v1/whitelist/123456...654321/
+    GET /api/v1/safelist/123456...654321/
 
     Result example:
-    <Whitelisting object>
+    <Safelisting object>
     """
     if len(sha256) != 64:
         return make_api_response(None, "Invalid sha256 hash length", 400)
 
-    whitelist = STORAGE.whitelist.get_if_exists(sha256, as_obj=False)
-    if whitelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], whitelist['classification']):
-        return make_api_response(whitelist)
+    safelist = STORAGE.safelist.get_if_exists(sha256, as_obj=False)
+    if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
+        return make_api_response(safelist)
 
-    return make_api_response(None, "The hash was not found in the whitelist.", 404)
+    return make_api_response(None, "The hash was not found in the safelist.", 404)
+
+
+@safelist_api.route("/<sha256>/", methods=["DELETE"])
+@api_login()
+def delete(sha256, **kwargs):
+    """
+    Delete a hash from the safelist
+
+    Variables:
+    sha256       => Hash to check
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    DELET /api/v1/safelist/123456...654321/
+
+    Result example:
+    {"success": True}
+    """
+    if len(sha256) != 64:
+        return make_api_response(None, "Invalid sha256 hash length", 400)
+
+    return make_api_response(STORAGE.safelist.delete(sha256))

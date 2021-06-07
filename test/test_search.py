@@ -9,13 +9,13 @@ from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
-from assemblyline.odm.models.whitelist import Whitelist
+from assemblyline.odm.models.safelist import Safelist
 from assemblyline.odm.models.workflow import Workflow
 from assemblyline.odm.randomizer import get_random_hash, random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
-collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'whitelist', 'workflow']
+collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'safelist', 'workflow']
 
 file_list = []
 signatures = []
@@ -62,9 +62,9 @@ def datastore(datastore_connection):
 
         for _ in range(TEST_SIZE):
             w_id = "0"+get_random_hash(63)
-            w = random_model_obj(Whitelist)
-            ds.whitelist.save(w_id, w)
-        ds.whitelist.commit()
+            w = random_model_obj(Safelist)
+            ds.safelist.save(w_id, w)
+        ds.safelist.commit()
 
         for _ in range(TEST_SIZE):
             w_id = get_random_id()
@@ -80,7 +80,7 @@ def datastore(datastore_connection):
         ds.signature.wipe()
         ds.submission.wipe()
         ds.heuristic.wipe()
-        ds.whitelist.wipe()
+        ds.safelist.wipe()
         ds.workflow.wipe()
         wipe_users(ds)
 
@@ -137,7 +137,7 @@ def test_histogram_search(datastore, login_session):
         'heuristic': False,
         'signature': 'last_modified',
         'submission': 'times.submitted',
-        'whitelist': 'added',
+        'safelist': 'added',
         'workflow': 'last_edit'
     }
 
@@ -157,7 +157,7 @@ def test_histogram_search(datastore, login_session):
         'signature': 'order',
         'submission': 'file_count',
         'heuristic': False,
-        'whitelist': False,
+        'safelist': False,
         'workflow': 'hit_count'
     }
 
@@ -201,7 +201,7 @@ def test_stats_search(datastore, login_session):
         'signature': 'order',
         'submission': 'file_count',
         'heuristic': False,
-        'whitelist': False,
+        'safelist': False,
         'workflow': 'hit_count'
     }
 
