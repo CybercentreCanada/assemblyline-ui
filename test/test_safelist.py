@@ -187,7 +187,7 @@ def test_safelist_invalid(datastore, login_session):
     _, session, host = login_session
 
     with pytest.raises(APIError) as invalid_exc:
-        get_api_data(session, f"{host}/api/v4/safelist/{get_random_hash(32)}/")
+        get_api_data(session, f"{host}/api/v4/safelist/{get_random_hash(12)}/")
 
     assert 'hash length' in invalid_exc.value.args[0]
 

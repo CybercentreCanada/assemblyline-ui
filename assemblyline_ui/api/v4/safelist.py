@@ -11,14 +11,14 @@ safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
 safelist_api._doc = "Perform operations on safelisted hashes"
 
 
-@safelist_api.route("/<sha256>/", methods=["PUT"])
+@safelist_api.route("/<qhash>/", methods=["PUT"])
 @api_login(require_type=['user', 'signature_importer'])
-def add_or_update(sha256, **kwargs):
+def add_or_update(qhash, **kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
 
     Variables:
-    sha256       => Hash to check
+    qhash       => Hash to save informations about (either md5, sha1 or sha256)
 
     Arguments:
     None
@@ -52,8 +52,8 @@ def add_or_update(sha256, **kwargs):
     }
     """
     # Validate hash lenght
-    if len(sha256) != 64:
-        return make_api_response(None, "Invalid sha256 hash length", 400)
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
 
     # Load data
     data = request.json
@@ -64,7 +64,12 @@ def add_or_update(sha256, **kwargs):
     # Set defaults
     data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
     data.setdefault('fileinfo', {})
-    data['fileinfo']['sha256'] = sha256
+    if len(qhash) == 64:
+        data['fileinfo']['sha256'] = qhash
+    elif len(qhash) == 40:
+        data['fileinfo']['sha1'] = qhash
+    elif len(qhash) == 32:
+        data['fileinfo']['md5'] = qhash
     data['added'] = data['updated'] = now_as_iso()
 
     # Validate sources
@@ -81,8 +86,8 @@ def add_or_update(sha256, **kwargs):
 
         src_map[src['name']] = src
 
-    with Lock(f'add_or_update-safelist-{sha256}', 30):
-        old = STORAGE.safelist.get_if_exists(sha256, as_obj=False)
+    with Lock(f'add_or_update-safelist-{qhash}', 30):
+        old = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
         if old:
             try:
                 # Use old added date
@@ -115,27 +120,27 @@ def add_or_update(sha256, **kwargs):
                 data['sources'] = old_src_map.values()
 
                 # Save data to the DB
-                STORAGE.safelist.save(sha256, data)
+                STORAGE.safelist.save(qhash, data)
                 return make_api_response({'success': True, "op": "update"})
             except Exception as e:
                 return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
         else:
             try:
                 data['sources'] = src_map.values()
-                STORAGE.safelist.save(sha256, data)
+                STORAGE.safelist.save(qhash, data)
                 return make_api_response({'success': True, "op": "add"})
             except Exception as e:
                 return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
 
 
-@safelist_api.route("/<sha256>/", methods=["GET"])
+@safelist_api.route("/<qhash>/", methods=["GET"])
 @api_login()
-def exists(sha256, **kwargs):
+def exists(qhash, **kwargs):
     """
     Check if a hash exists in the safelist.
 
     Variables:
-    sha256       => Hash to check
+    qhash       => Hash to check is exist (either md5, sha1 or sha256)
 
     Arguments:
     None
@@ -149,19 +154,19 @@ def exists(sha256, **kwargs):
     Result example:
     <Safelisting object>
     """
-    if len(sha256) != 64:
-        return make_api_response(None, "Invalid sha256 hash length", 400)
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
 
-    safelist = STORAGE.safelist.get_if_exists(sha256, as_obj=False)
+    safelist = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
     if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
         return make_api_response(safelist)
 
     return make_api_response(None, "The hash was not found in the safelist.", 404)
 
 
-@safelist_api.route("/<sha256>/", methods=["DELETE"])
+@safelist_api.route("/<qhash>/", methods=["DELETE"])
 @api_login()
-def delete(sha256, **kwargs):
+def delete(qhash, **_):
     """
     Delete a hash from the safelist
 
@@ -180,7 +185,7 @@ def delete(sha256, **kwargs):
     Result example:
     {"success": True}
     """
-    if len(sha256) != 64:
-        return make_api_response(None, "Invalid sha256 hash length", 400)
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
 
-    return make_api_response(STORAGE.safelist.delete(sha256))
+    return make_api_response(STORAGE.safelist.delete(qhash))
