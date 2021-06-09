@@ -149,7 +149,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
-                    if sec['heuristic']['score'] < 100:
+                    if sec['heuristic']['score'] < 0:
+                        h_type = "safe"
+                    elif sec['heuristic']['score'] < 100:
                         h_type = "info"
                     elif sec['heuristic']['score'] < 1000:
                         h_type = "suspicious"
