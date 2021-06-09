@@ -13,7 +13,7 @@ safelist_api._doc = "Perform operations on safelisted hashes"
 
 @safelist_api.route("/<qhash>/", methods=["PUT", "POST"])
 @api_login(require_type=['user', 'signature_importer'], allow_readonly=False, required_priv=["W"])
-def add_or_update(qhash, **kwargs):
+def add_or_update_hash(qhash, **kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
 
@@ -214,7 +214,7 @@ def add_update_many_hashes(**_):
 
 @safelist_api.route("/<qhash>/", methods=["GET"])
 @api_login(required_priv=["R"])
-def exists(qhash, **kwargs):
+def check_hash_exists(qhash, **kwargs):
     """
     Check if a hash exists in the safelist.
 
@@ -264,7 +264,7 @@ def exists(qhash, **kwargs):
 
 @safelist_api.route("/<qhash>/", methods=["DELETE"])
 @api_login(allow_readonly=False)
-def delete(qhash, **_):
+def delete_hash(qhash, **_):
     """
     Delete a hash from the safelist
 
