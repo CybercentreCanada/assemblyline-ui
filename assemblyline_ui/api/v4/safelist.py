@@ -11,14 +11,11 @@ safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
 safelist_api._doc = "Perform operations on safelisted hashes"
 
 
-@safelist_api.route("/<qhash>/", methods=["PUT", "POST"])
+@safelist_api.route("/", methods=["PUT", "POST"])
 @api_login(require_type=['user', 'signature_importer'], allow_readonly=False, required_priv=["W"])
-def add_or_update_hash(qhash, **kwargs):
+def add_or_update_hash(**kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
-
-    Variables:
-    qhash       => Hash to save informations about (either md5, sha1 or sha256)
 
     Arguments:
     None
@@ -26,10 +23,10 @@ def add_or_update_hash(qhash, **kwargs):
     Data Block:
     {
      "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
-     "fileinfo": {                   # Information about the file - Optional
+     "fileinfo": {                   # Information about the file - At least one hash required
        "md5": "123...321",             # MD5 hash of the file
        "sha1": "1234...4321",          # SHA1 hash of the file
-       "sha256": "12345....54321",     # SHA256 of the file (default: sha256 variable)
+       "sha256": "12345....54321",     # SHA256 of the file
        "size": 12345,                  # Size of the file
        "type": "document/text"},       # Type of the file
      "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
@@ -51,10 +48,6 @@ def add_or_update_hash(qhash, **kwargs):
      "op": "add"              # Was it added to the system or updated
     }
     """
-    # Validate hash length
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
-
     # Load data
     data = request.json
     if not data:
@@ -64,13 +57,13 @@ def add_or_update_hash(qhash, **kwargs):
     # Set defaults
     data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
     data.setdefault('fileinfo', {})
-    if len(qhash) == 64:
-        data['fileinfo']['sha256'] = qhash
-    elif len(qhash) == 40:
-        data['fileinfo']['sha1'] = qhash
-    elif len(qhash) == 32:
-        data['fileinfo']['md5'] = qhash
     data['added'] = data['updated'] = now_as_iso()
+
+    # Find the best hash to use for the key
+    qhash = data['fileinfo'].get('sha256', data['fileinfo'].get('sha1', data['fileinfo'].get('md5', None)))
+    # Validate hash length
+    if not qhash:
+        return make_api_response(None, "No valid hash found", 400)
 
     # Validate sources
     src_map = {}
@@ -181,31 +174,46 @@ def add_update_many_hashes(**_):
 
     new_data = {}
     for hash_data in data:
+        # Set a classification if None
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
+
+        # Find the hash used for the key
         fileinfo = hash_data.get('fileinfo', {})
         key = fileinfo.get('sha256', fileinfo.get('sha1', fileinfo.get('md5', None)))
         if not key:
             return make_api_response("", f"Invalid hash block: {str(hash_data)}", 400)
+
+        # Save the new hash_block
         new_data[key] = hash_data
 
+    # Get already existing hashes
     old_data = STORAGE.safelist.multiget(list(new_data.keys()), as_dictionary=True, as_obj=False,
                                          error_on_missing=False)
 
     # Test signature names
     plan = STORAGE.safelist.get_bulk_plan()
     for key, val in new_data.items():
+        # Use maximum classification
         old_val = old_data.get(key, {'classification': CLASSIFICATION.UNRESTRICTED, 'fileinfo': {}, 'sources': []})
         old_val['classification'] = CLASSIFICATION.max_classification(
             old_val['classification'], val['classification'])
+
+        # Update updated time
         old_val['updated'] = now_as_iso()
+
+        # Update fileinfo
         old_val['fileinfo'].update(val['fileinfo'])
+
+        # Merge sources
         for source in val['sources']:
             if source not in old_val['sources']:
                 old_val['sources'].append(source)
 
+        # Add upsert operation
         plan.add_upsert_operation(key, old_val)
 
     if not plan.empty:
+        # Execute plan
         res = STORAGE.safelist.bulk(plan)
         return make_api_response({"success": len(res['items']), "errors": res['errors']})
 
@@ -278,7 +286,7 @@ def delete_hash(qhash, **_):
     None
 
     API call example:
-    DELET /api/v1/safelist/123456...654321/
+    DELETE /api/v1/safelist/123456...654321/
 
     Result example:
     {"success": True}
