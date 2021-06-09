@@ -172,8 +172,7 @@ def add_update_many_hashes(**_):
 
     Result example:
     {"success": 23,                # Number of hashes that succeeded
-     "errors": [],                 # List of hashes that failed
-     "skipped": [],                # List of skipped hashes, they already exist
+     "errors": []}                 # List of hashes that failed
     """
     data = request.json
 
@@ -232,7 +231,26 @@ def exists(qhash, **kwargs):
     GET /api/v1/safelist/123456...654321/
 
     Result example:
-    <Safelisting object>
+    {
+      "classification": "TLP:W",      # Classification of the file
+      "fileinfo": {                   # Information about the file
+        "md5": "123...321",             # MD5 hash of the file
+        "sha1": "1234...4321",          # SHA1 hash of the file
+        "sha256": "12345....54321",     # SHA256 of the file
+        "size": 12345,                  # Size of the file
+        "type": "document/text"},       # Type of the file
+      "sources": [                    # List of sources for why the file is safelisted, dedupped on name
+        {"name": "NSRL",                # Name of external source or user who safelisted it
+         "reason": [                    # List of reasons why the source is safelisted
+           "Found as test.txt on default windows 10 CD",
+           "Found as install.txt on default windows XP CD"
+         ],
+         "type": "external"},           # Type or source (external or user)
+        {"name": "admin",
+         "reason": ["We've seen this file many times and it leads to False positives"],
+         "type": "user"}
+      ]
+    }
     """
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
