@@ -287,7 +287,7 @@ def check_hash_exists(qhash, **kwargs):
 
 @safelist_api.route("/<qhash>/", methods=["DELETE"])
 @api_login(allow_readonly=False)
-def delete_hash(qhash, **_):
+def delete_hash(qhash, **kwargs):
     """
     Delete a hash from the safelist
 
@@ -306,7 +306,20 @@ def delete_hash(qhash, **_):
     Result example:
     {"success": True}
     """
+    user = kwargs['user']
+
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
 
-    return make_api_response(STORAGE.safelist.delete(qhash))
+    if 'admin' in user['type'] or 'signature_manager' in user['type']:
+        return make_api_response({'success': STORAGE.safelist.delete(qhash)})
+    else:
+        safe_hash = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
+        if safe_hash:
+            safe_hash['sources'] = [x for x in safe_hash['sources'] if x['name'] != user['uname']]
+            if len(safe_hash['sources']) == 0:
+                return make_api_response({'success': STORAGE.safelist.delete(qhash)})
+            else:
+                return make_api_response({'success': STORAGE.safelist.save(qhash, safe_hash)})
+
+        return make_api_response({'success': False})
