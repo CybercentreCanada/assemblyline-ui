@@ -104,7 +104,7 @@ def add_or_update_hash(**kwargs):
                         old_src = old_src_map[name]
                         if old_src['type'] != src['type']:
                             return make_api_response(
-                                {}, f"Source type conflict for {name}: {old_src['type']} != {src['type']}", 400)
+                                {}, f"Source {name} has a type conflict: {old_src['type']} != {src['type']}", 400)
 
                         for reason in src['reason']:
                             if reason not in old_src['reason']:
@@ -205,9 +205,24 @@ def add_update_many_hashes(**_):
         old_val['fileinfo'].update(val['fileinfo'])
 
         # Merge sources
-        for source in val['sources']:
-            if source not in old_val['sources']:
-                old_val['sources'].append(source)
+        src_map = {x['name']: x for x in val['sources'] if x['type'] == 'external'}
+        if not src_map:
+            make_api_response({}, f"No valid source found for {key}", 400)
+
+        old_src_map = {x['name']: x for x in old_val['sources']}
+        for name, src in src_map.items():
+            if name not in old_src_map:
+                old_src_map[name] = src
+            else:
+                old_src = old_src_map[name]
+                if old_src['type'] != src['type']:
+                    return make_api_response(
+                        {}, f"Hash {key} source {name} has a type conflict: {old_src['type']} != {src['type']}", 400)
+
+                for reason in src['reason']:
+                    if reason not in old_src['reason']:
+                        old_src['reason'].append(reason)
+        old_val['sources'] = old_src_map.values()
 
         # Add upsert operation
         plan.add_upsert_operation(key, old_val)
