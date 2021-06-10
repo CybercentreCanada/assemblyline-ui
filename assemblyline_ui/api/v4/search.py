@@ -55,7 +55,7 @@ def search(bucket, **kwargs):
         return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
 
     user = kwargs['user']
-    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id"]
+    fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id", 'track_total_hits']
     multi_fields = ['filters']
     boolean_fields = ['use_archive']
 
