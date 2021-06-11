@@ -11,6 +11,66 @@ safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
 safelist_api._doc = "Perform operations on safelisted hashes"
 
 
+class InvalidSafehash(Exception):
+    pass
+
+
+def _merge_safe_hashes(new, old):
+    try:
+        # Check if hash types match
+        if new['type'] != old['type']:
+            raise InvalidSafehash(f"Safe hash type mismatch: {new['type']} != {old['type']}")
+
+        # Use max classification
+        old['classification'] = CLASSIFICATION.max_classification(old['classification'], new['classification'])
+
+        # Update updated time
+        old['updated'] = now_as_iso()
+
+        # Update hashes
+        old['hashes'].update(new['hashes'])
+
+        # Update type specific info
+        if old['type'] == 'file':
+            old.setdefault('file', {})
+            new_names = new.get('file', {}).pop('name', [])
+            if 'name' in old['file']:
+                for name in new_names:
+                    if name not in old['file']['name']:
+                        old['file']['name'].append(name)
+            elif new_names:
+                old['file']['name'] = new_names
+            old['file'].update(new.get('file', {}))
+        elif old['type'] == 'tag':
+            old['tag'] = new['tag']
+
+        # Merge sources
+        src_map = {x['name']: x for x in new['sources']}
+        if not src_map:
+            raise InvalidSafehash("No valid source found")
+
+        old_src_map = {x['name']: x for x in old['sources']}
+        for name, src in src_map.items():
+            src_cl = src.get('classification', None)
+            if src_cl:
+                old['classification'] = CLASSIFICATION.max_classification(old['classification'], src_cl)
+
+            if name not in old_src_map:
+                old_src_map[name] = src
+            else:
+                old_src = old_src_map[name]
+                if old_src['type'] != src['type']:
+                    raise InvalidSafehash(f"Source {name} has a type conflict: {old_src['type']} != {src['type']}")
+
+                for reason in src['reason']:
+                    if reason not in old_src['reason']:
+                        old_src['reason'].append(reason)
+        old['sources'] = old_src_map.values()
+        return old
+    except Exception as e:
+        raise InvalidSafehash(f"Invalid data provided: {str(e)}")
+
+
 @safelist_api.route("/", methods=["PUT", "POST"])
 @api_login(require_type=['user', 'signature_importer'], allow_readonly=False, required_priv=["W"])
 def add_or_update_hash(**kwargs):
@@ -23,12 +83,15 @@ def add_or_update_hash(**kwargs):
     Data Block:
     {
      "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
-     "fileinfo": {                   # Information about the file - At least one hash required
+     "file": {                     # Information about the file  - Only used in file mode
+       "name": ["file.txt"]            # Possible names for the file
+       "size": 12345,                  # Size of the file
+       "type": "document/text"},       # Type of the file
+     },
+     "hashes": {                   # Information about the file - At least one hash required
        "md5": "123...321",             # MD5 hash of the file
        "sha1": "1234...4321",          # SHA1 hash of the file
        "sha256": "12345....54321",     # SHA256 of the file
-       "size": 12345,                  # Size of the file
-       "type": "document/text"},       # Type of the file
      "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
        {"name": "NSRL",                # Name of external source or user who safelisted it - Required
         "reason": [                    # List of reasons why the source is safelisted - Required
@@ -39,7 +102,12 @@ def add_or_update_hash(**kwargs):
        {"name": "admin",
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}
-     ]
+     ],
+     "tag": {                     # Tag information  - Only used in tag mode
+         "type": "network.url",      # Type of tag
+         "value": "google.ca"        # Value of the tag
+     },
+     "type": "tag"               # Type of safelist hash (tag or file)
     }
 
     Result example:
@@ -56,7 +124,11 @@ def add_or_update_hash(**kwargs):
 
     # Set defaults
     data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
-    data.setdefault('fileinfo', {})
+    data.setdefault('hashes', {})
+    if data['type'] == 'tag':
+        data.pop('file', None)
+    elif data['type'] == 'file':
+        data.pop('tag', None)
     data['added'] = data['updated'] = now_as_iso()
 
     # Find the best hash to use for the key
@@ -87,40 +159,11 @@ def add_or_update_hash(**kwargs):
         old = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
         if old:
             try:
-                # Use old added date
-                data['added'] = old['added']
-
-                # Use minimal classification
-                data['classification'] = CLASSIFICATION.max_classification(
-                    data['classification'], old['classification'])
-
-                # Merge file info (keep new values)
-                for k, v in old['fileinfo'].items():
-                    if k not in data['fileinfo']:
-                        data['fileinfo'][k] = v
-
-                # Merge sources together
-                old_src_map = {x['name']: x for x in old['sources']}
-                for name, src in src_map.items():
-                    if name not in old_src_map:
-                        old_src_map[name] = src
-                    else:
-                        old_src = old_src_map[name]
-                        if old_src['type'] != src['type']:
-                            return make_api_response(
-                                {}, f"Source {name} has a type conflict: {old_src['type']} != {src['type']}", 400)
-
-                        for reason in src['reason']:
-                            if reason not in old_src['reason']:
-                                old_src['reason'].append(reason)
-
-                data['sources'] = old_src_map.values()
-
                 # Save data to the DB
-                STORAGE.safelist.save(qhash, data)
+                STORAGE.safelist.save(qhash, _merge_safe_hashes(data, old))
                 return make_api_response({'success': True, "op": "update"})
-            except Exception as e:
-                return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
+            except InvalidSafehash as e:
+                return make_api_response({}, str(e), 400)
         else:
             try:
                 data['sources'] = src_map.values()
@@ -146,12 +189,15 @@ def add_update_many_hashes(**_):
     [                             # List of Safe hash blocks
      {
       "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
-      "fileinfo": {                   # Information about the file - Optional
-        "md5": "123...321",             # MD5 hash of the file
-        "sha1": "1234...4321",          # SHA1 hash of the file
-        "sha256": "12345....54321",     # SHA256 of the file (default: sha256 variable)
+      "file": {                     # Information about the file - Only used in file mode
+        "name": ["file.txt"]            # Possible names for the file
         "size": 12345,                  # Size of the file
         "type": "document/text"},       # Type of the file
+      },
+      "hashes": {                   # Information about the file - At least one hash required
+        "md5": "123...321",             # MD5 hash of the file
+        "sha1": "1234...4321",          # SHA1 hash of the file
+        "sha256": "12345....54321",     # SHA256 of the file
       "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
         {"name": "NSRL",                # Name of external source or user who safelisted it - Required
          "reason": [                    # List of reasons why the source is safelisted - Required
@@ -162,7 +208,12 @@ def add_update_many_hashes(**_):
         {"name": "admin",
          "reason": ["We've seen this file many times and it leads to False positives"],
          "type": "user"}
-      ]
+      ],
+      "tag": {                     # Tag information  - Only used in tag mode
+          "type": "network.url",      # Type of tag
+          "value": "google.ca"        # Value of the tag
+      },
+      "type": "tag"               # Type of safelist hash (tag or file)
      }
      ...
     ]
@@ -180,6 +231,10 @@ def add_update_many_hashes(**_):
     for hash_data in data:
         # Set a classification if None
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
+        if hash_data['type'] == 'tag':
+            hash_data.pop('file', None)
+        elif hash_data['type'] == 'file':
+            hash_data.pop('tag', None)
 
         # Find the hash used for the key
         key = hash_data['hashes'].get('sha256', hash_data['hashes'].get('sha1', hash_data['hashes'].get('md5', None)))
@@ -197,42 +252,14 @@ def add_update_many_hashes(**_):
     plan = STORAGE.safelist.get_bulk_plan()
     for key, val in new_data.items():
         # Use maximum classification
-        old_val = old_data.get(key, {'classification': CLASSIFICATION.UNRESTRICTED, 'fileinfo': {}, 'sources': []})
-        old_val['classification'] = CLASSIFICATION.max_classification(
-            old_val['classification'], val['classification'])
-
-        # Update updated time
-        old_val['updated'] = now_as_iso()
-
-        # Update fileinfo
-        old_val['fileinfo'].update(val['fileinfo'])
-
-        # Merge sources
-        src_map = {x['name']: x for x in val['sources'] if x['type'] == 'external'}
-        if not src_map:
-            make_api_response({}, f"No valid source found for {key}", 400)
-
-        old_src_map = {x['name']: x for x in old_val['sources']}
-        for name, src in src_map.items():
-            src_cl = src.get('classification', None)
-            if src_cl:
-                data['classification'] = CLASSIFICATION.max_classification(data['classification'], src_cl)
-
-            if name not in old_src_map:
-                old_src_map[name] = src
-            else:
-                old_src = old_src_map[name]
-                if old_src['type'] != src['type']:
-                    return make_api_response(
-                        {}, f"Hash {key} source {name} has a type conflict: {old_src['type']} != {src['type']}", 400)
-
-                for reason in src['reason']:
-                    if reason not in old_src['reason']:
-                        old_src['reason'].append(reason)
-        old_val['sources'] = old_src_map.values()
+        old_val = old_data.get(key, {'classification': CLASSIFICATION.UNRESTRICTED,
+                                     'hashes': {}, 'sources': [], 'type': val['type']})
 
         # Add upsert operation
-        plan.add_upsert_operation(key, old_val)
+        try:
+            plan.add_upsert_operation(key, _merge_safe_hashes(val, old_val))
+        except InvalidSafehash as e:
+            return make_api_response("", str(e), 400)
 
     if not plan.empty:
         # Execute plan
@@ -262,24 +289,32 @@ def check_hash_exists(qhash, **kwargs):
 
     Result example:
     {
-      "classification": "TLP:W",      # Classification of the file
-      "fileinfo": {                   # Information about the file
-        "md5": "123...321",             # MD5 hash of the file
-        "sha1": "1234...4321",          # SHA1 hash of the file
-        "sha256": "12345....54321",     # SHA256 of the file
-        "size": 12345,                  # Size of the file
-        "type": "document/text"},       # Type of the file
-      "sources": [                    # List of sources for why the file is safelisted, dedupped on name
-        {"name": "NSRL",                # Name of external source or user who safelisted it
-         "reason": [                    # List of reasons why the source is safelisted
-           "Found as test.txt on default windows 10 CD",
-           "Found as install.txt on default windows XP CD"
-         ],
-         "type": "external"},           # Type or source (external or user)
-        {"name": "admin",
-         "reason": ["We've seen this file many times and it leads to False positives"],
-         "type": "user"}
-      ]
+     "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
+     "file": {                     # Information about the file  - Only used in file mode
+       "name": ["file.txt"]            # Possible names for the file
+       "size": 12345,                  # Size of the file
+       "type": "document/text"},       # Type of the file
+     },
+     "hashes": {                   # Information about the file - At least one hash required
+       "md5": "123...321",             # MD5 hash of the file
+       "sha1": "1234...4321",          # SHA1 hash of the file
+       "sha256": "12345....54321",     # SHA256 of the file
+     "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
+       {"name": "NSRL",                # Name of external source or user who safelisted it - Required
+        "reason": [                    # List of reasons why the source is safelisted - Required
+          "Found as test.txt on default windows 10 CD",
+          "Found as install.txt on default windows XP CD"
+        ],
+        "type": "external"},           # Type or source (external or user) - Required
+       {"name": "admin",
+        "reason": ["We've seen this file many times and it leads to False positives"],
+        "type": "user"}
+     ],
+     "tag": {                     # Tag information  - Only used in tag mode
+         "type": "network.url",      # Type of tag
+         "value": "google.ca"        # Value of the tag
+     },
+     "type": "tag"               # Type of safelist hash (tag or file)
     }
     """
     if len(qhash) not in [64, 40, 32]:
