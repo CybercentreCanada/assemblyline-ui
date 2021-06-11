@@ -1,4 +1,5 @@
 
+import hashlib
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
@@ -126,6 +127,10 @@ def add_or_update_hash(**kwargs):
     data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
     data.setdefault('hashes', {})
     if data['type'] == 'tag':
+        hashed_value = f"{data['tag']['type']}: {data['tag']['value']}".encode('utf8')
+        data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
+        data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
+        data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
         data.pop('file', None)
     elif data['type'] == 'file':
         data.pop('tag', None)
