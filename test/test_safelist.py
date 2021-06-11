@@ -62,7 +62,7 @@ def test_safelist_add(datastore, login_session):
     _, session, host = login_session
 
     # Generate a random safelist
-    wl_data = {
+    sl_data = {
         'fileinfo': {'md5': get_random_hash(32),
                      'sha1': get_random_hash(40),
                      'sha256': add_hash,
@@ -72,36 +72,36 @@ def test_safelist_add(datastore, login_session):
     }
 
     # Insert it and test return value
-    resp = get_api_data(session, f"{host}/api/v4/safelist/{add_hash}/", method="PUT", data=json.dumps(wl_data))
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{add_hash}/", method="PUT", data=json.dumps(sl_data))
     assert resp['success']
     assert resp['op'] == 'add'
 
     # Load inserted data from DB
-    ds_wl = datastore.safelist.get(add_hash, as_obj=False)
+    ds_sl = datastore.safelist.get(add_hash, as_obj=False)
 
     # Test dates
-    added = ds_wl.pop('added', None)
-    updated = ds_wl.pop('updated', None)
+    added = ds_sl.pop('added', None)
+    updated = ds_sl.pop('updated', None)
     assert added == updated
     assert added is not None and updated is not None
 
     # Test classification
-    classification = ds_wl.pop('classification', None)
+    classification = ds_sl.pop('classification', None)
     assert classification is not None
 
     # Test rest
-    assert ds_wl == wl_data
+    assert ds_sl == sl_data
 
 
 def test_safelist_add_invalid(datastore, login_session):
     _, session, host = login_session
 
     # Generate a random safelist
-    wl_data = {'sources': [USER_SOURCE]}
+    sl_data = {'sources': [USER_SOURCE]}
 
     # Insert it and test return value
     with pytest.raises(APIError) as conflict_exc:
-        get_api_data(session, f"{host}/api/v4/safelist/{add_error_hash}/", method="PUT", data=json.dumps(wl_data))
+        get_api_data(session, f"{host}/api/v4/safelist/{add_error_hash}/", method="PUT", data=json.dumps(sl_data))
 
     assert 'for another user' in conflict_exc.value.args[0]
 
@@ -111,7 +111,7 @@ def test_safelist_update(datastore, login_session):
     cl_eng = get_classification()
 
     # Generate a random safelist
-    wl_data = {
+    sl_data = {
         'fileinfo': {'md5': get_random_hash(32),
                      'sha1': get_random_hash(40),
                      'sha256': update_hash,
@@ -121,15 +121,15 @@ def test_safelist_update(datastore, login_session):
     }
 
     # Insert it and test return value
-    resp = get_api_data(session, f"{host}/api/v4/safelist/{update_hash}/", method="PUT", data=json.dumps(wl_data))
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{update_hash}/", method="PUT", data=json.dumps(sl_data))
     assert resp['success']
     assert resp['op'] == 'add'
 
     # Load inserted data from DB
-    ds_wl = datastore.safelist.get(update_hash, as_obj=False)
+    ds_sl = datastore.safelist.get(update_hash, as_obj=False)
 
     # Test rest
-    assert {k: v for k, v in ds_wl.items() if k not in ['added', 'updated', 'classification']} == wl_data
+    assert {k: v for k, v in ds_sl.items() if k not in ['added', 'updated', 'classification']} == sl_data
 
     u_data = {
         'classification': cl_eng.RESTRICTED,
@@ -144,8 +144,8 @@ def test_safelist_update(datastore, login_session):
     # Load inserted data from DB
     ds_u = datastore.safelist.get(update_hash, as_obj=False)
 
-    assert ds_u['added'] == ds_wl['added']
-    assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_wl['updated'])
+    assert ds_u['added'] == ds_sl['added']
+    assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_sl['updated'])
     assert ds_u['classification'] == cl_eng.RESTRICTED
     assert len(ds_u['sources']) == 2
     assert NSRL2_SOURCE in ds_u['sources']
@@ -156,19 +156,19 @@ def test_safelist_update_conflict(datastore, login_session):
     _, session, host = login_session
 
     # Generate a random safelist
-    wl_data = {'sources': [ADMIN_SOURCE]}
+    sl_data = {'sources': [ADMIN_SOURCE]}
 
     # Insert it and test return value
     resp = get_api_data(session, f"{host}/api/v4/safelist/{update_conflict_hash}/",
-                        method="PUT", data=json.dumps(wl_data))
+                        method="PUT", data=json.dumps(sl_data))
     assert resp['success']
     assert resp['op'] == 'add'
 
     # Insert the same source with a different type
-    wl_data['sources'][0]['type'] = 'external'
+    sl_data['sources'][0]['type'] = 'external'
     with pytest.raises(APIError) as conflict_exc:
         get_api_data(session, f"{host}/api/v4/safelist/{update_conflict_hash}/",
-                     method="PUT", data=json.dumps(wl_data))
+                     method="PUT", data=json.dumps(sl_data))
 
     assert 'Source type conflict' in conflict_exc.value.args[0]
 

@@ -60,7 +60,7 @@ def add_or_update_hash(**kwargs):
     data['added'] = data['updated'] = now_as_iso()
 
     # Find the best hash to use for the key
-    qhash = data['fileinfo'].get('sha256', data['fileinfo'].get('sha1', data['fileinfo'].get('md5', None)))
+    qhash = data['hashes'].get('sha256', data['hashes'].get('sha1', data['hashes'].get('md5', None)))
     # Validate hash length
     if not qhash:
         return make_api_response(None, "No valid hash found", 400)
@@ -76,6 +76,10 @@ def add_or_update_hash(**kwargs):
             if 'signature_importer' not in user['type']:
                 return make_api_response(
                     {}, "You do not have sufficient priviledges to add an external source.", 403)
+
+        src_cl = src.get('classification', None)
+        if src_cl:
+            data['classification'] = CLASSIFICATION.max_classification(data['classification'], src_cl)
 
         src_map[src['name']] = src
 
@@ -178,8 +182,7 @@ def add_update_many_hashes(**_):
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
 
         # Find the hash used for the key
-        fileinfo = hash_data.get('fileinfo', {})
-        key = fileinfo.get('sha256', fileinfo.get('sha1', fileinfo.get('md5', None)))
+        key = hash_data['hashes'].get('sha256', hash_data['hashes'].get('sha1', hash_data['hashes'].get('md5', None)))
         if not key:
             return make_api_response("", f"Invalid hash block: {str(hash_data)}", 400)
 
@@ -211,6 +214,10 @@ def add_update_many_hashes(**_):
 
         old_src_map = {x['name']: x for x in old_val['sources']}
         for name, src in src_map.items():
+            src_cl = src.get('classification', None)
+            if src_cl:
+                data['classification'] = CLASSIFICATION.max_classification(data['classification'], src_cl)
+
             if name not in old_src_map:
                 old_src_map[name] = src
             else:
@@ -285,6 +292,37 @@ def check_hash_exists(qhash, **kwargs):
     return make_api_response(None, "The hash was not found in the safelist.", 404)
 
 
+@safelist_api.route("/enable/<qhash>/", methods=["PUT"])
+@api_login(allow_readonly=False)
+def set_hash_status(qhash, **kwargs):
+    """
+    Set the enabled status of a hash
+
+    Variables:
+    qhash       => Hash to change the status
+
+    Arguments:
+    None
+
+    Data Block:
+    "true"
+
+    Result example:
+    {"success": True}
+    """
+    user = kwargs['user']
+    data = request.json
+
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    if 'admin' in user['type'] or 'signature_manager' in user['type']:
+        return make_api_response({'success': STORAGE.safelist.update(
+            qhash, [(STORAGE.safelist.UPDATE_SET, 'enabled', data)])})
+
+    return make_api_response({}, "You are not allowed to change the status", 403)
+
+
 @safelist_api.route("/<qhash>/", methods=["DELETE"])
 @api_login(allow_readonly=False)
 def delete_hash(qhash, **kwargs):
@@ -292,7 +330,7 @@ def delete_hash(qhash, **kwargs):
     Delete a hash from the safelist
 
     Variables:
-    sha256       => Hash to check
+    qhash       => Hash to check
 
     Arguments:
     None
