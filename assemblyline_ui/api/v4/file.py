@@ -523,7 +523,7 @@ def get_file_results(sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
-                    t_item = (t['value'], h_type)
+                    t_item = (t['value'], h_type, t['safelisted'])
                     if t_item not in output["tags"][t['type']]:
                         output["tags"][t['type']].append(t_item)
 
