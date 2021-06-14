@@ -822,7 +822,7 @@ def get_report(submission_id, **kwargs):
         name_map = recurse_get_names(tree['tree'])
 
         summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'])
-        tags = summary['tags']
+        tags = [t for t in summary['tags'] if not t['safelisted']]
         attack_matrix = summary['attack_matrix']
         heuristics = summary['heuristics']
         submission['classification'] = Classification.max_classification(submission['classification'],
