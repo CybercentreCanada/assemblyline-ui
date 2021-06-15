@@ -127,13 +127,20 @@ def add_or_update_hash(**kwargs):
     data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
     data.setdefault('hashes', {})
     if data['type'] == 'tag':
-        hashed_value = f"{data['tag']['type']}: {data['tag']['value']}".encode('utf8')
+        tag_data = data.get('tag', None)
+        if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
+            return make_api_response(None, "Tag data not found", 400)
+
+        hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
         data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
         data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
         data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
         data.pop('file', None)
+
     elif data['type'] == 'file':
         data.pop('tag', None)
+        data.setdefault('file', {})
+
     data['added'] = data['updated'] = now_as_iso()
 
     # Find the best hash to use for the key
