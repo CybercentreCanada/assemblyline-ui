@@ -148,7 +148,7 @@ def get_api_data(session, url, params=None, data=None, method="GET", raw=False, 
                 try:
                     res_data = res.json()
                     return res_data['api_response']
-                except JSONDecodeError:
+                except Exception:
                     raise APIError(f'{res.status_code}: {res.content or None}')
             else:
                 try:
