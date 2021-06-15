@@ -83,32 +83,35 @@ def add_or_update_hash(**kwargs):
 
     Data Block:
     {
-     "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
+     "classification": "TLP:W",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+     "enabled": true,              # Is the safe hash enabled or not
      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
        "size": 12345,                  # Size of the file
        "type": "document/text"},       # Type of the file
      },
-     "hashes": {                   # Information about the file - At least one hash required
-       "md5": "123...321",             # MD5 hash of the file
-       "sha1": "1234...4321",          # SHA1 hash of the file
-       "sha256": "12345....54321",     # SHA256 of the file
-     "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
-       {"name": "NSRL",                # Name of external source or user who safelisted it - Required
+     "hashes": {                   # Information about the safe hash - At least one hash required
+       "md5": "123...321",             # MD5 hash of the safe hash
+       "sha1": "1234...4321",          # SHA1 hash of the safe hash
+       "sha256": "12345....54321",     # SHA256 of the safe hash
+     "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
+       {"classification": "TLP:W",     # Classification of the source (default: TLP:W) - Optional
+        "name": "NSRL",                # Name of external source or user who safelisted it - Required
         "reason": [                    # List of reasons why the source is safelisted - Required
           "Found as test.txt on default windows 10 CD",
           "Found as install.txt on default windows XP CD"
         ],
         "type": "external"},           # Type or source (external or user) - Required
-       {"name": "admin",
+       {"classification": "TLP:W",
+        "name": "admin",
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}
      ],
      "tag": {                     # Tag information  - Only used in tag mode
-         "type": "network.url",      # Type of tag
-         "value": "google.ca"        # Value of the tag
+         "type": "network.url",        # Type of tag
+         "value": "google.ca"          # Value of the tag
      },
-     "type": "tag"               # Type of safelist hash (tag or file)
+     "type": "tag"                # Type of safelist hash (tag or file)
     }
 
     Result example:
@@ -200,32 +203,35 @@ def add_update_many_hashes(**_):
     Data Block (REQUIRED):
     [                             # List of Safe hash blocks
      {
-      "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
-      "file": {                     # Information about the file - Only used in file mode
+      "classification": "TLP:W",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+      "enabled": true,              # Is the safe hash enabled or not
+      "file": {                     # Information about the file  - Only used in file mode
         "name": ["file.txt"]            # Possible names for the file
         "size": 12345,                  # Size of the file
         "type": "document/text"},       # Type of the file
       },
-      "hashes": {                   # Information about the file - At least one hash required
-        "md5": "123...321",             # MD5 hash of the file
-        "sha1": "1234...4321",          # SHA1 hash of the file
-        "sha256": "12345....54321",     # SHA256 of the file
-      "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
-        {"name": "NSRL",                # Name of external source or user who safelisted it - Required
+      "hashes": {                   # Information about the safe hash - At least one hash required
+        "md5": "123...321",             # MD5 hash of the safe hash
+        "sha1": "1234...4321",          # SHA1 hash of the safe hash
+        "sha256": "12345....54321",     # SHA256 of the safe hash
+      "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
+        {"classification": "TLP:W",     # Classification of the source (default: TLP:W) - Optional
+         "name": "NSRL",                # Name of external source or user who safelisted it - Required
          "reason": [                    # List of reasons why the source is safelisted - Required
            "Found as test.txt on default windows 10 CD",
            "Found as install.txt on default windows XP CD"
          ],
-         "type": "external"},           # Type or source (external or user) - Required
-        {"name": "admin",
+          "type": "external"},          # Type or source (external or user) - Required
+        {"classification": "TLP:W",
+         "name": "admin",
          "reason": ["We've seen this file many times and it leads to False positives"],
          "type": "user"}
       ],
-      "tag": {                     # Tag information  - Only used in tag mode
-          "type": "network.url",      # Type of tag
-          "value": "google.ca"        # Value of the tag
+      "tag": {                      # Tag information  - Only used in tag mode
+          "type": "network.url",        # Type of tag
+          "value": "google.ca"          # Value of the tag
       },
-      "type": "tag"               # Type of safelist hash (tag or file)
+      "type": "tag"                 # Type of safelist hash (tag or file)
      }
      ...
     ]
@@ -301,32 +307,35 @@ def check_hash_exists(qhash, **kwargs):
 
     Result example:
     {
-     "classification": "TLP:W",      # Classification of the file (default: TLP:W) - Optional
+     "classification": "TLP:W",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+     "enabled": true,              # Is the safe hash enabled or not
      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
        "size": 12345,                  # Size of the file
        "type": "document/text"},       # Type of the file
      },
-     "hashes": {                   # Information about the file - At least one hash required
-       "md5": "123...321",             # MD5 hash of the file
-       "sha1": "1234...4321",          # SHA1 hash of the file
-       "sha256": "12345....54321",     # SHA256 of the file
-     "sources": [                    # List of sources for why the file is safelisted, dedupped on name - Required
-       {"name": "NSRL",                # Name of external source or user who safelisted it - Required
+     "hashes": {                   # Information about the safe hash - At least one hash required
+       "md5": "123...321",             # MD5 hash of the safe hash
+       "sha1": "1234...4321",          # SHA1 hash of the safe hash
+       "sha256": "12345....54321",     # SHA256 of the safe hash
+     "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
+       {"classification": "TLP:W",     # Classification of the source (default: TLP:W) - Optional
+        "name": "NSRL",                # Name of external source or user who safelisted it - Required
         "reason": [                    # List of reasons why the source is safelisted - Required
           "Found as test.txt on default windows 10 CD",
           "Found as install.txt on default windows XP CD"
         ],
         "type": "external"},           # Type or source (external or user) - Required
-       {"name": "admin",
+       {"classification": "TLP:W",
+        "name": "admin",
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}
      ],
      "tag": {                     # Tag information  - Only used in tag mode
-         "type": "network.url",      # Type of tag
-         "value": "google.ca"        # Value of the tag
+         "type": "network.url",        # Type of tag
+         "value": "google.ca"          # Value of the tag
      },
-     "type": "tag"               # Type of safelist hash (tag or file)
+     "type": "tag"                # Type of safelist hash (tag or file)
     }
     """
     if len(qhash) not in [64, 40, 32]:
