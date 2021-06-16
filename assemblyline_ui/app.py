@@ -9,6 +9,7 @@ from flask.logging import default_handler
 
 from assemblyline_ui.api.base import api
 from assemblyline_ui.api.v4 import apiv4
+from assemblyline_ui.api.v4.admin import admin_api
 from assemblyline_ui.api.v4.alert import alert_api
 from assemblyline_ui.api.v4.authentication import auth_api
 from assemblyline_ui.api.v4.bundle import bundle_api
@@ -20,6 +21,7 @@ from assemblyline_ui.api.v4.heuristics import heuristics_api
 from assemblyline_ui.api.v4.ingest import ingest_api
 from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.result import result_api
+from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.search import search_api
 from assemblyline_ui.api.v4.service import service_api
 from assemblyline_ui.api.v4.signature import signature_api
@@ -28,7 +30,6 @@ from assemblyline_ui.api.v4.submit import submit_api
 from assemblyline_ui.api.v4.ui import ui_api
 from assemblyline_ui.api.v4.user import user_api
 from assemblyline_ui.api.v4.webauthn import webauthn_api
-from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
 from assemblyline_ui.healthz import healthz
@@ -58,8 +59,9 @@ else:
 app.register_blueprint(healthz)
 app.register_blueprint(api)
 app.register_blueprint(apiv4)
-app.register_blueprint(auth_api)
+app.register_blueprint(admin_api)
 app.register_blueprint(alert_api)
+app.register_blueprint(auth_api)
 app.register_blueprint(bundle_api)
 app.register_blueprint(errors)
 app.register_blueprint(error_api)
