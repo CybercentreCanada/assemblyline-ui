@@ -38,7 +38,7 @@ def get_tag_safelist(**_):
     Result example:
     <current tag_safelist.yml file>
     """
-    with forge.get_cachestore('assemblyline_ui', config=config, datastore=STORAGE) as cache:
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         tag_safelist_yml = cache.get('tag_safelist_yml')
         if not tag_safelist_yml:
             yml_data = forge.get_tag_safelist_data()
@@ -87,7 +87,7 @@ def put_tag_safelist(**_):
     except Exception as e:
         return make_api_response(None, f"Invalid tag_safelist.yml file submitted: {str(e)}", 400)
 
-    with forge.get_cachestore('assemblyline_ui', config=config, datastore=STORAGE) as cache:
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         cache.save('tag_safelist_yml', tag_safelist_yml.encode('utf-8'), ttl=ADMIN_FILE_TTL, force=True)
 
     return make_api_response({'success': True})
