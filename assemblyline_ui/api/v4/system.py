@@ -13,14 +13,14 @@ import yaml
 Classification = forge.get_classification()
 config = forge.get_config()
 
-SUB_API = 'admin'
-admin_api = make_subapi_blueprint(SUB_API, api_version=4)
-admin_api._doc = "Perform administrative actions"
+SUB_API = 'system'
+system_api = make_subapi_blueprint(SUB_API, api_version=4)
+system_api._doc = "Perform system actions"
 
 ADMIN_FILE_TTL = 60 * 60 * 24 * 365 * 100  # Just keep the file for 100 years...
 
 
-@admin_api.route("/tag_safelist/", methods=["GET"])
+@system_api.route("/tag_safelist/", methods=["GET"])
 @api_login(require_type=['admin'], required_priv=['R'])
 def get_tag_safelist(**_):
     """
@@ -50,7 +50,7 @@ def get_tag_safelist(**_):
         return make_api_response(safe_str(tag_safelist_yml))
 
 
-@admin_api.route("/tag_safelist/", methods=["PUT"])
+@system_api.route("/tag_safelist/", methods=["PUT"])
 @api_login(require_type=['admin'], allow_readonly=False, required_priv=['W'])
 def put_tag_safelist(**_):
     """
