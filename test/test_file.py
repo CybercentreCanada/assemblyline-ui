@@ -2,7 +2,6 @@ import random
 
 import pytest
 
-from assemblyline.common import forge
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.tagging import tag_list_to_dict
 from assemblyline.odm.models.file import File

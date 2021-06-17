@@ -9,12 +9,13 @@ from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
+from assemblyline.odm.models.safelist import Safelist
 from assemblyline.odm.models.workflow import Workflow
-from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.randomizer import get_random_hash, random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
-collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'workflow']
+collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'safelist', 'workflow']
 
 file_list = []
 signatures = []
@@ -60,6 +61,12 @@ def datastore(datastore_connection):
         ds.heuristic.commit()
 
         for _ in range(TEST_SIZE):
+            w_id = "0"+get_random_hash(63)
+            w = random_model_obj(Safelist)
+            ds.safelist.save(w_id, w)
+        ds.safelist.commit()
+
+        for _ in range(TEST_SIZE):
             w_id = get_random_id()
             w = random_model_obj(Workflow)
             ds.workflow.save(w_id, w)
@@ -73,6 +80,7 @@ def datastore(datastore_connection):
         ds.signature.wipe()
         ds.submission.wipe()
         ds.heuristic.wipe()
+        ds.safelist.wipe()
         ds.workflow.wipe()
         wipe_users(ds)
 
@@ -129,6 +137,7 @@ def test_histogram_search(datastore, login_session):
         'heuristic': False,
         'signature': 'last_modified',
         'submission': 'times.submitted',
+        'safelist': 'added',
         'workflow': 'last_edit'
     }
 
@@ -148,6 +157,7 @@ def test_histogram_search(datastore, login_session):
         'signature': 'order',
         'submission': 'file_count',
         'heuristic': False,
+        'safelist': False,
         'workflow': 'hit_count'
     }
 
@@ -191,6 +201,7 @@ def test_stats_search(datastore, login_session):
         'signature': 'order',
         'submission': 'file_count',
         'heuristic': False,
+        'safelist': False,
         'workflow': 'hit_count'
     }
 

@@ -7,6 +7,7 @@ BUCKET_MAP = {
     'result': STORAGE.result,
     'signature': STORAGE.signature,
     'submission': STORAGE.submission,
+    'safelist': STORAGE.safelist,
     'workflow': STORAGE.workflow
 }
 
@@ -17,6 +18,7 @@ BUCKET_ORDER_MAP = {
     'result': "created desc",
     'signature': "type asc",
     'submission': "times.submitted desc",
+    'safelist': "added desc",
     'workflow': "last_seen desc"
 }
 
