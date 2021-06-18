@@ -532,7 +532,8 @@ def get_summary(sid, **kwargs):
             "filtered": False
         }
 
-        summary = get_or_create_summary(sid, submission["results"], user['classification'])
+        summary = get_or_create_summary(sid, submission["results"], user['classification'],
+                                        submission['state'] == "completed")
         tags = summary['tags']
         attack_matrix = summary['attack_matrix']
         heuristics = summary['heuristics']
@@ -818,7 +819,8 @@ def get_report(submission_id, **kwargs):
 
         name_map = recurse_get_names(tree['tree'])
 
-        summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'])
+        summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'],
+                                        submission['state'] == "completed")
         tags = summary['tags']
         attack_matrix = summary['attack_matrix']
         heuristics = summary['heuristics']
