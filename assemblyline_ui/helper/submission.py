@@ -82,7 +82,7 @@ def safe_download(download_url, target):
                 f.write(chunk)
 
 
-def get_or_create_summary(sid, results, user_classification):
+def get_or_create_summary(sid, results, user_classification, completed):
     cache_key = f"{sid}_{CLASSIFICATION.normalize_classification(user_classification, long_format=False)}"
     for illegal_char in [" ", ":", "/"]:
         cache_key = cache_key.replace(illegal_char, "")
@@ -94,8 +94,10 @@ def get_or_create_summary(sid, results, user_classification):
                                                 user_classification=user_classification)
 
         expiry = now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60)
-        # Do not cache summaries that have errors...
-        if "missing_results" not in summary and "missing_files" not in summary:
+        partial = not completed or "missing_results" in summary or "missing_files" in summary
+
+        # Do not cache partial summary
+        if not partial:
             summary_cache = {
                 "attack_matrix": json.dumps(summary['attack_matrix']),
                 "tags": json.dumps(summary['tags']),
@@ -114,18 +116,18 @@ def get_or_create_summary(sid, results, user_classification):
             "heuristics": summary['heuristics'],
             "classification": summary['classification'],
             "filtered": summary["filtered"],
-            "partial": "missing_results" in summary or "missing_files" in summary
+            "partial": partial
         }
 
     return {
-            "attack_matrix": json.loads(summary_cache['attack_matrix']),
-            "tags": json.loads(summary_cache['tags']),
-            "expiry_ts": summary_cache["expiry_ts"],
-            "heuristics": json.loads(summary_cache['heuristics']),
-            "classification": summary_cache['classification'],
-            "filtered": summary_cache["filtered"],
-            "partial": False
-        }
+        "attack_matrix": json.loads(summary_cache['attack_matrix']),
+        "tags": json.loads(summary_cache['tags']),
+        "expiry_ts": summary_cache["expiry_ts"],
+        "heuristics": json.loads(summary_cache['heuristics']),
+        "classification": summary_cache['classification'],
+        "filtered": summary_cache["filtered"],
+        "partial": False
+    }
 
 
 def submission_received(submission):
