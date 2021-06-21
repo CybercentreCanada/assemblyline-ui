@@ -106,7 +106,7 @@ def test_get_versions(datastore, login_session):
 
     service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/versions/{service}/")
-    assert resp == ['3.3.0', '4.0.0']
+    assert resp == ['4.0.0', '3.3.0']
 
 
 # noinspection PyUnusedLocal
