@@ -20,11 +20,13 @@ from assemblyline_ui.api.v4.heuristics import heuristics_api
 from assemblyline_ui.api.v4.ingest import ingest_api
 from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.result import result_api
+from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.search import search_api
 from assemblyline_ui.api.v4.service import service_api
 from assemblyline_ui.api.v4.signature import signature_api
 from assemblyline_ui.api.v4.submission import submission_api
 from assemblyline_ui.api.v4.submit import submit_api
+from assemblyline_ui.api.v4.system import system_api
 from assemblyline_ui.api.v4.ui import ui_api
 from assemblyline_ui.api.v4.user import user_api
 from assemblyline_ui.api.v4.webauthn import webauthn_api
@@ -57,8 +59,8 @@ else:
 app.register_blueprint(healthz)
 app.register_blueprint(api)
 app.register_blueprint(apiv4)
-app.register_blueprint(auth_api)
 app.register_blueprint(alert_api)
+app.register_blueprint(auth_api)
 app.register_blueprint(bundle_api)
 app.register_blueprint(errors)
 app.register_blueprint(error_api)
@@ -74,9 +76,11 @@ app.register_blueprint(service_api)
 app.register_blueprint(signature_api)
 app.register_blueprint(submission_api)
 app.register_blueprint(submit_api)
+app.register_blueprint(system_api)
 app.register_blueprint(ui_api)
 app.register_blueprint(user_api)
 app.register_blueprint(webauthn_api)
+app.register_blueprint(safelist_api)
 app.register_blueprint(workflow_api)
 
 

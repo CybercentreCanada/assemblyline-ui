@@ -149,7 +149,9 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
-                    if sec['heuristic']['score'] < 100:
+                    if sec['heuristic']['score'] < 0:
+                        h_type = "safe"
+                    elif sec['heuristic']['score'] < 100:
                         h_type = "info"
                     elif sec['heuristic']['score'] < 1000:
                         h_type = "suspicious"
@@ -181,17 +183,17 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     output["tags"].setdefault(t['type'], {})
                     current_htype = output["tags"][t['type']].get(t['value'], None)
                     if not current_htype:
-                        output["tags"][t['type']][t['value']] = h_type
+                        output["tags"][t['type']][t['value']] = (h_type, t['safelisted'])
                     else:
                         if current_htype == 'malicious' or h_type == 'malicious':
-                            output["tags"][t['type']][t['value']] = 'malicious'
+                            output["tags"][t['type']][t['value']] = ('malicious', t['safelisted'])
                         elif current_htype == 'suspicious' or h_type == 'suspicious':
-                            output["tags"][t['type']][t['value']] = 'suspicious'
+                            output["tags"][t['type']][t['value']] = ('suspicious', t['safelisted'])
                         else:
-                            output["tags"][t['type']][t['value']] = 'info'
+                            output["tags"][t['type']][t['value']] = ('info', t['safelisted'])
 
         for t_type in output["tags"]:
-            output["tags"][t_type] = [(k, v) for k, v in output['tags'][t_type].items()]
+            output["tags"][t_type] = [(k, v[0], v[1]) for k, v in output['tags'][t_type].items()]
 
         output['signatures'] = list(output['signatures'])
 
@@ -612,18 +614,19 @@ def get_summary(sid, **kwargs):
             output['tags'][summary_type].setdefault(t['type'], {})
             current_htype = output['tags'][summary_type][t['type']].get(t['value'], None)
             if not current_htype:
-                output['tags'][summary_type][t['type']][t['value']] = t['h_type']
+                output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
             else:
                 if current_htype == 'malicious' or t['h_type'] == 'malicious':
-                    output['tags'][summary_type][t['type']][t['value']] = 'malicious'
+                    output['tags'][summary_type][t['type']][t['value']] = ('malicious', t['safelisted'])
                 elif current_htype == 'suspicious' or t['h_type'] == 'suspicious':
-                    output['tags'][summary_type][t['type']][t['value']] = 'suspicious'
+                    output['tags'][summary_type][t['type']][t['value']] = ('suspicious', t['safelisted'])
                 else:
-                    output['tags'][summary_type][t['type']][t['value']] = 'info'
+                    output['tags'][summary_type][t['type']][t['value']] = ('info', t['safelisted'])
 
         for summary_type in output['tags']:
             for t_type in output['tags'][summary_type]:
-                output['tags'][summary_type][t_type] = [(k, v) for k, v in output['tags'][summary_type][t_type].items()]
+                output['tags'][summary_type][t_type] = [(k, v[0], v[1])
+                                                        for k, v in output['tags'][summary_type][t_type].items()]
 
         return make_api_response(output)
     else:
@@ -818,10 +821,10 @@ def get_report(submission_id, **kwargs):
             return output
 
         name_map = recurse_get_names(tree['tree'])
-
         summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'],
                                         submission['state'] == "completed")
-        tags = summary['tags']
+        tags = [t for t in summary['tags'] if not t['safelisted']]
+
         attack_matrix = summary['attack_matrix']
         heuristics = summary['heuristics']
         submission['classification'] = Classification.max_classification(submission['classification'],

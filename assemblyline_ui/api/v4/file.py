@@ -491,7 +491,9 @@ def get_file_results(sha256, **kwargs):
 
                 if sec.get('heuristic', False):
                     # Get the heuristics data
-                    if sec['heuristic']['score'] < 100:
+                    if sec['heuristic']['score'] < 0:
+                        h_type = "safe"
+                    elif sec['heuristic']['score'] < 100:
                         h_type = "info"
                     elif sec['heuristic']['score'] < 1000:
                         h_type = "suspicious"
@@ -521,7 +523,7 @@ def get_file_results(sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
-                    t_item = (t['value'], h_type)
+                    t_item = (t['value'], h_type, t['safelisted'])
                     if t_item not in output["tags"][t['type']]:
                         output["tags"][t['type']].append(t_item)
 

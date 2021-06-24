@@ -1,4 +1,5 @@
 import json
+from assemblyline.common.dict_utils import flatten
 
 from assemblyline_ui.config import CLASSIFICATION, LOGGER
 from assemblyline.common.classification import InvalidClassification
@@ -58,7 +59,8 @@ def filter_sections(sections, user_classification, min_classification):
                 pass
 
         # Changing tags to a list
-        section['tags'] = tag_dict_to_list(section['tags'])
+        section['tags'] = tag_dict_to_list(flatten(section['tags']), False)
+        section['tags'] += tag_dict_to_list(section.pop('safelisted_tags', {}), True)
         final_sections.append(section)
 
     # Telling the user a section was hidden
