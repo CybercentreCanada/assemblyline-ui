@@ -368,8 +368,9 @@ def get_potential_versions(servicename, **_):
     """
     service = STORAGE.service_delta.get(servicename)
     if service:
-        return make_api_response([item.version for item in
-                                  STORAGE.service.search(f"id:{servicename}*", fl="version")['items']])
+        return make_api_response(
+            sorted([item.version for item in STORAGE.service.stream_search(f"id:{servicename}*", fl="version")],
+                   reverse=True))
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
 
