@@ -821,6 +821,7 @@ def get_report(submission_id, **kwargs):
             return output
 
         name_map = recurse_get_names(tree['tree'])
+
         summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'],
                                         submission['state'] == "completed")
         tags = [t for t in summary['tags'] if not t['safelisted']]
