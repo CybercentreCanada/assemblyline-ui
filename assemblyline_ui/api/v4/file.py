@@ -493,7 +493,7 @@ def get_file_results(sha256, **kwargs):
                     # Get the heuristics data
                     if sec['heuristic']['score'] < 0:
                         h_type = "safe"
-                    elif sec['heuristic']['score'] < 100:
+                    elif sec['heuristic']['score'] < 300:
                         h_type = "info"
                     elif sec['heuristic']['score'] < 1000:
                         h_type = "suspicious"
