@@ -151,7 +151,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     # Get the heuristics data
                     if sec['heuristic']['score'] < 0:
                         h_type = "safe"
-                    elif sec['heuristic']['score'] < 100:
+                    elif sec['heuristic']['score'] < 300:
                         h_type = "info"
                     elif sec['heuristic']['score'] < 1000:
                         h_type = "suspicious"
@@ -825,6 +825,7 @@ def get_report(submission_id, **kwargs):
         summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'],
                                         submission['state'] == "completed")
         tags = [t for t in summary['tags'] if not t['safelisted']]
+
         attack_matrix = summary['attack_matrix']
         heuristics = summary['heuristics']
         submission['classification'] = Classification.max_classification(submission['classification'],
