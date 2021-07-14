@@ -60,6 +60,7 @@ class api_login(BaseSecurityRenderer):
                 except AuthenticationException:
                     msg = "Invalid user or APIKey"
                     LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{msg}]")
+                    flsk_session.clear()
                     abort(401, msg)
                     return
 
