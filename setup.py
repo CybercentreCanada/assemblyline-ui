@@ -42,7 +42,6 @@ setup(
         'python-socketio<5.0.0',
         'flask',
         'flask-socketio<5.0.0',
-        'greenlet',
         'gunicorn',
         'gevent',
         'gevent-websocket',
