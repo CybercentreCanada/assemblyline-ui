@@ -36,4 +36,12 @@ COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.loc
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "assemblyline_ui.patched:app", "--config=python:assemblyline_ui.gunicorn_config", "--worker-class", "gevent"]
+
+ENV UWSGI_MAX_REQUESTS=${MAX_REQUESTS:-1000}
+ENV UWSGI_MAX_REQUESTS_DELTA=${MAX_REQUESTS_JITTER:-100}
+ENV UWSGI_WORKERS=${WORKERS:-2}
+ENV UWSGI_THREADS=${THREADS:-25}
+ENV UWSGI_PROTOCOL=${PROTOCOL:-http}
+ENV UWSGI_SOCKET=0.0.0.0:${PORT:-5000}
+
+CMD ["uwsgi", "--master", "--disable-logging", "--enable-threads", "--die-on-term", "--module", "assemblyline_ui.app:app"]

@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
 RUN touch /tmp/before-pip
-RUN pip install --no-cache-dir --user assemblyline-ui==$version
+RUN pip install --no-cache-dir --user assemblyline-ui[socketio]==$version
 
 # If this is a latest rather than stable build, try to push for unstable packages of base and core
 ARG branch=latest
