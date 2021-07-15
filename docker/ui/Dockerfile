@@ -43,5 +43,6 @@ ENV UWSGI_WORKERS=${WORKERS:-2}
 ENV UWSGI_THREADS=${THREADS:-25}
 ENV UWSGI_PROTOCOL=${PROTOCOL:-http}
 ENV UWSGI_SOCKET=0.0.0.0:${PORT:-5000}
+ENV UWSGI_BUFFER_SIZE=${BUFFER_SIZE:-65535}
 
 CMD ["uwsgi", "--master", "--disable-logging", "--enable-threads", "--die-on-term", "--module", "assemblyline_ui.app:app"]
