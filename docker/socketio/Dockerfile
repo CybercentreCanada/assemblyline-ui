@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 USER assemblyline
 RUN touch /tmp/before-pip
 RUN pip install --no-cache-dir --user assemblyline-ui[socketio]==$version
+# If this is a latest rather than stable build, try to push for unstable packages of base and core
+ARG branch=latest
+RUN if [ "${branch}" = "latest" ]; then pip install --user --upgrade --pre assemblyline assemblyline-core; fi
 
 # Remove files that existed before the pip install so that our copy command below doesn't take a snapshot of
 # files that already exist in the base image
