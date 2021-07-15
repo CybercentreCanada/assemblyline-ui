@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
 RUN touch /tmp/before-pip
-RUN pip install --no-cache-dir --user assemblyline-ui==$version
+RUN pip install --no-cache-dir --user assemblyline-ui[socketio]==$version
 
 # Remove files that existed before the pip install so that our copy command below doesn't take a snapshot of
 # files that already exist in the base image
