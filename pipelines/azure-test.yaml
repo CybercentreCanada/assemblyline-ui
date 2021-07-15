@@ -4,103 +4,102 @@ trigger: ["*"]
 pr: ["*"]
 
 pool:
-  vmImage: 'ubuntu-18.04'
+  vmImage: "ubuntu-18.04"
 
 resources:
   containers:
-  - container: redis
-    image: redis
-    ports:
-      - 6379:6379
-  - container: elasticsearch
-    image: cccs/elasticsearch:7.8.0
-    env:
-      ES_JAVA_OPTS: "-Xms256m -Xmx512m"
-      DISCOVERY_TYPE: 'single-node'
-    ports:
-      - 9200:9200
-  - container: minio
-    image: cccs/minio
-    env:
-      MINIO_ACCESS_KEY: al_storage_key
-      MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
-    ports:
-      - 9000:9000
+    - container: redis
+      image: redis
+      ports:
+        - 6379:6379
+    - container: elasticsearch
+      image: cccs/elasticsearch:7.8.0
+      env:
+        ES_JAVA_OPTS: "-Xms256m -Xmx512m"
+        DISCOVERY_TYPE: "single-node"
+      ports:
+        - 9200:9200
+    - container: minio
+      image: cccs/minio
+      env:
+        MINIO_ACCESS_KEY: al_storage_key
+        MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
+      ports:
+        - 9000:9000
 
   repositories:
-  - repository: assemblyline-base
-    type: github
-    endpoint: github
-    name: CybercentreCanada/assemblyline-base
-  - repository: assemblyline-core
-    type: github
-    endpoint: github
-    name: CybercentreCanada/assemblyline-core
+    - repository: assemblyline-base
+      type: github
+      endpoint: github
+      name: CybercentreCanada/assemblyline-base
+    - repository: assemblyline-core
+      type: github
+      endpoint: github
+      name: CybercentreCanada/assemblyline-core
 
 jobs:
-- job: run_test
-  strategy:
-    matrix:
-      python3_7:
-        python.version: '3.7'
-      Python3_8:
-        python.version: '3.8'
+  - job: run_test
+    strategy:
+      matrix:
+        python3_7:
+          python.version: "3.7"
+        Python3_8:
+          python.version: "3.8"
 
-  timeoutInMinutes: 15
-  services:
-    elasticsearch: elasticsearch
-    redis: redis
-    minio: minio
+    timeoutInMinutes: 15
+    services:
+      elasticsearch: elasticsearch
+      redis: redis
+      minio: minio
 
-  steps:
-    - task: UsePythonVersion@0
-      displayName: Set python version
-      inputs:
-        versionSpec: '$(python.version)'
-    - checkout: self
-      displayName: Checkout assemblyline-ui
-    - checkout: assemblyline-base
-      displayName: Checkout assemblyline-base
-    - checkout: assemblyline-core
-      displayName: Checkout assemblyline-core
-    - script: |
-        sudo mkdir -p /etc/assemblyline/
-        sudo mkdir -p /var/cache/assemblyline/
-        sudo mkdir -p /var/lib/assemblyline/
-        sudo cp pipelines/config.yml /etc/assemblyline
-        sudo chmod a+rw /var/cache/assemblyline/
-        sudo chmod a+rw /var/lib/assemblyline/
-        sudo apt-get update
-        sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
-      displayName: Setup Environment
-      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
-    - script: |
-        # Try to checkout the matching branch, if the command fails, don't care.
-        export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
-        export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
-        git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
-        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
-      displayName: Install assemblyline
-      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
-    - script: |
-        # Try to checkout the matching branch, if the command fails, don't care.
-        export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
-        export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
-        git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
-        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
-      displayName: Install assemblyline-core
-      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-core
-    - script: |
-        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -r test/requirements.txt
-        sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
-      displayName: Install assemblyline-ui
-      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
-    - script: |
-        python -m assemblyline_ui.app &
-        python -m assemblyline_ui.socketsrv &
-        sudo docker run -d --name frontend --network host --restart on-failure cccs/assemblyline-ui-frontend &
-        sudo docker run -d --name nginx --network host --restart on-failure -e "FRONTEND_HOST=localhost" -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
-        wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
-        pytest -rsx -vv
-      workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
-      displayName: Test
+    steps:
+      - task: UsePythonVersion@0
+        displayName: Set python version
+        inputs:
+          versionSpec: "$(python.version)"
+      - checkout: self
+        displayName: Checkout assemblyline-ui
+      - checkout: assemblyline-base
+        displayName: Checkout assemblyline-base
+      - checkout: assemblyline-core
+        displayName: Checkout assemblyline-core
+      - script: |
+          sudo mkdir -p /etc/assemblyline/
+          sudo mkdir -p /var/cache/assemblyline/
+          sudo mkdir -p /var/lib/assemblyline/
+          sudo cp pipelines/config.yml /etc/assemblyline
+          sudo chmod a+rw /var/cache/assemblyline/
+          sudo chmod a+rw /var/lib/assemblyline/
+          sudo apt-get update
+          sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
+        displayName: Setup Environment
+        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+      - script: |
+          # Try to checkout the matching branch, if the command fails, don't care.
+          export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
+          export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
+          git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
+          sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+        displayName: Install assemblyline
+        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
+      - script: |
+          # Try to checkout the matching branch, if the command fails, don't care.
+          export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
+          export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
+          git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
+          sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+        displayName: Install assemblyline-core
+        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-core
+      - script: |
+          sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .[test,socketio]
+        displayName: Install assemblyline-ui
+        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+      - script: |
+          python -m assemblyline_ui.app &
+          python -m assemblyline_ui.socketsrv &
+          sudo docker run -d --name frontend --network host --restart on-failure cccs/assemblyline-ui-frontend &
+          sudo docker run -d --name nginx --network host --restart on-failure -e "FRONTEND_HOST=localhost" -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
+          wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
+          pytest -rsx -vv
+        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+        displayName: Test

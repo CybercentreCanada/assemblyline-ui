@@ -39,24 +39,27 @@ setup(
         'assemblyline',
         'assemblyline-core',
         'werkzeug',
-        'python-socketio<5.0.0',
         'flask',
-        'flask-socketio<5.0.0',
-        'gunicorn',
-        'gevent',
-        'gevent-websocket',
         'pyqrcode',
         'markdown',
         'python-ldap',
         'authlib',
         'fido2',
-        'PyJWT'
+        'PyJWT',
+        'uwsgi'
     ],
     extras_require={
         'test': [
             'pytest',
             'pytest-cov',
             'cart'
+        ],
+        'socketio': [
+            'gunicorn',
+            'python-socketio<5.0.0',
+            'flask-socketio<5.0.0',
+            'gevent',
+            'gevent-websocket',
         ]
     },
     package_data={
