@@ -2,6 +2,7 @@
 from flask import Blueprint, request, session as flsk_session
 from sys import exc_info
 from traceback import format_tb
+from requests.sessions import session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from assemblyline_ui.api.base import make_api_response
@@ -34,7 +35,9 @@ def handle_401(e):
         "allow_signup": config.auth.internal.signup.enabled,
         "allow_pw_rest": config.auth.internal.signup.enabled
     }
-    KV_SESSION.pop(flsk_session.get('session_id', None))
+    session_id = flsk_session.get('session_id', None)
+    if session_id:
+        KV_SESSION.pop(session_id)
     flsk_session.clear()
     res = make_api_response(data, msg, 401)
     res.set_cookie('XSRF-TOKEN', '', max_age=0)
