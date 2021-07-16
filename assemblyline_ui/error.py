@@ -34,7 +34,9 @@ def handle_401(e):
         "allow_signup": config.auth.internal.signup.enabled,
         "allow_pw_rest": config.auth.internal.signup.enabled
     }
-    KV_SESSION.pop(flsk_session.get('session_id', None))
+    session_id = flsk_session.get('session_id', None)
+    if session_id:
+        KV_SESSION.pop(session_id)
     flsk_session.clear()
     res = make_api_response(data, msg, 401)
     res.set_cookie('XSRF-TOKEN', '', max_age=0)
