@@ -2,7 +2,6 @@
 from flask import Blueprint, request, session as flsk_session
 from sys import exc_info
 from traceback import format_tb
-from requests.sessions import session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from assemblyline_ui.api.base import make_api_response
