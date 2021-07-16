@@ -402,9 +402,11 @@ def logout(**_):
     }
     """
     try:
-        session_id = flsk_session.pop('session_id', None)
-        KV_SESSION.pop(session_id)
-        return make_api_response({"success": True})
+        KV_SESSION.pop(flsk_session.get('session_id', None))
+        flsk_session.clear()
+        res = make_api_response({"success": True})
+        res.set_cookie('XSRF-TOKEN', '', max_age=0)
+        return res
     except ValueError:
         return make_api_response("", err="No user logged in?", status_code=400)
 
