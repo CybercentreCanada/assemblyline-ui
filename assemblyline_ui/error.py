@@ -34,7 +34,13 @@ def handle_401(e):
         "allow_signup": config.auth.internal.signup.enabled,
         "allow_pw_rest": config.auth.internal.signup.enabled
     }
-    return make_api_response(data, msg, 401)
+    session_id = flsk_session.get('session_id', None)
+    if session_id:
+        KV_SESSION.pop(session_id)
+    flsk_session.clear()
+    res = make_api_response(data, msg, 401)
+    res.set_cookie('XSRF-TOKEN', '', max_age=0)
+    return res
 
 
 @errors.app_errorhandler(403)
@@ -62,14 +68,14 @@ def handle_403(e):
             "allow_2fa": config.auth.allow_2fa,
             "allow_apikeys": config.auth.allow_apikeys,
             "allow_security_tokens": config.auth.allow_security_tokens,
-            },
+        },
         "ui": {
             "allow_url_submissions": config.ui.allow_url_submissions,
             "read_only": config.ui.read_only,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
-            }
+        }
     }
     return make_api_response(config_block, "Access Denied (%s) [%s]" % (request.path, error_message), 403)
 
