@@ -45,7 +45,7 @@ setup(
         'python-ldap',
         'authlib',
         'fido2',
-        'PyJWT'
+        'PyJWT',
         'gunicorn',
         'gevent',
     ],
