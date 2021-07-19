@@ -45,8 +45,9 @@ setup(
         'python-ldap',
         'authlib',
         'fido2',
-        'PyJWT',
-        'uwsgi'
+        'PyJWT'
+        'gunicorn',
+        'gevent',
     ],
     extras_require={
         'test': [
@@ -55,10 +56,8 @@ setup(
             'cart'
         ],
         'socketio': [
-            'gunicorn',
             'python-socketio<5.0.0',
             'flask-socketio<5.0.0',
-            'gevent',
             'gevent-websocket',
         ]
     },
