@@ -74,17 +74,37 @@ class BaseSecurityRenderer(object):
         if not session_id:
             if 'session' in request.cookies:
                 session = request.cookies.get('session')
+
+                # Try to load the session by hand to check why is rejected
                 try:
-                    parts = session.split('.')
-                    data = parts[0] or parts[1]
+                    current_app.session_interface.get_signing_serializer(current_app).loads(session)
+                    session_err = None
+                except Exception as e:
+                    session_err = f"{type(e).__name__}: {str(e)}"
+
+                try:
+                    _, data, expiry, _ = session.split('.')
+                    # Get session details
                     missing_padding = len(data) % 4
                     if missing_padding:
                         data += '=' * (4 - missing_padding)
 
                     decoded = zlib.decompress(base64.urlsafe_b64decode(data)).decode('utf-8')
-                    current_app.logger.warning(f'The session found in the cookies was rejected by flask: {decoded}')
-                except Exception:
-                    current_app.logger.warning(f'The session found in the cookies was rejected by flask: {session}')
+
+                    # Get session expiry
+                    missing_padding = len(expiry) % 4
+                    if missing_padding:
+                        expiry += '=' * (4 - missing_padding)
+                    expiry_time = int.from_bytes(base64.urlsafe_b64decode(expiry), 'big')
+
+                    if session_err:
+                        current_app.logger.warning(
+                            f'The session was rejected: {decoded} ({expiry_time}) - Reason: {session_err}')
+                    else:
+                        current_app.logger.warning(f'The session was rejected: {decoded} ({expiry_time})')
+                except Exception as e:
+                    current_app.logger.warning(
+                        f'The session was rejected and could not be parsed: {session} - Reason: {str(e)}')
 
                 abort(401, "Session rejected")
             else:
