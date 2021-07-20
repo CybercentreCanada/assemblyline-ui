@@ -72,12 +72,14 @@ class BaseSecurityRenderer(object):
         session_id = flsk_session.get("session_id", None)
 
         if not session_id:
-            if 'session' in request.cookies:
-                session = request.cookies.get('session')
+            if current_app.session_cookie_name in request.cookies:
+                session = request.cookies.get(current_app.session_cookie_name)
 
                 # Try to load the session by hand to check why is rejected
                 try:
-                    current_app.session_interface.get_signing_serializer(current_app).loads(session)
+                    serializer = current_app.session_interface.get_signing_serializer(current_app)
+                    max_age = int(current_app.permanent_session_lifetime.total_seconds())
+                    serializer.loads(session, max_age=max_age)
                     session_err = None
                 except Exception as e:
                     session_err = f"{type(e).__name__}: {str(e)}"
