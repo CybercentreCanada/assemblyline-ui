@@ -669,9 +669,11 @@ def list_submissions_for_group(group, **kwargs):
     None
 
     Arguments:
-    offset       => Offset at which we start giving submissions
-    rows         => Numbers of submissions to return
-    query        => Query to filter to the submission list
+    offset            => Offset at which we start giving submissions
+    rows              => Numbers of submissions to return
+    query             => Query to filter to the submission list
+    use_archive       => List submissions from archive as well (Default: False)
+    track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
     None
@@ -698,6 +700,8 @@ def list_submissions_for_group(group, **kwargs):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     filters = request.args.get('query', None) or None
+    track_total_hits = request.args.get('track_total_hits', False)
+    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
 
     if group == "ALL":
         group_query = "id:*"
@@ -706,7 +710,8 @@ def list_submissions_for_group(group, **kwargs):
     try:
         return make_api_response(STORAGE.submission.search(group_query, offset=offset, rows=rows, filters=filters,
                                                            access_control=user['access_control'],
-                                                           sort='times.submitted desc', as_obj=False))
+                                                           sort='times.submitted desc', as_obj=False,
+                                                           use_archive=use_archive, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -721,9 +726,11 @@ def list_submissions_for_user(username, **kwargs):
     None
 
     Arguments:
-    offset       => Offset at which we start giving submissions
-    rows         => Numbers of submissions to return
-    query        => Query to filter the submission list
+    offset            => Offset at which we start giving submissions
+    rows              => Numbers of submissions to return
+    query             => Query to filter the submission list
+    use_archive       => List submissions from archive as well (Default: False)
+    track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
     None
@@ -750,6 +757,8 @@ def list_submissions_for_user(username, **kwargs):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', None) or None
+    track_total_hits = request.args.get('track_total_hits', False)
+    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
 
     account = STORAGE.user.get(username)
     if not account:
@@ -758,7 +767,8 @@ def list_submissions_for_user(username, **kwargs):
     try:
         return make_api_response(STORAGE.submission.search(f"params.submitter:{username}", offset=offset, rows=rows,
                                                            filters=query, access_control=user['access_control'],
-                                                           sort='times.submitted desc', as_obj=False))
+                                                           sort='times.submitted desc', as_obj=False,
+                                                           use_archive=use_archive, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
