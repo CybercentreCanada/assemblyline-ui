@@ -274,10 +274,10 @@ def list_alerts(**kwargs):
 
     try:
         res = STORAGE.alert.search(
-            query, offset=offset, rows=rows, fl="alert_id", sort="reporting_ts desc",
+            query, offset=offset, rows=rows, fl="id", sort="reporting_ts desc",
             access_control=user['access_control'],
             filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits)
-        res['items'] = sorted(STORAGE.alert.multiget([v['alert_id'] for v in res['items']],
+        res['items'] = sorted(STORAGE.alert.multiget([v['id'] for v in res['items']],
                                                      as_dictionary=False, as_obj=False),
                               key=lambda k: k['reporting_ts'], reverse=True)
         return make_api_response(res)
@@ -355,7 +355,7 @@ def list_grouped_alerts(field, **kwargs):
     try:
         res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
                                            group_sort="reporting_ts desc", access_control=user['access_control'],
-                                           filters=filters, fl=f"alert_id,{field}", as_obj=False,
+                                           filters=filters, fl=f"id,{field}", as_obj=False,
                                            use_archive=use_archive, track_total_hits=track_total_hits)
         alert_keys = []
         hash_list = []
@@ -366,7 +366,7 @@ def list_grouped_alerts(field, **kwargs):
             counted_total += item['total']
             group_count[item['value']] = item['total']
             data = item['items'][0]
-            alert_keys.append(data['alert_id'])
+            alert_keys.append(data['id'])
             if field in ['file.md5', 'file.sha1', 'file.sha256']:
                 hash_list.append(get_dict_item(data, field))
 
