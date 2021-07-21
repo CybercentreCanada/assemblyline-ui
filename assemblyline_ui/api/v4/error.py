@@ -54,11 +54,12 @@ def list_errors(**_):
     None
 
     Arguments:
-    offset       => Offset at which we start giving errors
-    query        => Query to apply to the error list
-    rows         => Numbers of errors to return
-    sort         => Sort order
-    use_archive  => List error from archive as well (Default: False)
+    offset            => Offset at which we start giving errors
+    query             => Query to apply to the error list
+    rows              => Numbers of errors to return
+    sort              => Sort order
+    use_archive       => List error from archive as well (Default: False)
+    track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
     None
@@ -75,9 +76,11 @@ def list_errors(**_):
     query = request.args.get('query', "id:*") or "id:*"
     sort = request.args.get('sort', "created desc")
     use_archive = request.args.get('use_archive', "false").lower() == 'true'
+    track_total_hits = request.args.get('track_total_hits', False)
 
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
-                                                      sort=sort, use_archive=use_archive))
+                                                      sort=sort, use_archive=use_archive,
+                                                      track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"The specified search query is not valid. ({e})", 400)

@@ -230,14 +230,15 @@ def list_alerts(**kwargs):
     None
 
     Arguments:
-    fq          => Post filter queries (you can have multiple of those)
-    q           => Query to apply to the alert list
-    no_delay    => Do not delay alerts
-    offset      => Offset at which we start giving alerts
-    rows        => Numbers of alerts to return
-    tc_start    => Time offset at which we start the time constraint
-    tc          => Time constraint applied to the API
-    use_archive => List alerts from archive as well (Default: False)
+    fq                => Post filter queries (you can have multiple of those)
+    q                 => Query to apply to the alert list
+    no_delay          => Do not delay alerts
+    offset            => Offset at which we start giving alerts
+    rows              => Numbers of alerts to return
+    tc_start          => Time offset at which we start the time constraint
+    tc                => Time constraint applied to the API
+    use_archive       => List alerts from archive as well (Default: False)
+    track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
     None
@@ -265,6 +266,7 @@ def list_alerts(**kwargs):
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
     timming_filter = get_timming_filter(tc_start, tc)
+    track_total_hits = request.args.get('track_total_hits', False)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
@@ -272,10 +274,10 @@ def list_alerts(**kwargs):
 
     try:
         res = STORAGE.alert.search(
-            query, offset=offset, rows=rows, fl="alert_id", sort="reporting_ts desc",
+            query, offset=offset, rows=rows, fl="id", sort="reporting_ts desc",
             access_control=user['access_control'],
-            filters=filters, as_obj=False, use_archive=use_archive)
-        res['items'] = sorted(STORAGE.alert.multiget([v['alert_id'] for v in res['items']],
+            filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits)
+        res['items'] = sorted(STORAGE.alert.multiget([v['id'] for v in res['items']],
                                                      as_dictionary=False, as_obj=False),
                               key=lambda k: k['reporting_ts'], reverse=True)
         return make_api_response(res)
@@ -293,13 +295,15 @@ def list_grouped_alerts(field, **kwargs):
     None
 
     Arguments:
-    fq         => Post filter queries (you can have multiple of those)
-    q          => Query to apply to the alert list
-    no_delay   => Do not delay alerts
-    offset     => Offset at which we start giving alerts
-    rows       => Numbers of alerts to return
-    tc_start   => Time offset at which we start the time constraint
-    tc         => Time constraint applied to the API
+    fq                => Post filter queries (you can have multiple of those)
+    q                 => Query to apply to the alert list
+    no_delay          => Do not delay alerts
+    offset            => Offset at which we start giving alerts
+    rows              => Numbers of alerts to return
+    tc_start          => Time offset at which we start the time constraint
+    tc                => Time constraint applied to the API
+    use_archive       => List alerts from archive as well (Default: False)
+    track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
     None
@@ -329,6 +333,8 @@ def list_grouped_alerts(field, **kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
+    track_total_hits = request.args.get('track_total_hits', False)
+    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
 
     if not tc_start:
         if "no_delay" not in request.args and config.core.alerter.delay != 0:
@@ -349,7 +355,8 @@ def list_grouped_alerts(field, **kwargs):
     try:
         res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
                                            group_sort="reporting_ts desc", access_control=user['access_control'],
-                                           filters=filters, fl=f"alert_id,{field}", as_obj=False)
+                                           filters=filters, fl=f"id,{field}", as_obj=False,
+                                           use_archive=use_archive, track_total_hits=track_total_hits)
         alert_keys = []
         hash_list = []
         hint_list = []
@@ -359,7 +366,7 @@ def list_grouped_alerts(field, **kwargs):
             counted_total += item['total']
             group_count[item['value']] = item['total']
             data = item['items'][0]
-            alert_keys.append(data['alert_id'])
+            alert_keys.append(data['id'])
             if field in ['file.md5', 'file.sha1', 'file.sha256']:
                 hash_list.append(get_dict_item(data, field))
 
