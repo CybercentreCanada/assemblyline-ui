@@ -172,7 +172,7 @@ def add_update_many_signature(**_):
             rule['state_change_user'] = old_data[key]['state_change_user']
 
             # Preserve signature stats
-            rule['stats'] = old_data['stats']
+            rule['stats'] = old_data[key]['stats']
 
         plan.add_upsert_operation(key, rule)
 
