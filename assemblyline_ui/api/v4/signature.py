@@ -94,8 +94,13 @@ def add_update_signature(**_):
         # If rule has been deprecated/disabled after initial deployment, then disable it
         if not (data['status'] != old['status'] and data['status'] == "DISABLED"):
             data['status'] = old['status']
+
+        # Preserve last state change
         data['state_change_date'] = old['state_change_date']
         data['state_change_user'] = old['state_change_user']
+
+        # Preserve signature stats
+        data['stats'] = old['stats']
 
     # Save the signature
     return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
@@ -161,8 +166,13 @@ def add_update_many_signature(**_):
             # If rule has been deprecated/disabled after initial deployment, then disable it
             if not (rule['status'] != old_data[key]['status'] and rule['status'] == "DISABLED"):
                 rule['status'] = old_data[key]['status']
+
+            # Preserve last state change
             rule['state_change_date'] = old_data[key]['state_change_date']
             rule['state_change_user'] = old_data[key]['state_change_user']
+
+            # Preserve signature stats
+            rule['stats'] = old_data['stats']
 
         plan.add_upsert_operation(key, rule)
 
