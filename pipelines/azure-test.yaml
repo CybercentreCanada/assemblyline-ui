@@ -4,7 +4,7 @@ trigger: ["*"]
 pr: ["*"]
 
 pool:
-  vmImage: "ubuntu-18.04"
+  vmImage: "ubuntu-20.04"
 
 resources:
   containers:
@@ -41,10 +41,10 @@ jobs:
   - job: run_test
     strategy:
       matrix:
-        python3_7:
-          python.version: "3.7"
-        Python3_8:
-          python.version: "3.8"
+        python3_9:
+          python.version: "3.9"
+        # Python3_10:
+        #   python.version: "3.10"
 
     timeoutInMinutes: 15
     services:
