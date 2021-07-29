@@ -6,7 +6,7 @@ trigger:
 pr: none
 
 pool:
-  vmImage: "ubuntu-18.04"
+  vmImage: "ubuntu-20.04"
 
 resources:
   containers:
@@ -37,7 +37,7 @@ stages:
         steps:
           - task: UsePythonVersion@0
             displayName: Set python version
-            inputs: { versionSpec: 3.8 }
+            inputs: { versionSpec: 3.9 }
           - script: |
               export VERSION=${BUILD_SOURCEBRANCH#"refs/tags/v"}
               export COMMIT=`git rev-parse --verify ${BUILD_SOURCEBRANCH}`
@@ -59,12 +59,6 @@ stages:
   - stage: test
     jobs:
       - job: run_test
-        strategy:
-          matrix:
-            python3_7:
-              python.version: "3.7"
-            Python3_8:
-              python.version: "3.8"
         timeoutInMinutes: 10
         services:
           elasticsearch: elasticsearch
@@ -74,8 +68,7 @@ stages:
           - checkout: none
           - task: UsePythonVersion@0
             displayName: Set python version
-            inputs:
-              versionSpec: "$(python.version)"
+            inputs: { versionSpec: 3.9 }
           - download: current
             artifact: dist
           - download: current
@@ -120,7 +113,7 @@ stages:
         steps:
           - task: UsePythonVersion@0
             displayName: Set python version
-            inputs: { versionSpec: 3.8 }
+            inputs: { versionSpec: 3.9 }
           - download: current
             artifact: dist
           - script: |
