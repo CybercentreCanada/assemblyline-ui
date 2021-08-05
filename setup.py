@@ -57,8 +57,8 @@ setup(
             'cart'
         ],
         'socketio': [
-            'python-socketio<5.0.0',
-            'flask-socketio<5.0.0',
+            'python-socketio',
+            'flask-socketio',
             'gevent-websocket',
         ]
     },
