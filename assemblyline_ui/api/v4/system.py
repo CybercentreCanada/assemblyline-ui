@@ -5,7 +5,7 @@ from assemblyline.common import forge
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.tagging import Tagging
 
-from assemblyline_ui.config import STORAGE
+from assemblyline_ui.config import STORAGE, UI_MESSAGING
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 import yaml
 
@@ -18,6 +18,54 @@ system_api = make_subapi_blueprint(SUB_API, api_version=4)
 system_api._doc = "Perform system actions"
 
 ADMIN_FILE_TTL = 60 * 60 * 24 * 365 * 100  # Just keep the file for 100 years...
+
+
+@system_api.route("/system_message/", methods=["DELETE"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def clear_system_message(**_):
+    """
+    Clear the current system message
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": true}
+    """
+    UI_MESSAGING.pop('system_message')
+    return make_api_response({'success': True})
+
+
+@system_api.route("/system_message/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_system_message(**_):
+    """
+    Get the current system message
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+      "title": "Message title",
+      "user": "admin",
+      "severity": "info",
+      "message": "This is a test message"
+    }
+    """
+    return make_api_response(UI_MESSAGING.get('system_message'))
 
 
 @system_api.route("/tag_safelist/", methods=["GET"])
@@ -48,6 +96,38 @@ def get_tag_safelist(**_):
             return make_api_response(None, "Could not find the tag_safelist.yml file", 404)
 
         return make_api_response(safe_str(tag_safelist_yml))
+
+
+@system_api.route("/system_message/", methods=["PUT", "POST"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def set_system_message(**kwargs):
+    """
+    Set the current system message
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+      "title": "Message title",
+      "severity": "info",
+      "message": "This is a test message"
+    }
+
+    Result example:
+    {"success": true}
+    """
+    msg = request.json
+    if isinstance(msg, dict) and 'severity' in msg and 'message' in msg:
+        msg['user'] = kwargs['user']['uname']
+        msg = {k: v for k, v in msg.items() if k in ['severity', 'message', 'title', 'user']}
+        UI_MESSAGING.set('system_message', msg)
+        return make_api_response({"success": True})
+
+    return make_api_response(None, "Invalid system message submitted.", 400)
 
 
 @system_api.route("/tag_safelist/", methods=["PUT"])

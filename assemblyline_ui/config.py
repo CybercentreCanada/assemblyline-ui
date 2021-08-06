@@ -50,6 +50,10 @@ KV_SESSION = Hash("flask_sessions",
                   host=config.core.redis.nonpersistent.host,
                   port=config.core.redis.nonpersistent.port)
 
+UI_MESSAGING = Hash("ui_messaging",
+                    host=config.core.redis.persistent.host,
+                    port=config.core.redis.persistent.port)
+
 
 @functools.lru_cache()
 def get_submission_traffic_channel():
