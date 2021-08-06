@@ -8,7 +8,7 @@ from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, config
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
@@ -107,6 +107,10 @@ def who_am_i(**kwargs):
     }
     user_data['indexes'] = list_all_fields()
     user_data['settings'] = load_user_settings(kwargs['user'])
+
+    msg = UI_MESSAGING.get('system_message')
+    if msg:
+        user_data['system_message'] = msg
 
     return make_api_response(user_data)
 
