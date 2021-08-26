@@ -1,15 +1,24 @@
-
+from copy import copy
 from assemblyline_ui.config import config, SERVICE_LIST
 from assemblyline.odm.models.submission import DEFAULT_SRV_SEL
 
 
-def get_default_service_spec(srv_list=None):
+def get_default_service_spec(srv_list=None, user_default_values={}):
     if not srv_list:
         srv_list = SERVICE_LIST
 
-    return [{"name": x['name'],
-             "params": x["submission_params"]}
-            for x in srv_list if x["submission_params"]]
+    out = []
+    for x in srv_list:
+        if x["submission_params"]:
+            param_object = {'name': x['name'], "params": []}
+            for param in x.get('submission_params'):
+                new_param = copy(param)
+                new_param['value'] = user_default_values.get(x['name'], {}).get(param['name'], param['value'])
+                param_object["params"].append(new_param)
+
+            out.append(param_object)
+
+    return out
 
 
 def get_default_service_list(srv_list=None, default_selection=None):
