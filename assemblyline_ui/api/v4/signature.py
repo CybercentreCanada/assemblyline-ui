@@ -4,10 +4,12 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
+from assemblyline.odm.messages.changes import Operation
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
+from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, STORAGE
 
@@ -19,6 +21,13 @@ signature_api = make_subapi_blueprint(SUB_API, api_version=4)
 signature_api._doc = "Perform operations on signatures"
 
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
+
+event_sender = EventSender('changes.signatures',
+                           host=config.core.redis.nonpersistent.host,
+                           port=config.core.redis.nonpersistent.port)
+service_event_sender = EventSender('changes.services',
+                                   host=config.core.redis.nonpersistent.host,
+                                   port=config.core.redis.nonpersistent.port)
 
 
 def _reset_service_updates(signature_type):
@@ -103,7 +112,16 @@ def add_update_signature(**_):
         data['stats'] = old['stats']
 
     # Save the signature
-    return make_api_response({"success": STORAGE.signature.save(key, data), "id": key})
+    success = STORAGE.signature.save(key, data)
+    if success:
+        event_sender.send(data['type'], {
+            'signature_id': data['signature_id'],
+            'signature_type': data['type'],
+            'source': data['source'],
+            'operation': Operation.Modified if old else Operation.Added
+        })
+
+    return make_api_response({"success": success, "id": key})
 
 
 @signature_api.route("/add_update_many/", methods=["POST", "PUT"])
@@ -178,6 +196,14 @@ def add_update_many_signature(**_):
 
     if not plan.empty:
         res = STORAGE.signature.bulk(plan)
+
+        event_sender.send(sig_type, {
+            'signature_id': '*',
+            'signature_type': sig_type,
+            'source': source,
+            'operation': Operation.Modified
+        })
+
         return make_api_response({"success": len(res['items']), "errors": res['errors'], "skipped": skip_list})
 
     return make_api_response({"success": 0, "errors": [], "skipped": skip_list})
@@ -249,7 +275,13 @@ def add_signature_source(service, **_):
     _reset_service_updates(service)
 
     # Save the signature
-    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
+    success = STORAGE.service_delta.save(service, service_delta)
+    if success:
+        service_event_sender.send(data['name'], {
+            'operation': Operation.Modified,
+            'name': data['name']
+        })
+    return make_api_response({"success": success})
 
 
 # noinspection PyPep8Naming
@@ -318,7 +350,14 @@ def change_status(sid, status, **kwargs):
 
         _reset_service_updates(data['type'])
 
-        return make_api_response({"success": STORAGE.signature.update(sid, operations)})
+        success = STORAGE.signature.update(sid, operations)
+        event_sender.send(data['type'], {
+            'signature_id': sid,
+            'signature_type': data['type'],
+            'source': data['source'],
+            'operation': Operation.Modified
+        })
+        return make_api_response({"success": success})
     else:
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
@@ -351,6 +390,12 @@ def delete_signature(sid, **kwargs):
         ret_val = STORAGE.signature.delete(sid)
 
         _reset_service_updates(data['type'])
+        event_sender.send(data['type'], {
+            'signature_id': sid,
+            'signature_type': data['type'],
+            'source': data['source'],
+            'operation': Operation.Removed
+        })
         return make_api_response({"success": ret_val})
     else:
         return make_api_response("", f"Signature not found. ({sid})", 404)
@@ -415,6 +460,10 @@ def delete_signature_source(service, name, **_):
 
     _reset_service_updates(service)
 
+    service_event_sender.send(service, {
+        'operation': Operation.Modified,
+        'name': service
+    })
     return make_api_response({"success": success})
 
 
@@ -655,9 +704,13 @@ def update_signature_source(service, name, **_):
                                           operations=[("SET", "classification", class_norm)])
 
     _reset_service_updates(service)
-
     # Save the signature
-    return make_api_response({"success": STORAGE.service_delta.save(service, service_delta)})
+    success = STORAGE.service_delta.save(service, service_delta)
+    service_event_sender.send(service, {
+        'operation': Operation.Modified,
+        'name': service
+    })
+    return make_api_response({"success": success})
 
 
 @signature_api.route("/stats/", methods=["GET"])
