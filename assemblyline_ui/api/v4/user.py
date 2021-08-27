@@ -10,7 +10,7 @@ from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
 from assemblyline_ui.helper.search import list_all_fields
-from assemblyline_ui.helper.service import ui_to_submission_params
+from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
                                          save_user_settings)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
@@ -723,7 +723,9 @@ def set_user_settings(username, **_):
     }
     """
     try:
-        if save_user_settings(username, request.json):
+        data = request.json
+        data['service_spec'] = simplify_service_spec(data.get('service_spec', {}))
+        if save_user_settings(username, data):
             return make_api_response({"success": True})
         else:
             return make_api_response({"success": False}, "Failed to save user's settings", 500)
