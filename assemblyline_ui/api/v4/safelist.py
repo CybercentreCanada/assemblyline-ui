@@ -107,6 +107,9 @@ def add_or_update_hash(**kwargs):
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}
      ],
+     "signature": {               # Signature information  - Only used in signature mode
+       "name": "Avira.Eicar",         # Name of signature
+     },
      "tag": {                     # Tag information  - Only used in tag mode
          "type": "network.url",        # Type of tag
          "value": "google.ca"          # Value of the tag
@@ -139,9 +142,23 @@ def add_or_update_hash(**kwargs):
         data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
         data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
         data.pop('file', None)
+        data.pop('signature', None)
+
+    elif data['type'] == 'signature':
+        sig_data = data.get('signature', None)
+        if sig_data is None or 'name' not in sig_data:
+            return make_api_response(None, "Signature data not found", 400)
+
+        hashed_value = f"signature: {sig_data['name']}".encode('utf8')
+        data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
+        data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
+        data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
+        data.pop('tag', None)
+        data.pop('file', None)
 
     elif data['type'] == 'file':
         data.pop('tag', None)
+        data.pop('signature', None)
         data.setdefault('file', {})
 
     data['added'] = data['updated'] = now_as_iso()
@@ -227,6 +244,9 @@ def add_update_many_hashes(**_):
          "reason": ["We've seen this file many times and it leads to False positives"],
          "type": "user"}
       ],
+      "signature": {                # Signature information  - Only used in signature mode
+        "name": "Avira.Eicar",          # Name of signature
+      },
       "tag": {                      # Tag information  - Only used in tag mode
           "type": "network.url",        # Type of tag
           "value": "google.ca"          # Value of the tag
@@ -251,8 +271,13 @@ def add_update_many_hashes(**_):
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
         if hash_data['type'] == 'tag':
             hash_data.pop('file', None)
+            hash_data.pop('signature', None)
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
+            hash_data.pop('signature', None)
+        elif hash_data['type'] == 'signature':
+            hash_data.pop('tag', None)
+            hash_data.pop('file', None)
 
         # Find the hash used for the key
         key = hash_data['hashes'].get('sha256', hash_data['hashes'].get('sha1', hash_data['hashes'].get('md5', None)))
@@ -331,9 +356,12 @@ def check_hash_exists(qhash, **kwargs):
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}
      ],
+     "signature": {               # Signature information  - Only used in signature mode
+       "name": "Avira.Eicar",         # Name of signature
+     },
      "tag": {                     # Tag information  - Only used in tag mode
-         "type": "network.url",        # Type of tag
-         "value": "google.ca"          # Value of the tag
+         "type": "network.url",       # Type of tag
+         "value": "google.ca"         # Value of the tag
      },
      "type": "tag"                # Type of safelist hash (tag or file)
     }
