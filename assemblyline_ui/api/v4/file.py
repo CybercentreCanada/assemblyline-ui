@@ -516,7 +516,7 @@ def get_file_results(sha256, **kwargs):
 
                     # Process Signatures
                     for signature in sec['heuristic'].get('signature', []):
-                        sig = (signature['name'], h_type)
+                        sig = (signature['name'], h_type, signature.get('safe', False))
                         if sig not in output['signatures']:
                             output['signatures'].add(sig)
 
