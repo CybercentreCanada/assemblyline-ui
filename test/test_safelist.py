@@ -160,6 +160,54 @@ def test_safelist_add_tag(datastore, login_session):
     assert ds_sl == sl_data
 
 
+def test_safelist_add_signature(datastore, login_session):
+    _, session, host = login_session
+
+    sig_name = 'McAfee.Eicar'
+    hashed_value = f"signature: {sig_name}".encode('utf8')
+
+    # Generate a random safelist
+    sl_data = {
+        'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
+                   'sha1': hashlib.sha1(hashed_value).hexdigest(),
+                   'sha256': hashlib.sha256(hashed_value).hexdigest()},
+        'signature': {'name': sig_name},
+        'sources': [ADMIN_SOURCE],
+        'type': 'signature'
+    }
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/safelist/", method="PUT", data=json.dumps(sl_data))
+    assert resp['success']
+    assert resp['op'] == 'add'
+
+    # Load inserted data from DB
+    ds_sl = datastore.safelist.get(hashlib.sha256(hashed_value).hexdigest(), as_obj=False)
+
+    # Test dates
+    added = ds_sl.pop('added', None)
+    updated = ds_sl.pop('updated', None)
+    assert added == updated
+    assert added is not None and updated is not None
+
+    # Make sure file and signature are None
+    file = ds_sl.pop('file', {})
+    tag = ds_sl.pop('tag', None)
+    assert file is None
+    assert tag is None
+
+    # Test classification
+    classification = ds_sl.pop('classification', None)
+    assert classification is not None
+
+    # Test enabled
+    enabled = ds_sl.pop('enabled', None)
+    assert enabled
+
+    # Test rest
+    assert ds_sl == sl_data
+
+
 def test_safelist_add_invalid(datastore, login_session):
     _, session, host = login_session
 
@@ -202,7 +250,7 @@ def test_safelist_update(datastore, login_session):
 
     # Test rest
     assert {k: v for k, v in ds_sl.items()
-            if k not in ['added', 'updated', 'classification', 'enabled', 'tag']} == sl_data
+            if k not in ['added', 'updated', 'classification', 'enabled', 'tag', 'signature']} == sl_data
 
     u_data = {
         'classification': cl_eng.RESTRICTED,
