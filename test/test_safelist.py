@@ -92,9 +92,11 @@ def test_safelist_add_file(datastore, login_session):
     assert added == updated
     assert added is not None and updated is not None
 
-    # Make sure tag is none
-    tag = ds_sl.pop('tag', {})
+    # Make sure tag and signature are none
+    tag = ds_sl.pop('tag', None)
+    signature = ds_sl.pop('signature', None)
     assert tag is None
+    assert signature is None
 
     # Test classification
     classification = ds_sl.pop('classification', None)
@@ -140,9 +142,11 @@ def test_safelist_add_tag(datastore, login_session):
     assert added == updated
     assert added is not None and updated is not None
 
-    # Make sure file is none
+    # Make sure file and signature are None
     file = ds_sl.pop('file', {})
+    signature = ds_sl.pop('signature', None)
     assert file is None
+    assert signature is None
 
     # Test classification
     classification = ds_sl.pop('classification', None)
