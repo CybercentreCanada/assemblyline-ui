@@ -75,7 +75,6 @@ def test_safelist_add_file(datastore, login_session):
                  'size': random.randint(128, 4096),
                  'type': 'document/text'},
         'sources': [NSRL_SOURCE, ADMIN_SOURCE],
-        'signature': None,
         'type': 'file'
     }
 
@@ -126,7 +125,6 @@ def test_safelist_add_tag(datastore, login_session):
         'tag': {'type': tag_type,
                 'value': tag_value},
         'sources': [NSRL_SOURCE, ADMIN_SOURCE],
-        'signature': None,
         'type': 'tag'
     }
 
@@ -191,7 +189,6 @@ def test_safelist_update(datastore, login_session):
                  'size': random.randint(128, 4096),
                  'type': 'document/text'},
         'sources': [NSRL_SOURCE],
-        'signature': None,
         'type': 'file'
     }
 
