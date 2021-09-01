@@ -147,7 +147,7 @@ def load_user_settings(user):
 
         def_srv_list = settings.get('services', {}).get('selected', None)
 
-    settings['service_spec'] = get_default_service_spec(srv_list)
+    settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}))
     settings['services'] = get_default_service_list(srv_list, def_srv_list)
 
     # Normalize the user's classification
@@ -157,7 +157,6 @@ def load_user_settings(user):
 
 
 def save_user_settings(username, data):
-    data["service_spec"] = {}
     data["services"] = {'selected': simplify_services(data["services"])}
 
     return STORAGE.user_settings.save(username, data)
