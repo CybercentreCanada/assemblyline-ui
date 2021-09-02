@@ -76,7 +76,7 @@ class BasicLDAPWrapper(object):
         ret = CLASSIFICATION.UNRESTRICTED
         for group_dn in group_dn_list:
             if group_dn in self.classification_mappings:
-                ret = CLASSIFICATION.max_classification(ret, self.classification_mappings[group_dn])
+                ret = CLASSIFICATION.build_user_classification(ret, self.classification_mappings[group_dn])
 
         return ret
 
