@@ -1,5 +1,6 @@
 ARG branch=latest
-FROM cccs/assemblyline:$branch AS base
+ARG base=cccs/assemblyline
+FROM $base:$branch AS base
 # Switch to root to install common dependancies
 USER root
 RUN apt-get update && apt-get install -yy libldap-2.4-2 libsasl2-2 && rm -rf /var/lib/apt/lists/*
@@ -15,7 +16,8 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
 RUN touch /tmp/before-pip
-RUN pip install --no-cache-dir --user assemblyline-ui[socketio]==$version
+COPY setup.py dist* dist/
+RUN pip install --no-cache-dir -f dist --user assemblyline-ui[socketio]==$version
 
 # If this is a latest rather than stable build, try to push for unstable packages of base and core
 ARG branch=latest
