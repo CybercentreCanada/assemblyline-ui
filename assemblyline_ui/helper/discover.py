@@ -35,4 +35,5 @@ def get_apps_list():
         except Exception:
             logger.exception(f'Failed to get apps from discover URL: {config.ui.discover_url}')
 
+    apps['apps'] = sorted(apps['apps'], key=lambda k: k['name'])
     return apps
