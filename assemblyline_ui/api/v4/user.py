@@ -8,7 +8,7 @@ from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
@@ -48,10 +48,23 @@ def who_am_i(**kwargs):
        "auth": {                                  # Authentication Configuration
          "allow_2fa": True,                         # Is 2fa Allowed for the user
          "allow_apikeys": True,                     # Are APIKeys allowed for the user
+         "allow_extended_apikeys": True,            # Allow user to generate extended access API Keys
          "allow_security_tokens": True,             # Are Security tokens allowed for the user
+       },
+       "submission": {                            # Submission Configuration
+         "dtl": 10,                                 # Default number of days submission stay in the system
+         "max_dtl": 30,                             # Maximum number of days submission stay in the system
+       },
+       "system": {                                # System Configuration
+         "organisation": "ACME",                    # Organisation name
+         "type": "production",                      # Type of deployment
+         "version": "4.1"                           # Assemblyline version
        },
        "ui": {                                    # UI Configuration
          "allow_url_submissions": True,             # Are URL submissions allowed
+         "apps": [],                                # List of apps shown in the apps switcher
+         "banner": None,                            # Banner displayed on the submit page
+         "banner_level": True,                      # Banner color (info, success, warning, error)
          "read_only": False,                        # Is the interface to be displayed in read-only mode
          "tos": True,                               # Are terms of service set in the system
          "tos_lockout": False,                      # Will agreeing to TOS lockout the user
@@ -97,9 +110,12 @@ def who_am_i(**kwargs):
         "ui": {
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,
             "allow_url_submissions": config.ui.allow_url_submissions,
+            "apps": [x for x in APPS_LIST['apps']
+                     if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                     x['classification'] or CLASSIFICATION.UNRESTRICTED,
+                                                     ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
-            "discover_url": config.ui.discover_url,
             "read_only": config.ui.read_only,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
