@@ -112,7 +112,8 @@ def who_am_i(**kwargs):
             "allow_url_submissions": config.ui.allow_url_submissions,
             "apps": [x for x in APPS_LIST['apps']
                      if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                     x['classification'] or CLASSIFICATION.UNRESTRICTED)],
+                                                     x['classification'] or CLASSIFICATION.UNRESTRICTED,
+                                                     ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
             "read_only": config.ui.read_only,
