@@ -8,7 +8,7 @@ from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
@@ -97,9 +97,11 @@ def who_am_i(**kwargs):
         "ui": {
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,
             "allow_url_submissions": config.ui.allow_url_submissions,
+            "apps": [x for x in APPS_LIST['apps']
+                     if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                     x['classification'] or CLASSIFICATION.UNRESTRICTED)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
-            "discover_url": config.ui.discover_url,
             "read_only": config.ui.read_only,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,

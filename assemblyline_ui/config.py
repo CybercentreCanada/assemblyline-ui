@@ -9,6 +9,7 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
+from assemblyline_ui.helper.discover import get_apps_list
 
 config = forge.get_config()
 
@@ -140,6 +141,7 @@ LOGGER.debug('Logger ready!')
 
 #################################################################
 # Global instances
+APPS_LIST = forge.CachedObject(get_apps_list, refresh=3600)
 STORAGE = forge.get_datastore(archive_access=True)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 # End global
