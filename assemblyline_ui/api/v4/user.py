@@ -48,10 +48,23 @@ def who_am_i(**kwargs):
        "auth": {                                  # Authentication Configuration
          "allow_2fa": True,                         # Is 2fa Allowed for the user
          "allow_apikeys": True,                     # Are APIKeys allowed for the user
+         "allow_extended_apikeys": True,            # Allow user to generate extended access API Keys
          "allow_security_tokens": True,             # Are Security tokens allowed for the user
+       },
+       "submission": {                            # Submission Configuration
+         "dtl": 10,                                 # Default number of days submission stay in the system
+         "max_dtl": 30,                             # Maximum number of days submission stay in the system
+       },
+       "system": {                                # System Configuration
+         "organisation": "ACME",                    # Organisation name
+         "type": "production",                      # Type of deployment
+         "version": "4.1"                           # Assemblyline version
        },
        "ui": {                                    # UI Configuration
          "allow_url_submissions": True,             # Are URL submissions allowed
+         "apps": [],                                # List of apps shown in the apps switcher
+         "banner": None,                            # Banner displayed on the submit page
+         "banner_level": True,                      # Banner color (info, success, warning, error)
          "read_only": False,                        # Is the interface to be displayed in read-only mode
          "tos": True,                               # Are terms of service set in the system
          "tos_lockout": False,                      # Will agreeing to TOS lockout the user
