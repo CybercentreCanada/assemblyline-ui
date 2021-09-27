@@ -1,3 +1,5 @@
+import re
+
 from flask import request
 from hashlib import sha256
 
@@ -219,7 +221,7 @@ def add_signature_source(service, **_):
                                  status_code=400)
 
     # Ensure data source doesn't have spaces in name
-    data['name'] = data['name'].replace(" ", "_")
+    data['name'] = re.sub('[^0-9a-zA-Z_]+', '', data['name'].replace(" ", "_"))
 
     # Ensure private_key (if any) ends with a \n
     if data.get('private_key', None) and not data['private_key'].endswith("\n"):
@@ -356,7 +358,7 @@ def delete_signature(sid, **kwargs):
         return make_api_response("", f"Signature not found. ({sid})", 404)
 
 
-@signature_api.route("/sources/<service>/<name>/", methods=["DELETE"])
+@signature_api.route("/sources/<service>/<path:name>/", methods=["DELETE"])
 @api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
 def delete_signature_source(service, name, **_):
     """
