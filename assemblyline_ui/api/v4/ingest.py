@@ -8,7 +8,7 @@ from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import TEMP_SUBMIT_DIR, STORAGE, config
+from assemblyline_ui.config import CLASSIFICATION, TEMP_SUBMIT_DIR, STORAGE, config
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
@@ -243,7 +243,7 @@ def ingest_single_file(**kwargs):
                 binary.save(out_file)
 
             if os.path.getsize(out_file) == 0:
-                return make_api_response("", err="File empty. Ingestion failed", status_code=400)
+                return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
             # Load default user params
             s_params = ui_to_submission_params(load_user_settings(user))
@@ -284,9 +284,9 @@ def ingest_single_file(**kwargs):
             # Validate file size
             if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
                 msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
-                return make_api_response("", err=msg, status_code=413)
+                return make_api_response({}, err=msg, status_code=413)
             elif fileinfo['size'] == 0:
-                return make_api_response("", err="File empty. Ingestion failed", status_code=400)
+                return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
             # Decode cart if needed
             extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
@@ -296,6 +296,11 @@ def ingest_single_file(**kwargs):
             # Alter filename and classification based on CaRT output
             s_params['classification'] = al_meta.pop('classification', s_params['classification'])
             name = al_meta.pop('name', name)
+
+            # Validate ingest classification
+            if not CLASSIFICATION.is_accessible(user['classification'], s_params['classification']):
+                return make_api_response({}, "You cannot start a submission with higher "
+                                             "classification then you're allowed to see", 400)
 
             # Save the file to the filestore if needs be
             sha256 = fileinfo['sha256']
@@ -338,7 +343,7 @@ def ingest_single_file(**kwargs):
                     "params": s_params
                 })
             except (ValueError, KeyError) as e:
-                return make_api_response("", err=str(e), status_code=400)
+                return make_api_response({}, err=str(e), status_code=400)
 
             # Send submission object for processing
             ingest.push(submission_obj.as_primitives())
