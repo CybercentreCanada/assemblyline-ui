@@ -2,7 +2,7 @@ import logging
 import os
 import functools
 
-from assemblyline.common import version
+from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
 from assemblyline.remote.datatypes.hash import Hash
@@ -29,10 +29,7 @@ DOWNLOAD_ENCODING = config.ui.download_encoding
 MAX_CLASSIFICATION = CLASSIFICATION.UNRESTRICTED
 ORGANISATION = config.system.organisation
 SYSTEM_TYPE = config.system.type
-
-BUILD_MASTER = version.FRAMEWORK_VERSION
-BUILD_LOWER = version.SYSTEM_VERSION
-BUILD_NO = version.BUILD_MINOR
+VERSION = os.environ.get('ASSEMBLYLINE_VERSION', f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.dev0")
 
 BUNDLING_DIR = "/var/lib/assemblyline/bundling"
 
