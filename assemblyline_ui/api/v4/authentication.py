@@ -5,6 +5,7 @@ import pyqrcode
 import re
 
 from authlib.integrations.requests_client import OAuth2Session
+from authlib.integrations.base_client import OAuthError
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from io import BytesIO
@@ -576,14 +577,13 @@ def oauth_validate(**_):
                         return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
                                                  status_code=403)
 
-            except Exception as err:
-                if hasattr(err, 'description'):
-                    return make_api_response({"err_code": 1, "exception": str(err)},
-                                             err=err.description,
-                                             status_code=401)
+            except OAuthError as err:
+                return make_api_response({"err_code": 1}, err=str(err), status_code=401)
 
+            except Exception as err:
+                LOGGER.exception(str(err))
                 return make_api_response({"err_code": 1, "exception": str(err)},
-                                         err=request.args.get('error_description', "Invalid oAuth2 token, try again"),
+                                         err="Unhandled exception occured while processing oAuth token",
                                          status_code=401)
 
     if username is None:
@@ -654,7 +654,8 @@ def reset_pwd(**_):
                     STORAGE.user.save(user.uname, user)
                     return make_api_response({"success": True})
 
-        except Exception:
+        except Exception as e:
+            LOGGER.warning(f"Failed to reset the user's password: {str(e)}")
             pass
 
     return make_api_response({"success": False}, err="Invalid parameters passed", status_code=400)
