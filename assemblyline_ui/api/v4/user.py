@@ -4,11 +4,10 @@ from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
-from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, config
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
@@ -105,7 +104,7 @@ def who_am_i(**kwargs):
         "system": {
             "organisation": config.system.organisation,
             "type": config.system.type,
-            "version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}"
+            "version": VERSION
         },
         "ui": {
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,

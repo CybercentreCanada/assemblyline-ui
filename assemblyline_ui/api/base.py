@@ -10,7 +10,7 @@ from traceback import format_tb
 
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
-from assemblyline_ui.config import BUILD_LOWER, BUILD_MASTER, BUILD_NO, LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY
+from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
@@ -209,7 +209,7 @@ def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
 
     resp = make_response(jsonify({"api_response": data,
                                   "api_error_message": err,
-                                  "api_server_version": "%s.%s.%s" % (BUILD_MASTER, BUILD_LOWER, BUILD_NO),
+                                  "api_server_version": VERSION,
                                   "api_status_code": status_code}),
                          status_code)
 

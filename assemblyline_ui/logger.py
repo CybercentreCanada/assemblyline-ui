@@ -1,5 +1,5 @@
 from flask import request
-from assemblyline_ui.config import BUILD_NO
+from assemblyline_ui.config import VERSION
 
 
 def get_traceback_info(tb):
@@ -67,7 +67,7 @@ def log_with_traceback(log, traceback, msg, is_exception=False):
                                                                tb_user['classification'],
                                                                msg,
                                                                tb_file, tb_function,
-                                                               tb_line_no, BUILD_NO, request.path, args)
+                                                               tb_line_no, VERSION, request.path, args)
             if is_exception:
                 log.exception(message)
             else:
