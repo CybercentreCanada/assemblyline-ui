@@ -81,12 +81,16 @@ def parse_profile(profile, provider):
                 access = auto_prop.value != "True"
 
             # Get values for field
-            field_data = profile.get(auto_prop.field, "")
+            field_data = profile.get(auto_prop.field, None)
             if not isinstance(field_data, list):
                 field_data = [field_data]
 
             # Analyse field values
             for value in field_data:
+                # If there is no value, no need to do any tests
+                if value is None:
+                    continue
+
                 # Check access
                 if auto_prop.type == "access":
                     if re.match(auto_prop.pattern, value) is not None:
