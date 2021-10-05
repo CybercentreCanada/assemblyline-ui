@@ -112,7 +112,8 @@ def add_service(**_):
             tmp_service.pop('file_required', None)
             tmp_service.pop('heuristics', [])
             tmp_service['update_channel'] = config.services.preferred_update_channel
-            image_name, tag_name, _ = get_latest_tag_for_service(Service(tmp_service), config, LOGGER)
+            _, tag_name, _ = get_latest_tag_for_service(Service(tmp_service), config, LOGGER)
+            enable_allowed = bool(tag_name)
             if tag_name:
                 tag_name = tag_name.encode()
             else:
@@ -138,6 +139,7 @@ def add_service(**_):
 
         # Fix update_channel with the system default
         service['update_channel'] = config.services.preferred_update_channel
+        service['enabled'] = service['enabled'] and enable_allowed
 
         # Load service info
         service = Service(service)
@@ -154,7 +156,7 @@ def add_service(**_):
         if not STORAGE.service_delta.get_if_exists(service.name):
             STORAGE.service_delta.save(service.name, {'version': service.version})
             STORAGE.service_delta.commit()
-        
+
         # Notify components watching for service config changes
         event_sender.send(service.name, {
             'operation': Operation.Added,
