@@ -1,3 +1,4 @@
+import base64
 import concurrent.futures
 import os
 import re
@@ -259,6 +260,48 @@ def get_file_hex(sha256, **kwargs):
             return make_api_response({}, "This file was not found in the system.", 404)
 
         return make_api_response(hexdump(data))
+    else:
+        return make_api_response({}, "You are not allowed to view this file.", 403)
+
+
+@file_api.route("/image/<sha256>/", methods=["GET"])
+@api_login(required_priv=['R'])
+def get_file_image_datastream(sha256, **kwargs):
+    """
+    Returns the image file as a datastream
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/image/123456...654321/
+
+    Result example:
+    data:image/png;base64,...
+    """
+    user = kwargs['user']
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    if not file_obj.get('is_section_image', False) or not file_obj['type'].startswith("image/"):
+        return make_api_response({}, "This file is not allowed to be downloaded as a datastream.", 403)
+
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+        with forge.get_filestore() as f_transport:
+            data = f_transport.get(sha256)
+
+        if not data:
+            return make_api_response({}, "This file was not found in the system.", 404)
+
+        return make_api_response(f"data:{file_obj['type']};base64,{base64.b64encode(data).decode()}")
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
