@@ -98,7 +98,7 @@ def add_service(**_):
     { "success": true }  # Return true is the service was added
     """
     data = request.data
-
+    enable_allowed = True
     try:
         if b"$SERVICE_TAG" in data:
             tmp_service = yaml.safe_load(data)
