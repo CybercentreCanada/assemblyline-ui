@@ -6,8 +6,8 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
-from assemblyline.odm.models.service import SIGNATURE_DELIMITERS
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
+from assemblyline.odm.models.service import SIGNATURE_DELIMITERS
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
