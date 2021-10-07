@@ -51,7 +51,7 @@ def _get_signature_delimiters():
 def _get_signature_delimiter(update_config):
     delimiter_type = update_config['signature_delimiter']
     if delimiter_type == 'custom':
-        delimiter = update_config['signature_delimiter']['custom_delimiter']
+        delimiter = update_config['custom_delimiter'].encode().decode('unicode-escape')
     else:
         delimiter = SIGNATURE_DELIMITERS.get(delimiter_type, '\n\n')
     return {'type': delimiter_type, 'delimiter': delimiter}
