@@ -6,6 +6,7 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
+from assemblyline.odm.models.service import SIGNATURE_DELIMITERS
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
@@ -21,7 +22,6 @@ signature_api = make_subapi_blueprint(SUB_API, api_version=4)
 signature_api._doc = "Perform operations on signatures"
 
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
-DEFAULT_SEPARATOR = "\n\n"
 
 
 def _reset_service_updates(signature_type):
@@ -38,6 +38,27 @@ def _reset_service_updates(signature_type):
             update_data['previous_update'] = now_as_iso(-10 ** 10)
             service_updates.set(svc, update_data)
             break
+
+
+def _get_signature_delimiters():
+    signature_delimiters = {}
+    for service in SERVICE_LIST:
+        if service.get("update_config", {}).get("generates_signatures", False):
+            signature_delimiters[service['name'].lower()] = _get_signature_delimiter(service['update_config'])
+    return signature_delimiters
+
+
+def _get_signature_delimiter(update_config):
+    delimiter_type = update_config['signature_delimiter']
+    if delimiter_type == 'custom':
+        delimiter = update_config['signature_delimiter']['custom_delimiter']
+    else:
+        delimiter = SIGNATURE_DELIMITERS.get(delimiter_type, '\n\n')
+    return {'type': delimiter_type, 'delimiter': delimiter}
+
+
+DEFAULT_DELIMITER = "\n\n"
+DELIMITERS = forge.CachedObject(_get_signature_delimiters)
 
 
 @signature_api.route("/add_update/", methods=["POST", "PUT"])
@@ -474,12 +495,6 @@ def download_signatures(**kwargs):
             if response:
                 return response
 
-            separators = {}
-            for service in SERVICE_LIST:
-                if service.get("update_config", {}).get("generates_signatures", False):
-                    for source in service['update_config']['sources']:
-                        separators[f"{service['name']}/{source['name']}"] = source.get('separator', DEFAULT_SEPARATOR)
-
             output_files = {}
 
             keys = [k['id']
@@ -489,14 +504,14 @@ def download_signatures(**kwargs):
 
             for sig in signature_list:
                 out_fname = f"{sig['type']}/{sig['source']}"
-                if separators.get(out_fname, DEFAULT_SEPARATOR) is None:
-                    out_fname = f"{out_fname}/{sig['id']}"
+                if DELIMITERS.get(sig['type'], {}).get('type', None) == 'file':
+                    out_fname = f"{out_fname}/{sig['signature_id']}"
                 output_files.setdefault(out_fname, [])
                 output_files[out_fname].append(sig['data'])
 
             output_zip = InMemoryZip()
             for fname, data in output_files.items():
-                separator = separators.get(fname, DEFAULT_SEPARATOR)
+                separator = DELIMITERS.get(fname.split('/')[0], {}).get('delimiter', DEFAULT_DELIMITER)
                 output_zip.append(fname, separator.join(data))
 
             rule_file_bin = output_zip.read()
