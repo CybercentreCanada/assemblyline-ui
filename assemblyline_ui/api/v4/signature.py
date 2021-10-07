@@ -11,7 +11,7 @@ from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, STORAGE
+from assemblyline_ui.config import LOGGER, SERVICE_LIST, STORAGE
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -21,6 +21,7 @@ signature_api = make_subapi_blueprint(SUB_API, api_version=4)
 signature_api._doc = "Perform operations on signatures"
 
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
+DEFAULT_SEPARATOR = "\n\n"
 
 
 def _reset_service_updates(signature_type):
@@ -473,6 +474,12 @@ def download_signatures(**kwargs):
             if response:
                 return response
 
+            separators = {}
+            for service in SERVICE_LIST:
+                if service.get("update_config", {}).get("generates_signatures", False):
+                    for source in service['update_config']['sources']:
+                        separators[f"{service['name']}/{source['name']}"] = source.get('separator', DEFAULT_SEPARATOR)
+
             output_files = {}
 
             keys = [k['id']
@@ -482,12 +489,15 @@ def download_signatures(**kwargs):
 
             for sig in signature_list:
                 out_fname = f"{sig['type']}/{sig['source']}"
+                if separators.get(out_fname, DEFAULT_SEPARATOR) is None:
+                    out_fname = f"{out_fname}/{sig['id']}"
                 output_files.setdefault(out_fname, [])
                 output_files[out_fname].append(sig['data'])
 
             output_zip = InMemoryZip()
             for fname, data in output_files.items():
-                output_zip.append(fname, "\n\n".join(data))
+                separator = separators.get(fname, DEFAULT_SEPARATOR)
+                output_zip.append(fname, separator.join(data))
 
             rule_file_bin = output_zip.read()
 
