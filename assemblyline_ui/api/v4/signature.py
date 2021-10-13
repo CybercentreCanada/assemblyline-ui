@@ -7,11 +7,12 @@ from assemblyline.common import forge
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.common.memory_zip import InMemoryZip
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
+from assemblyline.odm.models.service import SIGNATURE_DELIMITERS
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, STORAGE
+from assemblyline_ui.config import LOGGER, SERVICE_LIST, STORAGE
 
 Classification = forge.get_classification()
 config = forge.get_config()
@@ -37,6 +38,27 @@ def _reset_service_updates(signature_type):
             update_data['previous_update'] = now_as_iso(-10 ** 10)
             service_updates.set(svc, update_data)
             break
+
+
+def _get_signature_delimiters():
+    signature_delimiters = {}
+    for service in SERVICE_LIST:
+        if service.get("update_config", {}).get("generates_signatures", False):
+            signature_delimiters[service['name'].lower()] = _get_signature_delimiter(service['update_config'])
+    return signature_delimiters
+
+
+def _get_signature_delimiter(update_config):
+    delimiter_type = update_config['signature_delimiter']
+    if delimiter_type == 'custom':
+        delimiter = update_config['custom_delimiter'].encode().decode('unicode-escape')
+    else:
+        delimiter = SIGNATURE_DELIMITERS.get(delimiter_type, '\n\n')
+    return {'type': delimiter_type, 'delimiter': delimiter}
+
+
+DEFAULT_DELIMITER = "\n\n"
+DELIMITERS = forge.CachedObject(_get_signature_delimiters)
 
 
 @signature_api.route("/add_update/", methods=["POST", "PUT"])
@@ -482,12 +504,15 @@ def download_signatures(**kwargs):
 
             for sig in signature_list:
                 out_fname = f"{sig['type']}/{sig['source']}"
+                if DELIMITERS.get(sig['type'], {}).get('type', None) == 'file':
+                    out_fname = f"{out_fname}/{sig['signature_id']}"
                 output_files.setdefault(out_fname, [])
                 output_files[out_fname].append(sig['data'])
 
             output_zip = InMemoryZip()
             for fname, data in output_files.items():
-                output_zip.append(fname, "\n\n".join(data))
+                separator = DELIMITERS.get(fname.split('/')[0], {}).get('delimiter', DEFAULT_DELIMITER)
+                output_zip.append(fname, separator.join(data))
 
             rule_file_bin = output_zip.read()
 
