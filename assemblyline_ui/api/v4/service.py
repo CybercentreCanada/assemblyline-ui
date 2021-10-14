@@ -6,7 +6,9 @@ from assemblyline.common import forge
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
+from assemblyline.odm.messages.changes import Operation
 from assemblyline.remote.datatypes import get_client
+from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
@@ -31,6 +33,10 @@ service_update = Hash('container-update', get_client(
     port=config.core.redis.persistent.port,
     private=False,
 ))
+
+event_sender = EventSender('changes.services',
+                           host=config.core.redis.nonpersistent.host,
+                           port=config.core.redis.nonpersistent.port)
 
 
 def check_private_keys(source_list):
@@ -150,6 +156,12 @@ def add_service(**_):
         if not STORAGE.service_delta.get_if_exists(service.name):
             STORAGE.service_delta.save(service.name, {'version': service.version})
             STORAGE.service_delta.commit()
+        
+        # Notify components watching for service config changes
+        event_sender.send(service.name, {
+            'operation': Operation.Added,
+            'name': service.name
+        })
 
         new_heuristics = []
         if heuristics:
@@ -259,6 +271,12 @@ def restore(**_):
             for v_id, v_data in service['versions'].items():
                 STORAGE.service.save(v_id, v_data)
             STORAGE.service_delta.save(service_name, service['config'])
+
+            # Notify components watching for service config changes
+            event_sender.send(service_name, {
+                'operation': Operation.Added if old_service else Operation.Removed,
+                'name': service_name
+            })
 
             # Grab the new value for the service
             new_service = STORAGE.get_service_with_delta(service_name, as_obj=False)
@@ -496,6 +514,13 @@ def remove_service(servicename, **_):
         if not STORAGE.service.delete_by_query(f"id:{servicename}*"):
             success = False
         STORAGE.heuristic.delete_by_query(f"{servicename.upper()}*")
+
+        # Notify components watching for service config changes
+        event_sender.send(servicename, {
+            'operation': Operation.Removed,
+            'name': servicename
+        })
+
         return make_api_response({"success": success})
     else:
         return make_api_response({"success": False},
@@ -572,7 +597,16 @@ def set_service(servicename, **_):
         c_srcs = STORAGE.get_service_with_delta(servicename, as_obj=False).get('update_config', {}).get('sources', [])
         removed_sources = synchronize_sources(servicename, c_srcs, delta["update_config"]["sources"])
 
-    return make_api_response({"success": STORAGE.service_delta.save(servicename, delta),
+    # Notify components watching for service config changes
+    success = STORAGE.service_delta.save(servicename, delta)
+
+    if success:
+        event_sender.send(servicename, {
+            'operation': Operation.Modified,
+            'name': servicename
+        })
+
+    return make_api_response({"success": success,
                               "removed_sources": removed_sources})
 
 
@@ -607,6 +641,10 @@ def update_service(**_):
         operations = [(STORAGE.service_delta.UPDATE_SET, 'version',
                        data['update_data']['latest_tag'].replace('stable', ''))]
         if STORAGE.service_delta.update(data['name'], operations):
+            event_sender.send(data['name'], {
+                'operation': Operation.Modified,
+                'name': data['name']
+            })
             return make_api_response({'success': True, 'status': "updated"})
 
     service_update.set(data['name'], data['update_data'])

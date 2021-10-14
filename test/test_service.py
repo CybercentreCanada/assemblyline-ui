@@ -36,12 +36,6 @@ def suricata_init_config(datastore, login_session):
         },
         "update_config": {
             "generates_signatures": True,
-            "method": "run",
-            "run_options": {
-                "allow_internet_access": True,
-                "command": ["python", "-m", "suricata_.suricata_updater"],
-                "image": "${REGISTRY}cccs/assemblyline-service-suricata:4.0.0.dev69"
-            },
             "sources": [
                 {
                     "name": "old",
