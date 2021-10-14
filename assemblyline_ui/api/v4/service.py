@@ -586,7 +586,7 @@ def set_service(servicename, **_):
 
     # Do not allow user to edit the docker_config.image since we will use the default image for each versions
     data['docker_config']['image'] = current_service['docker_config']['image']
-    delta = get_recursive_delta(current_service, data)
+    delta = get_recursive_delta(current_service, data, stop_keys=['config'])
     delta['version'] = version
 
     removed_sources = {}
