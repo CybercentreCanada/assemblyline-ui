@@ -156,7 +156,7 @@ def add_service(**_):
         if not STORAGE.service_delta.get_if_exists(service.name):
             STORAGE.service_delta.save(service.name, {'version': service.version})
             STORAGE.service_delta.commit()
-        
+
         # Notify components watching for service config changes
         event_sender.send(service.name, {
             'operation': Operation.Added,
@@ -513,7 +513,8 @@ def remove_service(servicename, **_):
             success = False
         if not STORAGE.service.delete_by_query(f"id:{servicename}*"):
             success = False
-        STORAGE.heuristic.delete_by_query(f"{servicename.upper()}*")
+        STORAGE.heuristic.delete_by_query(f"id:{servicename.upper()}*")
+        STORAGE.signature.delete_by_query(f"type:{servicename.lower()}*")
 
         # Notify components watching for service config changes
         event_sender.send(servicename, {
