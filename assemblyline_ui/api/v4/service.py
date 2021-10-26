@@ -166,7 +166,7 @@ def add_service(**_):
         new_heuristics = []
         if heuristics:
             plan = STORAGE.heuristic.get_bulk_plan()
-            for index, heuristic in enumerate(heuristics):
+            for _, heuristic in enumerate(heuristics):
                 try:
                     # Append service name to heuristic ID
                     heuristic['heur_id'] = f"{service.name.upper()}.{str(heuristic['heur_id'])}"
