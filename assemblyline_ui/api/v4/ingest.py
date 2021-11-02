@@ -225,7 +225,7 @@ def ingest_single_file(**kwargs):
             if sha256:
                 if FILESTORE.exists(sha256):
                     # Try to get file info from the DB instead of re-computing it
-                    fileinfo = STORAGE.file.get(sha256, as_obj=False)
+                    fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
                     if not fileinfo:
                         # Could not find the file info in the DB, we will re-compute it
                         FILESTORE.download(sha256, out_file)
