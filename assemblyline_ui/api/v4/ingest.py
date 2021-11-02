@@ -214,12 +214,24 @@ def ingest_single_file(**kwargs):
             pass
         original_file = out_file = os.path.join(out_dir, name)
 
-        # Load file
+        # Prepare variables
         extra_meta = {}
+        fileinfo = None
+        do_upload = True
+        al_meta = {}
+
+        # Load file
         if not binary:
             if sha256:
                 if FILESTORE.exists(sha256):
-                    FILESTORE.download(sha256, out_file)
+                    # Try to get file info from the DB instead of re-computing it
+                    fileinfo = STORAGE.file.get(sha256, as_obj=False)
+                    if not fileinfo:
+                        # Could not find the file info in the DB, we will re-compute it
+                        FILESTORE.download(sha256, out_file)
+                    else:
+                        # File is in storage and the DB no need to upload anymore
+                        do_upload = False
                 else:
                     return make_api_response({}, "SHA256 does not exist in our datastore", 404)
             else:
@@ -241,7 +253,7 @@ def ingest_single_file(**kwargs):
         else:
             binary.save(out_file)
 
-        if os.path.getsize(out_file) == 0:
+        if do_upload and os.path.getsize(out_file) == 0:
             return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
         # Load default user params
@@ -277,20 +289,22 @@ def ingest_single_file(**kwargs):
                 int(s_params['ttl']),
                 config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
 
-        # Calculate file digest
-        fileinfo = identify.fileinfo(out_file)
+        # No need to re-calculate fileinfo if we have it already
+        if not fileinfo:
+            # Calculate file digest
+            fileinfo = identify.fileinfo(out_file)
 
-        # Validate file size
-        if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
-            msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
-            return make_api_response({}, err=msg, status_code=413)
-        elif fileinfo['size'] == 0:
-            return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
+            # Validate file size
+            if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
+                msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
+                return make_api_response({}, err=msg, status_code=413)
+            elif fileinfo['size'] == 0:
+                return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
-        # Decode cart if needed
-        extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
-        if extracted_path:
-            out_file = extracted_path
+            # Decode cart if needed
+            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
+            if extracted_path:
+                out_file = extracted_path
 
         # Alter filename and classification based on CaRT output
         s_params['classification'] = al_meta.pop('classification', s_params['classification'])
@@ -302,9 +316,9 @@ def ingest_single_file(**kwargs):
                                      "classification then you're allowed to see", 400)
 
         # Save the file to the filestore if needs be
-        sha256 = fileinfo['sha256']
-        if not FILESTORE.exists(sha256):
-            FILESTORE.upload(out_file, sha256, location='far')
+        # also no need to test if exist before upload because it already does that
+        if do_upload:
+            FILESTORE.upload(out_file, fileinfo['sha256'], location='far')
 
         # Freshen file object
         expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
@@ -336,7 +350,7 @@ def ingest_single_file(**kwargs):
         try:
             submission_obj = Submission({
                 "sid": ingest_id,
-                "files": [{'name': name, 'sha256': sha256, 'size': fileinfo['size']}],
+                "files": [{'name': name, 'sha256': fileinfo['sha256'], 'size': fileinfo['size']}],
                 "notification": notification_params,
                 "metadata": metadata,
                 "params": s_params
