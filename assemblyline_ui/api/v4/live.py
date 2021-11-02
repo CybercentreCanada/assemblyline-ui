@@ -6,7 +6,6 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_core.dispatching.client import DispatchClient
 
 Classification = forge.get_classification()
-config = forge.get_config()
 
 SUB_API = 'live'
 live_api = make_subapi_blueprint(SUB_API, api_version=4)

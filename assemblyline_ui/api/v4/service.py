@@ -13,10 +13,9 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.signature import _reset_service_updates
-from assemblyline_ui.config import LOGGER, STORAGE
+from assemblyline_ui.config import LOGGER, STORAGE, config
 
 Classification = forge.get_classification()
-config = forge.get_config()
 
 SUB_API = 'service'
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
