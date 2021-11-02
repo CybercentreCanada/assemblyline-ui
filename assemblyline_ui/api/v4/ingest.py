@@ -8,12 +8,12 @@ from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, TEMP_SUBMIT_DIR, STORAGE, config
+from assemblyline_ui.config import CLASSIFICATION, TEMP_SUBMIT_DIR, STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.common import forge, identify
+from assemblyline.common import identify
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -166,207 +166,206 @@ def ingest_single_file(**kwargs):
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
     extracted_path = original_file = None
-    with forge.get_filestore() as f_transport:
+    try:
+        # Get data block and binary blob
+        if 'multipart/form-data' in request.content_type:
+            if 'json' in request.values:
+                data = json.loads(request.values['json'])
+            else:
+                data = {}
+            binary = request.files['bin']
+            name = data.get("name", binary.filename)
+            sha256 = None
+            url = None
+        elif 'application/json' in request.content_type:
+            data = request.json
+            binary = None
+            sha256 = data.get('sha256', None)
+            url = data.get('url', None)
+            name = data.get("name", None) or sha256 or os.path.basename(url) or None
+        else:
+            return make_api_response({}, "Invalid content type", 400)
+
+        if not data:
+            return make_api_response({}, "Missing data block", 400)
+
+        # Get notification queue parameters
+        notification_queue = data.get('notification_queue', None)
+        notification_threshold = data.get('notification_threshold', None)
+        if not isinstance(notification_threshold, int) and notification_threshold:
+            return make_api_response({}, "notification_threshold should be and int", 400)
+
+        # Get generate alert parameter
+        generate_alert = data.get('generate_alert', False)
+        if not isinstance(generate_alert, bool):
+            return make_api_response({}, "generate_alert should be a boolean", 400)
+
+        # Get file name
+        if not name:
+            return make_api_response({}, "Filename missing", 400)
+
+        name = safe_str(os.path.basename(name))
+        if not name:
+            return make_api_response({}, "Invalid filename", 400)
+
         try:
-            # Get data block and binary blob
-            if 'multipart/form-data' in request.content_type:
-                if 'json' in request.values:
-                    data = json.loads(request.values['json'])
+            os.makedirs(out_dir)
+        except Exception:
+            pass
+        original_file = out_file = os.path.join(out_dir, name)
+
+        # Load file
+        extra_meta = {}
+        if not binary:
+            if sha256:
+                if FILESTORE.exists(sha256):
+                    FILESTORE.download(sha256, out_file)
                 else:
-                    data = {}
-                binary = request.files['bin']
-                name = data.get("name", binary.filename)
-                sha256 = None
-                url = None
-            elif 'application/json' in request.content_type:
-                data = request.json
-                binary = None
-                sha256 = data.get('sha256', None)
-                url = data.get('url', None)
-                name = data.get("name", None) or sha256 or os.path.basename(url) or None
+                    return make_api_response({}, "SHA256 does not exist in our datastore", 404)
             else:
-                return make_api_response({}, "Invalid content type", 400)
+                if url:
+                    if not config.ui.allow_url_submissions:
+                        return make_api_response({}, "URL submissions are disabled in this system", 400)
 
-            if not data:
-                return make_api_response({}, "Missing data block", 400)
-
-            # Get notification queue parameters
-            notification_queue = data.get('notification_queue', None)
-            notification_threshold = data.get('notification_threshold', None)
-            if not isinstance(notification_threshold, int) and notification_threshold:
-                return make_api_response({}, "notification_threshold should be and int", 400)
-
-            # Get generate alert parameter
-            generate_alert = data.get('generate_alert', False)
-            if not isinstance(generate_alert, bool):
-                return make_api_response({}, "generate_alert should be a boolean", 400)
-
-            # Get file name
-            if not name:
-                return make_api_response({}, "Filename missing", 400)
-
-            name = safe_str(os.path.basename(name))
-            if not name:
-                return make_api_response({}, "Invalid filename", 400)
-
-            try:
-                os.makedirs(out_dir)
-            except Exception:
-                pass
-            original_file = out_file = os.path.join(out_dir, name)
-
-            # Load file
-            extra_meta = {}
-            if not binary:
-                if sha256:
-                    if f_transport.exists(sha256):
-                        f_transport.download(sha256, out_file)
-                    else:
-                        return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+                    try:
+                        safe_download(url, out_file)
+                        extra_meta['submitted_url'] = url
+                    except FileTooBigException:
+                        return make_api_response({}, "File too big to be scanned.", 400)
+                    except InvalidUrlException:
+                        return make_api_response({}, "Url provided is invalid.", 400)
+                    except ForbiddenLocation:
+                        return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
                 else:
-                    if url:
-                        if not config.ui.allow_url_submissions:
-                            return make_api_response({}, "URL submissions are disabled in this system", 400)
+                    return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
+        else:
+            binary.save(out_file)
 
-                        try:
-                            safe_download(url, out_file)
-                            extra_meta['submitted_url'] = url
-                        except FileTooBigException:
-                            return make_api_response({}, "File too big to be scanned.", 400)
-                        except InvalidUrlException:
-                            return make_api_response({}, "Url provided is invalid.", 400)
-                        except ForbiddenLocation:
-                            return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
-                    else:
-                        return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
-            else:
-                binary.save(out_file)
+        if os.path.getsize(out_file) == 0:
+            return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
-            if os.path.getsize(out_file) == 0:
-                return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
+        # Load default user params
+        s_params = ui_to_submission_params(load_user_settings(user))
 
-            # Load default user params
-            s_params = ui_to_submission_params(load_user_settings(user))
+        # Reset dangerous user settings to safe values
+        s_params.update({
+            'deep_scan': False,
+            "priority": 150,
+            "ignore_cache": False,
+            "ignore_dynamic_recursion_prevention": False,
+            "ignore_filtering": False,
+            "type": "INGEST"
+        })
 
-            # Reset dangerous user settings to safe values
-            s_params.update({
-                'deep_scan': False,
-                "priority": 150,
-                "ignore_cache": False,
-                "ignore_dynamic_recursion_prevention": False,
-                "ignore_filtering": False,
-                "type": "INGEST"
+        # Apply provided params
+        s_params.update(data.get("params", {}))
+        if 'groups' not in s_params:
+            s_params['groups'] = user['groups']
+
+        # Override final parameters
+        s_params.update({
+            'generate_alert': generate_alert,
+            'max_extracted': config.core.ingester.default_max_extracted,
+            'max_supplementary': config.core.ingester.default_max_supplementary,
+            'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
+            'submitter': user['uname']
+        })
+
+        # Enforce maximum DTL
+        if config.submission.max_dtl > 0:
+            s_params['ttl'] = min(
+                int(s_params['ttl']),
+                config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
+
+        # Calculate file digest
+        fileinfo = identify.fileinfo(out_file)
+
+        # Validate file size
+        if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
+            msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
+            return make_api_response({}, err=msg, status_code=413)
+        elif fileinfo['size'] == 0:
+            return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
+
+        # Decode cart if needed
+        extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
+        if extracted_path:
+            out_file = extracted_path
+
+        # Alter filename and classification based on CaRT output
+        s_params['classification'] = al_meta.pop('classification', s_params['classification'])
+        name = al_meta.pop('name', name)
+
+        # Validate ingest classification
+        if not CLASSIFICATION.is_accessible(user['classification'], s_params['classification']):
+            return make_api_response({}, "You cannot start a submission with higher "
+                                     "classification then you're allowed to see", 400)
+
+        # Save the file to the filestore if needs be
+        sha256 = fileinfo['sha256']
+        if not FILESTORE.exists(sha256):
+            FILESTORE.upload(out_file, sha256, location='far')
+
+        # Freshen file object
+        expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
+        STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
+
+        # Setup notification queue if needed
+        if notification_queue:
+            notification_params = {
+                "queue": notification_queue,
+                "threshold": notification_threshold
+            }
+        else:
+            notification_params = {}
+
+        # Load metadata, setup some default values if they are missing and append the cart metadata
+        ingest_id = get_random_id()
+        metadata = flatten(data.get("metadata", {}))
+        metadata['ingest_id'] = ingest_id
+        metadata['type'] = s_params['type']
+        metadata.update(al_meta)
+        if 'ts' not in metadata:
+            metadata['ts'] = now_as_iso()
+        metadata.update(extra_meta)
+
+        # Set description if it does not exists
+        s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of file: {name}"
+
+        # Create submission object
+        try:
+            submission_obj = Submission({
+                "sid": ingest_id,
+                "files": [{'name': name, 'sha256': sha256, 'size': fileinfo['size']}],
+                "notification": notification_params,
+                "metadata": metadata,
+                "params": s_params
             })
+        except (ValueError, KeyError) as e:
+            return make_api_response({}, err=str(e), status_code=400)
 
-            # Apply provided params
-            s_params.update(data.get("params", {}))
-            if 'groups' not in s_params:
-                s_params['groups'] = user['groups']
+        # Send submission object for processing
+        ingest.push(submission_obj.as_primitives())
+        submission_received(submission_obj)
 
-            # Override final parameters
-            s_params.update({
-                'generate_alert': generate_alert,
-                'max_extracted': config.core.ingester.default_max_extracted,
-                'max_supplementary': config.core.ingester.default_max_supplementary,
-                'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
-                'submitter': user['uname']
-            })
+        return make_api_response({"ingest_id": ingest_id})
 
-            # Enforce maximum DTL
-            if config.submission.max_dtl > 0:
-                s_params['ttl'] = min(
-                    int(s_params['ttl']),
-                    config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
+    finally:
+        # Cleanup files on disk
+        try:
+            if original_file and os.path.exists(original_file):
+                os.unlink(original_file)
+        except Exception:
+            pass
 
-            # Calculate file digest
-            fileinfo = identify.fileinfo(out_file)
+        try:
+            if extracted_path and os.path.exists(extracted_path):
+                os.unlink(extracted_path)
+        except Exception:
+            pass
 
-            # Validate file size
-            if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
-                msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
-                return make_api_response({}, err=msg, status_code=413)
-            elif fileinfo['size'] == 0:
-                return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
-
-            # Decode cart if needed
-            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
-            if extracted_path:
-                out_file = extracted_path
-
-            # Alter filename and classification based on CaRT output
-            s_params['classification'] = al_meta.pop('classification', s_params['classification'])
-            name = al_meta.pop('name', name)
-
-            # Validate ingest classification
-            if not CLASSIFICATION.is_accessible(user['classification'], s_params['classification']):
-                return make_api_response({}, "You cannot start a submission with higher "
-                                             "classification then you're allowed to see", 400)
-
-            # Save the file to the filestore if needs be
-            sha256 = fileinfo['sha256']
-            if not f_transport.exists(sha256):
-                f_transport.upload(out_file, sha256, location='far')
-
-            # Freshen file object
-            expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
-            STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
-
-            # Setup notification queue if needed
-            if notification_queue:
-                notification_params = {
-                    "queue": notification_queue,
-                    "threshold": notification_threshold
-                }
-            else:
-                notification_params = {}
-
-            # Load metadata, setup some default values if they are missing and append the cart metadata
-            ingest_id = get_random_id()
-            metadata = flatten(data.get("metadata", {}))
-            metadata['ingest_id'] = ingest_id
-            metadata['type'] = s_params['type']
-            metadata.update(al_meta)
-            if 'ts' not in metadata:
-                metadata['ts'] = now_as_iso()
-            metadata.update(extra_meta)
-
-            # Set description if it does not exists
-            s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of file: {name}"
-
-            # Create submission object
-            try:
-                submission_obj = Submission({
-                    "sid": ingest_id,
-                    "files": [{'name': name, 'sha256': sha256, 'size': fileinfo['size']}],
-                    "notification": notification_params,
-                    "metadata": metadata,
-                    "params": s_params
-                })
-            except (ValueError, KeyError) as e:
-                return make_api_response({}, err=str(e), status_code=400)
-
-            # Send submission object for processing
-            ingest.push(submission_obj.as_primitives())
-            submission_received(submission_obj)
-
-            return make_api_response({"ingest_id": ingest_id})
-
-        finally:
-            # Cleanup files on disk
-            try:
-                if original_file and os.path.exists(original_file):
-                    os.unlink(original_file)
-            except Exception:
-                pass
-
-            try:
-                if extracted_path and os.path.exists(extracted_path):
-                    os.unlink(extracted_path)
-            except Exception:
-                pass
-
-            try:
-                if os.path.exists(out_dir):
-                    shutil.rmtree(out_dir, ignore_errors=True)
-            except Exception:
-                pass
+        try:
+            if os.path.exists(out_dir):
+                shutil.rmtree(out_dir, ignore_errors=True)
+        except Exception:
+            pass

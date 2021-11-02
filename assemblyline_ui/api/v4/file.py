@@ -12,12 +12,11 @@ from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS
+from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
 Classification = forge.get_classification()
-config = forge.get_config()
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
@@ -118,8 +117,7 @@ def get_file_ascii(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -197,8 +195,7 @@ def download_file(sha256, **kwargs):
 
         _, download_path = tempfile.mkstemp()
         try:
-            with forge.get_filestore() as f_transport:
-                downloaded_from = f_transport.download(sha256, download_path)
+            downloaded_from = FILESTORE.download(sha256, download_path)
 
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
@@ -253,8 +250,7 @@ def get_file_hex(sha256, **kwargs):
         return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -295,8 +291,7 @@ def get_file_image_datastream(sha256, **kwargs):
         return make_api_response({}, "This file is not allowed to be downloaded as a datastream.", 403)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -335,8 +330,7 @@ def get_file_strings(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)

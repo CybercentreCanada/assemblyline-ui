@@ -9,7 +9,7 @@ from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR
+from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
@@ -20,7 +20,6 @@ from assemblyline.odm.messages.submission import Submission
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
 Classification = forge.get_classification()
-config = forge.get_config()
 
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -91,33 +90,32 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         else:
             submit_time = None
 
-        with forge.get_filestore() as f_transport:
-            if not f_transport.exists(sha256):
-                return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
-                                             % sha256, status_code=404)
+        if not FILESTORE.exists(sha256):
+            return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
+                                     % sha256, status_code=404)
 
-            files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
+        files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
 
-            submission_params['submitter'] = user['uname']
-            submission_params['quota_item'] = True
-            if 'priority' not in submission_params:
-                submission_params['priority'] = 500
-            submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
-            if "Dynamic Analysis" not in submission_params['services']['selected']:
-                submission_params['services']['selected'].append("Dynamic Analysis")
+        submission_params['submitter'] = user['uname']
+        submission_params['quota_item'] = True
+        if 'priority' not in submission_params:
+            submission_params['priority'] = 500
+        submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
+        if "Dynamic Analysis" not in submission_params['services']['selected']:
+            submission_params['services']['selected'].append("Dynamic Analysis")
 
-            try:
-                submission_obj = Submission({
-                    "files": files,
-                    "params": submission_params,
-                    "time": submit_time
-                })
-            except (ValueError, KeyError) as e:
-                return make_api_response("", err=str(e), status_code=400)
+        try:
+            submission_obj = Submission({
+                "files": files,
+                "params": submission_params,
+                "time": submit_time
+            })
+        except (ValueError, KeyError) as e:
+            return make_api_response("", err=str(e), status_code=400)
 
-            submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                             config=config).submit(submission_obj)
-            submission_received(submission_obj)
+        submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
+                                         config=config).submit(submission_obj)
+        submission_received(submission_obj)
         return make_api_response(submit_result.as_primitives())
 
     except SubmissionException as e:
@@ -187,10 +185,9 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
 
-        with forge.get_filestore() as f_transport:
-            submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport,
-                                             config=config).submit(submission_obj)
-            submission_received(submission_obj)
+        submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
+                                         config=config).submit(submission_obj)
+        submission_received(submission_obj)
 
         return make_api_response(submit_result.as_primitives())
     except SubmissionException as e:
@@ -264,135 +261,134 @@ def submit(**kwargs):
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
-    with forge.get_filestore() as f_transport:
-        quota_error = check_submission_quota(user)
-        if quota_error:
-            return make_api_response("", quota_error, 503)
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
 
-        submit_result = None
+    submit_result = None
+    try:
+        # Get data block and binary blob
+        if 'multipart/form-data' in request.content_type:
+            if 'json' in request.values:
+                data = json.loads(request.values['json'])
+            else:
+                data = {}
+            binary = request.files['bin']
+            name = data.get("name", binary.filename)
+            sha256 = None
+            url = None
+        elif 'application/json' in request.content_type:
+            data = request.json
+            binary = None
+            sha256 = data.get('sha256', None)
+            url = data.get('url', None)
+            name = data.get("name", None) or sha256 or os.path.basename(url) or None
+        else:
+            return make_api_response({}, "Invalid content type", 400)
+
+        if data is None:
+            return make_api_response({}, "Missing data block", 400)
+
+        if not name:
+            return make_api_response({}, "Filename missing", 400)
+
+        name = safe_str(os.path.basename(name))
+        if not name:
+            return make_api_response({}, "Invalid filename", 400)
+
+        # Create task object
+        if "ui_params" in data:
+            s_params = ui_to_submission_params(data['ui_params'])
+        else:
+            s_params = ui_to_submission_params(load_user_settings(user))
+
+        s_params.update(data.get("params", {}))
+        if 'groups' not in s_params:
+            s_params['groups'] = user['groups']
+
+        s_params['quota_item'] = True
+        s_params['submitter'] = user['uname']
+        if not s_params['description']:
+            s_params['description'] = "Inspection of file: %s" % name
+
+        # Enforce maximum DTL
+        if config.submission.max_dtl > 0:
+            s_params['ttl'] = min(
+                int(s_params['ttl']),
+                config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
+
+        if not Classification.is_accessible(user['classification'], s_params['classification']):
+            return make_api_response({}, "You cannot start a scan with higher "
+                                     "classification then you're allowed to see", 400)
+
+        # Prepare the output directory
         try:
-            # Get data block and binary blob
-            if 'multipart/form-data' in request.content_type:
-                if 'json' in request.values:
-                    data = json.loads(request.values['json'])
+            os.makedirs(out_dir)
+        except Exception:
+            pass
+        out_file = os.path.join(out_dir, name)
+
+        # Get the output file
+        extra_meta = {}
+        if not binary:
+            if sha256:
+                if FILESTORE.exists(sha256):
+                    FILESTORE.download(sha256, out_file)
                 else:
-                    data = {}
-                binary = request.files['bin']
-                name = data.get("name", binary.filename)
-                sha256 = None
-                url = None
-            elif 'application/json' in request.content_type:
-                data = request.json
-                binary = None
-                sha256 = data.get('sha256', None)
-                url = data.get('url', None)
-                name = data.get("name", None) or sha256 or os.path.basename(url) or None
+                    return make_api_response({}, "SHA256 does not exist in our datastore", 404)
             else:
-                return make_api_response({}, "Invalid content type", 400)
+                if url:
+                    if not config.ui.allow_url_submissions:
+                        return make_api_response({}, "URL submissions are disabled in this system", 400)
 
-            if data is None:
-                return make_api_response({}, "Missing data block", 400)
-
-            if not name:
-                return make_api_response({}, "Filename missing", 400)
-
-            name = safe_str(os.path.basename(name))
-            if not name:
-                return make_api_response({}, "Invalid filename", 400)
-
-            # Create task object
-            if "ui_params" in data:
-                s_params = ui_to_submission_params(data['ui_params'])
-            else:
-                s_params = ui_to_submission_params(load_user_settings(user))
-
-            s_params.update(data.get("params", {}))
-            if 'groups' not in s_params:
-                s_params['groups'] = user['groups']
-
-            s_params['quota_item'] = True
-            s_params['submitter'] = user['uname']
-            if not s_params['description']:
-                s_params['description'] = "Inspection of file: %s" % name
-
-            # Enforce maximum DTL
-            if config.submission.max_dtl > 0:
-                s_params['ttl'] = min(
-                    int(s_params['ttl']),
-                    config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
-
-            if not Classification.is_accessible(user['classification'], s_params['classification']):
-                return make_api_response({}, "You cannot start a scan with higher "
-                                             "classification then you're allowed to see", 400)
-
-            # Prepare the output directory
-            try:
-                os.makedirs(out_dir)
-            except Exception:
-                pass
-            out_file = os.path.join(out_dir, name)
-
-            # Get the output file
-            extra_meta = {}
-            if not binary:
-                if sha256:
-                    if f_transport.exists(sha256):
-                        f_transport.download(sha256, out_file)
-                    else:
-                        return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+                    try:
+                        safe_download(url, out_file)
+                        extra_meta['submitted_url'] = url
+                    except FileTooBigException:
+                        return make_api_response({}, "File too big to be scanned.", 400)
+                    except InvalidUrlException:
+                        return make_api_response({}, "Url provided is invalid.", 400)
+                    except ForbiddenLocation:
+                        return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
                 else:
-                    if url:
-                        if not config.ui.allow_url_submissions:
-                            return make_api_response({}, "URL submissions are disabled in this system", 400)
+                    return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
+        else:
+            with open(out_file, "wb") as my_file:
+                my_file.write(binary.read())
 
-                        try:
-                            safe_download(url, out_file)
-                            extra_meta['submitted_url'] = url
-                        except FileTooBigException:
-                            return make_api_response({}, "File too big to be scanned.", 400)
-                        except InvalidUrlException:
-                            return make_api_response({}, "Url provided is invalid.", 400)
-                        except ForbiddenLocation:
-                            return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
-                    else:
-                        return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
-            else:
-                with open(out_file, "wb") as my_file:
-                    my_file.write(binary.read())
+        try:
+            metadata = flatten(data.get('metadata', {}))
+            metadata.update(extra_meta)
 
-            try:
-                metadata = flatten(data.get('metadata', {}))
-                metadata.update(extra_meta)
+            submission_obj = Submission({
+                "files": [],
+                "metadata": metadata,
+                "params": s_params
+            })
+        except (ValueError, KeyError) as e:
+            return make_api_response("", err=str(e), status_code=400)
 
-                submission_obj = Submission({
-                    "files": [],
-                    "metadata": metadata,
-                    "params": s_params
-                })
-            except (ValueError, KeyError) as e:
-                return make_api_response("", err=str(e), status_code=400)
+        # Submit the task to the system
+        try:
+            submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config)\
+                .submit(submission_obj, local_files=[out_file])
+            submission_received(submission_obj)
+        except SubmissionException as e:
+            return make_api_response("", err=str(e), status_code=400)
 
-            # Submit the task to the system
-            try:
-                submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
-                    .submit(submission_obj, local_files=[out_file])
-                submission_received(submission_obj)
-            except SubmissionException as e:
-                return make_api_response("", err=str(e), status_code=400)
+        return make_api_response(submit_result.as_primitives())
 
-            return make_api_response(submit_result.as_primitives())
+    finally:
+        if submit_result is None:
+            decrement_submission_quota(user)
 
-        finally:
-            if submit_result is None:
-                decrement_submission_quota(user)
+        try:
+            # noinspection PyUnboundLocalVariable
+            os.unlink(out_file)
+        except Exception:
+            pass
 
-            try:
-                # noinspection PyUnboundLocalVariable
-                os.unlink(out_file)
-            except Exception:
-                pass
-
-            try:
-                shutil.rmtree(out_dir, ignore_errors=True)
-            except Exception:
-                pass
+        try:
+            shutil.rmtree(out_dir, ignore_errors=True)
+        except Exception:
+            pass
