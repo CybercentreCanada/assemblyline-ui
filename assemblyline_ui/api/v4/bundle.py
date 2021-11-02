@@ -5,18 +5,15 @@ import os
 from cart import is_cart
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
 from assemblyline_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, BUNDLING_DIR
+from assemblyline_ui.config import STORAGE, BUNDLING_DIR, CLASSIFICATION as Classification
 
 
 SUB_API = 'bundle'
-
-Classification = forge.get_classification()
 
 bundle_api = make_subapi_blueprint(SUB_API, api_version=4)
 bundle_api._doc = "Create and restore submission bundles"

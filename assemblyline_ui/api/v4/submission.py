@@ -3,14 +3,11 @@ import time
 from assemblyline.datastore.exceptions import MultiKeyError
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config
+from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
-
-Classification = forge.get_classification()
 
 SUB_API = 'submission'
 submission_api = make_subapi_blueprint(SUB_API, api_version=4)

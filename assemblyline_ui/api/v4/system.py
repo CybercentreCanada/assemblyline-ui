@@ -10,8 +10,6 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 import yaml
 
 
-Classification = forge.get_classification()
-
 SUB_API = 'system'
 system_api = make_subapi_blueprint(SUB_API, api_version=4)
 system_api._doc = "Perform system actions"

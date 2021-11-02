@@ -1,11 +1,8 @@
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE
-from assemblyline.common import forge
+from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_core.dispatching.client import DispatchClient
-
-Classification = forge.get_classification()
 
 SUB_API = 'live'
 live_api = make_subapi_blueprint(SUB_API, api_version=4)

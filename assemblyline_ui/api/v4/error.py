@@ -1,13 +1,10 @@
 
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.datastore import SearchException
 from assemblyline_ui.config import STORAGE
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
-
-Classification = forge.get_classification()
 
 SUB_API = 'error'
 error_api = make_subapi_blueprint(SUB_API, api_version=4)

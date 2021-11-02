@@ -4,14 +4,12 @@ import concurrent.futures
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore import SearchException
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config
+from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classification
 
-Classification = forge.get_classification()
 SUB_API = 'alert'
 
 alert_api = make_subapi_blueprint(SUB_API, api_version=4)

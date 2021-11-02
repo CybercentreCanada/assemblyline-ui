@@ -11,13 +11,11 @@ from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config
+from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-
-Classification = forge.get_classification()
 
 SUB_API = 'ui'
 ui_api = make_subapi_blueprint(SUB_API, api_version=4)

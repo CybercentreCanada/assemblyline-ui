@@ -6,17 +6,14 @@ import tempfile
 
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config
+from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
-
-Classification = forge.get_classification()
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
