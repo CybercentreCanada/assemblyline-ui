@@ -3,15 +3,11 @@ import time
 from assemblyline.datastore.exceptions import MultiKeyError
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER
+from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
-
-Classification = forge.get_classification()
-config = forge.get_config()
 
 SUB_API = 'submission'
 submission_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -45,8 +41,7 @@ def delete_submission(sid, **kwargs):
 
     if Classification.is_accessible(user['classification'], submission['classification']) \
             and (submission['params']['submitter'] == user['uname'] or 'admin' in user['type']):
-        with forge.get_filestore() as f_transport:
-            STORAGE.delete_submission_tree_bulk(sid, Classification, transport=f_transport)
+        STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
         STORAGE.submission.commit()
         return make_api_response({"success": True})
     else:

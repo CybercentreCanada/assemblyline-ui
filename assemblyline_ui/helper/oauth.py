@@ -3,11 +3,9 @@ import hashlib
 import re
 import requests
 
-from assemblyline.common import forge
 from assemblyline.common.random_user import random_user
-from assemblyline_ui.config import config
+from assemblyline_ui.config import config, CLASSIFICATION as cl_engine
 
-cl_engine = forge.get_classification()
 VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + [chr(x + 97) for x in range(26)] + ["-"]
 
 

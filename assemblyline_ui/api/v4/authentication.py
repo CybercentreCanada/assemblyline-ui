@@ -12,7 +12,6 @@ from io import BytesIO
 from passlib.hash import bcrypt
 from urllib.parse import urlparse
 
-from assemblyline.common import forge
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
 from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
@@ -21,13 +20,12 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
-                                    get_signup_queue, get_token_store)
+                                    get_signup_queue, get_token_store, CLASSIFICATION as Classification)
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
-Classification = forge.get_classification()
 API_PRIV_MAP = {
     "READ": ["R"],
     "READ_WRITE": ["R", "W"],

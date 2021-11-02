@@ -5,13 +5,10 @@ from assemblyline.common import forge
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.tagging import Tagging
 
-from assemblyline_ui.config import STORAGE, UI_MESSAGING
+from assemblyline_ui.config import STORAGE, UI_MESSAGING, config
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 import yaml
 
-
-Classification = forge.get_classification()
-config = forge.get_config()
 
 SUB_API = 'system'
 system_api = make_subapi_blueprint(SUB_API, api_version=4)
