@@ -139,7 +139,8 @@ LOGGER.debug('Logger ready!')
 #################################################################
 # Global instances
 APPS_LIST = forge.CachedObject(get_apps_list, refresh=3600)
-STORAGE = forge.get_datastore(archive_access=True)
+FILESTORE = forge.get_filestore(config=config)
+STORAGE = forge.get_datastore(config=config, archive_access=True)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 # End global
 #################################################################

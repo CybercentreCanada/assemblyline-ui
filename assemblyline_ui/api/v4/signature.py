@@ -14,10 +14,7 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, SERVICE_LIST, STORAGE
-
-Classification = forge.get_classification()
-config = forge.get_config()
+from assemblyline_ui.config import LOGGER, SERVICE_LIST, STORAGE, config, CLASSIFICATION as Classification
 
 SUB_API = 'signature'
 signature_api = make_subapi_blueprint(SUB_API, api_version=4)
