@@ -8,7 +8,7 @@ from flask import request
 
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
-from assemblyline.common.hexdump import hexdump
+from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, CLASSIFICATION as Classification
@@ -226,7 +226,8 @@ def get_file_hex(sha256, **kwargs):
     sha256       => A resource locator for the file (sha256)
 
     Arguments:
-    None
+    bytes_only   => Only return bytes with no formatting
+    length       => Number of bytes per lines
 
     Data Block:
     None
@@ -240,6 +241,9 @@ def get_file_hex(sha256, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
+    bytes_only = request.args.get('bytes_only', 'false').lower() == 'true'
+    length = int(request.args.get('length', '16'))
+
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
@@ -252,7 +256,10 @@ def get_file_hex(sha256, **kwargs):
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
-        return make_api_response(hexdump(data))
+        if bytes_only:
+            return make_api_response(dump(data).decode())
+        else:
+            return make_api_response(hexdump(data, length=length))
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
