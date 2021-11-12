@@ -56,8 +56,8 @@ UI_MESSAGING = Hash("ui_messaging",
 @functools.lru_cache()
 def get_submission_traffic_channel():
     return CommsQueue('submissions',
-                      host=config.core.redis.nonpersistent.host,
-                      port=config.core.redis.nonpersistent.port)
+                      host=config.core.redis.pubsub.host,
+                      port=config.core.redis.pubsub.port)
 
 
 def get_token_store(key):

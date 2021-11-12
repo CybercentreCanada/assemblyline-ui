@@ -23,11 +23,11 @@ signature_api._doc = "Perform operations on signatures"
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
 
 event_sender = EventSender('changes.signatures',
-                           host=config.core.redis.nonpersistent.host,
-                           port=config.core.redis.nonpersistent.port)
+                           host=config.core.redis.pubsub.host,
+                           port=config.core.redis.pubsub.port)
 service_event_sender = EventSender('changes.services',
-                                   host=config.core.redis.nonpersistent.host,
-                                   port=config.core.redis.nonpersistent.port)
+                                   host=config.core.redis.pubsub.host,
+                                   port=config.core.redis.pubsub.port)
 
 
 def _reset_service_updates(signature_type):
