@@ -35,8 +35,8 @@ service_update = Hash('container-update', get_client(
 ))
 
 event_sender = EventSender('changes.services',
-                           host=config.core.redis.nonpersistent.host,
-                           port=config.core.redis.nonpersistent.port)
+                           host=config.core.redis.pubsub.host,
+                           port=config.core.redis.pubsub.port)
 
 
 def check_private_keys(source_list):
