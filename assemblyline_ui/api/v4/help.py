@@ -3,13 +3,12 @@ import re
 
 from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, config
 from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
 from assemblyline.odm.models.tagging import Tagging
 
 SUB_API = 'help'
 constants = forge.get_constants()
-config = forge.get_config()
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
 
 help_api = make_subapi_blueprint(SUB_API, api_version=4)

@@ -4,14 +4,12 @@ import os
 import socket
 from urllib.parse import urlparse
 
-from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.messages.submission import SubmissionMessage
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, get_submission_traffic_channel
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, get_submission_traffic_channel, config
 
-config = forge.get_config()
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
 except socket.gaierror:

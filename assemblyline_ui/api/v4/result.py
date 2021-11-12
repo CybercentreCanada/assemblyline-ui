@@ -1,12 +1,9 @@
 from assemblyline.datastore.exceptions import MultiKeyError
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, LOGGER
 from assemblyline_ui.helper.result import format_result
-
-config = forge.get_config()
 
 SUB_API = 'result'
 result_api = make_subapi_blueprint(SUB_API, api_version=4)
