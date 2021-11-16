@@ -30,11 +30,11 @@ resources:
   repositories:
     - repository: assemblyline-base
       type: github
-      endpoint: github
+      endpoint: github-repo-sa
       name: CybercentreCanada/assemblyline-base
     - repository: assemblyline-core
       type: github
-      endpoint: github
+      endpoint: github-repo-sa
       name: CybercentreCanada/assemblyline-core
 
 jobs:
