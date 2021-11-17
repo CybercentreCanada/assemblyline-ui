@@ -271,14 +271,10 @@ def list_alerts(**kwargs):
         filters.append(timming_filter)
 
     try:
-        res = STORAGE.alert.search(
-            query, offset=offset, rows=rows, fl="id", sort="reporting_ts desc",
+        return make_api_response(STORAGE.alert.search(
+            query, offset=offset, rows=rows, fl="*", sort="reporting_ts desc",
             access_control=user['access_control'],
-            filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits)
-        res['items'] = sorted(STORAGE.alert.multiget([v['id'] for v in res['items']],
-                                                     as_dictionary=False, as_obj=False),
-                              key=lambda k: k['reporting_ts'], reverse=True)
-        return make_api_response(res)
+            filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
