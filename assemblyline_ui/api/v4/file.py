@@ -602,24 +602,16 @@ def get_file_results_for_service(sha256, service, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    args = [("fl", "_yz_rk"),
-            ("sort", "created desc")]
-    if "all" in request.args:
-        args.append(("rows", "100"))
-    else:
-        args.append(("rows", "1"))
-
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="id",
+        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="*",
                                     rows=100 if "all" in request.args else 1,
                                     access_control=user["access_control"], as_obj=False, use_archive=True)
-        keys = [k["id"] for k in res['items']]
 
         results = []
-        for r in STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False):
+        for r in res['items']:
             result = format_result(user['classification'], r, file_obj['classification'])
             if result:
                 results.append(result)
