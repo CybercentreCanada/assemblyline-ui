@@ -543,9 +543,7 @@ def download_signatures(**kwargs):
 
             output_files = {}
 
-            keys = [k['id']
-                    for k in STORAGE.signature.stream_search(query, fl="id", access_control=access, as_obj=False)]
-            signature_list = sorted(STORAGE.signature.multiget(keys, as_dictionary=False, as_obj=False),
+            signature_list = sorted(STORAGE.signature.stream_search(query, fl="*", access_control=access, as_obj=False),
                                     key=lambda x: x['order'])
 
             for sig in signature_list:
