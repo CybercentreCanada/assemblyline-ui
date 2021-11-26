@@ -520,9 +520,9 @@ def oauth_validate(**_):
                         oauth_avatar = data.pop('avatar', None)
 
                         # Find if user already exists
-                        users = STORAGE.user.search(f"email:{data['email']}", fl="uname", as_obj=False)['items']
+                        users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
                         if users:
-                            cur_user = STORAGE.user.get(users[0]['uname'], as_obj=False) or {}
+                            cur_user = users[0]
                             # Do not update username and password from the current user
                             data['uname'] = cur_user.get('uname', data['uname'])
                             data['password'] = cur_user.get('password', data['password'])
@@ -645,9 +645,9 @@ def reset_pwd(**_):
             reset_queue.delete()
             if members:
                 email = members[0]
-                res = STORAGE.user.search(f"email:{email}")
+                res = STORAGE.user.search(f"email:{email}", fl="*")
                 if res.get('total', 0) == 1:
-                    user = STORAGE.user.get(res['items'][0].uname)
+                    user = res['items'][0]
                     user.password = get_password_hash(password)
                     STORAGE.user.save(user.uname, user)
                     return make_api_response({"success": True})

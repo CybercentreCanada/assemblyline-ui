@@ -27,17 +27,18 @@ API_MAX_SIZE = 10 * 1024 * 1024
 def list_file_active_keys(sha256, access_control=None):
     query = f"id:{sha256}*"
 
-    item_list = [x for x in STORAGE.result.stream_search(query, access_control=access_control, as_obj=False)]
+    item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name",
+                                                         access_control=access_control, as_obj=False)]
 
     item_list.sort(key=lambda k: k["created"], reverse=True)
 
-    active_found = []
+    active_found = set()
     active_keys = []
     alternates = []
     for item in item_list:
         if item['response']['service_name'] not in active_found:
             active_keys.append(item['id'])
-            active_found.append(item['response']['service_name'])
+            active_found.add(item['response']['service_name'])
         else:
             alternates.append(item)
 
@@ -46,16 +47,14 @@ def list_file_active_keys(sha256, access_control=None):
 
 def list_file_childrens(sha256, access_control=None):
     query = f'id:{sha256}* AND response.extracted.sha256:*'
-    resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id',
-                                         sort="created desc", access_control=access_control,
-                                         as_obj=False)
-
-    result_keys = [x['items'][0]['id'] for x in resp['items']]
+    service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='*',
+                                                 sort="created desc", access_control=access_control,
+                                                 as_obj=False)
 
     output = []
     processed_sha256 = []
-    for r in STORAGE.result.multiget(result_keys, as_dictionary=False, as_obj=False):
-        for extracted in r['response']['extracted']:
+    for r in service_resp['items']:
+        for extracted in r['items'][0]['response']['extracted']:
             if extracted['sha256'] not in processed_sha256:
                 processed_sha256.append(extracted['sha256'])
                 output.append({
@@ -382,14 +381,13 @@ def get_file_children(sha256, **kwargs):
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
             output = []
             response = STORAGE.result.grouped_search("response.service_name",
-                                                     query=f"id:{sha256}* AND response.extracted:*", fl="id", rows=100,
+                                                     query=f"id:{sha256}* AND response.extracted:*", fl="*", rows=100,
                                                      sort="created desc", access_control=user['access_control'],
                                                      as_obj=False)
-            result_res = [x['id'] for y in response['items'] for x in y['items']]
 
             processed_srl = []
-            for r in STORAGE.result.multiget(result_res, as_dictionary=False, as_obj=False):
-                for extracted in r['response']['extracted']:
+            for r in response['items']:
+                for extracted in r['items'][0]['response']['extracted']:
                     if extracted['sha256'] not in processed_srl:
                         processed_srl.append(extracted['sha256'])
                         output.append({'sha256': extracted['sha256'], 'name': extracted['name']})
@@ -602,24 +600,16 @@ def get_file_results_for_service(sha256, service, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    args = [("fl", "_yz_rk"),
-            ("sort", "created desc")]
-    if "all" in request.args:
-        args.append(("rows", "100"))
-    else:
-        args.append(("rows", "1"))
-
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="id",
+        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="*",
                                     rows=100 if "all" in request.args else 1,
                                     access_control=user["access_control"], as_obj=False, use_archive=True)
-        keys = [k["id"] for k in res['items']]
 
         results = []
-        for r in STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False):
+        for r in res['items']:
             result = format_result(user['classification'], r, file_obj['classification'])
             if result:
                 results.append(result)

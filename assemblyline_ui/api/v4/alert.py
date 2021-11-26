@@ -271,14 +271,10 @@ def list_alerts(**kwargs):
         filters.append(timming_filter)
 
     try:
-        res = STORAGE.alert.search(
-            query, offset=offset, rows=rows, fl="id", sort="reporting_ts desc",
+        return make_api_response(STORAGE.alert.search(
+            query, offset=offset, rows=rows, fl="*", sort="reporting_ts desc",
             access_control=user['access_control'],
-            filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits)
-        res['items'] = sorted(STORAGE.alert.multiget([v['id'] for v in res['items']],
-                                                     as_dictionary=False, as_obj=False),
-                              key=lambda k: k['reporting_ts'], reverse=True)
-        return make_api_response(res)
+            filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -353,35 +349,40 @@ def list_grouped_alerts(field, **kwargs):
     try:
         res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
                                            group_sort="reporting_ts desc", access_control=user['access_control'],
-                                           filters=filters, fl=f"id,{field}", as_obj=False,
+                                           filters=filters, fl="*", as_obj=False,
                                            use_archive=use_archive, track_total_hits=track_total_hits)
-        alert_keys = []
+        alerts = []
         hash_list = []
-        hint_list = []
-        group_count = {}
+        hint_list = set()
         counted_total = 0
+
+        # Loop through grouped alerts
         for item in res['items']:
+            # Update total
             counted_total += item['total']
-            group_count[item['value']] = item['total']
+
+            # Gather the first alert sample, set it's group_count and add it to the alert list
             data = item['items'][0]
-            alert_keys.append(data['id'])
-            if field in ['file.md5', 'file.sha1', 'file.sha256']:
+            data['group_count'] = item['total']
+            alerts.append(data)
+
+            # Gather a list of possible owner hints
+            if field in ['file.md5', 'file.sha1', 'file.sha256'] and not data.get('owner', None):
                 hash_list.append(get_dict_item(data, field))
 
-        alerts = sorted(STORAGE.alert.multiget(alert_keys, as_dictionary=False, as_obj=False),
-                        key=lambda k: k['reporting_ts'], reverse=True)
-
         if hash_list:
+            # Lookup owner of previous hashes
             hint_resp = STORAGE.alert.grouped_search(field, query=" OR ".join([f"{field}:{h}" for h in hash_list]),
                                                      fl=field, rows=rows, filters=["owner:*"],
                                                      access_control=user['access_control'], as_obj=False)
             for hint_item in hint_resp['items']:
-                hint_list.append(get_dict_item(hint_item['items'][0], field))
+                hint_list.add(hint_item['value'])
 
         for a in alerts:
-            a['group_count'] = group_count[get_dict_item(a, field)]
-            if get_dict_item(a, field) in hint_list and not a.get('owner', None):
+            if get_dict_item(a, field) in hint_list:
                 a['hint_owner'] = True
+            else:
+                a['hint_owner'] = False
 
         res['items'] = alerts
         res['tc_start'] = tc_start
