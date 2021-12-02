@@ -441,6 +441,52 @@ def get_service(servicename, **_):
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
 
 
+@service_api.route("/<servicename>/<version>/", methods=["GET"])
+@api_login(require_type=['admin'], audit=False, allow_readonly=False)
+def get_service_defaults(servicename, version, **_):
+    """
+    Load the default configuration for a given service version
+
+    Variables:
+    servicename       => Name of the service to get the info
+    version           => Version of the service to get
+
+    Data Block:
+    None
+
+    Result example:
+    {'accepts': '(archive|executable|java|android)/.*',
+     'category': 'Extraction',
+     'classpath': 'al_services.alsvc_extract.Extract',
+     'config': {'DEFAULT_PW_LIST': ['password', 'infected']},
+     'cpu_cores': 0.1,
+     'description': "Extracts some stuff"
+     'enabled': True,
+     'name': 'Extract',
+     'ram_mb': 256,
+     'rejects': 'empty|metadata/.*',
+     'stage': 'EXTRACT',
+     'submission_params': [{'default': u'',
+       'name': 'password',
+       'type': 'str',
+       'value': u''},
+      {'default': False,
+       'name': 'extract_pe_sections',
+       'type': 'bool',
+       'value': False},
+      {'default': False,
+       'name': 'continue_after_extract',
+       'type': 'bool',
+       'value': False}],
+     'timeout': 60}
+    """
+    service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    if service:
+        return make_api_response(service)
+    else:
+        return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
+
+
 @service_api.route("/all/", methods=["GET"])
 @api_login(audit=False, required_priv=['R'], allow_readonly=False)
 def list_all_services(**_):
@@ -573,17 +619,23 @@ def set_service(servicename, **_):
     if not version:
         return make_api_response({"success": False}, "The service you are trying to modify does not exist", 404)
 
-    current_service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    current_default = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    current_service = STORAGE.get_service_with_delta(servicename, as_obj=False)
 
-    if not current_service:
+    if not current_default:
         return make_api_response({"success": False}, "The service you are trying to modify does not exist", 404)
 
     if 'name' in data and servicename != data['name']:
         return make_api_response({"success": False}, "You cannot change the service name", 400)
 
-    # Do not allow user to edit the docker_config.image since we will use the default image for each versions
-    data['docker_config']['image'] = current_service['docker_config']['image']
-    delta = get_recursive_delta(current_service, data, stop_keys=['config'])
+    if current_service['version'] != version:
+        # On version change, reset all container versions
+        data['docker_config']['image'] = current_default['docker_config']['image']
+        for k, v in data['dependencies'].items():
+            if k in current_default['dependencies']:
+                v['container']['image'] = current_default['dependencies'][k]['container']['image']
+
+    delta = get_recursive_delta(current_default, data, stop_keys=['config'])
     delta['version'] = version
 
     removed_sources = {}
@@ -591,7 +643,7 @@ def set_service(servicename, **_):
     if delta.get("update_config", {}).get("sources", None) is not None:
         delta["update_config"]["sources"] = preprocess_sources(delta["update_config"]["sources"])
 
-        c_srcs = STORAGE.get_service_with_delta(servicename, as_obj=False).get('update_config', {}).get('sources', [])
+        c_srcs = current_service.get('update_config', {}).get('sources', [])
         removed_sources = synchronize_sources(servicename, c_srcs, delta["update_config"]["sources"])
 
     # Notify components watching for service config changes
