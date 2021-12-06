@@ -108,6 +108,8 @@ def add_service(**_):
             tmp_service.pop('file_required', None)
             tmp_service.pop('heuristics', [])
             tmp_service['update_channel'] = tmp_service.get('update_channel', config.services.preferred_update_channel)
+            tmp_service['docker_config']['registry_type'] = tmp_service['docker_config'] \
+                .get('registry_type', config.services.preferred_registry_type)
             _, tag_name, _ = get_latest_tag_for_service(Service(tmp_service), config, LOGGER)
             enable_allowed = bool(tag_name)
             if tag_name:
