@@ -134,9 +134,11 @@ def add_service(**_):
                     "", err=f"Default and value mismatch for submission param: {sp['name']}", status_code=400)
 
         # Fix update_channel, registry_type with the system default (if applicable)
-        service['update_channel'] = config.services.preferred_update_channel
+        service['update_channel'] = service.get('update_channel', config.services.preferred_update_channel)
         service['docker_config']['registry_type'] = service['docker_config'] \
             .get('registry_type', config.services.preferred_registry_type)
+        for dep in service['dependencies'].values():
+            dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
         service['enabled'] = service['enabled'] and enable_allowed
 
         # Load service info
