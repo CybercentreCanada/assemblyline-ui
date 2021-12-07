@@ -139,7 +139,7 @@ def add_service(**_):
         service['update_channel'] = service.get('update_channel', config.services.preferred_update_channel)
         service['docker_config']['registry_type'] = service['docker_config'] \
             .get('registry_type', config.services.preferred_registry_type)
-        for dep in service['dependencies'].values():
+        for dep in service.get('dependencies', {}).values():
             dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
         service['enabled'] = service['enabled'] and enable_allowed
 
