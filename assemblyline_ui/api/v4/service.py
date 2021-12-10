@@ -107,6 +107,8 @@ def add_service(**_):
             tmp_service.pop('tool_version', None)
             tmp_service.pop('file_required', None)
             tmp_service.pop('heuristics', [])
+
+            # Apply global preferences, if missing, to get the appropriate container image tags
             tmp_service['update_channel'] = tmp_service.get('update_channel', config.services.preferred_update_channel)
             tmp_service['docker_config']['registry_type'] = tmp_service['docker_config'] \
                 .get('registry_type', config.services.preferred_registry_type)
@@ -135,10 +137,10 @@ def add_service(**_):
                 return make_api_response(
                     "", err=f"Default and value mismatch for submission param: {sp['name']}", status_code=400)
 
-        # Fix update_channel, registry_type with the system default (if applicable)
-        service['update_channel'] = service.get('update_channel', config.services.preferred_update_channel)
-        service['docker_config']['registry_type'] = service['docker_config'] \
-            .get('registry_type', config.services.preferred_registry_type)
+        # Apply default global configurations (if absent in service configuration)
+        service['update_channel'] = tmp_service['update_channel']
+        service['docker_config']['registry_type'] = tmp_service['docker_config']['registry_type']
+        service['privilege'] = service.get('privilege', config.services.prefer_service_privileged)
         for dep in service.get('dependencies', {}).values():
             dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
         service['enabled'] = service['enabled'] and enable_allowed
