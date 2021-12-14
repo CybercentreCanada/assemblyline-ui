@@ -224,15 +224,13 @@ def start_ui_submission(ui_sid, **kwargs):
                 target_dir = os.path.join(TEMP_DIR, ui_sid)
                 os.makedirs(target_dir, exist_ok=True)
 
-                target_file = os.path.join(target_dir, ui_params.get('filename', ui_sid))
+                target_file = os.path.join(target_dir, ui_params.pop('filename', ui_sid))
 
                 if os.path.exists(target_file):
                     os.unlink(target_file)
 
                 # Save the reconstructed file
-                with open(target_file, "wb") as t:
-                    t.write(cache.get(ui_sid))
-
+                cache.download(ui_sid, target_file)
                 submitted_file = target_file
 
         # Submit the file
