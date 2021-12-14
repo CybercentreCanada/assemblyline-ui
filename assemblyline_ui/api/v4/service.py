@@ -140,7 +140,11 @@ def add_service(**_):
         # Apply default global configurations (if absent in service configuration)
         service['update_channel'] = tmp_service['update_channel']
         service['docker_config']['registry_type'] = tmp_service['docker_config']['registry_type']
-        service['privilege'] = service.get('privilege', config.services.prefer_service_privileged)
+
+        # Privilege can be set explicitly but also granted to services that don't require the file for analysis
+        service['privilege'] = not service.get('file_required', True) \
+            or service.get('privilege', config.services.prefer_service_privileged)
+
         for dep in service.get('dependencies', {}).values():
             dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
         service['enabled'] = service['enabled'] and enable_allowed
