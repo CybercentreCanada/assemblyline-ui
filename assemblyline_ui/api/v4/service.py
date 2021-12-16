@@ -120,7 +120,7 @@ def add_service(**_):
         service = yaml.safe_load(data)
         # Pop the data not part of service model
         service.pop('tool_version', None)
-        file_required = service.pop('file_required', None)
+        service.pop('file_required', None)
         heuristics = service.pop('heuristics', [])
 
         # Validate submission params
@@ -138,8 +138,7 @@ def add_service(**_):
         service['docker_config']['registry_type'] = tmp_service['docker_config']['registry_type']
 
         # Privilege can be set explicitly but also granted to services that don't require the file for analysis
-        service['privileged'] = not file_required or service.get('privileged',
-                                                                 config.services.prefer_service_privileged)
+        service['privileged'] = service.get('privileged', config.services.prefer_service_privileged)
 
         for dep in service.get('dependencies', {}).values():
             dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
