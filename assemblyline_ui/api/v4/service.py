@@ -528,6 +528,7 @@ def list_all_services(**_):
              'description': x.get('description', None),
              'enabled': x.get('enabled', False),
              'name': x.get('name', None),
+             'privileged': x.get('privileged', False),
              'rejects': x.get('rejects', None),
              'stage': x.get('stage', None),
              'version': x.get('version', None)}
