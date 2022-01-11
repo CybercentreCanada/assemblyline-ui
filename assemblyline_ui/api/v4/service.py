@@ -2,7 +2,6 @@ import yaml
 
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
@@ -13,10 +12,7 @@ from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.signature import _reset_service_updates
-from assemblyline_ui.config import LOGGER, STORAGE
-
-Classification = forge.get_classification()
-config = forge.get_config()
+from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification
 
 SUB_API = 'service'
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -111,14 +107,14 @@ def add_service(**_):
             tmp_service.pop('tool_version', None)
             tmp_service.pop('file_required', None)
             tmp_service.pop('heuristics', [])
-            tmp_service['update_channel'] = config.services.preferred_update_channel
+
+            # Apply global preferences, if missing, to get the appropriate container image tags
+            tmp_service['update_channel'] = tmp_service.get('update_channel', config.services.preferred_update_channel)
+            tmp_service['docker_config']['registry_type'] = tmp_service['docker_config'] \
+                .get('registry_type', config.services.preferred_registry_type)
             _, tag_name, _ = get_latest_tag_for_service(Service(tmp_service), config, LOGGER)
             enable_allowed = bool(tag_name)
-            if tag_name:
-                tag_name = tag_name.encode()
-            else:
-                tag_name = b'latest'
-
+            tag_name = tag_name.encode() if tag_name else b'latest'
             data = data.replace(b"$SERVICE_TAG", tag_name)
 
         service = yaml.safe_load(data)
@@ -137,8 +133,15 @@ def add_service(**_):
                 return make_api_response(
                     "", err=f"Default and value mismatch for submission param: {sp['name']}", status_code=400)
 
-        # Fix update_channel with the system default
-        service['update_channel'] = config.services.preferred_update_channel
+        # Apply default global configurations (if absent in service configuration)
+        service['update_channel'] = tmp_service['update_channel']
+        service['docker_config']['registry_type'] = tmp_service['docker_config']['registry_type']
+
+        # Privilege can be set explicitly but also granted to services that don't require the file for analysis
+        service['privileged'] = service.get('privileged', config.services.prefer_service_privileged)
+
+        for dep in service.get('dependencies', {}).values():
+            dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
         service['enabled'] = service['enabled'] and enable_allowed
 
         # Load service info
@@ -156,7 +159,7 @@ def add_service(**_):
         if not STORAGE.service_delta.get_if_exists(service.name):
             STORAGE.service_delta.save(service.name, {'version': service.version})
             STORAGE.service_delta.commit()
-        
+
         # Notify components watching for service config changes
         event_sender.send(service.name, {
             'operation': Operation.Added,
@@ -166,7 +169,7 @@ def add_service(**_):
         new_heuristics = []
         if heuristics:
             plan = STORAGE.heuristic.get_bulk_plan()
-            for index, heuristic in enumerate(heuristics):
+            for _, heuristic in enumerate(heuristics):
                 try:
                     # Append service name to heuristic ID
                     heuristic['heur_id'] = f"{service.name.upper()}.{str(heuristic['heur_id'])}"
@@ -445,6 +448,52 @@ def get_service(servicename, **_):
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
 
 
+@service_api.route("/<servicename>/<version>/", methods=["GET"])
+@api_login(require_type=['admin'], audit=False, allow_readonly=False)
+def get_service_defaults(servicename, version, **_):
+    """
+    Load the default configuration for a given service version
+
+    Variables:
+    servicename       => Name of the service to get the info
+    version           => Version of the service to get
+
+    Data Block:
+    None
+
+    Result example:
+    {'accepts': '(archive|executable|java|android)/.*',
+     'category': 'Extraction',
+     'classpath': 'al_services.alsvc_extract.Extract',
+     'config': {'DEFAULT_PW_LIST': ['password', 'infected']},
+     'cpu_cores': 0.1,
+     'description': "Extracts some stuff"
+     'enabled': True,
+     'name': 'Extract',
+     'ram_mb': 256,
+     'rejects': 'empty|metadata/.*',
+     'stage': 'EXTRACT',
+     'submission_params': [{'default': u'',
+       'name': 'password',
+       'type': 'str',
+       'value': u''},
+      {'default': False,
+       'name': 'extract_pe_sections',
+       'type': 'bool',
+       'value': False},
+      {'default': False,
+       'name': 'continue_after_extract',
+       'type': 'bool',
+       'value': False}],
+     'timeout': 60}
+    """
+    service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    if service:
+        return make_api_response(service)
+    else:
+        return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
+
+
 @service_api.route("/all/", methods=["GET"])
 @api_login(audit=False, required_priv=['R'], allow_readonly=False)
 def list_all_services(**_):
@@ -479,6 +528,7 @@ def list_all_services(**_):
              'description': x.get('description', None),
              'enabled': x.get('enabled', False),
              'name': x.get('name', None),
+             'privileged': x.get('privileged', False),
              'rejects': x.get('rejects', None),
              'stage': x.get('stage', None),
              'version': x.get('version', None)}
@@ -513,7 +563,8 @@ def remove_service(servicename, **_):
             success = False
         if not STORAGE.service.delete_by_query(f"id:{servicename}*"):
             success = False
-        STORAGE.heuristic.delete_by_query(f"{servicename.upper()}*")
+        STORAGE.heuristic.delete_by_query(f"id:{servicename.upper()}*")
+        STORAGE.signature.delete_by_query(f"type:{servicename.lower()}*")
 
         # Notify components watching for service config changes
         event_sender.send(servicename, {
@@ -576,17 +627,23 @@ def set_service(servicename, **_):
     if not version:
         return make_api_response({"success": False}, "The service you are trying to modify does not exist", 404)
 
-    current_service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    current_default = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    current_service = STORAGE.get_service_with_delta(servicename, as_obj=False)
 
-    if not current_service:
+    if not current_default:
         return make_api_response({"success": False}, "The service you are trying to modify does not exist", 404)
 
     if 'name' in data and servicename != data['name']:
         return make_api_response({"success": False}, "You cannot change the service name", 400)
 
-    # Do not allow user to edit the docker_config.image since we will use the default image for each versions
-    data['docker_config']['image'] = current_service['docker_config']['image']
-    delta = get_recursive_delta(current_service, data)
+    if current_service['version'] != version:
+        # On version change, reset all container versions
+        data['docker_config']['image'] = current_default['docker_config']['image']
+        for k, v in data['dependencies'].items():
+            if k in current_default['dependencies']:
+                v['container']['image'] = current_default['dependencies'][k]['container']['image']
+
+    delta = get_recursive_delta(current_default, data, stop_keys=['config'])
     delta['version'] = version
 
     removed_sources = {}
@@ -594,7 +651,7 @@ def set_service(servicename, **_):
     if delta.get("update_config", {}).get("sources", None) is not None:
         delta["update_config"]["sources"] = preprocess_sources(delta["update_config"]["sources"])
 
-        c_srcs = STORAGE.get_service_with_delta(servicename, as_obj=False).get('update_config', {}).get('sources', [])
+        c_srcs = current_service.get('update_config', {}).get('sources', [])
         removed_sources = synchronize_sources(servicename, c_srcs, delta["update_config"]["sources"])
 
     # Notify components watching for service config changes

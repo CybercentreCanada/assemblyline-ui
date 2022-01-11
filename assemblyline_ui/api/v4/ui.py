@@ -11,14 +11,11 @@ from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import TEMP_DIR, STORAGE
+from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-
-Classification = forge.get_classification()
-config = forge.get_config()
 
 SUB_API = 'ui'
 ui_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -227,15 +224,13 @@ def start_ui_submission(ui_sid, **kwargs):
                 target_dir = os.path.join(TEMP_DIR, ui_sid)
                 os.makedirs(target_dir, exist_ok=True)
 
-                target_file = os.path.join(target_dir, ui_params.get('filename', ui_sid))
+                target_file = os.path.join(target_dir, ui_params.pop('filename', ui_sid))
 
                 if os.path.exists(target_file):
                     os.unlink(target_file)
 
                 # Save the reconstructed file
-                with open(target_file, "wb") as t:
-                    t.write(cache.get(ui_sid))
-
+                cache.download(ui_sid, target_file)
                 submitted_file = target_file
 
         # Submit the file
@@ -270,13 +265,12 @@ def start_ui_submission(ui_sid, **kwargs):
             except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
 
-            with forge.get_filestore() as f_transport:
-                try:
-                    submit_result = SubmissionClient(datastore=STORAGE, filestore=f_transport, config=config)\
-                        .submit(submission_obj, local_files=[submitted_file])
-                    submission_received(submission_obj)
-                except SubmissionException as e:
-                    return make_api_response("", err=str(e), status_code=400)
+            try:
+                submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config)\
+                    .submit(submission_obj, local_files=[submitted_file])
+                submission_received(submission_obj)
+            except SubmissionException as e:
+                return make_api_response("", err=str(e), status_code=400)
 
             return make_api_response({"started": True, "sid": submit_result.sid})
         else:

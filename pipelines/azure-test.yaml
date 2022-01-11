@@ -13,7 +13,7 @@ resources:
       ports:
         - 6379:6379
     - container: elasticsearch
-      image: cccs/elasticsearch:7.8.0
+      image: cccs/elasticsearch:7.16.1
       env:
         ES_JAVA_OPTS: "-Xms256m -Xmx512m"
         DISCOVERY_TYPE: "single-node"
@@ -22,19 +22,19 @@ resources:
     - container: minio
       image: cccs/minio
       env:
-        MINIO_ACCESS_KEY: al_storage_key
-        MINIO_SECRET_KEY: Ch@ngeTh!sPa33w0rd
+        MINIO_ROOT_USER: al_storage_key
+        MINIO_ROOT_PASSWORD: Ch@ngeTh!sPa33w0rd
       ports:
         - 9000:9000
 
   repositories:
     - repository: assemblyline-base
       type: github
-      endpoint: github
+      endpoint: github-repo-sa
       name: CybercentreCanada/assemblyline-base
     - repository: assemblyline-core
       type: github
-      endpoint: github
+      endpoint: github-repo-sa
       name: CybercentreCanada/assemblyline-core
 
 jobs:

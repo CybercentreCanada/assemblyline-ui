@@ -6,18 +6,14 @@ import tempfile
 
 from flask import request
 
-from assemblyline.common import forge
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
-from assemblyline.common.hexdump import hexdump
+from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import STORAGE, ALLOW_RAW_DOWNLOADS
+from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
-
-Classification = forge.get_classification()
-config = forge.get_config()
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
@@ -31,17 +27,18 @@ API_MAX_SIZE = 10 * 1024 * 1024
 def list_file_active_keys(sha256, access_control=None):
     query = f"id:{sha256}*"
 
-    item_list = [x for x in STORAGE.result.stream_search(query, access_control=access_control, as_obj=False)]
+    item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name",
+                                                         access_control=access_control, as_obj=False)]
 
     item_list.sort(key=lambda k: k["created"], reverse=True)
 
-    active_found = []
+    active_found = set()
     active_keys = []
     alternates = []
     for item in item_list:
         if item['response']['service_name'] not in active_found:
             active_keys.append(item['id'])
-            active_found.append(item['response']['service_name'])
+            active_found.add(item['response']['service_name'])
         else:
             alternates.append(item)
 
@@ -50,16 +47,14 @@ def list_file_active_keys(sha256, access_control=None):
 
 def list_file_childrens(sha256, access_control=None):
     query = f'id:{sha256}* AND response.extracted.sha256:*'
-    resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id',
-                                         sort="created desc", access_control=access_control,
-                                         as_obj=False)
-
-    result_keys = [x['items'][0]['id'] for x in resp['items']]
+    service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='*',
+                                                 sort="created desc", access_control=access_control,
+                                                 as_obj=False)
 
     output = []
     processed_sha256 = []
-    for r in STORAGE.result.multiget(result_keys, as_dictionary=False, as_obj=False):
-        for extracted in r['response']['extracted']:
+    for r in service_resp['items']:
+        for extracted in r['items'][0]['response']['extracted']:
             if extracted['sha256'] not in processed_sha256:
                 processed_sha256.append(extracted['sha256'])
                 output.append({
@@ -118,8 +113,7 @@ def get_file_ascii(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -197,8 +191,7 @@ def download_file(sha256, **kwargs):
 
         _, download_path = tempfile.mkstemp()
         try:
-            with forge.get_filestore() as f_transport:
-                downloaded_from = f_transport.download(sha256, download_path)
+            downloaded_from = FILESTORE.download(sha256, download_path)
 
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
@@ -232,7 +225,8 @@ def get_file_hex(sha256, **kwargs):
     sha256       => A resource locator for the file (sha256)
 
     Arguments:
-    None
+    bytes_only   => Only return bytes with no formatting
+    length       => Number of bytes per lines
 
     Data Block:
     None
@@ -246,6 +240,9 @@ def get_file_hex(sha256, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
+    bytes_only = request.args.get('bytes_only', 'false').lower() == 'true'
+    length = int(request.args.get('length', '16'))
+
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
@@ -253,13 +250,15 @@ def get_file_hex(sha256, **kwargs):
         return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
-        return make_api_response(hexdump(data))
+        if bytes_only:
+            return make_api_response(dump(data).decode())
+        else:
+            return make_api_response(hexdump(data, length=length))
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
@@ -295,8 +294,7 @@ def get_file_image_datastream(sha256, **kwargs):
         return make_api_response({}, "This file is not allowed to be downloaded as a datastream.", 403)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -335,8 +333,7 @@ def get_file_strings(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        with forge.get_filestore() as f_transport:
-            data = f_transport.get(sha256)
+        data = FILESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -384,14 +381,13 @@ def get_file_children(sha256, **kwargs):
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
             output = []
             response = STORAGE.result.grouped_search("response.service_name",
-                                                     query=f"id:{sha256}* AND response.extracted:*", fl="id", rows=100,
+                                                     query=f"id:{sha256}* AND response.extracted:*", fl="*", rows=100,
                                                      sort="created desc", access_control=user['access_control'],
                                                      as_obj=False)
-            result_res = [x['id'] for y in response['items'] for x in y['items']]
 
             processed_srl = []
-            for r in STORAGE.result.multiget(result_res, as_dictionary=False, as_obj=False):
-                for extracted in r['response']['extracted']:
+            for r in response['items']:
+                for extracted in r['items'][0]['response']['extracted']:
                     if extracted['sha256'] not in processed_srl:
                         processed_srl.append(extracted['sha256'])
                         output.append({'sha256': extracted['sha256'], 'name': extracted['name']})
@@ -604,24 +600,16 @@ def get_file_results_for_service(sha256, service, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    args = [("fl", "_yz_rk"),
-            ("sort", "created desc")]
-    if "all" in request.args:
-        args.append(("rows", "100"))
-    else:
-        args.append(("rows", "1"))
-
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="id",
+        res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="*",
                                     rows=100 if "all" in request.args else 1,
                                     access_control=user["access_control"], as_obj=False, use_archive=True)
-        keys = [k["id"] for k in res['items']]
 
         results = []
-        for r in STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False):
+        for r in res['items']:
             result = format_result(user['classification'], r, file_obj['classification'])
             if result:
                 results.append(result)
