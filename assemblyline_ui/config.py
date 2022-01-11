@@ -60,6 +60,7 @@ def get_submission_traffic_channel():
                       port=config.core.redis.nonpersistent.port)
 
 
+@functools.lru_cache()
 def get_token_store(key):
     return ExpiringSet(f"oauth_token_{key}",
                        host=config.core.redis.nonpersistent.host,
@@ -67,6 +68,7 @@ def get_token_store(key):
                        ttl=60 * 2)
 
 
+@functools.lru_cache()
 def get_reset_queue(key):
     return ExpiringSet(f"reset_id_{key}",
                        host=config.core.redis.nonpersistent.host,
@@ -74,6 +76,7 @@ def get_reset_queue(key):
                        ttl=60 * 15)
 
 
+@functools.lru_cache()
 def get_signup_queue(key):
     return ExpiringSet(f"signup_id_{key}",
                        host=config.core.redis.nonpersistent.host,
