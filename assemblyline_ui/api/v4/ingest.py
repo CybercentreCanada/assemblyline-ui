@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from assemblyline.common.classification import InvalidClassification
 
 from flask import request
 
@@ -308,7 +309,14 @@ def ingest_single_file(**kwargs):
                 out_file = extracted_path
 
         # Alter filename and classification based on CaRT output
-        s_params['classification'] = al_meta.pop('classification', s_params['classification'])
+        meta_classification = al_meta.pop('classification', s_params['classification'])
+        if meta_classification != s_params['classification']:
+            try:
+                s_params['classification'] = CLASSIFICATION.max_classification(meta_classification,
+                                                                               s_params['classification'])
+            except InvalidClassification as ic:
+                return make_api_response({}, "The classification found inside the cart file cannot be merged with "
+                                             f"the classification the file was submitted as: {str(ic)}", 400)
         name = al_meta.pop('name', name)
 
         # Validate ingest classification
