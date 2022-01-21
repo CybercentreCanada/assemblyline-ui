@@ -196,11 +196,6 @@ def ingest_single_file(**kwargs):
         if not isinstance(notification_threshold, int) and notification_threshold:
             return make_api_response({}, "notification_threshold should be and int", 400)
 
-        # Get generate alert parameter
-        generate_alert = data.get('generate_alert', False)
-        if not isinstance(generate_alert, bool):
-            return make_api_response({}, "generate_alert should be a boolean", 400)
-
         # Get file name
         if not name:
             return make_api_response({}, "Filename missing", 400)
@@ -275,6 +270,11 @@ def ingest_single_file(**kwargs):
         s_params.update(data.get("params", {}))
         if 'groups' not in s_params:
             s_params['groups'] = user['groups']
+
+        # Get generate alert parameter
+        generate_alert = data.get('generate_alert', s_params.get('generate_alert', False))
+        if not isinstance(generate_alert, bool):
+            return make_api_response({}, "generate_alert should be a boolean", 400)
 
         # Override final parameters
         s_params.update({
