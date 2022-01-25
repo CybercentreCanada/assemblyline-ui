@@ -572,6 +572,13 @@ def remove_service(servicename, **_):
             'name': servicename
         })
 
+        # Clear potentially unused keys from Redis related to service
+        Hash(f'service-updates-{servicename}', get_client(
+            host=config.core.redis.persistent.host,
+            port=config.core.redis.persistent.port,
+            private=False,
+        )).delete()
+
         return make_api_response({"success": success})
     else:
         return make_api_response({"success": False},
