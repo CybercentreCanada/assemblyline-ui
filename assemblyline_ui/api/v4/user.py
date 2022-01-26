@@ -107,6 +107,11 @@ def who_am_i(**kwargs):
             "version": VERSION
         },
         "ui": {
+            "alerting_meta": {
+                "important": config.ui.alerting_meta.important,
+                "subject": config.ui.alerting_meta.subject,
+                "url": config.ui.alerting_meta.url
+            },
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,
             "allow_url_submissions": config.ui.allow_url_submissions,
             "apps": [x for x in APPS_LIST['apps']
