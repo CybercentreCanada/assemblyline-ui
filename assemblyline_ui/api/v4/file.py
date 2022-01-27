@@ -27,7 +27,7 @@ API_MAX_SIZE = 10 * 1024 * 1024
 def list_file_active_keys(sha256, access_control=None):
     query = f"id:{sha256}*"
 
-    item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name",
+    item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name,result.score",
                                                          access_control=access_control, as_obj=False)]
 
     item_list.sort(key=lambda k: k["created"], reverse=True)
