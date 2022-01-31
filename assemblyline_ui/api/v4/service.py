@@ -134,8 +134,10 @@ def add_service(**_):
                     "", err=f"Default and value mismatch for submission param: {sp['name']}", status_code=400)
 
         # Apply default global configurations (if absent in service configuration)
-        service['update_channel'] = tmp_service['update_channel']
-        service['docker_config']['registry_type'] = tmp_service['docker_config']['registry_type']
+        if not service.get('update_channel'):
+            service['update_channel'] = config.services.preferred_update_channel
+        if not service.get('docker_config', {}).get('registry_type'):
+            service['docker_config']['registry_type'] = config.services.preferred_registry_type
 
         # Privilege can be set explicitly but also granted to services that don't require the file for analysis
         service['privileged'] = service.get('privileged', config.services.prefer_service_privileged)
