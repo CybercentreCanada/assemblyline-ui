@@ -139,8 +139,12 @@ def get_file_submission_results(sid, sha256, **kwargs):
         output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
                                                               user["access_control"])
 
+        done_heuristics = set()
         for res in output['results']:
-            for sec in res['result']['sections']:
+            sorted_sections = sorted(res.get('result', {}).get('sections', []),
+                                     key=lambda i: i['heuristic']['score'] if i['heuristic'] is not None else 0,
+                                     reverse=True)
+            for sec in sorted_sections:
                 h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
@@ -153,10 +157,11 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     else:
                         h_type = "malicious"
 
-                    item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
-                    output['heuristics'].setdefault(h_type, [])
-                    if item not in output['heuristics'][h_type]:
+                    if sec['heuristic']['heur_id'] not in done_heuristics:
+                        item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
+                        output['heuristics'].setdefault(h_type, [])
                         output['heuristics'][h_type].append(item)
+                        done_heuristics.add(sec['heuristic']['heur_id'])
 
                     # Process Attack matrix
                     for attack in sec['heuristic'].get('attack', []):
