@@ -81,15 +81,17 @@ def safe_download(download_url, target):
 
 
 def get_or_create_summary(sid, results, user_classification, completed):
-    cache_key = f"{sid}_{CLASSIFICATION.normalize_classification(user_classification, long_format=False)}"
+    user_classification = CLASSIFICATION.normalize_classification(user_classification, long_format=False)
+    cache_key = f"{sid}_{user_classification}_with_sections"
     for illegal_char in [" ", ":", "/"]:
         cache_key = cache_key.replace(illegal_char, "")
 
     summary_cache = STORAGE.submission_summary.get_if_exists(cache_key, as_obj=False)
 
     if not summary_cache:
-        summary = STORAGE.get_summary_from_keys(results, cl_engine=CLASSIFICATION,
-                                                user_classification=user_classification)
+        summary = STORAGE.get_summary_from_keys(
+            results, cl_engine=CLASSIFICATION, user_classification=user_classification,
+            keep_heuristic_sections=True)
 
         expiry = now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60)
         partial = not completed or "missing_results" in summary or "missing_files" in summary
@@ -102,8 +104,9 @@ def get_or_create_summary(sid, results, user_classification, completed):
                 "expiry_ts": expiry,
                 "heuristics": json.dumps(summary['heuristics']),
                 "classification": summary['classification'],
-                "filtered": summary["filtered"]
-
+                "filtered": summary["filtered"],
+                "heuristic_sections": json.dumps(summary['heuristic_sections']),
+                "heuristic_name_map": json.dumps(summary['heuristic_name_map'])
             }
             STORAGE.submission_summary.save(cache_key, summary_cache)
 
@@ -114,7 +117,9 @@ def get_or_create_summary(sid, results, user_classification, completed):
             "heuristics": summary['heuristics'],
             "classification": summary['classification'],
             "filtered": summary["filtered"],
-            "partial": partial
+            "partial": partial,
+            "heuristic_sections": summary['heuristic_sections'],
+            "heuristic_name_map": summary['heuristic_name_map']
         }
 
     return {
@@ -124,7 +129,9 @@ def get_or_create_summary(sid, results, user_classification, completed):
         "heuristics": json.loads(summary_cache['heuristics']),
         "classification": summary_cache['classification'],
         "filtered": summary_cache["filtered"],
-        "partial": False
+        "partial": False,
+        "heuristic_sections": json.loads(summary_cache['heuristic_sections']),
+        "heuristic_name_map": json.loads(summary_cache['heuristic_name_map'])
     }
 
 

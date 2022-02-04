@@ -6,6 +6,9 @@ from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.tagging import tag_dict_to_list
 
 
+JSON_SECTIONS = ["GRAPH_DATA", "URL", "JSON", "KEY_VALUE", "PROCESS_TREE", "TABLE", "IMAGE"]
+
+
 class InvalidSectionList(Exception):
     pass
 
@@ -36,6 +39,27 @@ def build_heirarchy_rec(sections, current_id=0, current_lvl=0, parent=None):
     return parent, current_id
 
 
+def cleanup_heuristic_sections(heuristic_sections, ):
+    cleaned_sections = {}
+    for heur_id, sections in heuristic_sections.items():
+        cleaned_sections[heur_id] = [fix_section_data(sec) for sec in sections]
+    return cleaned_sections
+
+
+def fix_section_data(section):
+    if section['body_format'] in JSON_SECTIONS and isinstance(section['body'], str):
+        # Loading JSON formatted sections
+        try:
+            section['body'] = json.loads(section['body'])
+        except ValueError:
+            pass
+
+    # Changing tags to a list
+    section['tags'] = tag_dict_to_list(flatten(section['tags']), False)
+    section['tags'] += tag_dict_to_list(section.pop('safelisted_tags', {}), True)
+    return section
+
+
 def filter_sections(sections, user_classification, min_classification):
     max_classification = min_classification
 
@@ -43,7 +67,6 @@ def filter_sections(sections, user_classification, min_classification):
     temp_sections = [s for s in sections if CLASSIFICATION.is_accessible(user_classification, s['classification'])]
     final_sections = []
     for section in temp_sections:
-        # TODO: Depth analysis should be done before returning sections
         try:
             # Recalculation max classification using the currently accessible sections
             section['classification'] = CLASSIFICATION.max_classification(section['classification'], min_classification)
@@ -51,17 +74,7 @@ def filter_sections(sections, user_classification, min_classification):
         except InvalidClassification:
             continue
 
-        if section['body_format'] in ["GRAPH_DATA", "URL", "JSON", "KEY_VALUE"] and isinstance(section['body'], str):
-            # Loading JSON formatted sections
-            try:
-                section['body'] = json.loads(section['body'])
-            except ValueError:
-                pass
-
-        # Changing tags to a list
-        section['tags'] = tag_dict_to_list(flatten(section['tags']), False)
-        section['tags'] += tag_dict_to_list(section.pop('safelisted_tags', {}), True)
-        final_sections.append(section)
+        final_sections.append(fix_section_data(section))
 
     # Telling the user a section was hidden
     if len(sections) != len(final_sections):
