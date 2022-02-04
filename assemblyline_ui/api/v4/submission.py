@@ -6,7 +6,7 @@ from flask import request
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
-from assemblyline_ui.helper.result import format_result
+from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
 
 SUB_API = 'submission'
@@ -542,7 +542,7 @@ def get_summary(sid, **kwargs):
         output['classification'] = summary['classification']
         output['filtered'] = summary['filtered']
         output['partial'] = summary['partial']
-        output['heuristic_sections'] = summary['heuristic_sections']
+        output['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
         output['heuristic_name_map'] = summary['heuristic_name_map']
 
         # Process attack matrix
@@ -848,7 +848,7 @@ def get_report(submission_id, **kwargs):
         if summary['partial']:
             submission['report_partial'] = True
 
-        submission['heuristic_sections'] = summary['heuristic_sections']
+        submission['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
         submission['heuristic_name_map'] = summary['heuristic_name_map']
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
