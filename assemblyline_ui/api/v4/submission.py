@@ -542,6 +542,8 @@ def get_summary(sid, **kwargs):
         output['classification'] = summary['classification']
         output['filtered'] = summary['filtered']
         output['partial'] = summary['partial']
+        output['heuristic_sections'] = summary['heuristic_sections']
+        output['heuristic_name_map'] = summary['heuristic_name_map']
 
         # Process attack matrix
         for item in attack_matrix:
@@ -833,7 +835,7 @@ def get_report(submission_id, **kwargs):
         name_map = recurse_get_names(tree['tree'])
 
         summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'],
-                                        submission['state'] == "completed", keep_heuristic_sections=True)
+                                        submission['state'] == "completed")
         tags = [t for t in summary['tags'] if not t['safelisted']]
 
         attack_matrix = summary['attack_matrix']
@@ -847,6 +849,7 @@ def get_report(submission_id, **kwargs):
             submission['report_partial'] = True
 
         submission['heuristic_sections'] = summary['heuristic_sections']
+        submission['heuristic_name_map'] = summary['heuristic_name_map']
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
         submission['tags'] = {}
