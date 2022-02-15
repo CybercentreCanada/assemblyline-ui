@@ -524,8 +524,12 @@ def get_file_results(sha256, **kwargs):
         output['errors'] = []
         output['file_viewer_only'] = True
 
+        done_heuristics = set()
         for res in output['results']:
-            for sec in res['result']['sections']:
+            sorted_sections = sorted(res.get('result', {}).get('sections', []),
+                                     key=lambda i: i['heuristic']['score'] if i['heuristic'] is not None else 0,
+                                     reverse=True)
+            for sec in sorted_sections:
                 h_type = "info"
 
                 if sec.get('heuristic', False):
@@ -539,10 +543,11 @@ def get_file_results(sha256, **kwargs):
                     else:
                         h_type = "malicious"
 
-                    item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
-                    output['heuristics'].setdefault(h_type, [])
-                    if item not in output['heuristics'][h_type]:
+                    if sec['heuristic']['heur_id'] not in done_heuristics:
+                        item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
+                        output['heuristics'].setdefault(h_type, [])
                         output['heuristics'][h_type].append(item)
+                        done_heuristics.add(sec['heuristic']['heur_id'])
 
                     # Process Attack matrix
                     for attack in sec['heuristic'].get('attack', []):

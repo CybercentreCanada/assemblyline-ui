@@ -6,7 +6,7 @@ from flask import request
 from assemblyline.datastore import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
-from assemblyline_ui.helper.result import format_result
+from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
 
 SUB_API = 'submission'
@@ -139,8 +139,12 @@ def get_file_submission_results(sid, sha256, **kwargs):
         output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
                                                               user["access_control"])
 
+        done_heuristics = set()
         for res in output['results']:
-            for sec in res['result']['sections']:
+            sorted_sections = sorted(res.get('result', {}).get('sections', []),
+                                     key=lambda i: i['heuristic']['score'] if i['heuristic'] is not None else 0,
+                                     reverse=True)
+            for sec in sorted_sections:
                 h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
@@ -153,10 +157,11 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     else:
                         h_type = "malicious"
 
-                    item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
-                    output['heuristics'].setdefault(h_type, [])
-                    if item not in output['heuristics'][h_type]:
+                    if sec['heuristic']['heur_id'] not in done_heuristics:
+                        item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
+                        output['heuristics'].setdefault(h_type, [])
                         output['heuristics'][h_type].append(item)
+                        done_heuristics.add(sec['heuristic']['heur_id'])
 
                     # Process Attack matrix
                     for attack in sec['heuristic'].get('attack', []):
@@ -537,6 +542,8 @@ def get_summary(sid, **kwargs):
         output['classification'] = summary['classification']
         output['filtered'] = summary['filtered']
         output['partial'] = summary['partial']
+        output['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
+        output['heuristic_name_map'] = summary['heuristic_name_map']
 
         # Process attack matrix
         for item in attack_matrix:
@@ -841,6 +848,8 @@ def get_report(submission_id, **kwargs):
         if summary['partial']:
             submission['report_partial'] = True
 
+        submission['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
+        submission['heuristic_name_map'] = summary['heuristic_name_map']
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
         submission['tags'] = {}
