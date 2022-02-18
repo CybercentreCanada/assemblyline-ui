@@ -1,10 +1,10 @@
 
 from flask import request
 
-from assemblyline_ui.helper.search import BUCKET_MAP, list_all_fields, BUCKET_ORDER_MAP
-from assemblyline.datastore import SearchException
+from assemblyline.datastore.exceptions import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
+from assemblyline_ui.helper.search import BUCKET_MAP, list_all_fields, BUCKET_ORDER_MAP
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)

@@ -1,7 +1,7 @@
 
 from flask import request
 
-from assemblyline.datastore import SearchException
+from assemblyline.datastore.exceptions import SearchException
 from assemblyline_ui.config import STORAGE
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 

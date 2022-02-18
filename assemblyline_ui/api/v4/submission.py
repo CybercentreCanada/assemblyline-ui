@@ -1,9 +1,8 @@
 import time
 
-from assemblyline.datastore.exceptions import MultiKeyError
 from flask import request
 
-from assemblyline.datastore import SearchException
+from assemblyline.datastore.exceptions import MultiKeyError, SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
