@@ -9,8 +9,9 @@ from assemblyline.common.bundling import create_bundle as bundle_create, import_
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
+from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, BUNDLING_DIR, CLASSIFICATION as Classification
+from assemblyline_ui.config import BUNDLING_DIR, CLASSIFICATION as Classification, STORAGE
 
 
 SUB_API = 'bundle'
@@ -76,6 +77,8 @@ def import_bundle(**_):
     None
 
     Arguments:
+    allow_incomplete        => allow importing incomplete submission
+    rescan_services         => Comma seperated list of services to rescan after importing the bundle
     min_classification      => Minimum classification that the files and result from the bundle should get
 
     Data Block:
@@ -84,8 +87,12 @@ def import_bundle(**_):
     Result example:
     {"success": true}
     """
-    min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
     allow_incomplete = request.args.get('allow_incomplete', 'true').lower() == 'true'
+    min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
+    rescan_services = request.args.get('rescan_services', None)
+
+    if rescan_services is not None:
+        rescan_services = rescan_services.split(',')
 
     current_bundle = os.path.join(BUNDLING_DIR, f"{get_random_id()}.bundle")
 
@@ -100,8 +107,11 @@ def import_bundle(**_):
 
     try:
         bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification,
-                      allow_incomplete=allow_incomplete)
+                      allow_incomplete=allow_incomplete, rescan_services=rescan_services)
+
         return make_api_response({'success': True})
+    except SubmissionException as se:
+        return make_api_response({'success': False}, err=str(se), status_code=409)
     except InvalidClassification as ice:
         return make_api_response({'success': False}, err=str(ice), status_code=400)
     except SubmissionAlreadyExist as sae:
