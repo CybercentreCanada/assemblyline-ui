@@ -44,9 +44,12 @@ def create_bundle(sid, **kwargs):
     """
     user = kwargs['user']
     use_alert = request.args.get('use_alert', 'true').lower() == 'true'
-    submission = STORAGE.submission.get(sid, as_obj=False)
+    if use_alert:
+        data = STORAGE.alert.get(sid, as_obj=False)
+    else:
+        data = STORAGE.submission.get(sid, as_obj=False)
 
-    if user and submission and Classification.is_accessible(user['classification'], submission['classification']):
+    if user and data and Classification.is_accessible(user['classification'], data['classification']):
         temp_target_file = None
         try:
             temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR, use_alert=use_alert)
@@ -65,7 +68,8 @@ def create_bundle(sid, **kwargs):
             except Exception:
                 pass
     else:
-        return make_api_response("", "You are not allowed create a bundle for this submission...", 403)
+        return make_api_response(
+            "", f"You are not allowed create a bundle for this {'alert' if use_alert else 'submission'}...", 403)
 
 
 @bundle_api.route("/", methods=["POST"])
