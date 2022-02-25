@@ -31,7 +31,7 @@ def create_bundle(sid, **kwargs):
     sid         => ID of the submission to create the bundle for
 
     Arguments:
-    None
+    use_alert   => The ID provided is from an alert and we will use it to create the bundle
 
     Data Block:
     None
@@ -43,12 +43,13 @@ def create_bundle(sid, **kwargs):
     -- THE BUNDLE FILE BINARY --
     """
     user = kwargs['user']
+    use_alert = request.args.get('use_alert', 'true').lower() == 'true'
     submission = STORAGE.submission.get(sid, as_obj=False)
 
     if user and submission and Classification.is_accessible(user['classification'], submission['classification']):
         temp_target_file = None
         try:
-            temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR)
+            temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR, use_alert=use_alert)
             f_size = os.path.getsize(temp_target_file)
             return stream_file_response(open(temp_target_file, 'rb'), "%s.al_bundle" % sid, f_size)
         except SubmissionNotFound as snf:
