@@ -4,7 +4,7 @@ from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
-from assemblyline.datastore import SearchException
+from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config

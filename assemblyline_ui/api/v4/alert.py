@@ -5,7 +5,7 @@ from flask import request
 from werkzeug.exceptions import BadRequest
 
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.datastore import SearchException
+from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classification

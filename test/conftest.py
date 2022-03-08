@@ -10,7 +10,7 @@ import pytest
 
 from assemblyline.common import forge
 from assemblyline.datastore.helper import AssemblylineDatastore
-from assemblyline.datastore.stores.es_store import ESStore
+from assemblyline.datastore.store import ESStore
 
 original_skip = pytest.skip
 
