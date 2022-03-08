@@ -5,7 +5,6 @@ import random
 from cart import is_cart
 from conftest import get_api_data
 
-from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 from assemblyline.odm.models.alert import Alert
@@ -16,7 +15,6 @@ ALERT_ID = "test_alert_id_ui"
 
 @pytest.fixture(scope="module")
 def datastore(datastore_connection, filestore):
-    classification = forge.get_classification()
     try:
         create_users(datastore_connection)
         submission = create_submission(datastore_connection, filestore)
