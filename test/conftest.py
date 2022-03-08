@@ -83,7 +83,7 @@ def redis_connection(config):
     pytest.skip("Connection to the Redis server failed. This test cannot be performed...")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def scheduler(datastore_connection, config, redis_connection):
     return Scheduler(datastore_connection, config, redis_connection)
 
