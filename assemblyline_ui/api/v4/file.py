@@ -240,7 +240,7 @@ def get_file_hex(sha256, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    bytes_only = request.args.get('bytes_only', 'false').lower() == 'true'
+    bytes_only = request.args.get('bytes_only', 'false').lower() in ['true', '']
     length = int(request.args.get('length', '16'))
 
     if not file_obj:

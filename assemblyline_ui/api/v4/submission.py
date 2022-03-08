@@ -702,7 +702,7 @@ def list_submissions_for_group(group, **kwargs):
     rows = int(request.args.get('rows', 100))
     filters = request.args.get('query', None) or None
     track_total_hits = request.args.get('track_total_hits', False)
-    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
+    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
 
     if group == "ALL":
         group_query = "id:*"
@@ -759,7 +759,7 @@ def list_submissions_for_user(username, **kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', None) or None
     track_total_hits = request.args.get('track_total_hits', False)
-    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
+    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
 
     account = STORAGE.user.get(username)
     if not account:

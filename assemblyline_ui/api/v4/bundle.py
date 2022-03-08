@@ -43,7 +43,7 @@ def create_bundle(sid, **kwargs):
     -- THE BUNDLE FILE BINARY --
     """
     user = kwargs['user']
-    use_alert = request.args.get('use_alert', 'true').lower() == 'true'
+    use_alert = request.args.get('use_alert', 'false').lower() in ['true', '']
     if use_alert:
         data = STORAGE.alert.get(sid, as_obj=False)
     else:
@@ -94,9 +94,9 @@ def import_bundle(**_):
     Result example:
     {"success": true}
     """
-    allow_incomplete = request.args.get('allow_incomplete', 'true').lower() == 'true'
+    allow_incomplete = request.args.get('allow_incomplete', 'false').lower() in ['true', '']
     completed_queue = request.args.get('completed_queue', None)
-    exist_ok = request.args.get('exist_ok', 'true').lower() == 'true'
+    exist_ok = request.args.get('exist_ok', 'false').lower() in ['true', '']
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
     rescan_services = request.args.get('rescan_services', None)
 
