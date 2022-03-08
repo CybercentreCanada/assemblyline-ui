@@ -9,8 +9,9 @@ from assemblyline.common.bundling import create_bundle as bundle_create, import_
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
+from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, BUNDLING_DIR, CLASSIFICATION as Classification
+from assemblyline_ui.config import BUNDLING_DIR, CLASSIFICATION as Classification, STORAGE
 
 
 SUB_API = 'bundle'
@@ -30,7 +31,7 @@ def create_bundle(sid, **kwargs):
     sid         => ID of the submission to create the bundle for
 
     Arguments:
-    None
+    use_alert   => The ID provided is from an alert and we will use it to create the bundle
 
     Data Block:
     None
@@ -42,12 +43,16 @@ def create_bundle(sid, **kwargs):
     -- THE BUNDLE FILE BINARY --
     """
     user = kwargs['user']
-    submission = STORAGE.submission.get(sid, as_obj=False)
+    use_alert = request.args.get('use_alert', 'true').lower() == 'true'
+    if use_alert:
+        data = STORAGE.alert.get(sid, as_obj=False)
+    else:
+        data = STORAGE.submission.get(sid, as_obj=False)
 
-    if user and submission and Classification.is_accessible(user['classification'], submission['classification']):
+    if user and data and Classification.is_accessible(user['classification'], data['classification']):
         temp_target_file = None
         try:
-            temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR)
+            temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR, use_alert=use_alert)
             f_size = os.path.getsize(temp_target_file)
             return stream_file_response(open(temp_target_file, 'rb'), "%s.al_bundle" % sid, f_size)
         except SubmissionNotFound as snf:
@@ -63,7 +68,8 @@ def create_bundle(sid, **kwargs):
             except Exception:
                 pass
     else:
-        return make_api_response("", "You are not allowed create a bundle for this submission...", 403)
+        return make_api_response(
+            "", f"You are not allowed create a bundle for this {'alert' if use_alert else 'submission'}...", 403)
 
 
 @bundle_api.route("/", methods=["POST"])
@@ -76,7 +82,11 @@ def import_bundle(**_):
     None
 
     Arguments:
+    allow_incomplete        => allow importing incomplete submission
+    complete_queue          => Queue to listen on for completion messages (only used with rescan_services)
+    rescan_services         => Comma seperated list of services to rescan after importing the bundle
     min_classification      => Minimum classification that the files and result from the bundle should get
+    exist_ok                => Does not fail if submission already exists
 
     Data Block:
     The bundle file to import
@@ -84,8 +94,14 @@ def import_bundle(**_):
     Result example:
     {"success": true}
     """
-    min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
     allow_incomplete = request.args.get('allow_incomplete', 'true').lower() == 'true'
+    completed_queue = request.args.get('completed_queue', None)
+    exist_ok = request.args.get('exist_ok', 'true').lower() == 'true'
+    min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
+    rescan_services = request.args.get('rescan_services', None)
+
+    if rescan_services is not None:
+        rescan_services = rescan_services.split(',')
 
     current_bundle = os.path.join(BUNDLING_DIR, f"{get_random_id()}.bundle")
 
@@ -100,8 +116,12 @@ def import_bundle(**_):
 
     try:
         bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification,
-                      allow_incomplete=allow_incomplete)
+                      allow_incomplete=allow_incomplete, rescan_services=rescan_services,
+                      completed_queue=completed_queue, exist_ok=exist_ok)
+
         return make_api_response({'success': True})
+    except SubmissionException as se:
+        return make_api_response({'success': False}, err=str(se), status_code=409)
     except InvalidClassification as ice:
         return make_api_response({'success': False}, err=str(ice), status_code=400)
     except SubmissionAlreadyExist as sae:
