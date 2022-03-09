@@ -67,7 +67,7 @@ def search(bucket, **kwargs):
         params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
-    params.update({k: str(req_data.get(k, 'false')).lower() == 'true'
+    params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
                    for k in boolean_fields
                    if req_data.get(k, None) is not None})
     params.update({'access_control': user['access_control'], 'as_obj': False})
