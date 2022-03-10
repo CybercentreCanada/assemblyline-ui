@@ -71,7 +71,7 @@ def list_errors(**_):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "id:*") or "id:*"
     sort = request.args.get('sort', "created desc")
-    use_archive = request.args.get('use_archive', "false").lower() == 'true'
+    use_archive = request.args.get('use_archive', "false").lower() in ['true', '']
     track_total_hits = request.args.get('track_total_hits', False)
 
     try:

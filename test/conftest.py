@@ -1,5 +1,6 @@
 import os
 from json import JSONDecodeError
+from assemblyline_core.dispatching.schedules import Scheduler
 
 import requests
 import warnings
@@ -80,6 +81,11 @@ def redis_connection(config):
         pass
 
     pytest.skip("Connection to the Redis server failed. This test cannot be performed...")
+
+
+@pytest.fixture(scope='module')
+def scheduler(datastore_connection, config, redis_connection):
+    return Scheduler(datastore_connection, config, redis_connection)
 
 
 @pytest.fixture(scope='session')

@@ -253,7 +253,7 @@ def list_alerts(**kwargs):
     """
     user = kwargs['user']
 
-    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
+    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
@@ -328,7 +328,7 @@ def list_grouped_alerts(field, **kwargs):
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
     track_total_hits = request.args.get('track_total_hits', False)
-    use_archive = request.args.get('use_archive', 'false').lower() == 'true'
+    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
 
     if not tc_start:
         if "no_delay" not in request.args and config.core.alerter.delay != 0:
