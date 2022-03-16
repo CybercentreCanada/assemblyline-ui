@@ -44,7 +44,7 @@ setup(
         'pyqrcode',
         'markdown',
         'python-ldap',
-        'authlib',
+        'authlib<1.0.0',
         'fido2',
         'PyJWT',
         'gunicorn',
