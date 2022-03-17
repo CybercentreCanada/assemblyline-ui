@@ -60,6 +60,13 @@ def who_am_i(**kwargs):
          "version": "4.1"                           # Assemblyline version
        },
        "ui": {                                    # UI Configuration
+         "alerting_meta": {                         # Alert metadata configuration
+            "important": [],                          # List of metadata fields that should always be displayed
+            "subject": [],                            # List of metadata fields where to fetch email subject
+            "url": []                                 # List of metadata fields where to fetch URLS
+         },
+         "allow_malicious_hinting": True,           # Are users allowed to set the malicious flag before processing
+         "allow_replay": False,                     # Are users allowed to continue submissions on another server
          "allow_url_submissions": True,             # Are URL submissions allowed
          "apps": [],                                # List of apps shown in the apps switcher
          "banner": None,                            # Banner displayed on the submit page
@@ -113,6 +120,7 @@ def who_am_i(**kwargs):
                 "url": config.ui.alerting_meta.url
             },
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,
+            "allow_replay": config.ui.allow_replay,
             "allow_url_submissions": config.ui.allow_url_submissions,
             "apps": [x for x in APPS_LIST['apps']
                      if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
