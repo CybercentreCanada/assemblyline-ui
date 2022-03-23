@@ -324,14 +324,14 @@ def ingest_single_file(**kwargs):
             return make_api_response({}, "You cannot start a submission with higher "
                                      "classification then you're allowed to see", 400)
 
+        # Freshen file object
+        expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
+        STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
+
         # Save the file to the filestore if needs be
         # also no need to test if exist before upload because it already does that
         if do_upload:
             FILESTORE.upload(out_file, fileinfo['sha256'], location='far')
-
-        # Freshen file object
-        expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
-        STORAGE.save_or_freshen_file(fileinfo['sha256'], fileinfo, expiry, s_params['classification'])
 
         # Setup notification queue if needed
         if notification_queue:
