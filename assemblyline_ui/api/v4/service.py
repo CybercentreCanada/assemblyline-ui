@@ -1,8 +1,10 @@
 import yaml
 
 from flask import request
+from packaging.version import parse
 
 from assemblyline.common.dict_utils import get_recursive_delta
+from assemblyline.odm.models.error import ERROR_TYPES
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.messages.changes import Operation
@@ -55,6 +57,75 @@ def check_for_source_change(delta_list, source):
                     operations=[("SET", "classification", class_norm)])
 
     return change_list
+
+
+def get_service_stats(service_name, version):
+    # Build query
+    query = f'response.service_name:{service_name}'
+    if version:
+        query += f' AND response.service_version:{version}'
+
+    # Generate score stats
+    score_stats = STORAGE.result.stats('result.score', query=query)
+    score_stats.pop('sum', None)
+
+    # Count number of results
+    result_count = score_stats.pop('count')
+
+    # Find min_score
+    min_score = 0
+    for x in STORAGE.result.search(query, fl='result.score', rows=1, sort='result.score asc', as_obj=False)['items']:
+        min_score = round(x['result']['score']/1000)*1000
+
+    # Find max_score
+    max_score = 2000
+    for x in STORAGE.result.search(query, fl='result.score', rows=1, sort='result.score desc', as_obj=False)['items']:
+        max_score = round(x['result']['score']/1000)*1000
+
+    # Build score distribution
+    score_stats['distribution'] = STORAGE.result.histogram(
+        'result.score', start=min_score, end=max_score, gap=500, mincount=0,
+        query=query)
+
+    # Get error type distribution
+    errors = {k: 0 for k in ERROR_TYPES.keys()}
+    errors.update(STORAGE.error.facet('type', query=query))
+
+    # Get heuristic count
+    heuristics = {h['heur_id']: 0
+                  for h in STORAGE.heuristic.stream_search(
+                      f'heur_id:{service_name.upper()}*', fl='heur_id', as_obj=False)}
+    heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query))
+
+    # Get extracted files count
+    extracted = STORAGE.result.stats('response.extracted.length', query=query,
+                                     field_script="params._source.response.extracted.length")
+    extracted.pop('count')
+    extracted.pop('sum')
+
+    # Get supplementary files count
+    supplementary = STORAGE.result.stats('response.supplementary.length', query=query,
+                                         field_script="params._source.response.supplementary.length")
+    supplementary.pop('count')
+    supplementary.pop('sum')
+
+    data = {
+        'service': {'name': service_name},
+        'error': errors,
+        'file': {
+            'extracted': extracted,
+            'supplementary': supplementary
+        },
+        'heuristic': heuristics,
+        'result': {
+            'count': result_count,
+            'score': score_stats
+        }
+    }
+    if version:
+        data['version'] = version
+
+    return data
 
 
 def preprocess_sources(source_list):
@@ -395,7 +466,7 @@ def get_potential_versions(servicename, **_):
     if service:
         return make_api_response(
             sorted([item.version for item in STORAGE.service.stream_search(f"id:{servicename}*", fl="version")],
-                   reverse=True))
+                   key=lambda x: parse(x), reverse=True))
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
 
@@ -715,3 +786,53 @@ def update_service(**_):
 
     service_update.set(data['name'], data['update_data'])
     return make_api_response({'success': True, 'status': "updating"})
+
+
+@service_api.route("/stats/<service_name>/", methods=["GET"])
+@api_login(audit=False, required_priv=['R'], require_type=['admin'])
+def service_statistics(service_name, **_):
+    """
+        Get statistics for a service
+
+        Variables:
+        None
+
+        Arguments:
+        version    =>   Version of the service to get stats for
+
+        Data Block:
+        None
+
+        Result example:
+        {'error': {
+           'EXCEPTION': 4,
+           'MAX DEPTH REACHED': 0,
+           'MAX FILES REACHED': 0,
+           'MAX RETRY REACHED': 0,
+           'SERVICE BUSY': 0,
+           'SERVICE DOWN': 0,
+           'TASK PRE-EMPTED': 0,
+           'UNKNOWN': 0},
+        'file': {
+           'extracted': {'avg': 1.064516129032258, 'max': 3.0, 'min': 0.0},
+           'supplementary': {'avg': 5.967741935483871, 'max': 15.0, 'min': 1.0}},
+        'heuristic': {
+            'RESULTSAMPLE.1': 15,
+            'RESULTSAMPLE.2': 14,
+            'RESULTSAMPLE.3': 14,
+            'RESULTSAMPLE.4': 16,
+            'RESULTSAMPLE.5': 11,
+            'RESULTSAMPLE.6': 3},
+        'result': {'count': 31,
+        'score': {'avg': 692.9032258064516,
+                  'distribution': {0: 17,
+                                   500: 0,
+                                   1000: 3,
+                                   1500: 11,
+                                   2000: 0},
+                  'max': 1910.0,
+                  'min': 0.0}},
+        'service': {'name': 'ResultSample', 'version': '4.2.0.dev0'}}
+    """
+    version = request.args.get('version', None)
+    return make_api_response(get_service_stats(service_name, version))
