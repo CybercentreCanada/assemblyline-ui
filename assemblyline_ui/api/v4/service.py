@@ -1,6 +1,8 @@
+
 import yaml
 
 from flask import request
+from math import floor
 from packaging.version import parse
 
 from assemblyline.common.dict_utils import get_recursive_delta
@@ -72,19 +74,14 @@ def get_service_stats(service_name, version):
     # Count number of results
     result_count = score_stats.pop('count')
 
-    # Find min_score
-    min_score = 0
-    for x in STORAGE.result.search(query, fl='result.score', rows=1, sort='result.score asc', as_obj=False)['items']:
-        min_score = round(x['result']['score']/1000)*1000
-
-    # Find max_score
-    max_score = 2000
-    for x in STORAGE.result.search(query, fl='result.score', rows=1, sort='result.score desc', as_obj=False)['items']:
-        max_score = round(x['result']['score']/1000)*1000
+    # Set score gap, min and max
+    gap = 500
+    min_score = floor(score_stats['min']/gap)*gap
+    max_score = floor(score_stats['max']/gap)*gap + gap
 
     # Build score distribution
     score_stats['distribution'] = STORAGE.result.histogram(
-        'result.score', start=min_score, end=max_score, gap=500, mincount=0,
+        'result.score', start=min_score, end=max_score, gap=gap, mincount=0,
         query=query)
 
     # Get error type distribution
