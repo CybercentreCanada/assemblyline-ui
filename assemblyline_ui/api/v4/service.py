@@ -68,7 +68,7 @@ def get_service_stats(service_name, version):
         query += f' AND response.service_version:{version}'
 
     # Generate score stats
-    score_stats = STORAGE.result.stats('result.score', query=query)
+    score_stats = {k: v or 0 for k, v in STORAGE.result.stats('result.score', query=query).items()}
     score_stats.pop('sum', None)
 
     # Count number of results
@@ -95,14 +95,15 @@ def get_service_stats(service_name, version):
     heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query))
 
     # Get extracted files count
-    extracted = STORAGE.result.stats('response.extracted.length', query=query,
-                                     field_script="params._source.response.extracted.length")
+    extracted = {k: v or 0 for k, v in STORAGE.result.stats(
+        'response.extracted.length', query=query, field_script="params._source.response.extracted.length").items()}
     extracted.pop('count')
     extracted.pop('sum')
 
     # Get supplementary files count
-    supplementary = STORAGE.result.stats('response.supplementary.length', query=query,
-                                         field_script="params._source.response.supplementary.length")
+    supplementary = {k: v or 0 for k, v in STORAGE.result.stats(
+        'response.supplementary.length', query=query,
+        field_script="params._source.response.supplementary.length").items()}
     supplementary.pop('count')
     supplementary.pop('sum')
 
