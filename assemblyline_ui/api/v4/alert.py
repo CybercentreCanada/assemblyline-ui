@@ -2,7 +2,6 @@
 import concurrent.futures
 
 from flask import request
-from werkzeug.exceptions import BadRequest
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import SearchException
@@ -418,8 +417,6 @@ def add_labels(alert_id, **kwargs):
         labels = set(request.json)
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
-    except BadRequest:
-        return make_api_response({"success": False}, err="Data received not in JSON format.", status_code=400)
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
@@ -468,8 +465,6 @@ def add_labels_by_batch(**kwargs):
         labels = set(request.json)
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
-    except BadRequest:
-        return make_api_response({"success": False}, err="Data received not in JSON format.", status_code=400)
 
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
@@ -516,8 +511,6 @@ def change_priority(alert_id, **kwargs):
             raise ValueError("Not in priorities")
     except ValueError:
         return make_api_response({"success": False}, err="Invalid priority received.", status_code=400)
-    except BadRequest:
-        return make_api_response({"success": False}, err="Data received not in JSON format.", status_code=400)
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
@@ -568,8 +561,6 @@ def change_priority_by_batch(**kwargs):
             raise ValueError("Not in priorities")
     except ValueError:
         return make_api_response({"success": False}, err="Invalid priority received.", status_code=400)
-    except BadRequest:
-        return make_api_response({"success": False}, err="Data received not in JSON format.", status_code=400)
 
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
@@ -616,8 +607,6 @@ def change_status(alert_id, **kwargs):
             raise ValueError("Not in priorities")
     except ValueError:
         return make_api_response({"success": False}, err="Invalid status received.", status_code=400)
-    except BadRequest:
-        return make_api_response({"success": False}, err="Data received not in JSON format.", status_code=400)
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
@@ -668,8 +657,6 @@ def change_status_by_batch(**kwargs):
             raise ValueError("Not in priorities")
     except ValueError:
         return make_api_response({"success": False}, err="Invalid status received.", status_code=400)
-    except BadRequest:
-        return make_api_response({"success": False}, err="Data received not in JSON format.", status_code=400)
 
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
