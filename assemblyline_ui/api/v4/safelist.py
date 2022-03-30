@@ -125,8 +125,6 @@ def add_or_update_hash(**kwargs):
     """
     # Load data
     data = request.json
-    if not data:
-        return make_api_response({}, "No data provided", 400)
     user = kwargs['user']
 
     # Set defaults

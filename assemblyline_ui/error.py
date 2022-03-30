@@ -2,7 +2,7 @@
 from flask import Blueprint, request, session as flsk_session
 from sys import exc_info
 from traceback import format_tb
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized, BadRequest
 
 from assemblyline_ui.api.base import make_api_response
 from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config, KV_SESSION
@@ -16,7 +16,10 @@ errors = Blueprint("errors", __name__)
 # Custom Error page
 @errors.app_errorhandler(400)
 def handle_400(e):
-    error_message = str(e)
+    if isinstance(e, BadRequest):
+        error_message = "Not data block provided or data block not in JSON format.'"
+    else:
+        error_message = str(e)
     return make_api_response("", error_message, 400)
 
 

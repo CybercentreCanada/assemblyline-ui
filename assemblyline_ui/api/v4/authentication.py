@@ -11,6 +11,7 @@ from flask import session as flsk_session
 from io import BytesIO
 from passlib.hash import bcrypt
 from urllib.parse import urlparse
+from werkzeug.exceptions import BadRequest
 
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
@@ -254,8 +255,9 @@ def get_reset_link(**_):
     if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
-    data = request.json
-    if not data:
+    try:
+        data = request.json
+    except BadRequest:
         data = request.values
 
     email = data.get('email', None)
@@ -301,8 +303,9 @@ def login(**_):
                                    #   Note: The timer reset after each call
     }
     """
-    data = request.json
-    if not data:
+    try:
+        data = request.json
+    except BadRequest:
         data = request.values
 
     user = data.get('user', None)
@@ -622,8 +625,9 @@ def reset_pwd(**_):
     if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
-    data = request.json
-    if not data:
+    try:
+        data = request.json
+    except BadRequest:
         data = request.values
 
     reset_id = data.get('reset_id', None)
@@ -732,8 +736,9 @@ def signup(**_):
     if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
-    data = request.json
-    if not data:
+    try:
+        data = request.json
+    except BadRequest:
         data = request.values
 
     uname = data.get('user', None)
@@ -824,8 +829,9 @@ def signup_validate(**_):
     if not config.auth.internal.signup.enabled:
         return make_api_response({"success": False}, "Signup process has been disabled", 403)
 
-    data = request.json
-    if not data:
+    try:
+        data = request.json
+    except BadRequest:
         data = request.values
 
     registration_key = data.get('registration_key', None)
