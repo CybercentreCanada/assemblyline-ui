@@ -660,6 +660,10 @@ def reset_pwd(**_):
             LOGGER.warning(f"Failed to reset the user's password: {str(e)}")
             pass
 
+        return make_api_response({"success": False},
+                                 err="This reset link has expired, please restart the password reset process",
+                                 status_code=403)
+
     return make_api_response({"success": False}, err="Invalid parameters passed", status_code=400)
 
 
