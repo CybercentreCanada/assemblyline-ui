@@ -166,7 +166,7 @@ def get_service_stats(service_name, version=None, max_docs=500):
         }
     }
     if version:
-        data['version'] = version
+        data['service']['version'] = version
 
     return data
 
