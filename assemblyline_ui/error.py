@@ -17,7 +17,7 @@ errors = Blueprint("errors", __name__)
 @errors.app_errorhandler(400)
 def handle_400(e):
     if isinstance(e, BadRequest):
-        error_message = "Not data block provided or data block not in JSON format.'"
+        error_message = "No data block provided or data block not in JSON format.'"
     else:
         error_message = str(e)
     return make_api_response("", error_message, 400)
