@@ -1,6 +1,7 @@
 import time
 
 from flask import request
+from werkzeug.exceptions import BadRequest
 
 from assemblyline.datastore.exceptions import MultiKeyError, SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -95,13 +96,16 @@ def get_file_submission_results(sid, sha256, **kwargs):
         res_keys = data.get("results", [])
         err_keys = data.get("errors", [])
 
-        if request.method == "POST" and request.json is not None and data['state'] != "completed":
-            extra_rkeys = request.json.get("extra_result_keys", [])
-            extra_ekeys = request.json.get("extra_error_keys", [])
-
-            # Load keys
-            res_keys.extend(extra_rkeys)
-            err_keys.extend(extra_ekeys)
+        if request.method == "POST" and data['state'] != "completed":
+            try:
+                req_data = request.json
+                extra_rkeys = req_data.get("extra_result_keys", [])
+                extra_ekeys = req_data.get("extra_error_keys", [])
+                # Load keys
+                res_keys.extend(extra_rkeys)
+                err_keys.extend(extra_ekeys)
+            except BadRequest:
+                pass
 
         res_keys = list(set(res_keys))
         err_keys = list(set(err_keys))
