@@ -61,14 +61,61 @@ def check_for_source_change(delta_list, source):
     return change_list
 
 
-def get_service_stats(service_name, version):
+def get_service_stats(service_name, version=None, max_docs=500):
     # Build query
     query = f'response.service_name:{service_name}'
+    filters = []
     if version:
-        query += f' AND response.service_version:{version}'
+        try:
+            framework, major, minor, build = version.replace('stable', '').split('.')
+            if 'dev' not in build:
+                filters.append(f'response.service_version:{framework}.{major}.{minor}.{build} OR '
+                               f'response.service_version:{framework}.{major}.{minor}.stable{build}')
+            else:
+                filters.append(f'response.service_version:{version}')
+        except Exception:
+            filters.append(f'response.service_version:{version}')
+
+    # Get default heuristic set
+    heuristics = {
+        h['heur_id']: 0
+        for h in STORAGE.heuristic.stream_search(f'heur_id:{service_name.upper()}*', fl='heur_id', as_obj=False)}
+
+    res = STORAGE.result.search(query, fl='created', sort="created desc", rows=max_docs, as_obj=False)
+    if len(res['items']) == 0:
+        # We have no document, quickly return empty stats
+        return {
+            "error": {
+                "EXCEPTION": 0,
+                "MAX DEPTH REACHED": 0,
+                "MAX FILES REACHED": 0,
+                "MAX RETRY REACHED": 0,
+                "SERVICE BUSY": 0,
+                "SERVICE DOWN": 0,
+                "TASK PRE-EMPTED": 0,
+                "UNKNOWN": 0
+            },
+            "file": {
+                "extracted": {"avg": 0, "max": 0, "min": 0},
+                "supplementary": {"avg": 0, "max": 0, "min": 0}
+            },
+            "heuristic": heuristics,
+            "result": {
+                "count": 0,
+                "score": {
+                    "avg": 0,
+                    "distribution": {"0": 0, "500": 0},
+                    "max": 0,
+                    "min": 0
+                }
+            }
+        }
+    else:
+        # Otherwise add a filter to limit the stats to the last max_docs entries
+        filters.append(f"created:[{res['items'][-1]['created']} TO now]")
 
     # Generate score stats
-    score_stats = {k: v or 0 for k, v in STORAGE.result.stats('result.score', query=query).items()}
+    score_stats = {k: v or 0 for k, v in STORAGE.result.stats('result.score', query=query, filters=filters).items()}
     score_stats.pop('sum', None)
 
     # Count number of results
@@ -82,27 +129,25 @@ def get_service_stats(service_name, version):
     # Build score distribution
     score_stats['distribution'] = STORAGE.result.histogram(
         'result.score', start=min_score, end=max_score, gap=gap, mincount=0,
-        query=query)
+        query=query, filters=filters)
 
     # Get error type distribution
     errors = {k: 0 for k in ERROR_TYPES.keys()}
-    errors.update(STORAGE.error.facet('type', query=query))
+    errors.update(STORAGE.error.facet('type', query=query, filters=filters))
 
     # Get heuristic count
-    heuristics = {h['heur_id']: 0
-                  for h in STORAGE.heuristic.stream_search(
-                      f'heur_id:{service_name.upper()}*', fl='heur_id', as_obj=False)}
-    heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query))
+    heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query, filters=filters))
 
     # Get extracted files count
     extracted = {k: v or 0 for k, v in STORAGE.result.stats(
-        'response.extracted.length', query=query, field_script="params._source.response.extracted.length").items()}
+        'response.extracted.length', query=query, filters=filters,
+        field_script="params._source.response.extracted.length").items()}
     extracted.pop('count')
     extracted.pop('sum')
 
     # Get supplementary files count
     supplementary = {k: v or 0 for k, v in STORAGE.result.stats(
-        'response.supplementary.length', query=query,
+        'response.supplementary.length', query=query, filters=filters,
         field_script="params._source.response.supplementary.length").items()}
     supplementary.pop('count')
     supplementary.pop('sum')
@@ -121,7 +166,7 @@ def get_service_stats(service_name, version):
         }
     }
     if version:
-        data['version'] = version
+        data['service']['version'] = version
 
     return data
 
@@ -797,6 +842,8 @@ def service_statistics(service_name, **_):
 
         Arguments:
         version    =>   Version of the service to get stats for
+        max_docs   =>   Maximum number of results to generate the stats on
+                        (Default: 500)
 
         Data Block:
         None
@@ -833,4 +880,5 @@ def service_statistics(service_name, **_):
         'service': {'name': 'ResultSample', 'version': '4.2.0.dev0'}}
     """
     version = request.args.get('version', None)
-    return make_api_response(get_service_stats(service_name, version))
+    max_docs = int(request.args.get('max_docs', 500))
+    return make_api_response(get_service_stats(service_name, version=version, max_docs=max_docs))
