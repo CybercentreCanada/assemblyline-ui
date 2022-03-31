@@ -66,7 +66,15 @@ def get_service_stats(service_name, version=None, max_docs=500):
     query = f'response.service_name:{service_name}'
     filters = []
     if version:
-        filters.append(f'response.service_version:{version}')
+        try:
+            framework, major, minor, build = version.replace('stable', '').split('.')
+            if 'dev' not in build:
+                filters.append(f'response.service_version:{framework}.{major}.{minor}.{build} OR '
+                               f'response.service_version:{framework}.{major}.{minor}.stable{build}')
+            else:
+                filters.append(f'response.service_version:{version}')
+        except Exception:
+            filters.append(f'response.service_version:{version}')
 
     # Get default heuristic set
     heuristics = {
