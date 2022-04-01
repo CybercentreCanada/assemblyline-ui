@@ -84,7 +84,7 @@ def get_service_stats(service_name, version=None, max_docs=500):
     res = STORAGE.result.search(query, fl='created', sort="created desc", rows=max_docs, as_obj=False)
     if len(res['items']) == 0:
         # We have no document, quickly return empty stats
-        return {
+        data = {
             "error": {
                 "EXCEPTION": 0,
                 "MAX DEPTH REACHED": 0,
@@ -108,63 +108,65 @@ def get_service_stats(service_name, version=None, max_docs=500):
                     "max": 0,
                     "min": 0
                 }
-            }
+            },
+            'service': {'name': service_name}
         }
     else:
         # Otherwise add a filter to limit the stats to the last max_docs entries
         filters.append(f"created:[{res['items'][-1]['created']} TO now]")
 
-    # Generate score stats
-    score_stats = {k: v or 0 for k, v in STORAGE.result.stats('result.score', query=query, filters=filters).items()}
-    score_stats.pop('sum', None)
+        # Generate score stats
+        score_stats = {k: v or 0 for k, v in STORAGE.result.stats('result.score', query=query, filters=filters).items()}
+        score_stats.pop('sum', None)
 
-    # Count number of results
-    result_count = score_stats.pop('count')
+        # Count number of results
+        result_count = score_stats.pop('count')
 
-    # Set score gap, min and max
-    gap = 500
-    min_score = floor(score_stats['min']/gap)*gap
-    max_score = floor(score_stats['max']/gap)*gap + gap
+        # Set score gap, min and max
+        gap = 500
+        min_score = floor(score_stats['min']/gap)*gap
+        max_score = floor(score_stats['max']/gap)*gap + gap
 
-    # Build score distribution
-    score_stats['distribution'] = STORAGE.result.histogram(
-        'result.score', start=min_score, end=max_score, gap=gap, mincount=0,
-        query=query, filters=filters)
+        # Build score distribution
+        score_stats['distribution'] = STORAGE.result.histogram(
+            'result.score', start=min_score, end=max_score, gap=gap, mincount=0,
+            query=query, filters=filters)
 
-    # Get error type distribution
-    errors = {k: 0 for k in ERROR_TYPES.keys()}
-    errors.update(STORAGE.error.facet('type', query=query, filters=filters))
+        # Get error type distribution
+        errors = {k: 0 for k in ERROR_TYPES.keys()}
+        errors.update(STORAGE.error.facet('type', query=query, filters=filters))
 
-    # Get heuristic count
-    heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query, filters=filters))
+        # Get heuristic count
+        heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query, filters=filters))
 
-    # Get extracted files count
-    extracted = {k: v or 0 for k, v in STORAGE.result.stats(
-        'response.extracted.length', query=query, filters=filters,
-        field_script="params._source.response.extracted.length").items()}
-    extracted.pop('count')
-    extracted.pop('sum')
+        # Get extracted files count
+        extracted = {k: v or 0 for k, v in STORAGE.result.stats(
+            'response.extracted.length', query=query, filters=filters,
+            field_script="params._source.response.extracted.length").items()}
+        extracted.pop('count')
+        extracted.pop('sum')
 
-    # Get supplementary files count
-    supplementary = {k: v or 0 for k, v in STORAGE.result.stats(
-        'response.supplementary.length', query=query, filters=filters,
-        field_script="params._source.response.supplementary.length").items()}
-    supplementary.pop('count')
-    supplementary.pop('sum')
+        # Get supplementary files count
+        supplementary = {k: v or 0 for k, v in STORAGE.result.stats(
+            'response.supplementary.length', query=query, filters=filters,
+            field_script="params._source.response.supplementary.length").items()}
+        supplementary.pop('count')
+        supplementary.pop('sum')
 
-    data = {
-        'service': {'name': service_name},
-        'error': errors,
-        'file': {
-            'extracted': extracted,
-            'supplementary': supplementary
-        },
-        'heuristic': heuristics,
-        'result': {
-            'count': result_count,
-            'score': score_stats
+        data = {
+            'service': {'name': service_name},
+            'error': errors,
+            'file': {
+                'extracted': extracted,
+                'supplementary': supplementary
+            },
+            'heuristic': heuristics,
+            'result': {
+                'count': result_count,
+                'score': score_stats
+            }
         }
-    }
+
     if version:
         data['service']['version'] = version
 
