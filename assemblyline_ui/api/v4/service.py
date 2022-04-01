@@ -81,7 +81,7 @@ def get_service_stats(service_name, version=None, max_docs=500):
         h['heur_id']: 0
         for h in STORAGE.heuristic.stream_search(f'heur_id:{service_name.upper()}*', fl='heur_id', as_obj=False)}
 
-    res = STORAGE.result.search(query, fl='created', sort="created desc", rows=max_docs, as_obj=False)
+    res = STORAGE.result.search(query, filters=filters, fl='created', sort="created desc", rows=max_docs, as_obj=False)
     if len(res['items']) == 0:
         # We have no document, quickly return empty stats
         data = {
