@@ -113,7 +113,7 @@ def get_service_stats(service_name, version=None, max_docs=500):
         }
     else:
         # Otherwise add a filter to limit the stats to the last max_docs entries
-        filters.append(f"created:[{res['items'][-1]['created']} TO now]")
+        filters.append(f"created:[{res['items'][-1]['created']} TO {res['items'][0]['created']}]")
 
         # Generate score stats
         score_stats = {k: v or 0 for k, v in STORAGE.result.stats('result.score', query=query, filters=filters).items()}
