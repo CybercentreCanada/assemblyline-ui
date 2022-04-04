@@ -1,5 +1,30 @@
 from assemblyline_ui.config import STORAGE
 
+
+def get_collection(bucket, user):
+    return BUCKET_MAP.get(bucket, ADMIN_BUCKET_MAP.get(bucket, None) if 'admin' in user['type'] else None)
+
+
+def get_default_sort(bucket, user):
+    return BUCKET_ORDER_MAP.get(bucket, ADMIN_BUCKET_ORDER_MAP.get(bucket, None) if 'admin' in user['type'] else None)
+
+
+def has_access_control(bucket):
+    return bucket in BUCKET_MAP
+
+
+ADMIN_BUCKET_MAP = {
+    'emptyresult': STORAGE.emptyresult,
+    'error': STORAGE.error,
+    'user': STORAGE.user
+}
+
+ADMIN_BUCKET_ORDER_MAP = {
+    'emptyresult': 'expiry_ts asc',
+    'error': 'created desc',
+    'user': 'id asc'
+}
+
 BUCKET_MAP = {
     'alert': STORAGE.alert,
     'file': STORAGE.file,
@@ -23,5 +48,10 @@ BUCKET_ORDER_MAP = {
 }
 
 
-def list_all_fields():
-    return {k: BUCKET_MAP[k].fields() for k in BUCKET_MAP.keys()}
+def list_all_fields(user=None):
+    fields_map = {k: BUCKET_MAP[k].fields() for k in BUCKET_MAP.keys()}
+
+    if user and user['is_admin']:
+        fields_map.update({k: ADMIN_BUCKET_MAP[k].fields() for k in ADMIN_BUCKET_MAP.keys()})
+
+    return fields_map
