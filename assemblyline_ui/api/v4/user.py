@@ -134,7 +134,7 @@ def who_am_i(**kwargs):
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
         },
     }
-    user_data['indexes'] = list_all_fields()
+    user_data['indexes'] = list_all_fields(user_data)
     user_data['settings'] = load_user_settings(kwargs['user'])
 
     msg = UI_MESSAGING.get('system_message')
