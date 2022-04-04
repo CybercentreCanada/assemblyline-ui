@@ -70,6 +70,7 @@ def list_errors(**_):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', "id:*") or "id:*"
+    filters = request.args.getlist('filters', None) or None
     sort = request.args.get('sort', "created desc")
     use_archive = request.args.get('use_archive', "false").lower() in ['true', '']
     track_total_hits = request.args.get('track_total_hits', False)
@@ -77,6 +78,6 @@ def list_errors(**_):
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,
                                                       sort=sort, use_archive=use_archive,
-                                                      track_total_hits=track_total_hits))
+                                                      track_total_hits=track_total_hits, filters=filters))
     except SearchException as e:
         return make_api_response("", f"The specified search query is not valid. ({e})", 400)
