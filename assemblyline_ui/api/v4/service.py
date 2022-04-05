@@ -81,20 +81,15 @@ def get_service_stats(service_name, version=None, max_docs=500):
         h['heur_id']: 0
         for h in STORAGE.heuristic.stream_search(f'heur_id:{service_name.upper()}.*', fl='heur_id', as_obj=False)}
 
+    # Get error type distribution
+    errors = {k: 0 for k in ERROR_TYPES.keys()}
+    errors.update(STORAGE.error.facet('type', query=query, filters=filters))
+
     res = STORAGE.result.search(query, filters=filters, fl='created', sort="created desc", rows=max_docs, as_obj=False)
     if len(res['items']) == 0:
         # We have no document, quickly return empty stats
         data = {
-            "error": {
-                "EXCEPTION": 0,
-                "MAX DEPTH REACHED": 0,
-                "MAX FILES REACHED": 0,
-                "MAX RETRY REACHED": 0,
-                "SERVICE BUSY": 0,
-                "SERVICE DOWN": 0,
-                "TASK PRE-EMPTED": 0,
-                "UNKNOWN": 0
-            },
+            "error": errors,
             "file": {
                 "extracted": {"avg": 0, "max": 0, "min": 0},
                 "supplementary": {"avg": 0, "max": 0, "min": 0}
@@ -131,10 +126,6 @@ def get_service_stats(service_name, version=None, max_docs=500):
         score_stats['distribution'] = STORAGE.result.histogram(
             'result.score', start=min_score, end=max_score, gap=gap, mincount=0,
             query=query, filters=filters)
-
-        # Get error type distribution
-        errors = {k: 0 for k in ERROR_TYPES.keys()}
-        errors.update(STORAGE.error.facet('type', query=query, filters=filters))
 
         # Get heuristic count
         heuristics.update(STORAGE.result.facet('result.sections.heuristic.heur_id', query=query, filters=filters))
