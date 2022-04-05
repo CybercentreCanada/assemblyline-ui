@@ -4,22 +4,22 @@ from flask import request
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
-from assemblyline_ui.helper.search import BUCKET_MAP, list_all_fields, BUCKET_ORDER_MAP
+from assemblyline_ui.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
 search_api._doc = "Perform search queries"
 
 
-@search_api.route("/<bucket>/", methods=["GET", "POST"])
+@search_api.route("/<index>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def search(bucket, **kwargs):
+def search(index, **kwargs):
     """
-    Search through specified buckets for a given query.
+    Search through specified index for a given query.
     Uses lucene search syntax for query.
 
     Variables:
-    bucket  =>   Bucket to search in (alert, submission,...)
+    index  =>   Bucket to search in (alert, submission,...)
 
     Arguments:
     query   =>   Query to search for
@@ -51,10 +51,12 @@ def search(bucket, **kwargs):
      "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
      "items": []}                           # List of results
     """
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-
     user = kwargs['user']
+    collection = get_collection(index, user)
+    default_sort = get_default_sort(index, user)
+    if collection is None or default_sort is None:
+        return make_api_response("", f"Not a valid index to search in: {index}", 400)
+
     fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id", 'track_total_hits']
     multi_fields = ['filters']
     boolean_fields = ['use_archive']
@@ -70,29 +72,33 @@ def search(bucket, **kwargs):
     params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
                    for k in boolean_fields
                    if req_data.get(k, None) is not None})
-    params.update({'access_control': user['access_control'], 'as_obj': False})
-    params.setdefault('sort', BUCKET_ORDER_MAP[bucket])
+
+    if has_access_control(index):
+        params.update({'access_control': user['access_control']})
+
+    params['as_obj'] = False
+    params.setdefault('sort', default_sort)
 
     query = req_data.get('query', None)
     if not query:
         return make_api_response("", "There was no search query.", 400)
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].search(query, **params))
+        return make_api_response(collection.search(query, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@search_api.route("/grouped/<bucket>/<group_field>/", methods=["GET", "POST"])
+@search_api.route("/grouped/<index>/<group_field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def group_search(bucket, group_field, **kwargs):
+def group_search(index, group_field, **kwargs):
     """
-    Search through all relevant buckets for a given query and
+    Search through all relevant indexs for a given query and
     groups the data based on a specific field.
     Uses lucene search syntax for query.
 
     Variables:
-    bucket       =>   Bucket to search in (alert, submission,...)
+    index       =>   Bucket to search in (alert, submission,...)
     group_field  =>   Field to group on
 
     Optional Arguments:
@@ -122,10 +128,12 @@ def group_search(bucket, group_field, **kwargs):
      "rows": 100,        # Number of results returned
      "items": []}        # List of results
     """
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-
     user = kwargs['user']
+    collection = get_collection(index, user)
+    default_sort = get_default_sort(index, user)
+    if collection is None or default_sort is None:
+        return make_api_response("", f"Not a valid index to search in: {index}", 400)
+
     fields = ["group_sort", "limit", "query", "offset", "rows", "sort", "fl", "timeout"]
     multi_fields = ['filters']
 
@@ -139,27 +147,30 @@ def group_search(bucket, group_field, **kwargs):
         params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
-    params.update({'access_control': user['access_control'], 'as_obj': False})
-    params.setdefault('sort', BUCKET_ORDER_MAP[bucket])
+    if has_access_control(index):
+        params.update({'access_control': user['access_control']})
+
+    params['as_obj'] = False
+    params.setdefault('sort', default_sort)
 
     if not group_field:
         return make_api_response("", "The field to group on was not specified.", 400)
 
     try:
-        return make_api_response(BUCKET_MAP[bucket].grouped_search(group_field, **params))
+        return make_api_response(collection.grouped_search(group_field, **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
 
 # noinspection PyUnusedLocal
-@search_api.route("/fields/<bucket>/", methods=["GET"])
+@search_api.route("/fields/<index>/", methods=["GET"])
 @api_login(required_priv=['R'])
-def list_bucket_fields(bucket, **kwargs):
+def list_index_fields(index, **kwargs):
     """
-    List all available fields for a given bucket
+    List all available fields for a given index
 
     Variables:
-    bucket  =>     Which specific bucket you want to know the fields for
+    index  =>     Which specific index you want to know the fields for
 
 
     Arguments:
@@ -179,26 +190,26 @@ def list_bucket_fields(bucket, **kwargs):
 
     }
     """
-    if bucket in BUCKET_MAP or ():
-        return make_api_response(BUCKET_MAP[bucket].fields())
-    elif 'admin' in kwargs['user']['type'] and hasattr(STORAGE, bucket):
-        return make_api_response(getattr(STORAGE, bucket).fields())
-    elif bucket == "ALL":
-        return make_api_response(list_all_fields())
+    user = kwargs['user']
+    collection = get_collection(index, user)
+    if collection is not None:
+        return make_api_response(collection.fields())
+    elif index == "ALL":
+        return make_api_response(list_all_fields(user))
     else:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
+        return make_api_response("", f"Not a valid index to search in: {index}", 400)
 
 
-@search_api.route("/facet/<bucket>/<field>/", methods=["GET", "POST"])
+@search_api.route("/facet/<index>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def facet(bucket, field, **kwargs):
+def facet(index, field, **kwargs):
     """
     Perform field analysis on the selected field. (Also known as facetting in lucene)
     This essentially counts the number of instances a field is seen with each specific values
     where the documents matches the specified queries.
 
     Variables:
-    bucket       =>   Bucket to search in (alert, submission,...)
+    index       =>   Bucket to search in (alert, submission,...)
     field        =>   Field to analyse
 
     Optional Arguments:
@@ -218,15 +229,15 @@ def facet(bucket, field, **kwargs):
      "value_N": 19,
     }
     """
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-    collection = BUCKET_MAP[bucket]
+    user = kwargs['user']
+    collection = get_collection(index, user)
+    if collection is None:
+        return make_api_response("", f"Not a valid index to search in: {index}", 400)
 
     field_info = collection.fields().get(field, None)
     if field_info is None:
-        return make_api_response("", f"Field '{field}' is not a valid field in bucket: {bucket}", 400)
+        return make_api_response("", f"Field '{field}' is not a valid field in index: {index}", 400)
 
-    user = kwargs['user']
     fields = ["query", "mincount"]
     multi_fields = ['filters']
 
@@ -240,7 +251,8 @@ def facet(bucket, field, **kwargs):
         params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
-    params.update({'access_control': user['access_control']})
+    if has_access_control(index):
+        params.update({'access_control': user['access_control']})
 
     try:
         return make_api_response(collection.facet(field, **params))
@@ -248,14 +260,14 @@ def facet(bucket, field, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@search_api.route("/histogram/<bucket>/<field>/", methods=["GET", "POST"])
+@search_api.route("/histogram/<index>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def histogram(bucket, field, **kwargs):
+def histogram(index, field, **kwargs):
     """
     Generate an histogram based on a time or and int field using a specific gap size
 
     Variables:
-    bucket       =>   Bucket to search in (alert, submission,...)
+    index       =>   Bucket to search in (alert, submission,...)
     field        =>   Field to generate the histogram from
 
     Optional Arguments:
@@ -288,14 +300,14 @@ def histogram(bucket, field, **kwargs):
     multi_fields = ['filters']
     user = kwargs['user']
 
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-    collection = BUCKET_MAP[bucket]
+    collection = get_collection(index, user)
+    if collection is None:
+        return make_api_response("", f"Not a valid index to search in: {index}", 400)
 
     # Get fields default values
     field_info = collection.fields().get(field, None)
     if field_info is None:
-        return make_api_response("", f"Field '{field}' is not a valid field in bucket: {bucket}", 400)
+        return make_api_response("", f"Field '{field}' is not a valid field in index: {index}", 400)
     elif field_info['type'] == "integer":
         params = {
             'start': 0,
@@ -324,7 +336,8 @@ def histogram(bucket, field, **kwargs):
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     # Make sure access control is enforced
-    params.update({'access_control': user['access_control']})
+    if has_access_control(index):
+        params.update({'access_control': user['access_control']})
 
     try:
         return make_api_response(collection.histogram(field, **params))
@@ -332,14 +345,14 @@ def histogram(bucket, field, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@search_api.route("/stats/<bucket>/<int_field>/", methods=["GET", "POST"])
+@search_api.route("/stats/<index>/<int_field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'])
-def stats(bucket, int_field, **kwargs):
+def stats(index, int_field, **kwargs):
     """
     Perform statistical analysis of an integer field to get its min, max, average and count values
 
     Variables:
-    bucket       =>   Bucket to search in (alert, submission,...)
+    index       =>   Bucket to search in (alert, submission,...)
     int_field    =>   Integer field to analyse
 
     Optional Arguments:
@@ -359,18 +372,18 @@ def stats(bucket, int_field, **kwargs):
      "sum": 1           # Sum of all values
     }
     """
-    if bucket not in BUCKET_MAP:
-        return make_api_response("", f"Not a valid bucket to search in: {bucket}", 400)
-    collection = BUCKET_MAP[bucket]
+    user = kwargs['user']
+    collection = get_collection(index, user)
+    if collection is None:
+        return make_api_response("", f"Not a valid index to search in: {index}", 400)
 
     field_info = collection.fields().get(int_field, None)
     if field_info is None:
-        return make_api_response("", f"Field '{int_field}' is not a valid field in bucket: {bucket}", 400)
+        return make_api_response("", f"Field '{int_field}' is not a valid field in index: {index}", 400)
 
     if field_info['type'] not in ["integer", "float"]:
         return make_api_response("", f"Field '{int_field}' is not a numeric field.", 400)
 
-    user = kwargs['user']
     fields = ["query"]
     multi_fields = ['filters']
 
@@ -384,7 +397,8 @@ def stats(bucket, int_field, **kwargs):
         params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
-    params.update({'access_control': user['access_control']})
+    if has_access_control(index):
+        params.update({'access_control': user['access_control']})
 
     try:
         return make_api_response(collection.stats(int_field, **params))
