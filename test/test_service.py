@@ -3,6 +3,7 @@ import pytest
 import random
 import yaml
 
+from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION, BUILD_MINOR
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.random_data import create_services, create_users, wipe_services, wipe_users
 from assemblyline.odm.randomizer import SERVICES
@@ -30,9 +31,9 @@ def suricata_init_config(datastore, login_session):
         "enabled": True,
         "category": "Networking",
         "stage": "CORE",
-        "version": "4.0.0",
+        "version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1",
         "docker_config": {
-            "image": "cccs/assemblyline-service-suricata:4.0.0.dev69",
+            "image": f"cccs/assemblyline-service-suricata:{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.dev69",
         },
         "update_config": {
             "generates_signatures": True,
@@ -100,7 +101,8 @@ def test_get_versions(datastore, login_session):
 
     service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/versions/{service}/")
-    assert resp == ['4.0.0', '3.3.0']
+    for v in resp:
+        assert v.startswith(f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}")
 
 
 # noinspection PyUnusedLocal
@@ -156,9 +158,8 @@ def test_delete_service(datastore, login_session):
     ds.service.commit()
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
-    assert (svc_data['total'] / 2) == (len(TEMP_SERVICES) - 1)
     for svc in svc_data['items']:
-        assert svc['id'] != service
+        assert svc['name'] != service
 
     TEMP_SERVICES.pop(service, None)
 
@@ -171,13 +172,15 @@ def test_edit_service(datastore, login_session):
     delta_data = ds.service_delta.search("id:*", rows=100, as_obj=False)
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
+    target_version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
+
     service = random.choice(list(TEMP_SERVICES.keys()))
     service_data = Service({
         "name": service,
         "enabled": True,
         "category": TEMP_SERVICES[service][0],
         "stage": TEMP_SERVICES[service][1],
-        "version": "3.3.0",
+        "version": target_version,
         "docker_config": {
             "image": f"cccs/alsvc_{service.lower()}:latest",
         },
@@ -195,9 +198,9 @@ def test_edit_service(datastore, login_session):
     assert new_svc_data == svc_data
     for svc in new_delta_data['items']:
         if svc['id'] == service:
-            assert svc['version'] == '3.3.0'
+            assert svc['version'] == target_version
         else:
-            assert svc['version'] == '4.0.0'
+            assert svc['version'].startswith(f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}")
 
 
 def test_edit_service_source(datastore, login_session, suricata_init_config):
