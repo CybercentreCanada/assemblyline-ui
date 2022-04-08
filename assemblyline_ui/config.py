@@ -60,15 +60,15 @@ REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
 
 
 def get_token_store(key):
-    return ExpiringSet(f"oauth_token_{key}", redis=redis, ttl=60 * 2)
+    return ExpiringSet(f"oauth_token_{key}", host=redis, ttl=60 * 2)
 
 
 def get_reset_queue(key):
-    return ExpiringSet(f"reset_id_{key}", redis=redis, ttl=60 * 15)
+    return ExpiringSet(f"reset_id_{key}", host=redis, ttl=60 * 15)
 
 
 def get_signup_queue(key):
-    return ExpiringSet(f"signup_id_{key}", redis=redis, ttl=60 * 15)
+    return ExpiringSet(f"signup_id_{key}", host=redis, ttl=60 * 15)
 
 
 # End of Configuration
