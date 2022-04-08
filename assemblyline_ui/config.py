@@ -1,12 +1,13 @@
 import logging
 import os
-import functools
 
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
+from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
+from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 from assemblyline_ui.helper.discover import get_apps_list
@@ -36,49 +37,38 @@ BUNDLING_DIR = "/var/lib/assemblyline/bundling"
 TEMP_DIR = "/var/lib/assemblyline/flowjs/"
 TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
+redis_persistent = get_client(config.core.redis.persistent.host, config.core.redis.persistent.port, False)
+redis = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpersistent.port, False)
+
+# TRACKERS
 QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
-                                 host=config.core.redis.nonpersistent.host,
-                                 port=config.core.redis.nonpersistent.port)
-
+                                 redis=redis)
 SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minutes timout
-                                      host=config.core.redis.persistent.host,
-                                      port=config.core.redis.persistent.port)
+                                      redis=redis_persistent)
 
-KV_SESSION = Hash("flask_sessions",
-                  host=config.core.redis.nonpersistent.host,
-                  port=config.core.redis.nonpersistent.port)
+# UI queues
+KV_SESSION = Hash("flask_sessions", host=redis)
+UI_MESSAGING = Hash("ui_messaging", host=redis_persistent)
 
-UI_MESSAGING = Hash("ui_messaging",
-                    host=config.core.redis.persistent.host,
-                    port=config.core.redis.persistent.port)
+# Traffic queues
+SUBMISSION_TRAFFIC = CommsQueue('submissions', host=redis)
 
-
-@functools.lru_cache()
-def get_submission_traffic_channel():
-    return CommsQueue('submissions',
-                      host=config.core.redis.nonpersistent.host,
-                      port=config.core.redis.nonpersistent.port)
+# Replay queues
+REPLAY_ALERT_QUEUE = NamedQueue("replay_alert", host=redis)
+REPLAY_FILE_QUEUE = NamedQueue("replay_file", host=redis)
+REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
 
 
 def get_token_store(key):
-    return ExpiringSet(f"oauth_token_{key}",
-                       host=config.core.redis.nonpersistent.host,
-                       port=config.core.redis.nonpersistent.port,
-                       ttl=60 * 2)
+    return ExpiringSet(f"oauth_token_{key}", redis=redis, ttl=60 * 2)
 
 
 def get_reset_queue(key):
-    return ExpiringSet(f"reset_id_{key}",
-                       host=config.core.redis.nonpersistent.host,
-                       port=config.core.redis.nonpersistent.port,
-                       ttl=60 * 15)
+    return ExpiringSet(f"reset_id_{key}", redis=redis, ttl=60 * 15)
 
 
 def get_signup_queue(key):
-    return ExpiringSet(f"signup_id_{key}",
-                       host=config.core.redis.nonpersistent.host,
-                       port=config.core.redis.nonpersistent.port,
-                       ttl=60 * 15)
+    return ExpiringSet(f"signup_id_{key}", redis=redis, ttl=60 * 15)
 
 
 # End of Configuration
