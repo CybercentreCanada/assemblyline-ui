@@ -1,5 +1,7 @@
+
 from assemblyline_core.replay.client import REPLAY_PENDING, REPLAY_DONE, REPLAY_REQUESTED
-from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification
+from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification, REPLAY_ALERT_QUEUE, REPLAY_FILE_QUEUE, \
+    REPLAY_SUBMISSION_QUEUE
 from flask import request
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -7,6 +9,74 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 SUB_API = 'replay'
 replay_api = make_subapi_blueprint(SUB_API, api_version=4)
 replay_api._doc = "API specific to the Replay feature"
+
+QUEUE_MAP = {
+    'alert': REPLAY_ALERT_QUEUE,
+    'file': REPLAY_FILE_QUEUE,
+    'submission': REPLAY_SUBMISSION_QUEUE
+}
+
+
+@replay_api.route("/queue/<message_type>/", methods=["GET"])
+@api_login(required_priv=['R'])
+def get_message(message_type, **_):
+    """
+    Read a message from the queue
+
+    Variables:
+    message_type         =>    Type of message (file | submission | alert)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+        ...  # Message from the queue
+    }
+    """
+    if message_type not in ['file', 'submission', 'alert']:
+        return make_api_response("", f"{message_type.upper()} is not a valid message type for this API.", 400)
+
+    return make_api_response(QUEUE_MAP[message_type].pop(blocking=True, timeout=30))
+
+
+@replay_api.route("/queue/<message_type>/", methods=["PUT"])
+@api_login(required_priv=['W'])
+def put_message(message_type, **_):
+    """
+    Put a message in a queue for processing in a worker
+
+    Variables:
+    message_type         =>    Type of message (file | submission | alert)
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        ...  # Message to put in the queue
+    }
+
+    Result example:
+    {"success": true}
+    """
+    if message_type not in ['file', 'submission', 'alert']:
+        return make_api_response("", f"{message_type.upper()} is not a valid message type for this API.", 400)
+
+    message = request.json
+    if (message_type == 'alert' and sorted(message.keys()) == ["alert_id", "reporting_ts"]):
+        QUEUE_MAP[message_type].push(message)
+    elif (message_type == 'submission' and sorted(message.keys()) == ["sid", "times"]):
+        QUEUE_MAP[message_type].push(message)
+    elif (message_type == 'file' and isinstance(message, str)):
+        QUEUE_MAP[message_type].push(message)
+    else:
+        return make_api_response("", f"Invalid message for type {message_type.upper()}: {message}", 400)
+
+    return make_api_response({'success': True})
 
 
 @replay_api.route("/<index>/<doc_id>/", methods=["GET"])

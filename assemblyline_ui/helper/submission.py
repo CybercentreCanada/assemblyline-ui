@@ -8,7 +8,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.messages.submission import SubmissionMessage
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, get_submission_traffic_channel, config
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
@@ -136,8 +136,7 @@ def get_or_create_summary(sid, results, user_classification, completed):
 
 
 def submission_received(submission):
-    channel = get_submission_traffic_channel()
-    channel.publish(SubmissionMessage({
+    SUBMISSION_TRAFFIC.publish(SubmissionMessage({
         'msg': submission,
         'msg_type': 'SubmissionReceived',
         'sender': 'ui',
