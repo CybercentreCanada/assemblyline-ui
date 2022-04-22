@@ -89,7 +89,7 @@ def get_ontology_for_submission(sid, **kwargs):
         bio = generate_ontology_file(results, user)
         return make_file_response(bio.read(), f"submission_{sid}.ontology", bio.getbuffer().nbytes)
     else:
-        return make_api_response("", "Your are not allowed get ontology files for this submission.", 403)
+        return make_api_response("", f"Your are not allowed get ontology files for this submission: {sid}", 403)
 
 
 @ontology_api.route("/file/<sha256>/", methods=["GET"])
@@ -145,4 +145,4 @@ def get_ontology_for_file(sha256, **kwargs):
         bio = generate_ontology_file(results, user)
         return make_file_response(bio.read(), f"file_{sha256}.ontology", bio.getbuffer().nbytes)
     else:
-        return make_api_response("", "Your are not allowed get ontology files for this submission.", 403)
+        return make_api_response("", f"Your are not allowed get ontology files for this hash: {sha256}", 403)
