@@ -41,7 +41,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
     Get all ontology files for a given alert
 
     Variables:
-    alert_id         => Alert ID ID to get ontology files for
+    alert_id         => Alert ID to get ontology files for
 
     Arguments:
     sha256      => Only get ontology files for this file, multiple values allowed (optional)
