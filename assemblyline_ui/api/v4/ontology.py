@@ -50,8 +50,10 @@ def get_ontology_for_alert(alert_id, **kwargs):
     Data Block:
     None
 
-    Result example:
-    <file where each line is an ontology result>
+    Result example:      (File where each line is a result ontology record)
+    {"header":{"md5":"5fa76...submitter":"admin"}}
+    {"header":{"md5":"6c3af...submitter":"admin"}}
+    {"header":{"md5":"c8e69...submitter":"admin"}}
     """
     user = kwargs['user']
     sha256s = request.args.getlist('sha256', None)
@@ -128,8 +130,10 @@ def get_ontology_for_submission(sid, **kwargs):
     Data Block:
     None
 
-    Result example:
-    <file where each line is an ontology result>
+    Result example:      (File where each line is a result ontology record)
+    {"header":{"md5":"5fa76...submitter":"admin"}}
+    {"header":{"md5":"6c3af...submitter":"admin"}}
+    {"header":{"md5":"c8e69...submitter":"admin"}}
     """
     user = kwargs['user']
     sha256s = request.args.getlist('sha256', None)
@@ -198,8 +202,10 @@ def get_ontology_for_file(sha256, **kwargs):
     Data Block:
     None
 
-    Result example:
-    <file where each line is an ontology result>
+    Result example:      (File where each line is a result ontology record)
+    {"header":{"md5":"5fa76...submitter":"admin"}}
+    {"header":{"md5":"5fa76...submitter":"admin"}}
+    {"header":{"md5":"5fa76...submitter":"admin"}}
     """
     user = kwargs['user']
     services = request.args.getlist('service', None)
