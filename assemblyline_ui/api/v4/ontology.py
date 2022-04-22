@@ -1,38 +1,37 @@
 import json
 
 from flask import request
-from io import BytesIO
+from io import StringIO
 
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification
+from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
 
 SUB_API = 'ontology'
 ontology_api = make_subapi_blueprint(SUB_API, api_version=4)
 ontology_api._doc = "Download ontology results from the system"
 
 
-def generate_ontology_file(results, user):
+def generate_ontology_file(results, user, updates={}):
     # Load ontology files
-    bio = BytesIO()
+    sio = StringIO()
     for r in results:
         for supp in r.get('response', {}).get('supplementary', {}):
             if supp['name'].endswith('.ontology'):
-                data = FILESTORE.get(supp['sha256'])
                 try:
-                    ontology = json.loads(data)
+                    ontology = json.loads(FILESTORE.get(supp['sha256']))
                     sha256 = ontology['header']['sha256']
                     c12n = ontology['header']['classification']
                     if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
-                        bio.write(data + b'\n')
+                        ontology['header'].update(updates)
+                        sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
                     LOGGER.warning(f"An error occured while fetching ontology files: {str(e)}")
 
     # Flush and reset buffer
-    bio.flush()
-    bio.seek(0)
+    sio.flush()
 
-    return bio
+    return sio
 
 
 @ontology_api.route("/submission/<sid>/", methods=["GET"])
@@ -85,9 +84,22 @@ def get_ontology_for_submission(sid, **kwargs):
         except MultiKeyError as e:
             results = e.partial_output
 
+        # Compile information to be added to the ontology
+        updates = {
+            'date': submission['times']['submitted'],
+            'source_system': config.ui.fqdn,
+            'sid': sid,
+            'submitted_classification': submission['classification'],
+            'submitter': submission['params']['submitter']
+        }
+        source = submission.get('metadata', {}).get('source', None)
+        if source:
+            updates['original_source'] = source
+
         # Generate ontology files based of the results
-        bio = generate_ontology_file(results, user)
-        return make_file_response(bio.read(), f"submission_{sid}.ontology", bio.getbuffer().nbytes)
+        sio = generate_ontology_file(results, user, updates)
+        data = sio.getvalue()
+        return make_file_response(data, f"submission_{sid}.ontology", len(data))
     else:
         return make_api_response("", f"Your are not allowed get ontology files for this submission: {sid}", 403)
 
@@ -141,8 +153,16 @@ def get_ontology_for_file(sha256, **kwargs):
         except MultiKeyError as e:
             results = e.partial_output
 
+        # Compile information to be added to the ontology
+        updates = {
+            'date': file_data['seen']['last'],
+            'source_system': config.ui.fqdn,
+            'submitted_classification': file_data['classification']
+        }
+
         # Generate ontology files based of the results
-        bio = generate_ontology_file(results, user)
-        return make_file_response(bio.read(), f"file_{sha256}.ontology", bio.getbuffer().nbytes)
+        sio = generate_ontology_file(results, user, updates)
+        data = sio.getvalue()
+        return make_file_response(data, f"file_{sha256}.ontology", len(data))
     else:
         return make_api_response("", f"Your are not allowed get ontology files for this hash: {sha256}", 403)
