@@ -24,6 +24,8 @@ def generate_ontology_file(results, user, updates={}):
                     c12n = ontology['header']['classification']
                     if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
                         ontology['header'].update(updates)
+                        if 'parent' in ontology['header'] and ontology['header']['parent'] == sha256:
+                            del ontology['header']['parent']
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
                     LOGGER.warning(f"An error occured while fetching ontology files: {str(e)}")
