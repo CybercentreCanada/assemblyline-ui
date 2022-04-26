@@ -50,6 +50,10 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 @api_login(required_priv=['R'])
 def get_ontology_for_alert(alert_id, **kwargs):
     """
+    WARNING:
+        This APIs output is considered stable but the ontology model itself is still in its
+        alpha state. Do not use the results of this API in a production system just yet.
+
     Get all ontology files for a given alert
 
     Variables:
@@ -133,6 +137,10 @@ def get_ontology_for_alert(alert_id, **kwargs):
 @api_login(required_priv=['R'])
 def get_ontology_for_submission(sid, **kwargs):
     """
+    WARNING:
+        This APIs output is considered stable but the ontology model itself is still in its
+        alpha state. Do not use the results of this API in a production system just yet.
+
     Get all ontology files for a given submission
 
     Variables:
@@ -208,6 +216,10 @@ def get_ontology_for_submission(sid, **kwargs):
 @api_login(required_priv=['R'])
 def get_ontology_for_file(sha256, **kwargs):
     """
+    WARNING:
+        This APIs output is considered stable but the ontology model itself is still in its
+        alpha state. Do not use the results of this API in a production system just yet.
+
     Get all ontology files for a given file
 
     Variables:
