@@ -12,7 +12,7 @@ ontology_api = make_subapi_blueprint(SUB_API, api_version=4)
 ontology_api._doc = "Download ontology results from the system"
 
 
-def generate_ontology_file(results, user, updates={}):
+def generate_ontology_file(results, user, updates={}, fnames={}):
     # Load ontology files
     sio = StringIO()
     for r in results:
@@ -23,9 +23,19 @@ def generate_ontology_file(results, user, updates={}):
                     sha256 = ontology['header']['sha256']
                     c12n = ontology['header']['classification']
                     if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
+                        # Update the ontology with the live values
                         ontology['header'].update(updates)
+
+                        # Set filenames if any
+                        if sha256 in fnames:
+                            ontology['header']['filenames'] = fnames[sha256]
+                        else:
+                            del ontology['header']['filenames']
+
+                        # Make sure parent is not equal to current hash
                         if 'parent' in ontology['header'] and ontology['header']['parent'] == sha256:
                             del ontology['header']['parent']
+
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
                     LOGGER.warning(f"An error occured while fetching ontology files: {str(e)}")
@@ -110,8 +120,11 @@ def get_ontology_for_alert(alert_id, **kwargs):
         'submitter': submission['params']['submitter']
     }
 
+    # Set the list of file names
+    fnames = {x.sha256: [x['name']] for x in submission['files']}
+
     # Generate ontology files based of the results
-    sio = generate_ontology_file(results, user, updates)
+    sio = generate_ontology_file(results, user, updates=updates, fnames=fnames)
     data = sio.getvalue()
     return make_file_response(data, f"alert_{alert_id}.ontology", len(data))
 
@@ -182,8 +195,11 @@ def get_ontology_for_submission(sid, **kwargs):
         'submitter': submission['params']['submitter']
     }
 
+    # Set the list of file names
+    fnames = {x.sha256: [x['name']] for x in submission['files']}
+
     # Generate ontology files based of the results
-    sio = generate_ontology_file(results, user, updates)
+    sio = generate_ontology_file(results, user, updates=updates, fnames=fnames)
     data = sio.getvalue()
     return make_file_response(data, f"submission_{sid}.ontology", len(data))
 
@@ -251,6 +267,6 @@ def get_ontology_for_file(sha256, **kwargs):
     }
 
     # Generate ontology files based of the results
-    sio = generate_ontology_file(results, user, updates)
+    sio = generate_ontology_file(results, user, updates=updates)
     data = sio.getvalue()
     return make_file_response(data, f"file_{sha256}.ontology", len(data))
