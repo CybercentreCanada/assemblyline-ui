@@ -29,7 +29,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
                         # Set filenames if any
                         if sha256 in fnames:
                             ontology['header']['filenames'] = fnames[sha256]
-                        else:
+                        elif 'filenames' in ontology['header']:
                             del ontology['header']['filenames']
 
                         # Make sure parent is not equal to current hash
@@ -121,7 +121,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
     }
 
     # Set the list of file names
-    fnames = {x.sha256: [x['name']] for x in submission['files']}
+    fnames = {x['sha256']: [x['name']] for x in submission['files']}
 
     # Generate ontology files based of the results
     sio = generate_ontology_file(results, user, updates=updates, fnames=fnames)
@@ -196,7 +196,7 @@ def get_ontology_for_submission(sid, **kwargs):
     }
 
     # Set the list of file names
-    fnames = {x.sha256: [x['name']] for x in submission['files']}
+    fnames = {x['sha256']: [x['name']] for x in submission['files']}
 
     # Generate ontology files based of the results
     sio = generate_ontology_file(results, user, updates=updates, fnames=fnames)
