@@ -83,7 +83,6 @@ def import_bundle(**_):
 
     Arguments:
     allow_incomplete        => allow importing incomplete submission
-    complete_queue          => Queue to listen on for completion messages (only used with rescan_services)
     rescan_services         => Comma seperated list of services to rescan after importing the bundle
     min_classification      => Minimum classification that the files and result from the bundle should get
     exist_ok                => Does not fail if submission already exists
@@ -95,7 +94,6 @@ def import_bundle(**_):
     {"success": true}
     """
     allow_incomplete = request.args.get('allow_incomplete', 'false').lower() in ['true', '']
-    completed_queue = request.args.get('completed_queue', None)
     exist_ok = request.args.get('exist_ok', 'false').lower() in ['true', '']
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
     rescan_services = request.args.get('rescan_services', None)
@@ -116,8 +114,7 @@ def import_bundle(**_):
 
     try:
         bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification,
-                      allow_incomplete=allow_incomplete, rescan_services=rescan_services,
-                      completed_queue=completed_queue, exist_ok=exist_ok)
+                      allow_incomplete=allow_incomplete, rescan_services=rescan_services, exist_ok=exist_ok)
 
         return make_api_response({'success': True})
     except SubmissionException as se:
