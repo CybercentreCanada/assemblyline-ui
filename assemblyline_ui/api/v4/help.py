@@ -5,6 +5,7 @@ from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, config
 from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
+from assemblyline.common.identify import sl_to_tl, trusted_mimes
 from assemblyline.odm.models.tagging import Tagging
 
 SUB_API = 'help'
@@ -13,6 +14,9 @@ classification_definition = CLASSIFICATION.get_parsed_classification_definition(
 
 help_api = make_subapi_blueprint(SUB_API, api_version=4)
 help_api._doc = "Provide information about the system configuration"
+
+magic_custom = re.compile(r'[ \t]+custom:[ \t]+([\w\/]+)')
+yara_custom = re.compile(r'[ \t]+type[ \t]+=[ \t]+["]?([\w\/]+)["]?')
 
 
 @help_api.route("/classification_definition/")
@@ -151,6 +155,17 @@ def get_systems_constants(**_):
     rejects_map = {}
     default_list = []
 
+    recognized_types = set(trusted_mimes.values())
+    recognized_types = recognized_types.union(set([F"{v}/{k}" for k, v in sl_to_tl.items()]))
+
+    with open(constants.custom_rules) as fh:
+        for values in magic_custom.findall(fh.read()):
+            recognized_types.add(values)
+
+    with open(constants.YARA_RULE_PATH) as fh:
+        for values in yara_custom.findall(fh.read()):
+            recognized_types.add(values)
+
     for srv in STORAGE.list_all_services(as_obj=False):
         name = srv.get('name', None)
         if name:
@@ -168,7 +183,7 @@ def get_systems_constants(**_):
         "file_types": [[t,
                         sorted([x for x in accepts_map.keys()
                                 if re.match(accepts_map[x], t) and not re.match(rejects_map[x], t)])]
-                       for t in sorted(constants.RECOGNIZED_TYPES.keys())],
+                       for t in sorted(list(recognized_types))],
         "tag_types": sorted(list(Tagging.flat_fields().keys()))
     }
     out['file_types'].insert(0, ["*", default_list])
