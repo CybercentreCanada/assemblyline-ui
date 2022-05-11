@@ -20,21 +20,21 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
             if supp['name'].endswith('.ontology'):
                 try:
                     ontology = json.loads(FILESTORE.get(supp['sha256']))
-                    sha256 = ontology['header']['sha256']
-                    c12n = ontology['header']['classification']
+                    sha256 = ontology['file']['sha256']
+                    c12n = ontology['classification']
                     if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
                         # Update the ontology with the live values
-                        ontology['header'].update(updates)
+                        ontology.update(updates)
 
                         # Set filenames if any
                         if sha256 in fnames:
-                            ontology['header']['filenames'] = fnames[sha256]
-                        elif 'filenames' in ontology['header']:
-                            del ontology['header']['filenames']
+                            ontology['file']['names'] = fnames[sha256]
+                        elif 'names' in ontology['file']:
+                            del ontology['file']['names']
 
                         # Make sure parent is not equal to current hash
-                        if 'parent' in ontology['header'] and ontology['header']['parent'] == sha256:
-                            del ontology['header']['parent']
+                        if 'parent' in ontology['file'] and ontology['file']['parent'] == sha256:
+                            del ontology['file']['parent']
 
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
@@ -115,13 +115,18 @@ def get_ontology_for_alert(alert_id, **kwargs):
 
     # Compile information to be added to the ontology
     updates = {
-        'parent': alert['file']['sha256'],
-        'metadata': alert.get('metadata', {}),
-        'date': alert['ts'],
-        'source_system': config.ui.fqdn,
-        'sid': submission['sid'],
-        'submitted_classification': submission['classification'],
-        'submitter': submission['params']['submitter']
+        'file': {
+            'parent': alert['file']['sha256']
+        },
+        'submission': {
+            'metadata': alert.get('metadata', {}),
+            'date': alert['ts'],
+            'source_system': config.ui.fqdn,
+            'sid': submission['sid'],
+            'classification': submission['classification'],
+            'submitter': submission['params']['submitter']
+        }
+
     }
 
     # Set the list of file names
@@ -194,13 +199,18 @@ def get_ontology_for_submission(sid, **kwargs):
 
     # Compile information to be added to the ontology
     updates = {
-        'parent': submission['files'][0]['sha256'],
-        'metadata': submission.get('metadata', {}),
-        'date': submission['times']['submitted'],
-        'source_system': config.ui.fqdn,
-        'sid': sid,
-        'submitted_classification': submission['classification'],
-        'submitter': submission['params']['submitter']
+        'file': {
+            'parent': submission['files'][0]['sha256'],
+        },
+        'submission': {
+            'metadata': submission.get('metadata', {}),
+            'date': submission['times']['submitted'],
+            'source_system': config.ui.fqdn,
+            'sid': sid,
+            'classification': submission['classification'],
+            'submitter': submission['params']['submitter']
+        }
+
     }
 
     # Set the list of file names
@@ -273,9 +283,11 @@ def get_ontology_for_file(sha256, **kwargs):
 
     # Compile information to be added to the ontology
     updates = {
-        'date': file_data['seen']['last'],
-        'source_system': config.ui.fqdn,
-        'submitted_classification': file_data['classification']
+        'submission': {
+            'date': file_data['seen']['last'],
+            'source_system': config.ui.fqdn,
+            'classification': file_data['classification']
+        }
     }
 
     # Generate ontology files based of the results
