@@ -36,6 +36,9 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
                         if 'parent' in ontology['file'] and ontology['file']['parent'] == sha256:
                             del ontology['file']['parent']
 
+                        # Ensure SHA256 is set in final output
+                        ontology['file']['sha256'] = sha256
+
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
                     LOGGER.warning(f"An error occured while fetching ontology files: {str(e)}")
