@@ -158,11 +158,13 @@ def get_systems_constants(**_):
     recognized_types = set(trusted_mimes.values())
     recognized_types = recognized_types.union(set([F"{v}/{k}" for k, v in sl_to_tl.items()]))
 
-    with open(constants.custom_rules) as fh:
+    magic_file, yara_file = forge.get_identify_paths()
+
+    with open(magic_file) as fh:
         for values in magic_custom.findall(fh.read()):
             recognized_types.add(values)
 
-    with open(constants.YARA_RULE_PATH) as fh:
+    with open(yara_file) as fh:
         for values in yara_custom.findall(fh.read()):
             recognized_types.add(values)
 
