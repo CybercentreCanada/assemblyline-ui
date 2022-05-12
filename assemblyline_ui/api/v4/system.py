@@ -1,13 +1,17 @@
 
+import os
+import magic
+import tempfile
+import yaml
+import yara
+
 from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.tagging import Tagging
-
 from assemblyline_ui.config import STORAGE, UI_MESSAGING, config
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-import yaml
 
 
 SUB_API = 'system'
@@ -95,6 +99,62 @@ def get_tag_safelist(**_):
         return make_api_response(safe_str(tag_safelist_yml))
 
 
+@system_api.route("identify/magic/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_identify_custom_magic_file(**_):
+    """
+    Get identify's current custom LibMagic file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <current custom.magic file>
+    """
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        custom_magic = cache.get('custom_magic')
+        if not custom_magic:
+            magic_file, _ = forge.get_identify_paths()
+            with open(magic_file.split(":")[0]) as mfh:
+                return make_api_response(mfh.read())
+
+        return make_api_response(custom_magic.decode('utf-8'))
+
+
+@system_api.route("identify/yara/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_identify_custom_yara_file(**_):
+    """
+    Get identify's current custom Yara file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <current custom.yara file>
+    """
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        custom_yara = cache.get('custom_yara')
+        if not custom_yara:
+            _, yara_file = forge.get_identify_paths()
+            with open(yara_file) as mfh:
+                return make_api_response(mfh.read())
+
+        return make_api_response(custom_yara.decode('utf-8'))
+
+
 @system_api.route("/system_message/", methods=["PUT", "POST"])
 @api_login(require_type=['admin'], required_priv=['W'])
 def set_system_message(**kwargs):
@@ -166,5 +226,90 @@ def put_tag_safelist(**_):
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         cache.save('tag_safelist_yml', tag_safelist_yml.encode('utf-8'), ttl=ADMIN_FILE_TTL, force=True)
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("identify/magic/", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def put_identify_custom_magic_file(**_):
+    """
+    Save a new version of identify's custom LibMagic file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <current custom.magic file>
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json.encode('utf-8')
+
+    magic_file = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            magic_file = tmp.name
+            tmp.write(data)
+
+        try:
+            test = magic.magic_open(magic.MAGIC_CONTINUE + magic.MAGIC_RAW)
+            magic.magic_load(test, magic_file)
+        except magic.MagicException:
+            return make_api_response({'success': False}, "The magic file you have submitted is invalid.", 400)
+    finally:
+        if magic_file and os.path.exists(magic_file):
+            os.unlink(magic_file)
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        cache.save('custom_magic', data, ttl=ADMIN_FILE_TTL, force=True)
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("identify/yara/", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def Put_identify_custom_yara_file(**_):
+    """
+    Save a new version of identify's custom Yara file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <current custom.yara file>
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json.encode('utf-8')
+
+    yara_file = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            yara_file = tmp.name
+            tmp.write(data)
+
+        try:
+            yara_default_externals = {'mime': '', 'magic': '', 'type': ''}
+            yara.compile(filepaths={"default": yara_file}, externals=yara_default_externals)
+        except Exception as e:
+            message = str(e).replace(yara_file, "custom.yara line ")
+            return make_api_response(
+                {'success': False},
+                f"The Yara file you have submitted is invalid: {message}", 400)
+    finally:
+        if yara_file and os.path.exists(yara_file):
+            os.unlink(yara_file)
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        cache.save('custom_yara', data, ttl=ADMIN_FILE_TTL, force=True)
 
     return make_api_response({'success': True})
