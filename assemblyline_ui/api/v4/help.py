@@ -160,7 +160,7 @@ def get_systems_constants(**_):
 
     magic_file, yara_file = forge.get_identify_paths()
 
-    with open(magic_file) as fh:
+    with open(magic_file.split(":")[0]) as fh:
         for values in magic_custom.findall(fh.read()):
             recognized_types.add(values)
 
