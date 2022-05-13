@@ -4,6 +4,7 @@ from flask import request
 from io import StringIO
 
 from assemblyline.datastore.exceptions import MultiKeyError
+from assemblyline.common.dict_utils import recursive_update
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
 
@@ -23,8 +24,8 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
                     sha256 = ontology['file']['sha256']
                     c12n = ontology['classification']
                     if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
-                        # Update the ontology with the live values
-                        ontology.update(updates)
+                        # Recursively update the ontology with the live values
+                        ontology = recursive_update(ontology, updates)
 
                         # Set filenames if any
                         if sha256 in fnames:
