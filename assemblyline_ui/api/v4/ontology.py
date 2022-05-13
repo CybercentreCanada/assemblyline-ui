@@ -3,8 +3,8 @@ import json
 from flask import request
 from io import StringIO
 
-from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.common.dict_utils import recursive_update
+from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
 
