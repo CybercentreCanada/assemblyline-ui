@@ -5,7 +5,7 @@ from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, config
 from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
-from assemblyline.common.identify import sl_to_tl, trusted_mimes
+from assemblyline.common.identify import magic_patterns, trusted_mimes
 from assemblyline.odm.models.tagging import Tagging
 
 SUB_API = 'help'
@@ -156,7 +156,7 @@ def get_systems_constants(**_):
     default_list = []
 
     recognized_types = set(trusted_mimes.values())
-    recognized_types = recognized_types.union(set([F"{v}/{k}" for k, v in sl_to_tl.items()]))
+    recognized_types = recognized_types.union(set([x[0] for x in magic_patterns]))
 
     magic_file, yara_file = forge.get_identify_paths()
 
