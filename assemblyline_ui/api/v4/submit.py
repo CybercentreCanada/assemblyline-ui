@@ -8,15 +8,15 @@ from flask import request
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.uid import get_random_id
+from assemblyline.odm.messages.submission import Submission
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
-from assemblyline.common.uid import get_random_id
-from assemblyline.odm.messages.submission import Submission
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -329,7 +329,18 @@ def submit(**kwargs):
         extra_meta = {}
         if not binary:
             if sha256:
+                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
                 if FILESTORE.exists(sha256):
+                    if fileinfo:
+                        if not Classification.is_accessible(user['classification'], fileinfo['classification'],
+                                                            ignore_invalid=True):
+                            return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+                        else:
+                            # File's classification must be applied at a minimum
+                            s_params['classification'] = Classification.max_classification(s_params['classification'],
+                                                                                           fileinfo['classification'])
+
+                    # File exists in the filestore and the user has appropriate file access
                     FILESTORE.download(sha256, out_file)
                 else:
                     return make_api_response({}, "SHA256 does not exist in our datastore", 404)

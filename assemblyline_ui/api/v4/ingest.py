@@ -5,20 +5,21 @@ from assemblyline.common.classification import InvalidClassification
 
 from flask import request
 
+from assemblyline.common import identify
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.uid import get_random_id
+from assemblyline.odm.messages.submission import Submission
+from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, TEMP_SUBMIT_DIR, STORAGE, config, FILESTORE
+from assemblyline_ui.config import CLASSIFICATION as Classification, TEMP_SUBMIT_DIR, STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.common import identify
-from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.uid import get_random_id
-from assemblyline.odm.messages.submission import Submission
-from assemblyline.remote.datatypes.queues.named import NamedQueue
+
 
 SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -216,19 +217,40 @@ def ingest_single_file(**kwargs):
         do_upload = True
         al_meta = {}
 
+        # Load default user params
+        s_params = ui_to_submission_params(load_user_settings(user))
+
+        # Reset dangerous user settings to safe values
+        s_params.update({
+            'deep_scan': False,
+            "priority": 150,
+            "ignore_cache": False,
+            "ignore_dynamic_recursion_prevention": False,
+            "ignore_filtering": False,
+            "type": "INGEST"
+        })
+
+        # Apply provided params
+        s_params.update(data.get("params", {}))
+
         # Load file
         if not binary:
             if sha256:
+                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
                 if FILESTORE.exists(sha256):
-                    # Try to get file info from the DB instead of re-computing it
-                    fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False,
-                                                          archive_access=config.datastore.ilm.update_archive)
-                    if not fileinfo:
-                        # Could not find the file info in the DB, we will re-compute it
-                        FILESTORE.download(sha256, out_file)
+                    if fileinfo:
+                        if not Classification.is_accessible(user['classification'], fileinfo['classification'],
+                                                            ignore_invalid=True):
+                            return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+                        else:
+                            # File's classification must be applied at a minimum
+                            s_params['classification'] = Classification.max_classification(s_params['classification'],
+                                                                                           fileinfo['classification'])
                     else:
                         # File is in storage and the DB no need to upload anymore
                         do_upload = False
+                    # File exists in the filestore and the user has appropriate file access
+                    FILESTORE.download(sha256, out_file)
                 else:
                     return make_api_response({}, "SHA256 does not exist in our datastore", 404)
             else:
@@ -253,21 +275,7 @@ def ingest_single_file(**kwargs):
         if do_upload and os.path.getsize(out_file) == 0:
             return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
-        # Load default user params
-        s_params = ui_to_submission_params(load_user_settings(user))
-
-        # Reset dangerous user settings to safe values
-        s_params.update({
-            'deep_scan': False,
-            "priority": 150,
-            "ignore_cache": False,
-            "ignore_dynamic_recursion_prevention": False,
-            "ignore_filtering": False,
-            "type": "INGEST"
-        })
-
-        # Apply provided params
-        s_params.update(data.get("params", {}))
+        # Apply group params if not specified
         if 'groups' not in s_params:
             s_params['groups'] = user['groups']
 
@@ -312,7 +320,7 @@ def ingest_single_file(**kwargs):
         meta_classification = al_meta.pop('classification', s_params['classification'])
         if meta_classification != s_params['classification']:
             try:
-                s_params['classification'] = CLASSIFICATION.max_classification(meta_classification,
+                s_params['classification'] = Classification.max_classification(meta_classification,
                                                                                s_params['classification'])
             except InvalidClassification as ic:
                 return make_api_response({}, "The classification found inside the cart file cannot be merged with "
@@ -320,7 +328,7 @@ def ingest_single_file(**kwargs):
         name = al_meta.pop('name', name)
 
         # Validate ingest classification
-        if not CLASSIFICATION.is_accessible(user['classification'], s_params['classification']):
+        if not Classification.is_accessible(user['classification'], s_params['classification']):
             return make_api_response({}, "You cannot start a submission with higher "
                                      "classification then you're allowed to see", 400)
 
