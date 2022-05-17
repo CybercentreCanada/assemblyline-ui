@@ -14,6 +14,9 @@ classification_definition = CLASSIFICATION.get_parsed_classification_definition(
 help_api = make_subapi_blueprint(SUB_API, api_version=4)
 help_api._doc = "Provide information about the system configuration"
 
+magic_custom = re.compile(r'[ \t]+custom:[ \t]+([\w\/]+)')
+yara_custom = re.compile(r'[ \t]+type[ \t]+=[ \t]+["]?([\w\/]+)["]?')
+
 
 @help_api.route("/classification_definition/")
 @api_login(audit=False, check_xsrf_token=False)
@@ -151,6 +154,19 @@ def get_systems_constants(**_):
     rejects_map = {}
     default_list = []
 
+    recognized_types = set(forge.get_identify_trusted_mimes().values())
+    recognized_types = recognized_types.union(set([x['al_type'] for x in forge.get_identify_magic_patterns()]))
+
+    magic_file, yara_file = forge.get_identify_paths()
+
+    with open(magic_file.split(":")[0]) as fh:
+        for values in magic_custom.findall(fh.read()):
+            recognized_types.add(values)
+
+    with open(yara_file) as fh:
+        for values in yara_custom.findall(fh.read()):
+            recognized_types.add(values)
+
     for srv in STORAGE.list_all_services(as_obj=False):
         name = srv.get('name', None)
         if name:
@@ -168,7 +184,7 @@ def get_systems_constants(**_):
         "file_types": [[t,
                         sorted([x for x in accepts_map.keys()
                                 if re.match(accepts_map[x], t) and not re.match(rejects_map[x], t)])]
-                       for t in sorted(constants.RECOGNIZED_TYPES.keys())],
+                       for t in sorted(list(recognized_types))],
         "tag_types": sorted(list(Tagging.flat_fields().keys()))
     }
     out['file_types'].insert(0, ["*", default_list])

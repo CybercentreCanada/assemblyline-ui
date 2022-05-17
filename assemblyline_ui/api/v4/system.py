@@ -1,13 +1,18 @@
 
+import magic
+import os
+import re
+import tempfile
+import yaml
+import yara
+
 from flask import request
 
 from assemblyline.common import forge
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.tagging import Tagging
-
 from assemblyline_ui.config import STORAGE, UI_MESSAGING, config
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-import yaml
 
 
 SUB_API = 'system'
@@ -15,6 +20,7 @@ system_api = make_subapi_blueprint(SUB_API, api_version=4)
 system_api._doc = "Perform system actions"
 
 ADMIN_FILE_TTL = 60 * 60 * 24 * 365 * 100  # Just keep the file for 100 years...
+al_re = re.compile(r"^[a-z]+(?:/[a-z0-9\-.+]+)+$")
 
 
 @system_api.route("/system_message/", methods=["DELETE"])
@@ -95,6 +101,114 @@ def get_tag_safelist(**_):
         return make_api_response(safe_str(tag_safelist_yml))
 
 
+@system_api.route("identify/magic/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_identify_custom_magic_file(**_):
+    """
+    Get identify's current custom LibMagic file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <current custom.magic file>
+    """
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        custom_magic = cache.get('custom_magic')
+        if not custom_magic:
+            magic_file, _ = forge.get_identify_paths()
+            with open(magic_file.split(":")[0]) as mfh:
+                return make_api_response(mfh.read())
+
+        return make_api_response(custom_magic.decode('utf-8'))
+
+
+@system_api.route("identify/mimes/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_identify_trusted_mimetypes(**_):
+    """
+    Get identify's trusted mimetypes map
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <current identify's trusted mimetypes map>
+    """
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        custom_mime = cache.get('custom_mimes')
+        if not custom_mime:
+            return make_api_response(yaml.safe_dump(forge.get_identify_trusted_mimes()))
+
+        return make_api_response(custom_mime.decode('utf-8'))
+
+
+@system_api.route("identify/patterns/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_identify_magic_patterns(**_):
+    """
+    Get identify's magic patterns
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <current identify's magic patterns>
+    """
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        custom_patterns = cache.get('custom_patterns')
+        if not custom_patterns:
+            return make_api_response(yaml.safe_dump(forge.get_identify_magic_patterns()))
+
+        return make_api_response(custom_patterns.decode('utf-8'))
+
+
+@system_api.route("identify/yara/", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_identify_custom_yara_file(**_):
+    """
+    Get identify's current custom Yara file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <current custom.yara file>
+    """
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        custom_yara = cache.get('custom_yara')
+        if not custom_yara:
+            _, yara_file = forge.get_identify_paths()
+            with open(yara_file) as mfh:
+                return make_api_response(mfh.read())
+
+        return make_api_response(custom_yara.decode('utf-8'))
+
+
 @system_api.route("/system_message/", methods=["PUT", "POST"])
 @api_login(require_type=['admin'], required_priv=['W'])
 def set_system_message(**kwargs):
@@ -166,5 +280,173 @@ def put_tag_safelist(**_):
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         cache.save('tag_safelist_yml', tag_safelist_yml.encode('utf-8'), ttl=ADMIN_FILE_TTL, force=True)
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("identify/magic/", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def put_identify_custom_magic_file(**_):
+    """
+    Save a new version of identify's custom LibMagic file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <current custom.magic file>
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json.encode('utf-8')
+
+    magic_file = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            magic_file = tmp.name
+            tmp.write(data)
+
+        try:
+            test = magic.magic_open(magic.MAGIC_CONTINUE + magic.MAGIC_RAW)
+            magic.magic_load(test, magic_file)
+        except magic.MagicException:
+            return make_api_response({'success': False}, "The magic file you have submitted is invalid.", 400)
+    finally:
+        if magic_file and os.path.exists(magic_file):
+            os.unlink(magic_file)
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        cache.save('custom_magic', data, ttl=ADMIN_FILE_TTL, force=True)
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("identify/mimes/", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def put_identify_trusted_mimetypes(**_):
+    """
+    Save a new version of identify's trusted mimetypes file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <new trusted mimetypes file>
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json.encode('utf-8')
+
+    try:
+        mimes = yaml.safe_load(data)
+        for k, v in mimes.items():
+            if not isinstance(k, str) or not al_re.match(k):
+                raise ValueError(f"Invalid mimetype in item: [{k}: {v}]")
+
+            if not isinstance(v, str) or not al_re.match(v):
+                raise ValueError(f"Invalid AL type in item [{k}: {v}]")
+
+    except Exception as e:
+        return make_api_response({'success': False}, err=str(e), status_code=400)
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        cache.save('custom_mimes', data, ttl=ADMIN_FILE_TTL, force=True)
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("identify/patterns/", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def put_identify_magic_patterns(**_):
+    """
+    Save a new version of identify's magic patterns file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <new magic patterns file>
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json.encode('utf-8')
+
+    try:
+        patterns = yaml.safe_load(data)
+        for pattern in patterns:
+            if 'al_type' not in pattern:
+                raise ValueError(f"Missing 'al_type' in pattern: {str(pattern)}")
+
+            if not al_re.match(pattern['al_type']):
+                raise ValueError(f"Invalid 'al_type' in pattern: {str(pattern)}")
+
+            if 'regex' not in pattern:
+                raise ValueError(f"Missing 'regex' in pattern: {str(pattern)}")
+
+            try:
+                re.compile(pattern['regex'])
+            except Exception:
+                raise ValueError(f"Invalid regular expression in pattern: {str(pattern)}")
+    except Exception as e:
+        return make_api_response({'success': False}, err=str(e), status_code=400)
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        cache.save('custom_patterns', data, ttl=ADMIN_FILE_TTL, force=True)
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("identify/yara/", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def Put_identify_custom_yara_file(**_):
+    """
+    Save a new version of identify's custom Yara file
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    <current custom.yara file>
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json.encode('utf-8')
+
+    yara_file = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            yara_file = tmp.name
+            tmp.write(data)
+
+        try:
+            yara_default_externals = {'mime': '', 'magic': '', 'type': ''}
+            yara.compile(filepaths={"default": yara_file}, externals=yara_default_externals)
+        except Exception as e:
+            message = str(e).replace(yara_file, "custom.yara line ")
+            return make_api_response(
+                {'success': False},
+                f"The Yara file you have submitted is invalid: {message}", 400)
+    finally:
+        if yara_file and os.path.exists(yara_file):
+            os.unlink(yara_file)
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        cache.save('custom_yara', data, ttl=ADMIN_FILE_TTL, force=True)
 
     return make_api_response({'success': True})
