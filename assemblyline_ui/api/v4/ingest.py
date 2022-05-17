@@ -236,11 +236,11 @@ def ingest_single_file(**kwargs):
         # Load file
         if not binary:
             if sha256:
-                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
+                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False,
+                                                      archive_access=config.datastore.ilm.update_archive)
                 if FILESTORE.exists(sha256):
                     if fileinfo:
-                        if not Classification.is_accessible(user['classification'], fileinfo['classification'],
-                                                            ignore_invalid=True):
+                        if not Classification.is_accessible(user['classification'], fileinfo['classification']):
                             return make_api_response({}, "SHA256 does not exist in our datastore", 404)
                         else:
                             # File's classification must be applied at a minimum
