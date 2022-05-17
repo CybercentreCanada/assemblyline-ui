@@ -5,7 +5,6 @@ from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, config
 from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
-from assemblyline.common.identify import magic_patterns, trusted_mimes
 from assemblyline.odm.models.tagging import Tagging
 
 SUB_API = 'help'
@@ -17,6 +16,9 @@ help_api._doc = "Provide information about the system configuration"
 
 magic_custom = re.compile(r'[ \t]+custom:[ \t]+([\w\/]+)')
 yara_custom = re.compile(r'[ \t]+type[ \t]+=[ \t]+["]?([\w\/]+)["]?')
+
+magic_patterns = forge.get_identify_magic_patterns()
+trusted_mimes = forge.get_identify_trusted_mimes()
 
 
 @help_api.route("/classification_definition/")
