@@ -17,9 +17,6 @@ help_api._doc = "Provide information about the system configuration"
 magic_custom = re.compile(r'[ \t]+custom:[ \t]+([\w\/]+)')
 yara_custom = re.compile(r'[ \t]+type[ \t]+=[ \t]+["]?([\w\/]+)["]?')
 
-magic_patterns = forge.get_identify_magic_patterns()
-trusted_mimes = forge.get_identify_trusted_mimes()
-
 
 @help_api.route("/classification_definition/")
 @api_login(audit=False, check_xsrf_token=False)
@@ -157,8 +154,8 @@ def get_systems_constants(**_):
     rejects_map = {}
     default_list = []
 
-    recognized_types = set(trusted_mimes.values())
-    recognized_types = recognized_types.union(set([x[0] for x in magic_patterns]))
+    recognized_types = set(forge.get_identify_trusted_mimes().values())
+    recognized_types = recognized_types.union(set([x['al_type'] for x in forge.get_identify_magic_patterns()]))
 
     magic_file, yara_file = forge.get_identify_paths()
 
