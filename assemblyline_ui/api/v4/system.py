@@ -11,7 +11,7 @@ from flask import request
 from assemblyline.common import forge
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.tagging import Tagging
-from assemblyline_ui.config import STORAGE, UI_MESSAGING, config
+from assemblyline_ui.config import IDENTIFY, STORAGE, UI_MESSAGING, config
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -126,8 +126,7 @@ def get_identify_custom_magic_file(**_):
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_magic = cache.get('custom_magic')
         if not custom_magic or default:
-            magic_file, _ = forge.get_identify_paths()
-            with open(magic_file.split(":")[0]) as mfh:
+            with open(IDENTIFY.magic_file.split(":")[0]) as mfh:
                 return make_api_response(mfh.read())
 
         return make_api_response(custom_magic.decode('utf-8'))
@@ -156,7 +155,7 @@ def get_identify_trusted_mimetypes(**_):
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_mime = cache.get('custom_mimes')
         if not custom_mime or default:
-            return make_api_response(yaml.safe_dump(forge.get_identify_trusted_mimes()))
+            return make_api_response(yaml.safe_dump(IDENTIFY.trusted_mimes))
 
         return make_api_response(custom_mime.decode('utf-8'))
 
@@ -184,7 +183,7 @@ def get_identify_magic_patterns(**_):
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_patterns = cache.get('custom_patterns')
         if not custom_patterns or default:
-            return make_api_response(yaml.safe_dump(forge.get_identify_magic_patterns()))
+            return make_api_response(yaml.safe_dump(IDENTIFY.magic_patterns))
 
         return make_api_response(custom_patterns.decode('utf-8'))
 
@@ -212,8 +211,7 @@ def get_identify_custom_yara_file(**_):
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_yara = cache.get('custom_yara')
         if not custom_yara or default:
-            _, yara_file = forge.get_identify_paths()
-            with open(yara_file) as mfh:
+            with open(IDENTIFY.yara_file) as mfh:
                 return make_api_response(mfh.read())
 
         return make_api_response(custom_yara.decode('utf-8'))

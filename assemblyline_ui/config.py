@@ -131,6 +131,7 @@ LOGGER.debug('Logger ready!')
 APPS_LIST = forge.CachedObject(get_apps_list, refresh=3600)
 FILESTORE = forge.get_filestore(config=config)
 STORAGE = forge.get_datastore(config=config, archive_access=True)
+IDENTIFY = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 # End global
 #################################################################
