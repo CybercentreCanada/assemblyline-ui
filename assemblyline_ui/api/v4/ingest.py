@@ -5,7 +5,7 @@ from assemblyline.common.classification import InvalidClassification
 
 from flask import request
 
-from assemblyline.common import identify
+from assemblyline.common import forge
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import now_as_iso
@@ -30,6 +30,7 @@ ingest = NamedQueue(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
+identify = forge.get_identify(use_cache=True)
 
 
 # noinspection PyUnusedLocal

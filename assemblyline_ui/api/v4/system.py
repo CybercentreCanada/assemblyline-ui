@@ -81,7 +81,7 @@ def get_tag_safelist(**_):
     None
 
     Arguments:
-    None
+    default    =>  Load the default values that came with the system
 
     Data Block:
     None
@@ -89,9 +89,11 @@ def get_tag_safelist(**_):
     Result example:
     <current tag_safelist.yml file>
     """
+    default = request.args.get('default', 'false').lower() in ['true', '']
+
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         tag_safelist_yml = cache.get('tag_safelist_yml')
-        if not tag_safelist_yml:
+        if not tag_safelist_yml or default:
             yml_data = forge.get_tag_safelist_data()
             if yml_data:
                 return make_api_response(yaml.safe_dump(yml_data))
@@ -111,7 +113,7 @@ def get_identify_custom_magic_file(**_):
     None
 
     Arguments:
-    None
+    default    =>  Load the default values that came with the system
 
     Data Block:
     None
@@ -119,9 +121,11 @@ def get_identify_custom_magic_file(**_):
     Result example:
     <current custom.magic file>
     """
+    default = request.args.get('default', 'false').lower() in ['true', '']
+
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_magic = cache.get('custom_magic')
-        if not custom_magic:
+        if not custom_magic or default:
             magic_file, _ = forge.get_identify_paths()
             with open(magic_file.split(":")[0]) as mfh:
                 return make_api_response(mfh.read())
@@ -139,7 +143,7 @@ def get_identify_trusted_mimetypes(**_):
     None
 
     Arguments:
-    None
+    default    =>  Load the default values that came with the system
 
     Data Block:
     None
@@ -147,9 +151,11 @@ def get_identify_trusted_mimetypes(**_):
     Result example:
     <current identify's trusted mimetypes map>
     """
+    default = request.args.get('default', 'false').lower() in ['true', '']
+
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_mime = cache.get('custom_mimes')
-        if not custom_mime:
+        if not custom_mime or default:
             return make_api_response(yaml.safe_dump(forge.get_identify_trusted_mimes()))
 
         return make_api_response(custom_mime.decode('utf-8'))
@@ -165,7 +171,7 @@ def get_identify_magic_patterns(**_):
     None
 
     Arguments:
-    None
+    default    =>  Load the default values that came with the system
 
     Data Block:
     None
@@ -173,9 +179,11 @@ def get_identify_magic_patterns(**_):
     Result example:
     <current identify's magic patterns>
     """
+    default = request.args.get('default', 'false').lower() in ['true', '']
+
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_patterns = cache.get('custom_patterns')
-        if not custom_patterns:
+        if not custom_patterns or default:
             return make_api_response(yaml.safe_dump(forge.get_identify_magic_patterns()))
 
         return make_api_response(custom_patterns.decode('utf-8'))
@@ -191,7 +199,7 @@ def get_identify_custom_yara_file(**_):
     None
 
     Arguments:
-    None
+    default    =>  Load the default values that came with the system
 
     Data Block:
     None
@@ -199,9 +207,11 @@ def get_identify_custom_yara_file(**_):
     Result example:
     <current custom.yara file>
     """
+    default = request.args.get('default', 'false').lower() in ['true', '']
+
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         custom_yara = cache.get('custom_yara')
-        if not custom_yara:
+        if not custom_yara or default:
             _, yara_file = forge.get_identify_paths()
             with open(yara_file) as mfh:
                 return make_api_response(mfh.read())
