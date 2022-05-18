@@ -3,7 +3,7 @@ import re
 
 from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, config
+from assemblyline_ui.config import IDENTIFY, STORAGE, CLASSIFICATION, config
 from assemblyline.common.constants import DEFAULT_SERVICE_ACCEPTS, DEFAULT_SERVICE_REJECTS
 from assemblyline.odm.models.tagging import Tagging
 
@@ -154,16 +154,14 @@ def get_systems_constants(**_):
     rejects_map = {}
     default_list = []
 
-    recognized_types = set(forge.get_identify_trusted_mimes().values())
-    recognized_types = recognized_types.union(set([x['al_type'] for x in forge.get_identify_magic_patterns()]))
+    recognized_types = set(IDENTIFY.trusted_mimes.values())
+    recognized_types = recognized_types.union(set([x['al_type'] for x in IDENTIFY.magic_patterns]))
 
-    magic_file, yara_file = forge.get_identify_paths()
-
-    with open(magic_file.split(":")[0]) as fh:
+    with open(IDENTIFY.magic_file.split(":")[0]) as fh:
         for values in magic_custom.findall(fh.read()):
             recognized_types.add(values)
 
-    with open(yara_file) as fh:
+    with open(IDENTIFY.yara_file) as fh:
         for values in yara_custom.findall(fh.read()):
             recognized_types.add(values)
 
