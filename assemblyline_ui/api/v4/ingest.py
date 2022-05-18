@@ -5,7 +5,7 @@ from assemblyline.common.classification import InvalidClassification
 
 from flask import request
 
-from assemblyline.common import identify
+from assemblyline.common import forge
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import now_as_iso
