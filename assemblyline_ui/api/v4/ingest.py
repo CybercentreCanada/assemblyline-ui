@@ -14,7 +14,7 @@ from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.common import forge
+from assemblyline.common import identify
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
