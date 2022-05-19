@@ -312,7 +312,7 @@ def ingest_single_file(**kwargs):
                 return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
             # Decode cart if needed
-            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
+            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
             if extracted_path:
                 out_file = extracted_path
 
