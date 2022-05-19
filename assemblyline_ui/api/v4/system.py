@@ -1,4 +1,5 @@
 
+import hashlib
 import magic
 import os
 import re
@@ -9,6 +10,7 @@ import yara
 from flask import request
 
 from assemblyline.common import forge
+from assemblyline.common.digests import get_sha256_for_file
 from assemblyline.common.identify_defaults import magic_patterns, trusted_mimes
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.tagging import Tagging
@@ -335,7 +337,10 @@ def put_identify_custom_magic_file(**_):
             os.unlink(magic_file)
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
-        cache.save('custom_magic', data, ttl=ADMIN_FILE_TTL, force=True)
+        if hashlib.sha256(data).hexdigest() == get_sha256_for_file(constants.MAGIC_RULE_PATH):
+            cache.delete('custom_magic')
+        else:
+            cache.save('custom_magic', data, ttl=ADMIN_FILE_TTL, force=True)
 
     # Notify components watching to reload magic file
     event_sender.send('identify', 'magic')
@@ -376,7 +381,10 @@ def put_identify_trusted_mimetypes(**_):
         return make_api_response({'success': False}, err=str(e), status_code=400)
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
-        cache.save('custom_mimes', data, ttl=ADMIN_FILE_TTL, force=True)
+        if yaml.safe_dump(mimes) == yaml.safe_dump(trusted_mimes):
+            cache.delete('custom_mimes')
+        else:
+            cache.save('custom_mimes', data, ttl=ADMIN_FILE_TTL, force=True)
 
     # Notify components watching to reload trusted mimes
     event_sender.send('identify', 'mimes')
@@ -424,7 +432,10 @@ def put_identify_magic_patterns(**_):
         return make_api_response({'success': False}, err=str(e), status_code=400)
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
-        cache.save('custom_patterns', data, ttl=ADMIN_FILE_TTL, force=True)
+        if yaml.safe_dump(patterns) == yaml.safe_dump(magic_patterns):
+            cache.delete('custom_patterns')
+        else:
+            cache.save('custom_patterns', data, ttl=ADMIN_FILE_TTL, force=True)
 
     # Notify components watching to reload magic patterns
     event_sender.send('identify', 'patterns')
@@ -471,7 +482,10 @@ def Put_identify_custom_yara_file(**_):
             os.unlink(yara_file)
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
-        cache.save('custom_yara', data, ttl=ADMIN_FILE_TTL, force=True)
+        if hashlib.sha256(data).hexdigest() == get_sha256_for_file(constants.YARA_RULE_PATH):
+            cache.delete('custom_yara')
+        else:
+            cache.save('custom_yara', data, ttl=ADMIN_FILE_TTL, force=True)
 
     # Notify components watching to reload yara file
     event_sender.send('identify', 'yara')
