@@ -11,7 +11,8 @@ from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification, \
+    IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
@@ -266,8 +267,9 @@ def start_ui_submission(ui_sid, **kwargs):
                 return make_api_response("", err=str(e), status_code=400)
 
             try:
-                submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config)\
-                    .submit(submission_obj, local_files=[submitted_file])
+                submit_result = SubmissionClient(
+                    datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY).submit(
+                        submission_obj, local_files=[submitted_file])
                 submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)

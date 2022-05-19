@@ -12,7 +12,8 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
+    IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
@@ -111,7 +112,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             return make_api_response("", err=str(e), status_code=400)
 
         submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
-                                         config=config).submit(submission_obj)
+                                         config=config, identify=IDENTIFY).submit(submission_obj)
         submission_received(submission_obj)
         return make_api_response(submit_result.as_primitives())
 
@@ -183,7 +184,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
             return make_api_response("", err=str(e), status_code=400)
 
         submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
-                                         config=config).submit(submission_obj)
+                                         config=config, identify=IDENTIFY).submit(submission_obj)
         submission_received(submission_obj)
 
         return make_api_response(submit_result.as_primitives())
@@ -378,7 +379,7 @@ def submit(**kwargs):
 
         # Submit the task to the system
         try:
-            submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config)\
+            submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY)\
                 .submit(submission_obj, local_files=[out_file])
             submission_received(submission_obj)
         except SubmissionException as e:
