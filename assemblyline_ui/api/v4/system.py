@@ -445,7 +445,7 @@ def put_identify_magic_patterns(**_):
 
 @system_api.route("identify/yara/", methods=["PUT"])
 @api_login(require_type=['admin'], required_priv=['W'])
-def Put_identify_custom_yara_file(**_):
+def put_identify_custom_yara_file(**_):
     """
     Save a new version of identify's custom Yara file
 
