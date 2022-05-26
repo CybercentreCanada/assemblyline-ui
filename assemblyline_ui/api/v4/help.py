@@ -102,6 +102,7 @@ def get_system_configuration(**_):
         "submission.tag_types.attribution",
         "submission.tag_types.behavior",
         "submission.tag_types.ioc",
+        "ui.allow_protected_downloads",
         "ui.allow_raw_downloads",
         "ui.audit",
         "ui.download_encoding",

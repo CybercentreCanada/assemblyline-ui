@@ -66,6 +66,8 @@ def who_am_i(**kwargs):
             "url": []                                 # List of metadata fields where to fetch URLS
          },
          "allow_malicious_hinting": True,           # Are users allowed to set the malicious flag before processing
+         "allow_protected_downloads": True,         # Are users allowed to download files as password-protected ZIPs?
+         "allow_raw_downloads": True,               # Are users allowed to download files in their raw format?
          "allow_replay": False,                     # Are users allowed to continue submissions on another server
          "allow_url_submissions": True,             # Are URL submissions allowed
          "apps": [],                                # List of apps shown in the apps switcher
@@ -120,6 +122,8 @@ def who_am_i(**kwargs):
                 "url": config.ui.alerting_meta.url
             },
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,
+            "allow_protected_downloads": config.ui.allow_protected_downloads,
+            "allow_raw_downloads": config.ui.allow_raw_downloads,
             "allow_replay": config.ui.allow_replay,
             "allow_url_submissions": config.ui.allow_url_submissions,
             "apps": [x for x in APPS_LIST['apps']

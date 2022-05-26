@@ -3,7 +3,7 @@ ARG base=cccs/assemblyline
 FROM $base:$branch AS base
 # Switch to root to install common dependancies
 USER root
-RUN apt-get update && apt-get install -yy libldap-2.4-2 libsasl2-2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -yy libldap-2.4-2 libsasl2-2 zip && rm -rf /var/lib/apt/lists/*
 
 # Create a temporarary image to compile dependencies
 FROM base AS builder
