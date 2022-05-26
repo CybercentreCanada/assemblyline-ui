@@ -2,16 +2,18 @@ import base64
 import concurrent.futures
 import os
 import re
+import subprocess
 import tempfile
 
 from flask import request
 
+from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import ALLOW_PROTECTED_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
@@ -183,11 +185,21 @@ def download_file(sha256, **kwargs):
                                                                                   file_obj['classification'])
 
         encoding = request.args.get('encoding', params['download_encoding'])
-        if encoding not in ['raw', 'cart']:
-            return make_api_response({}, f"{encoding.upper()} is not in the valid encoding types: [raw, cart]", 403)
+        password = request.args.get('password', params['default_protected_password'])
+
+        if encoding not in FILE_DOWNLOAD_ENCODINGS:
+            return make_api_response(
+                {},
+                f"{encoding.upper()} is not in the valid encoding types: {FILE_DOWNLOAD_ENCODINGS}", 403)
 
         if encoding == "raw" and not ALLOW_RAW_DOWNLOADS:
             return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
+
+        if encoding == "protected":
+            if not ALLOW_PROTECTED_DOWNLOADS:
+                return make_api_response({}, "PROTECTED file download has been disabled by administrators.", 403)
+            elif not password:
+                return make_api_response({}, "No password given or retrieved from user's settings.", 403)
 
         _, download_path = tempfile.mkstemp()
         try:
@@ -198,6 +210,10 @@ def download_file(sha256, **kwargs):
 
             if encoding == 'raw':
                 target_path = download_path
+            elif encoding == 'protected':
+                target_path = f'{download_path}.zip'
+                name += '.zip'
+                subprocess.run(['zip', '-j', '--password', password, target_path, download_path], capture_output=True)
             else:
                 target_path, name = encode_file(download_path, name, submission_meta)
 
