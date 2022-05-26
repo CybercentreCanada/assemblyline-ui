@@ -5,7 +5,6 @@ from assemblyline.common.classification import InvalidClassification
 
 from flask import request
 
-from assemblyline.common import identify
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import now_as_iso
@@ -14,7 +13,8 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION as Classification, TEMP_SUBMIT_DIR, STORAGE, config, FILESTORE
+from assemblyline_ui.config import CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
+    STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
@@ -302,7 +302,7 @@ def ingest_single_file(**kwargs):
         # No need to re-calculate fileinfo if we have it already
         if not fileinfo:
             # Calculate file digest
-            fileinfo = identify.fileinfo(out_file)
+            fileinfo = IDENTIFY.fileinfo(out_file)
 
             # Validate file size
             if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
@@ -312,7 +312,7 @@ def ingest_single_file(**kwargs):
                 return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
 
             # Decode cart if needed
-            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo)
+            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
             if extracted_path:
                 out_file = extracted_path
 

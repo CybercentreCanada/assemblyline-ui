@@ -11,7 +11,7 @@ from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
-from assemblyline_ui.config import BUNDLING_DIR, CLASSIFICATION as Classification, STORAGE
+from assemblyline_ui.config import BUNDLING_DIR, CLASSIFICATION as Classification, STORAGE, IDENTIFY
 
 
 SUB_API = 'bundle'
@@ -114,7 +114,8 @@ def import_bundle(**_):
 
     try:
         bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification,
-                      allow_incomplete=allow_incomplete, rescan_services=rescan_services, exist_ok=exist_ok)
+                      allow_incomplete=allow_incomplete, rescan_services=rescan_services, exist_ok=exist_ok,
+                      identify=IDENTIFY)
 
         return make_api_response({'success': True})
     except SubmissionException as se:
