@@ -202,7 +202,12 @@ def download_file(sha256, **kwargs):
             elif not password:
                 return make_api_response({}, "No password given or retrieved from user's settings.", 403)
 
-        _, download_path = tempfile.mkstemp()
+        download_dir = None
+        if encoding == 'zip':
+            download_dir = tempfile.mkdtemp()
+            download_path = os.path.join(download_dir, name)
+        else:
+            _, download_path = tempfile.mkstemp()
         try:
             downloaded_from = FILESTORE.download(sha256, download_path)
 
@@ -212,8 +217,8 @@ def download_file(sha256, **kwargs):
             if encoding == 'raw':
                 target_path = download_path
             elif encoding == 'zip':
-                target_path = f'{download_path}.zip'
                 name += '.zip'
+                target_path = os.path.join(download_dir, name)
                 subprocess.run(['zip', '-j', '--password', password, target_path, download_path], capture_output=True)
             else:
                 target_path, name = encode_file(download_path, name, submission_meta)
@@ -228,6 +233,9 @@ def download_file(sha256, **kwargs):
             if download_path:
                 if os.path.exists(download_path):
                     os.unlink(download_path)
+            if download_dir:
+                if os.path.exists(download_dir):
+                    os.rmdir(download_dir)
     else:
         return make_api_response({}, "You are not allowed to download this file.", 403)
 
