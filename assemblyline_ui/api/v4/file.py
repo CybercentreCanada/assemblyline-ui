@@ -203,17 +203,22 @@ def download_file(sha256, **kwargs):
                 return make_api_response({}, "No password given or retrieved from user's settings.", 403)
 
         download_dir = None
+        target_path = None
+
+        # Create a temporary download location
         if encoding == 'zip':
             download_dir = tempfile.mkdtemp()
             download_path = os.path.join(download_dir, name)
         else:
             _, download_path = tempfile.mkstemp()
+
         try:
             downloaded_from = FILESTORE.download(sha256, download_path)
 
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
 
+            # Encode file
             if encoding == 'raw':
                 target_path = download_path
             elif encoding == 'zip':
@@ -223,13 +228,13 @@ def download_file(sha256, **kwargs):
             else:
                 target_path, name = encode_file(download_path, name, submission_meta)
 
-            try:
-                return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
-            finally:
-                if target_path:
-                    if os.path.exists(target_path):
-                        os.unlink(target_path)
+            return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
+
         finally:
+            # Cleanup
+            if target_path:
+                if os.path.exists(target_path):
+                    os.unlink(target_path)
             if download_path:
                 if os.path.exists(download_path):
                     os.unlink(download_path)
