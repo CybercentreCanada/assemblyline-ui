@@ -13,7 +13,8 @@ from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_PROTECTED_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
+    CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
@@ -185,7 +186,7 @@ def download_file(sha256, **kwargs):
                                                                                   file_obj['classification'])
 
         encoding = request.args.get('encoding', params['download_encoding'])
-        password = request.args.get('password', params['default_protected_password'])
+        password = request.args.get('password', params['default_zip_password'])
 
         if encoding not in FILE_DOWNLOAD_ENCODINGS:
             return make_api_response(
@@ -195,38 +196,51 @@ def download_file(sha256, **kwargs):
         if encoding == "raw" and not ALLOW_RAW_DOWNLOADS:
             return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
 
-        if encoding == "protected":
-            if not ALLOW_PROTECTED_DOWNLOADS:
+        if encoding == "zip":
+            if not ALLOW_ZIP_DOWNLOADS:
                 return make_api_response({}, "PROTECTED file download has been disabled by administrators.", 403)
             elif not password:
                 return make_api_response({}, "No password given or retrieved from user's settings.", 403)
 
-        _, download_path = tempfile.mkstemp()
+        download_dir = None
+        target_path = None
+
+        # Create a temporary download location
+        if encoding == 'zip':
+            download_dir = tempfile.mkdtemp()
+            download_path = os.path.join(download_dir, name)
+        else:
+            _, download_path = tempfile.mkstemp()
+
         try:
             downloaded_from = FILESTORE.download(sha256, download_path)
 
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
 
+            # Encode file
             if encoding == 'raw':
                 target_path = download_path
-            elif encoding == 'protected':
-                target_path = f'{download_path}.zip'
+            elif encoding == 'zip':
                 name += '.zip'
+                target_path = os.path.join(download_dir, name)
                 subprocess.run(['zip', '-j', '--password', password, target_path, download_path], capture_output=True)
             else:
                 target_path, name = encode_file(download_path, name, submission_meta)
 
-            try:
-                return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
-            finally:
-                if target_path:
-                    if os.path.exists(target_path):
-                        os.unlink(target_path)
+            return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
+
         finally:
+            # Cleanup
+            if target_path:
+                if os.path.exists(target_path):
+                    os.unlink(target_path)
             if download_path:
                 if os.path.exists(download_path):
                     os.unlink(download_path)
+            if download_dir:
+                if os.path.exists(download_dir):
+                    os.rmdir(download_dir)
     else:
         return make_api_response({}, "You are not allowed to download this file.", 403)
 

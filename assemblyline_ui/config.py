@@ -19,7 +19,7 @@ config = forge.get_config()
 
 CLASSIFICATION = forge.get_classification()
 
-ALLOW_PROTECTED_DOWNLOADS = config.ui.allow_protected_downloads
+ALLOW_ZIP_DOWNLOADS = config.ui.allow_zip_downloads
 ALLOW_RAW_DOWNLOADS = config.ui.allow_raw_downloads
 APP_ID = "https://%s" % config.ui.fqdn
 APP_NAME = "Assemblyline"
