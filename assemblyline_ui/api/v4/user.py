@@ -66,6 +66,8 @@ def who_am_i(**kwargs):
             "url": []                                 # List of metadata fields where to fetch URLS
          },
          "allow_malicious_hinting": True,           # Are users allowed to set the malicious flag before processing
+         "allow_raw_downloads": True,               # Are users allowed to download files in their raw format?
+         "allow_zip_downloads": True,               # Are users allowed to download files as password-protected ZIPs?
          "allow_replay": False,                     # Are users allowed to continue submissions on another server
          "allow_url_submissions": True,             # Are URL submissions allowed
          "apps": [],                                # List of apps shown in the apps switcher
@@ -120,6 +122,8 @@ def who_am_i(**kwargs):
                 "url": config.ui.alerting_meta.url
             },
             "allow_malicious_hinting": config.ui.allow_malicious_hinting,
+            "allow_raw_downloads": config.ui.allow_raw_downloads,
+            "allow_zip_downloads": config.ui.allow_zip_downloads,
             "allow_replay": config.ui.allow_replay,
             "allow_url_submissions": config.ui.allow_url_submissions,
             "apps": [x for x in APPS_LIST['apps']
@@ -732,18 +736,19 @@ def set_user_settings(username, **_):
 
     Data Block:
     {
-     "profile": true,              # Should submissions be profiled
-     "classification": "",         # Default classification for this user sumbissions
-     "description": "",            # Default description for this user's submissions
-     "download_encoding": "blah",  # Default encoding for downloaded files
-     "expand_min_score": 100,      # Default minimum score to auto-expand sections
-     "priority": 1000,             # Default submission priority
-     "service_spec": [],           # Default Service specific parameters
-     "ignore_cache": true,         # Should file be reprocessed even if there are cached results
-     "groups": [ ... ],            # Default groups selection for the user scans
-     "ttl": 30,                    # Default time to live in days of the users submissions
-     "services": [ ... ],          # Default list of selected services
-     "ignore_filtering": false     # Should filtering services by ignored?
+     "profile": true,                       # Should submissions be profiled
+     "classification": "",                  # Default classification for this user sumbissions
+     "default_zip_password": "zippy"        # Default password used for protected file downloads
+     "description": "",                     # Default description for this user's submissions
+     "download_encoding": "blah",           # Default encoding for downloaded files
+     "expand_min_score": 100,               # Default minimum score to auto-expand sections
+     "priority": 1000,                      # Default submission priority
+     "service_spec": [],                    # Default Service specific parameters
+     "ignore_cache": true,                  # Should file be reprocessed even if there are cached results
+     "groups": [ ... ],                     # Default groups selection for the user scans
+     "ttl": 30,                             # Default time to live in days of the users submissions
+     "services": [ ... ],                   # Default list of selected services
+     "ignore_filtering": false              # Should filtering services by ignored?
     }
 
     Result example:
@@ -754,6 +759,9 @@ def set_user_settings(username, **_):
     try:
         data = request.json
         data['service_spec'] = simplify_service_spec(data.get('service_spec', {}))
+        if not data.get('default_zip_password', ''):
+            return make_api_response({"success": False}, "Encryption password can't be empty.", 403)
+
         if save_user_settings(username, data):
             return make_api_response({"success": True})
         else:
