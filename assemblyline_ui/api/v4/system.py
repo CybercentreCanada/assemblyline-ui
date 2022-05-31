@@ -1,21 +1,24 @@
 
 import hashlib
-import magic
 import os
 import re
 import tempfile
-import yaml
-import yara
+import json
 
 from flask import request
+import magic
+import yara
+import yaml
 
 from assemblyline.common import forge
 from assemblyline.common.digests import get_sha256_for_file
 from assemblyline.common.identify_defaults import magic_patterns, trusted_mimes
+from assemblyline.common.postprocess import SubmissionFilter
 from assemblyline.common.str_utils import safe_str
+from assemblyline.odm.models.actions import DEFAULT_POSTPROCESS_ACTIONS, PostprocessAction
 from assemblyline.odm.models.tagging import Tagging
 from assemblyline.remote.datatypes.events import EventSender
-from assemblyline_ui.config import STORAGE, UI_MESSAGING, config
+from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -30,6 +33,11 @@ constants = forge.get_constants()
 event_sender = EventSender('system',
                            host=config.core.redis.nonpersistent.host,
                            port=config.core.redis.nonpersistent.port)
+
+PREPARED_POSTPROCESSING_ACTIONS = {
+    key: rule.as_primitives()
+    for key, rule in DEFAULT_POSTPROCESS_ACTIONS.items()
+}
 
 
 @system_api.route("/system_message/", methods=["DELETE"])
@@ -489,5 +497,104 @@ def put_identify_custom_yara_file(**_):
 
     # Notify components watching to reload yara file
     event_sender.send('identify', 'yara')
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("postprocess/rules", methods=["GET"])
+@api_login(require_type=['admin'], required_priv=['R'])
+def get_post_processing_rules(**_):
+    """
+    Get rules to determine post processing actions.
+
+    Variables:
+    None
+
+    Arguments:
+    default    =>  Load the default values that came with the system
+
+    Data Block:
+    None
+
+    Result example:
+    {
+        "rule_name": {
+            "enabled": true,
+            "run_on_completed": true,
+            "filter": "max_score: >=1000",
+            "raise_alert": true
+        }
+    }
+    """
+    default = request.args.get('default', 'false').lower() in ['true', '']
+    rules = PREPARED_POSTPROCESSING_ACTIONS
+    if not default:
+        with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+            try:
+                rules = cache.get('postprocess_actions')
+                if rules is not None:
+                    rules = json.loads(rules)
+            except Exception:
+                LOGGER.exception("Bad actions config")
+                rules = {}
+
+    return make_api_response(rules)
+
+
+@system_api.route("postprocess/rules", methods=["PUT"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def put_post_processing_rules(**_):
+    """
+    Save a new version of the post processing rules.
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    JSON dictionary of PostprocessingAction.
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json
+    if not data:
+        return make_api_response({'success': False})
+
+    # Validate the data
+    parsed_rules = {}
+    for rule_name, rule_data in data.items():
+        try:
+            action = PostprocessAction(rule_data)
+            parsed_rules[rule_name] = action
+            try:
+                fltr = SubmissionFilter(action.filter)
+                if not fltr.cache_safe and action.run_on_cache:
+                    return make_api_response(
+                        {'success': False, 'rule': rule_name, 'reason': 'cache_filter'},
+                        err=f"The filter on rule {rule_name} could not be "
+                            f"run on cache hits as requested: {action.filter}"
+                    )
+            except Exception as error:
+                return make_api_response(
+                    {'success': False, 'rule': rule_name, 'reason': 'filter'},
+                    err=f"Error parsing filter on rule {rule_name}: {error}"
+                )
+        except Exception as error:
+            return make_api_response(
+                {'success': False, 'rule': rule_name, 'reason': 'parsing'},
+                err=f"Error parsing rule {rule_name}: {error}"
+            )
+
+    with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
+        if parsed_rules == DEFAULT_POSTPROCESS_ACTIONS:
+            cache.delete('postprocess_actions')
+        else:
+            cache.save('postprocess_actions', data, ttl=ADMIN_FILE_TTL, force=True)
+
+    # Notify components watching to reload file
+    event_sender.send('postprocess', 'rules')
 
     return make_api_response({'success': True})
