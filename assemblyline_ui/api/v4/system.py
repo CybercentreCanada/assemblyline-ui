@@ -3,7 +3,6 @@ import hashlib
 import os
 import re
 import tempfile
-import json
 
 from flask import request
 import magic
@@ -501,9 +500,9 @@ def put_identify_custom_yara_file(**_):
     return make_api_response({'success': True})
 
 
-@system_api.route("postprocess/rules", methods=["GET"])
+@system_api.route("/actions/", methods=["GET"])
 @api_login(require_type=['admin'], required_priv=['R'])
-def get_post_processing_rules(**_):
+def get_post_processing_actions(**_):
     """
     Get rules to determine post processing actions.
 
@@ -527,25 +526,23 @@ def get_post_processing_rules(**_):
     }
     """
     default = request.args.get('default', 'false').lower() in ['true', '']
-    rules = PREPARED_POSTPROCESSING_ACTIONS
     if not default:
         with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
             try:
-                rules = cache.get('postprocess_actions')
-                if rules is not None:
-                    rules = json.loads(rules)
+                cached_rules = cache.get('postprocess_actions')
+                if cached_rules:
+                    return make_api_response(cached_rules.decode('utf-8'))
             except Exception:
                 LOGGER.exception("Bad actions config")
-                rules = {}
 
-    return make_api_response(rules)
+    return make_api_response(yaml.safe_dump(PREPARED_POSTPROCESSING_ACTIONS))
 
 
-@system_api.route("postprocess/rules", methods=["PUT"])
+@system_api.route("/actions/", methods=["PUT"])
 @api_login(require_type=['admin'], required_priv=['W'])
-def put_post_processing_rules(**_):
+def put_post_processing_actions(**_):
     """
-    Save a new version of the post processing rules.
+    Save a new version of the post processing actions.
 
     Variables:
     None
@@ -559,13 +556,16 @@ def put_post_processing_rules(**_):
     Result example:
     {"success": True}
     """
-    data = request.json
-    if not data:
-        return make_api_response({'success': False})
+    actions = request.json.encode('utf-8')
+
+    try:
+        actions_data = yaml.safe_load(actions)
+    except Exception as e:
+        return make_api_response({'success': False}, f"Invalid post processing actions file submitted: {str(e)}", 400)
 
     # Validate the data
     parsed_rules = {}
-    for rule_name, rule_data in data.items():
+    for rule_name, rule_data in actions_data.items():
         try:
             action = PostprocessAction(rule_data, ignore_extra_values=False)
             parsed_rules[rule_name] = action
@@ -575,24 +575,27 @@ def put_post_processing_rules(**_):
                     return make_api_response(
                         {'success': False, 'rule': rule_name, 'reason': 'cache_filter'},
                         err=f"The filter on rule {rule_name} could not be "
-                            f"run on cache hits as requested: {action.filter}"
+                            f"run on cache hits as requested: {action.filter}",
+                        status_code=400
                     )
             except Exception as error:
                 return make_api_response(
                     {'success': False, 'rule': rule_name, 'reason': 'filter'},
-                    err=f"Error parsing filter on rule {rule_name}: {error}"
+                    err=f"Error parsing filter on rule {rule_name}: {error}",
+                        status_code=400
                 )
         except Exception as error:
             return make_api_response(
                 {'success': False, 'rule': rule_name, 'reason': 'parsing'},
-                err=f"Error parsing rule {rule_name}: {error}"
+                err=f"Error parsing rule {rule_name}: {error}",
+                status_code=400
             )
 
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
         if parsed_rules == DEFAULT_POSTPROCESS_ACTIONS:
             cache.delete('postprocess_actions')
         else:
-            cache.save('postprocess_actions', data, ttl=ADMIN_FILE_TTL, force=True)
+            cache.save('postprocess_actions', actions, ttl=ADMIN_FILE_TTL, force=True)
 
     # Notify components watching to reload file
     event_sender.send('postprocess', 'rules')
