@@ -567,7 +567,7 @@ def put_post_processing_rules(**_):
     parsed_rules = {}
     for rule_name, rule_data in data.items():
         try:
-            action = PostprocessAction(rule_data)
+            action = PostprocessAction(rule_data, ignore_extra_values=False)
             parsed_rules[rule_name] = action
             try:
                 fltr = SubmissionFilter(action.filter)
