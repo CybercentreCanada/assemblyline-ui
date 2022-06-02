@@ -430,7 +430,7 @@ def add_labels(alert_id, **kwargs):
     label_diff = labels.difference(labels.intersection(cur_label))
     if label_diff:
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND, 'label', lbl)
+            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
                                                        for lbl in label_diff])})
     else:
         return make_api_response({"success": True})
