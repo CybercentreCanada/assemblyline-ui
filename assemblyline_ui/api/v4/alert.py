@@ -430,7 +430,7 @@ def add_labels(alert_id, **kwargs):
     label_diff = labels.difference(labels.intersection(cur_label))
     if label_diff:
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND, 'label', lbl)
+            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
                                                        for lbl in label_diff])})
     else:
         return make_api_response({"success": True})
@@ -478,7 +478,8 @@ def add_labels_by_batch(**kwargs):
         filters.append(timming_filter)
 
     return make_api_response({
-        "success": STORAGE.alert.update_by_query(query, [(STORAGE.alert.UPDATE_APPEND, 'label', lbl) for lbl in labels],
+        "success": STORAGE.alert.update_by_query(query, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
+                                                         for lbl in labels],
                                                  filters, access_control=user['access_control'])})
 
 
