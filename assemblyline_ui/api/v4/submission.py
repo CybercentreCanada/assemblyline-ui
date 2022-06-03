@@ -14,6 +14,14 @@ submission_api = make_subapi_blueprint(SUB_API, api_version=4)
 submission_api._doc = "Perform operations on system submissions"
 
 
+HEUR_RANK_MAP = {
+    'safe': 0,
+    'info': 1,
+    'suspicious': 2,
+    'malicious': 3
+}
+
+
 @submission_api.route("/<sid>/", methods=["DELETE"])
 @api_login(required_priv=['W'], allow_readonly=False)
 def delete_submission(sid, **kwargs):
@@ -620,13 +628,8 @@ def get_summary(sid, **kwargs):
             current_htype = output['tags'][summary_type][t['type']].get(t['value'], None)
             if not current_htype:
                 output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
-            else:
-                if current_htype == 'malicious' or t['h_type'] == 'malicious':
-                    output['tags'][summary_type][t['type']][t['value']] = ('malicious', t['safelisted'])
-                elif current_htype == 'suspicious' or t['h_type'] == 'suspicious':
-                    output['tags'][summary_type][t['type']][t['value']] = ('suspicious', t['safelisted'])
-                else:
-                    output['tags'][summary_type][t['type']][t['value']] = ('info', t['safelisted'])
+            elif HEUR_RANK_MAP[current_htype[0]] < HEUR_RANK_MAP[t['h_type']]:
+                output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
 
         for summary_type in output['tags']:
             for t_type in output['tags'][summary_type]:
@@ -901,6 +904,10 @@ def get_report(submission_id, **kwargs):
             submission['tags'].setdefault(summary_type, {})
             submission['tags'][summary_type].setdefault(t['type'], {})
             submission['tags'][summary_type][t['type']].setdefault(t['value'], {'h_type': t['h_type'], 'files': []})
+            if HEUR_RANK_MAP[submission['tags'][summary_type][t['type']][t['value']]['h_type']] < \
+                    HEUR_RANK_MAP[t['h_type']]:
+                submission['tags'][summary_type][t['type']][t['value']]['h_type'] = t['h_type']
+
             for name in name_map.get(sha256, [sha256]):
                 if (name, sha256) not in submission['tags'][summary_type][t['type']][t['value']]['files']:
                     submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
