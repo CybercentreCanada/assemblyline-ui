@@ -84,6 +84,7 @@ def ui_to_submission_params(params):
     params['ttl'] = int(params.get('ttl', config.submission.dtl))
 
     # Remove UI specific params
+    params.pop('default_zip_password', None)
     params.pop('download_encoding', None)
     params.pop('expand_min_score', None)
     params.pop('submission_view', None)
