@@ -165,25 +165,19 @@ def download_file(sha256, **kwargs):
 
         sid = request.args.get('sid', None) or None
         submission = {}
-        submission_meta = {}
+        file_metadata = {}
         if sid is not None:
             submission = STORAGE.submission.get(sid, as_obj=False)
             if submission is None:
                 submission = {}
-            hash_list = [submission.get('files', [])[0].get('sha256', None)]
-            hash_list.extend([x[:64] for x in submission.get('errors', [])])
-            hash_list.extend([x[:64] for x in submission.get('results', [])])
-
-            if sha256 not in hash_list:
-                return make_api_response({}, f"File {sha256} is not associated to submission {sid}.", 403)
 
             if Classification.is_accessible(user['classification'], submission['classification']):
-                submission_meta.update(unflatten(submission['metadata']))
+                file_metadata.update(unflatten(submission['metadata']))
 
         if Classification.enforce:
             submission_classification = submission.get('classification', file_obj['classification'])
-            submission_meta['classification'] = Classification.max_classification(submission_classification,
-                                                                                  file_obj['classification'])
+            file_metadata['classification'] = Classification.max_classification(submission_classification,
+                                                                                file_obj['classification'])
 
         encoding = request.args.get('encoding', params['download_encoding'])
         password = request.args.get('password', params['default_zip_password'])
@@ -226,7 +220,7 @@ def download_file(sha256, **kwargs):
                 target_path = os.path.join(download_dir, name)
                 subprocess.run(['zip', '-j', '--password', password, target_path, download_path], capture_output=True)
             else:
-                target_path, name = encode_file(download_path, name, submission_meta)
+                target_path, name = encode_file(download_path, name, file_metadata)
 
             return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
 
