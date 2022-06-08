@@ -170,12 +170,6 @@ def download_file(sha256, **kwargs):
             submission = STORAGE.submission.get(sid, as_obj=False)
             if submission is None:
                 submission = {}
-            hash_list = [submission.get('files', [])[0].get('sha256', None)]
-            hash_list.extend([x[:64] for x in submission.get('errors', [])])
-            hash_list.extend([x[:64] for x in submission.get('results', [])])
-
-            if sha256 not in hash_list:
-                return make_api_response({}, f"File {sha256} is not associated to submission {sid}.", 403)
 
             if Classification.is_accessible(user['classification'], submission['classification']):
                 submission_meta.update(unflatten(submission['metadata']))
