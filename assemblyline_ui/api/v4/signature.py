@@ -306,14 +306,14 @@ def add_signature_source(service, **_):
 
 
 # noinspection PyPep8Naming
-@signature_api.route("/change_status/<sid>/<status>/", methods=["GET"])
+@signature_api.route("/change_status/<signature_id>/<status>/", methods=["GET"])
 @api_login(required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
-def change_status(sid, status, **kwargs):
+def change_status(signature_id, status, **kwargs):
     """
     Change the status of a signature
 
     Variables:
-    sid    =>  ID of the signature
+    signature_id    =>  ID of the signature
     status  =>  New state
 
     Arguments:
@@ -332,7 +332,7 @@ def change_status(sid, status, **kwargs):
                                  f"You cannot apply the status {status} on yara rules.",
                                  403)
 
-    data = STORAGE.signature.get(sid, as_obj=False)
+    data = STORAGE.signature.get(signature_id, as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'],
                                             data.get('classification', Classification.UNRESTRICTED)):
@@ -346,14 +346,14 @@ def change_status(sid, status, **kwargs):
 
         if data['status'] in DEPLOYED_STATUSES and status in DRAFT_STATUSES:
             return make_api_response("",
-                                     f"You cannot change the status of signature {sid} from "
+                                     f"You cannot change the status of signature {signature_id} from "
                                      f"{data['status']} to {status}.", 403)
 
         today = now_as_iso()
         uname = user['uname']
 
         if status not in ['DISABLED', 'INVALID', 'TESTING']:
-            query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{sid}"
+            query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{signature_id}"
             others_operations = [
                 ('SET', 'last_modified', today),
                 ('SET', 'state_change_date', today),
@@ -371,26 +371,26 @@ def change_status(sid, status, **kwargs):
 
         _reset_service_updates(data['type'])
 
-        success = STORAGE.signature.update(sid, operations)
+        success = STORAGE.signature.update(signature_id, operations)
         event_sender.send(data['type'], {
-            'signature_id': sid,
+            'signature_id': signature_id,
             'signature_type': data['type'],
             'source': data['source'],
             'operation': Operation.Modified
         })
         return make_api_response({"success": success})
     else:
-        return make_api_response("", f"Signature not found. ({sid})", 404)
+        return make_api_response("", f"Signature not found. ({signature_id})", 404)
 
 
-@signature_api.route("/<sid>/", methods=["DELETE"])
+@signature_api.route("/<signature_id>/", methods=["DELETE"])
 @api_login(required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
-def delete_signature(sid, **kwargs):
+def delete_signature(signature_id, **kwargs):
     """
     Delete a signature based of its ID
 
     Variables:
-    sid    =>     Signature ID
+    signature_id    =>     Signature ID
 
     Arguments:
     None
@@ -402,24 +402,24 @@ def delete_signature(sid, **kwargs):
     {"success": True}  # Signature delete successful
     """
     user = kwargs['user']
-    data = STORAGE.signature.get(sid, as_obj=False)
+    data = STORAGE.signature.get(signature_id, as_obj=False)
     if data:
         if not Classification.is_accessible(user['classification'],
                                             data.get('classification', Classification.UNRESTRICTED)):
             return make_api_response("", "Your are not allowed to delete this signature.", 403)
 
-        ret_val = STORAGE.signature.delete(sid)
+        ret_val = STORAGE.signature.delete(signature_id)
 
         _reset_service_updates(data['type'])
         event_sender.send(data['type'], {
-            'signature_id': sid,
+            'signature_id': signature_id,
             'signature_type': data['type'],
             'source': data['source'],
             'operation': Operation.Removed
         })
         return make_api_response({"success": ret_val})
     else:
-        return make_api_response("", f"Signature not found. ({sid})", 404)
+        return make_api_response("", f"Signature not found. ({signature_id})", 404)
 
 
 @signature_api.route("/sources/<service>/<path:name>/", methods=["DELETE"])
@@ -570,14 +570,14 @@ def download_signatures(**kwargs):
             )
 
 
-@signature_api.route("/<sid>/", methods=["GET"])
+@signature_api.route("/<signature_id>/", methods=["GET"])
 @api_login(required_priv=['R'], allow_readonly=False)
-def get_signature(sid, **kwargs):
+def get_signature(signature_id, **kwargs):
     """
     Get the detail of a signature based of its ID and revision
 
     Variables:
-    sid    =>     Signature ID
+    signature_id    =>     Signature ID
 
     Arguments:
     None
@@ -589,7 +589,7 @@ def get_signature(sid, **kwargs):
     {}
     """
     user = kwargs['user']
-    data = STORAGE.signature.get(sid, as_obj=False)
+    data = STORAGE.signature.get(signature_id, as_obj=False)
 
     if data:
         if not Classification.is_accessible(user['classification'],
@@ -597,12 +597,12 @@ def get_signature(sid, **kwargs):
             return make_api_response("", "Your are not allowed to view this signature.", 403)
 
         # Always refresh stats when someone get a signature
-        data.update({'stats': STORAGE.get_stat_for_signature(sid, data['source'], data['name'],
-                                                             data['type'], save=True)})
+        data.update({'stats': STORAGE.get_stat_for_signature(signature_id, data['source'], data['name'],
+                                                             data['type'])})
 
         return make_api_response(data)
     else:
-        return make_api_response("", f"Signature not found. ({sid})", 404)
+        return make_api_response("", f"Signature not found. ({signature_id})", 404)
 
 
 @signature_api.route("/sources/", methods=["GET"])
@@ -755,7 +755,7 @@ def signature_statistics(**kwargs):
 
     Result example:
     [                             # List of signature stats
-      {"sid": "ORG_000000",          # Signature ID
+      {"id": "ORG_000000",           # Signature ID
        "rev": 1,                     # Signature version
        "classification": "U",        # Classification of the signature
        "name": "Signature Name"      # Signature name
