@@ -16,7 +16,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import safe_download, FileTooBigException, InvalidUrlException, \
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, InvalidUrlException, \
     ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import load_user_settings
 
@@ -252,23 +252,33 @@ def ingest_single_file(**kwargs):
                     # File exists in the filestore and the user has appropriate file access
                     FILESTORE.download(sha256, out_file)
                 else:
-                    return make_api_response({}, "SHA256 does not exist in our datastore", 404)
-            else:
-                if url:
-                    if not config.ui.allow_url_submissions:
-                        return make_api_response({}, "URL submissions are disabled in this system", 400)
+                    for source in config.submission.sha256_sources:
+                        downloaded = download_from_url(source.url.replace(source.replace_pattern, sha256), out_file,
+                                                       headers=source.headers, proxies=source.proxies,
+                                                       verify=source.verify, validate=False)
+                        if downloaded:
+                            continue
 
-                    try:
-                        safe_download(url, out_file)
-                        extra_meta['submitted_url'] = url
-                    except FileTooBigException:
-                        return make_api_response({}, "File too big to be scanned.", 400)
-                    except InvalidUrlException:
-                        return make_api_response({}, "Url provided is invalid.", 400)
-                    except ForbiddenLocation:
-                        return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
-                else:
-                    return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
+                    if not downloaded:
+                        return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+            elif url:
+                if not config.ui.allow_url_submissions:
+                    return make_api_response({}, "URL submissions are disabled in this system", 400)
+
+                try:
+                    if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
+                                             proxies=config.ui.url_submission_proxies):
+                        return make_api_response({}, "Submitted URL cannot be found.", 400)
+
+                    extra_meta['submitted_url'] = url
+                except FileTooBigException:
+                    return make_api_response({}, "File too big to be scanned.", 400)
+                except InvalidUrlException:
+                    return make_api_response({}, "Url provided is invalid.", 400)
+                except ForbiddenLocation:
+                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
+            else:
+                return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
             binary.save(out_file)
 

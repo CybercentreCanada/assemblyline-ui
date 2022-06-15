@@ -53,31 +53,38 @@ def validate_redirect(r, **_):
         validate_url(location)
 
 
-def safe_download(download_url, target):
-    validate_url(download_url)
-    headers = config.ui.url_submission_headers
-    proxies = config.ui.url_submission_proxies
+def download_from_url(download_url, target, headers={}, proxies={}, verify=True, validate=True):
+    hooks = None
+    if validate:
+        validate_url(download_url)
+        hooks = {'response': validate_redirect}
 
-    r = requests.get(download_url,
-                     verify=False,
-                     hooks={'response': validate_redirect},
-                     headers=headers,
-                     proxies=proxies)
+    # Create a requests sessions
+    session = requests.Session()
+    session.verify = verify
 
-    if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
-        raise FileTooBigException("File too big to be scanned.")
+    r = session.get(download_url, verify=False, hooks=hooks, headers=headers, proxies=proxies)
 
-    written = 0
+    if r.ok:
+        if validate and int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
+            raise FileTooBigException("File too big to be scanned.")
 
-    with open(target, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=512 * 1024):
-            if chunk:  # filter out keep-alive new chunks
-                written += 512 * 1024
-                if written > config.submission.max_file_size:
-                    f.close()
-                    os.unlink(target)
-                    raise FileTooBigException("File too big to be scanned.")
-                f.write(chunk)
+        written = 0
+
+        with open(target, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=512 * 1024):
+                if chunk:  # filter out keep-alive new chunks
+                    written += 512 * 1024
+                    if validate and written > config.submission.max_file_size:
+                        f.close()
+                        os.unlink(target)
+                        raise FileTooBigException("File too big to be scanned.")
+                    f.write(chunk)
+
+            if written > 0:
+                return True
+
+    return False
 
 
 def get_or_create_summary(sid, results, user_classification, completed):
