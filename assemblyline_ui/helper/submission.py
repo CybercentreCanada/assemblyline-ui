@@ -30,7 +30,12 @@ class ForbiddenLocation(Exception):
     pass
 
 
-def validate_url(parsed):
+def validate_url(url):
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        raise InvalidUrlException('Url provided is invalid.')
+
     host = parsed.hostname or parsed.netloc
 
     try:
@@ -46,20 +51,15 @@ def validate_redirect(r, **_):
     if r.is_redirect:
         location = safe_str(r.headers['location'])
         try:
-            validate_url(urlparse(location))
+            validate_url(location)
         except Exception:
             raise InvalidUrlException('Url provided is invalid.')
 
 
 def download_from_url(download_url, target, headers={}, proxies={}, verify=True, validate=True):
     hooks = None
-    try:
-        parsed = urlparse(download_url)
-    except Exception:
-        raise InvalidUrlException('Url provided is invalid.')
-
     if validate:
-        validate_url(parsed)
+        validate_url(download_url)
         hooks = {'response': validate_redirect}
 
     # Create a requests sessions
@@ -85,9 +85,9 @@ def download_from_url(download_url, target, headers={}, proxies={}, verify=True,
                     f.write(chunk)
 
             if written > 0:
-                return parsed.hostname or parsed.netloc
+                return True
 
-    return None
+    return False
 
 
 def get_or_create_summary(sid, results, user_classification, completed):

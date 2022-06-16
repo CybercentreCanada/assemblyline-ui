@@ -310,7 +310,7 @@ def submit(**kwargs):
             s_params['description'] = "Inspection of file: %s" % name
 
         # Check if external submit is allowed
-        allow_external_submit = s_params.pop('allow_external_submit', False)
+        default_external_sources = s_params.pop('default_external_sources', [])
 
         # Enforce maximum DTL
         if config.submission.max_dtl > 0:
@@ -346,23 +346,31 @@ def submit(**kwargs):
 
                     # File exists in the filestore and the user has appropriate file access
                     FILESTORE.download(sha256, out_file)
-                elif allow_external_submit and len(config.submission.sha256_sources) > 0:
+                elif default_external_sources:
+                    dl_from = None
+                    available_sources = [x for x in config.submission.sha256_sources
+                                         if Classification.is_accessible(user['classification'],
+                                                                         x.classification.long()) and
+                                         x.name in default_external_sources]
                     try:
-                        for source in config.submission.sha256_sources:
+                        for source in available_sources:
                             dl_from = download_from_url(source.url.replace(source.replace_pattern, sha256), out_file,
                                                         headers=source.headers, proxies=source.proxies,
                                                         verify=source.verify, validate=False)
                             if dl_from:
-                                continue
+                                # Apply minimum classification for the source
+                                s_params['classification'] = \
+                                    Classification.max_classification(s_params['classification'],
+                                                                      source.classification.long())
+                                extra_meta['original_source'] = source.name
+                                break
                     except FileTooBigException:
                         return make_api_response({}, "File too big to be scanned.", 400)
 
                     if not dl_from:
                         return make_api_response(
                             {},
-                            "SHA256 does not exist in Assemblyline or any of it's external sources", 404)
-
-                    extra_meta['downloaded_from'] = dl_from
+                            "SHA256 does not exist in Assemblyline or any of the selected sources", 404)
                 else:
                     return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
             elif url:
