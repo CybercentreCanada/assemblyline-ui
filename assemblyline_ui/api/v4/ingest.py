@@ -233,6 +233,9 @@ def ingest_single_file(**kwargs):
         # Apply provided params
         s_params.update(data.get("params", {}))
 
+        # Check if external submit is allowed
+        allow_external_submit = s_params.pop('allow_external_submit', False)
+
         # Load file
         if not binary:
             if sha256:
@@ -241,7 +244,7 @@ def ingest_single_file(**kwargs):
                 if FILESTORE.exists(sha256):
                     if fileinfo:
                         if not Classification.is_accessible(user['classification'], fileinfo['classification']):
-                            return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+                            return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
                         else:
                             # File's classification must be applied at a minimum
                             s_params['classification'] = Classification.max_classification(s_params['classification'],
@@ -251,7 +254,7 @@ def ingest_single_file(**kwargs):
                         do_upload = False
                     # File exists in the filestore and the user has appropriate file access
                     FILESTORE.download(sha256, out_file)
-                else:
+                elif allow_external_submit and len(config.submission.sha256_sources) > 0:
                     try:
                         for source in config.submission.sha256_sources:
                             dl_from = download_from_url(source.url.replace(source.replace_pattern, sha256), out_file,
@@ -264,9 +267,13 @@ def ingest_single_file(**kwargs):
                         return make_api_response({}, "File too big to be scanned.", 400)
 
                     if not dl_from:
-                        return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+                        return make_api_response(
+                            {},
+                            "SHA256 does not exist in Assemblyline or any of it's external sources", 404)
 
                     extra_meta['downloaded_from'] = dl_from
+                else:
+                    return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
             elif url:
                 if not config.ui.allow_url_submissions:
                     return make_api_response({}, "URL submissions are disabled in this system", 400)

@@ -53,6 +53,7 @@ def who_am_i(**kwargs):
        "submission": {                            # Submission Configuration
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
+         "has_sha256_sources": False                # Can Assemblyline lookup sha256 submissions on another system
        },
        "system": {                                # System Configuration
          "organisation": "ACME",                    # Organisation name
@@ -108,7 +109,8 @@ def who_am_i(**kwargs):
         },
         "submission": {
             "dtl": config.submission.dtl,
-            "max_dtl": config.submission.max_dtl
+            "max_dtl": config.submission.max_dtl,
+            "has_sha256_sources": len(config.submission.sha256_sources) > 0
         },
         "system": {
             "organisation": config.system.organisation,
