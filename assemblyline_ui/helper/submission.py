@@ -30,12 +30,7 @@ class ForbiddenLocation(Exception):
     pass
 
 
-def validate_url(url):
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        raise InvalidUrlException('Url provided is invalid.')
-
+def validate_url(parsed):
     host = parsed.hostname or parsed.netloc
 
     try:
@@ -50,13 +45,21 @@ def validate_url(url):
 def validate_redirect(r, **_):
     if r.is_redirect:
         location = safe_str(r.headers['location'])
-        validate_url(location)
+        try:
+            validate_url(urlparse(location))
+        except Exception:
+            raise InvalidUrlException('Url provided is invalid.')
 
 
 def download_from_url(download_url, target, headers={}, proxies={}, verify=True, validate=True):
     hooks = None
+    try:
+        parsed = urlparse(download_url)
+    except Exception:
+        raise InvalidUrlException('Url provided is invalid.')
+
     if validate:
-        validate_url(download_url)
+        validate_url(parsed)
         hooks = {'response': validate_redirect}
 
     # Create a requests sessions
@@ -66,7 +69,7 @@ def download_from_url(download_url, target, headers={}, proxies={}, verify=True,
     r = session.get(download_url, verify=False, hooks=hooks, headers=headers, proxies=proxies)
 
     if r.ok:
-        if validate and int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
+        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
             raise FileTooBigException("File too big to be scanned.")
 
         written = 0
@@ -75,16 +78,16 @@ def download_from_url(download_url, target, headers={}, proxies={}, verify=True,
             for chunk in r.iter_content(chunk_size=512 * 1024):
                 if chunk:  # filter out keep-alive new chunks
                     written += 512 * 1024
-                    if validate and written > config.submission.max_file_size:
+                    if written > config.submission.max_file_size:
                         f.close()
                         os.unlink(target)
                         raise FileTooBigException("File too big to be scanned.")
                     f.write(chunk)
 
             if written > 0:
-                return True
+                return parsed.hostname or parsed.netloc
 
-    return False
+    return None
 
 
 def get_or_create_summary(sid, results, user_classification, completed):

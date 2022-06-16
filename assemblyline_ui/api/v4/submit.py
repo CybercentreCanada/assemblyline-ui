@@ -344,15 +344,20 @@ def submit(**kwargs):
                     # File exists in the filestore and the user has appropriate file access
                     FILESTORE.download(sha256, out_file)
                 else:
-                    for source in config.submission.sha256_sources:
-                        downloaded = download_from_url(source.url.replace(source.replace_pattern, sha256), out_file,
-                                                       headers=source.headers, proxies=source.proxies,
-                                                       verify=source.verify, validate=False)
-                        if downloaded:
-                            continue
+                    try:
+                        for source in config.submission.sha256_sources:
+                            dl_from = download_from_url(source.url.replace(source.replace_pattern, sha256), out_file,
+                                                        headers=source.headers, proxies=source.proxies,
+                                                        verify=source.verify, validate=False)
+                            if dl_from:
+                                continue
+                    except FileTooBigException:
+                        return make_api_response({}, "File too big to be scanned.", 400)
 
-                    if not downloaded:
+                    if not dl_from:
                         return make_api_response({}, "SHA256 does not exist in our datastore", 404)
+
+                    extra_meta['downloaded_from'] = dl_from
             elif url:
                 if not config.ui.allow_url_submissions:
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
