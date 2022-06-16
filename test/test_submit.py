@@ -92,8 +92,8 @@ def test_submit_url(datastore, login_session, scheduler):
 
     sq.delete()
     data = {
-        'url': 'https://www.cyber.gc.ca/en/theme-gcwu-fegc/assets/wmms.svg',
-        'name': 'wmms.svg',
+        'url': 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md',
+        'name': 'README.md',
         'metadata': {'test': 'test_submit_url'}
     }
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
