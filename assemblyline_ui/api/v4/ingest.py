@@ -258,7 +258,7 @@ def ingest_single_file(**kwargs):
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
                                          if Classification.is_accessible(user['classification'],
-                                                                         x.classification.long()) and
+                                                                         x.classification) and
                                          x.name in default_external_sources]
                     try:
                         for source in available_sources:
@@ -273,7 +273,7 @@ def ingest_single_file(**kwargs):
                                 # Apply minimum classification for the source
                                 s_params['classification'] = \
                                     Classification.max_classification(s_params['classification'],
-                                                                      source.classification.long())
+                                                                      source.classification)
                                 extra_meta['original_source'] = source.name
                                 break
                     except FileTooBigException:
