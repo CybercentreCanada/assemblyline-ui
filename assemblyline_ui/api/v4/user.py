@@ -112,7 +112,7 @@ def who_am_i(**kwargs):
             "max_dtl": config.submission.max_dtl,
             "sha256_sources": [x.name for x in config.submission.sha256_sources
                                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                               x.classification.long())]
+                                                               x.classification)]
         },
         "system": {
             "organisation": config.system.organisation,
