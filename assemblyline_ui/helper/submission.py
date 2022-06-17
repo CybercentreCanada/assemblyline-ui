@@ -56,7 +56,8 @@ def validate_redirect(r, **_):
             raise InvalidUrlException('Url provided is invalid.')
 
 
-def download_from_url(download_url, target, headers={}, proxies={}, verify=True, validate=True):
+def download_from_url(download_url, target, data=None, method="GET",
+                      headers={}, proxies={}, verify=True, validate=True, failure_pattern=None):
     hooks = None
     if validate:
         validate_url(download_url)
@@ -66,7 +67,15 @@ def download_from_url(download_url, target, headers={}, proxies={}, verify=True,
     session = requests.Session()
     session.verify = verify
 
-    r = session.get(download_url, verify=False, hooks=hooks, headers=headers, proxies=proxies)
+    try:
+        session_function = {
+            "GET": session.get,
+            "POST": session.post,
+        }[method]
+    except Exception:
+        raise InvalidUrlException(f"Unsupported method used: {method}")
+
+    r = session_function(download_url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True)
 
     if r.ok:
         if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
@@ -77,6 +86,11 @@ def download_from_url(download_url, target, headers={}, proxies={}, verify=True,
         with open(target, 'wb') as f:
             for chunk in r.iter_content(chunk_size=512 * 1024):
                 if chunk:  # filter out keep-alive new chunks
+                    if failure_pattern and failure_pattern in chunk:
+                        f.close()
+                        os.unlink(target)
+                        return False
+
                     written += 512 * 1024
                     if written > config.submission.max_file_size:
                         f.close()

@@ -262,9 +262,13 @@ def ingest_single_file(**kwargs):
                                          x.name in default_external_sources]
                     try:
                         for source in available_sources:
-                            dl_from = download_from_url(source.url.replace(source.replace_pattern, sha256), out_file,
+                            src_url = source.url.replace(source.replace_pattern, sha256)
+                            src_data = source.data.replace(source.replace_pattern, sha256) if source.data else None
+                            failure_pattern = source.failure_pattern.encode('utf-8') if source.failure_pattern else None
+                            dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
                                                         headers=source.headers, proxies=source.proxies,
-                                                        verify=source.verify, validate=False)
+                                                        verify=source.verify, validate=False,
+                                                        failure_pattern=failure_pattern)
                             if dl_from:
                                 # Apply minimum classification for the source
                                 s_params['classification'] = \
