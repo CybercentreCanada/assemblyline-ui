@@ -1,5 +1,6 @@
 
 import yaml
+import json
 
 from flask import request
 from math import floor
@@ -210,18 +211,34 @@ def add_service(**_):
     enable_allowed = True
     try:
         if b"$SERVICE_TAG" in data:
-            tmp_service = yaml.safe_load(data)
-            tmp_service.pop('tool_version', None)
-            tmp_service.pop('file_required', None)
-            tmp_service.pop('heuristics', [])
+            tmp_data = yaml.safe_load(data)
+
+            # Stash non-Service related fields to include back into data blob
+            non_service_fields = {
+                'tool_version': tmp_data.pop('tool_version', None),
+                'file_required': tmp_data.pop('file_required', None),
+                'heuristics': tmp_data.pop('heuristics', [])
+            }
+
+            # Create a Service object
+            tmp_service = Service(tmp_data)
 
             # Apply global preferences, if missing, to get the appropriate container image tags
-            tmp_service['update_channel'] = tmp_service.get('update_channel', config.services.preferred_update_channel)
-            tmp_service['docker_config']['registry_type'] = tmp_service['docker_config'] \
-                .get('registry_type', config.services.preferred_registry_type)
-            _, tag_name, _ = get_latest_tag_for_service(Service(tmp_service), config, LOGGER)
+            if not tmp_service.update_channel:
+                tmp_service.update_channel = config.services.preferred_update_channel
+
+            if not tmp_service.docker_config.registry_type:
+                config.services.preferred_registry_type
+
+            _, tag_name, _ = get_latest_tag_for_service(tmp_service, config, LOGGER)
             enable_allowed = bool(tag_name)
             tag_name = tag_name.encode() if tag_name else b'latest'
+
+            # Ensure any updates to Service's docker_config details get propagated
+            tmp_data['docker_config'].update(tmp_service.docker_config.as_primitives())
+            tmp_data.update(non_service_fields)
+            data = json.dumps(tmp_data).encode()
+
             data = data.replace(b"$SERVICE_TAG", tag_name)
 
         service = yaml.safe_load(data)
