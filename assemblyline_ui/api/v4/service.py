@@ -220,15 +220,15 @@ def add_service(**_):
                 'heuristics': tmp_data.pop('heuristics', [])
             }
 
+            # Apply global preferences, if missing, to get the appropriate container image tags
+            if not tmp_data.get('update_channel'):
+                tmp_data['update_channel'] = config.services.preferred_update_channel
+
+            if not tmp_data['docker_config'].get('registry_type'):
+                tmp_data['docker_config']['registry_type'] = config.services.preferred_registry_type
+
             # Create a Service object
             tmp_service = Service(tmp_data)
-
-            # Apply global preferences, if missing, to get the appropriate container image tags
-            if not tmp_service.update_channel:
-                tmp_service.update_channel = config.services.preferred_update_channel
-
-            if not tmp_service.docker_config.registry_type:
-                config.services.preferred_registry_type
 
             _, tag_name, _ = get_latest_tag_for_service(tmp_service, config, LOGGER)
             enable_allowed = bool(tag_name)
