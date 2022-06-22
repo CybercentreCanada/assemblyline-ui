@@ -42,7 +42,7 @@ def test_get_ontology_for_alert(datastore, login_session):
     data = get_api_data(session, f"{host}/api/v4/ontology/alert/{test_alert.alert_id}/", raw=True)
     res = [json.loads(line) for line in data.splitlines()]
     assert len(res) != 0
-    assert any([record['header']['sha256'] == test_alert.file.sha256 for record in res])
+    assert any([record['file']['sha256'] == test_alert.file.sha256 for record in res])
 
 
 def test_get_ontology_for_file(datastore, login_session):
@@ -51,7 +51,7 @@ def test_get_ontology_for_file(datastore, login_session):
     data = get_api_data(session, f"{host}/api/v4/ontology/file/{test_alert.file.sha256}/", raw=True)
     res = [json.loads(line) for line in data.splitlines()]
     assert len(res) != 0
-    assert all([record['header']['sha256'] == test_alert.file.sha256 for record in res])
+    assert all([record['file']['sha256'] == test_alert.file.sha256 for record in res])
 
 
 def test_get_ontology_for_submission(datastore, login_session):
@@ -60,4 +60,4 @@ def test_get_ontology_for_submission(datastore, login_session):
     data = get_api_data(session, f"{host}/api/v4/ontology/submission/{test_submission.sid}/", raw=True)
     res = [json.loads(line) for line in data.splitlines()]
     assert len(res) != 0
-    assert any([record['header']['sha256'] == test_submission.files[0].sha256 for record in res])
+    assert any([record['file']['sha256'] == test_submission.files[0].sha256 for record in res])
