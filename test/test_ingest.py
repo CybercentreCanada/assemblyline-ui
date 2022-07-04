@@ -78,8 +78,8 @@ def test_ingest_url(datastore, login_session):
 
     iq.delete()
     data = {
-        'url': 'https://www.cyber.gc.ca/en/theme-gcwu-fegc/assets/wmms.svg',
-        'name': 'wmms.svg',
+        'url': 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md',
+        'name': 'README.md',
         'metadata': {'test': 'ingest_url'},
         'notification_queue': TEST_QUEUE
     }

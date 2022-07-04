@@ -50,34 +50,58 @@ def validate_url(url):
 def validate_redirect(r, **_):
     if r.is_redirect:
         location = safe_str(r.headers['location'])
-        validate_url(location)
+        try:
+            validate_url(location)
+        except Exception:
+            raise InvalidUrlException('Url provided is invalid.')
 
 
-def safe_download(download_url, target):
-    validate_url(download_url)
-    headers = config.ui.url_submission_headers
-    proxies = config.ui.url_submission_proxies
+def download_from_url(download_url, target, data=None, method="GET",
+                      headers={}, proxies={}, verify=True, validate=True, failure_pattern=None):
+    hooks = None
+    if validate:
+        validate_url(download_url)
+        hooks = {'response': validate_redirect}
 
-    r = requests.get(download_url,
-                     verify=False,
-                     hooks={'response': validate_redirect},
-                     headers=headers,
-                     proxies=proxies)
+    # Create a requests sessions
+    session = requests.Session()
+    session.verify = verify
 
-    if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
-        raise FileTooBigException("File too big to be scanned.")
+    try:
+        session_function = {
+            "GET": session.get,
+            "POST": session.post,
+        }[method]
+    except Exception:
+        raise InvalidUrlException(f"Unsupported method used: {method}")
 
-    written = 0
+    r = session_function(download_url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True)
 
-    with open(target, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=512 * 1024):
-            if chunk:  # filter out keep-alive new chunks
-                written += 512 * 1024
-                if written > config.submission.max_file_size:
-                    f.close()
-                    os.unlink(target)
-                    raise FileTooBigException("File too big to be scanned.")
-                f.write(chunk)
+    if r.ok:
+        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
+            raise FileTooBigException("File too big to be scanned.")
+
+        written = 0
+
+        with open(target, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=512 * 1024):
+                if chunk:  # filter out keep-alive new chunks
+                    if failure_pattern and failure_pattern in chunk:
+                        f.close()
+                        os.unlink(target)
+                        return False
+
+                    written += 512 * 1024
+                    if written > config.submission.max_file_size:
+                        f.close()
+                        os.unlink(target)
+                        raise FileTooBigException("File too big to be scanned.")
+                    f.write(chunk)
+
+            if written > 0:
+                return True
+
+    return False
 
 
 def get_or_create_summary(sid, results, user_classification, completed):
