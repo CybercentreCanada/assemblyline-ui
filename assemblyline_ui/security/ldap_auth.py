@@ -122,14 +122,15 @@ class BasicLDAPWrapper(object):
             ldap_ret = self.get_details_from_uid(user, ldap_server=ldap_server)
             if ldap_ret and len(ldap_ret) == 2:
                 dn, details = ldap_ret
-                group_list = self.get_group_list(dn, ldap_server=ldap_server)
-                ldap_server.simple_bind_s(dn, password)
-                cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
-                               "connection": ldap_server, "details": details, "cached": False,
-                               "classification": self.get_user_classification(group_list),
-                               "type": self.get_user_types(group_list), 'dn': dn}
-                self.cache[user] = cache_entry
-                return cache_entry
+                if dn:
+                    group_list = self.get_group_list(dn, ldap_server=ldap_server)
+                    ldap_server.simple_bind_s(dn, password)
+                    cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
+                                   "connection": ldap_server, "details": details, "cached": False,
+                                   "classification": self.get_user_classification(group_list),
+                                   "type": self.get_user_types(group_list), 'dn': dn}
+                    self.cache[user] = cache_entry
+                    return cache_entry
         except Exception as e:
             # raise AuthenticationException('Unable to login to ldap server. [%s]' % str(e))
             log.exception('Unable to login to ldap server. [%s]' % str(e))
