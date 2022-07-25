@@ -286,12 +286,6 @@ def add_service(**_):
             STORAGE.service_delta.save(service.name, {'version': service.version})
             STORAGE.service_delta.commit()
 
-        # Notify components watching for service config changes
-        event_sender.send(service.name, {
-            'operation': Operation.Added,
-            'name': service.name
-        })
-
         new_heuristics = []
         if heuristics:
             plan = STORAGE.heuristic.get_bulk_plan()
@@ -316,6 +310,12 @@ def add_service(**_):
                     new_heuristics.append(item['update']['_id'])
 
             STORAGE.heuristic.commit()
+
+        # Notify components watching for service config changes
+        event_sender.send(service.name, {
+            'operation': Operation.Added,
+            'name': service.name
+        })
 
         return make_api_response(dict(
             service_name=service.name,
