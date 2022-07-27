@@ -5,7 +5,7 @@ core:
     apm_server:
       server_url: http://apm_server:8200/
     elasticsearch:
-      hosts: [http://elasticsearch:9200]
+      hosts: [http://elastic:devpass@elasticsearch:9200]
     redis:
       host: redis
   redis:
@@ -16,7 +16,7 @@ core:
       port: 6379
 
 datastore:
-  hosts: [http://elasticsearch:9200]
+  hosts: [http://elastic:devpass@elasticsearch:9200]
 
 filestore:
   cache:
