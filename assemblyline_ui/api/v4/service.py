@@ -39,6 +39,10 @@ event_sender = EventSender('changes.services',
                            host=config.core.redis.nonpersistent.host,
                            port=config.core.redis.nonpersistent.port)
 
+root_event_sender = EventSender('changes',
+                                host=config.core.redis.nonpersistent.host,
+                                port=config.core.redis.nonpersistent.port)
+
 
 def check_private_keys(source_list):
     # Check format of private_key(if any) in sources
@@ -286,6 +290,12 @@ def add_service(**_):
             STORAGE.service_delta.save(service.name, {'version': service.version})
             STORAGE.service_delta.commit()
 
+        # Notify components watching for service config changes
+        event_sender.send(service.name, {
+            'operation': Operation.Added,
+            'name': service.name
+        })
+
         new_heuristics = []
         if heuristics:
             plan = STORAGE.heuristic.get_bulk_plan()
@@ -311,11 +321,11 @@ def add_service(**_):
 
             STORAGE.heuristic.commit()
 
-        # Notify components watching for service config changes
-        event_sender.send(service.name, {
-            'operation': Operation.Added,
-            'name': service.name
-        })
+            # Notify components watching for heuristic changes
+            root_event_sender.send('heuristics', {
+                'operation': Operation.Modified,
+                'service_name': service.name,
+            })
 
         return make_api_response(dict(
             service_name=service.name,
