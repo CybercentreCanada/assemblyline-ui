@@ -19,7 +19,7 @@ from assemblyline.odm.models.tagging import Tagging
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_core import PAUSABLE_COMPONENTS
-from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config
+from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config, redis_persistent
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -527,6 +527,7 @@ def put_identify_custom_yara_file(**_):
 
     return make_api_response({'success': True})
 
+
 @system_api.route("/status/<component>/", methods=["PUT", "POST"])
 @api_login(require_type=['admin'], required_priv=['W'])
 def put_system_status(component, **_):
@@ -560,6 +561,7 @@ def put_system_status(component, **_):
     event_sender.send(f'{component}.active', status)
 
     return make_api_response({'success': True})
+
 
 @system_api.route("/actions/", methods=["GET"])
 @api_login(require_type=['admin'], required_priv=['R'])
