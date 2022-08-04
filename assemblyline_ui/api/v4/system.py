@@ -236,7 +236,7 @@ def get_identify_custom_yara_file(**_):
 
 
 @system_api.route("/status/<component>/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(required_priv=['R'])
 def get_system_status(component, **_):
     """
     Get the status of system components
