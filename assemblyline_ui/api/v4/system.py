@@ -254,11 +254,16 @@ def get_system_status(component, **_):
     {'status': true}
     """
     system = Hash("system", host=redis_persistent)
-    # Set default to be true, can always be disabled after if needed
-    if not system.exists(f'{component}.active'):
-        system.add(f'{component}.active', True)
+    if component == 'ALL':
+        return make_api_response(
+            {c: system.get(f'{c}.active') or False for c in PAUSABLE_COMPONENTS})
+    else:
+        if component not in PAUSABLE_COMPONENTS:
+            make_api_response({}, err=f"Component {component} does not exist or is always active.")
 
-    return make_api_response({'status': system.get(f'{component}.active')})
+        status = system.get(f'{component}.active') or False
+
+        return make_api_response({component: status})
 
 
 @system_api.route("/system_message/", methods=["PUT", "POST"])
@@ -538,27 +543,30 @@ def put_system_status(component, **_):
     component           => Component that staus change should apply to
 
     Arguments:
-    active              => Should the component be active?
+    active              => Should the component be active? (True or False)
+
+    Data Block:
+    None
+
+    Result example:
     {"success": true}
     """
 
     system = Hash("system", host=redis_persistent)
-    status = request.args.get('active')
     component = component.lower()
     if component not in PAUSABLE_COMPONENTS:
-        return make_api_response(None, err=f"No {component} found to set status.", status_code=400)
+        return make_api_response(None, err=f"Component {component} is not allowed to change status.", status_code=403)
 
-    if not status or status.lower() not in ['true', 'false']:
+    status = request.args.get('active').lower()
+    if not status or status not in ['true', 'false']:
         return make_api_response(
             None, err=f"{component} given invalid status value. Must be true or false.", status_code=400)
 
-    status = status.lower() == 'true'
-
     # Set value in persistent redis to maintain state during updates
-    system.set(f'{component}.active', status)
+    system.set(f'{component}.active', status == 'true')
 
     # Notify the component about the status change
-    event_sender.send(f'{component}.active', status)
+    event_sender.send(f'{component}.active', status == 'true')
 
     return make_api_response({'success': True})
 
