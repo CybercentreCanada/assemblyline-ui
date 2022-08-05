@@ -16,8 +16,10 @@ from assemblyline.common.postprocess import SubmissionFilter
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.actions import DEFAULT_POSTPROCESS_ACTIONS, PostprocessAction
 from assemblyline.odm.models.tagging import Tagging
+from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.events import EventSender
-from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config
+from assemblyline_core import PAUSABLE_COMPONENTS
+from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config, redis_persistent
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -231,6 +233,37 @@ def get_identify_custom_yara_file(**_):
                 return make_api_response(mfh.read())
 
         return make_api_response(custom_yara.decode('utf-8'))
+
+
+@system_api.route("/status/<component>/", methods=["GET"])
+@api_login(required_priv=['R'])
+def get_system_status(component, **_):
+    """
+    Get the status of system components
+
+    Variables:
+    component           => Component you want to get the status for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {'status': true}
+    """
+    system = Hash("system", host=redis_persistent)
+    if component == 'ALL':
+        return make_api_response(
+            {c: system.get(f'{c}.active') or False for c in PAUSABLE_COMPONENTS})
+    else:
+        if component not in PAUSABLE_COMPONENTS:
+            make_api_response({}, err=f"Component {component} does not exist or is always active.")
+
+        status = system.get(f'{component}.active') or False
+
+        return make_api_response({component: status})
 
 
 @system_api.route("/system_message/", methods=["PUT", "POST"])
@@ -496,6 +529,44 @@ def put_identify_custom_yara_file(**_):
 
     # Notify components watching to reload yara file
     event_sender.send('identify', 'yara')
+
+    return make_api_response({'success': True})
+
+
+@system_api.route("/status/<component>/", methods=["PUT", "POST"])
+@api_login(require_type=['admin'], required_priv=['W'])
+def put_system_status(component, **_):
+    """
+    Set the status of system components.
+
+    Variables:
+    component           => Component that staus change should apply to
+
+    Arguments:
+    active              => Should the component be active? (True or False)
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": true}
+    """
+
+    system = Hash("system", host=redis_persistent)
+    component = component.lower()
+    if component not in PAUSABLE_COMPONENTS:
+        return make_api_response(None, err=f"Component {component} is not allowed to change status.", status_code=403)
+
+    status = request.args.get('active').lower()
+    if not status or status not in ['true', 'false']:
+        return make_api_response(
+            None, err=f"{component} given invalid status value. Must be true or false.", status_code=400)
+
+    # Set value in persistent redis to maintain state during updates
+    system.set(f'{component}.active', status == 'true')
+
+    # Notify the component about the status change
+    event_sender.send(f'{component}.active', status == 'true')
 
     return make_api_response({'success': True})
 
