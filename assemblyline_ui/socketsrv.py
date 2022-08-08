@@ -36,7 +36,7 @@ if 'APPLICATION_ROOT' in os.environ:
     app.config['SESSION_COOKIE_PATH'] = '/'
 
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
-socketio = SocketIO(app, async_mode="gevent" if not config.ui.debug else "threading", cors_allowed_origins='*')
+socketio = SocketIO(app, async_mode=os.environ.get('ASYNC_MODE', 'gevent'), cors_allowed_origins='*')
 
 # Loading the different namespaces
 socketio.on_namespace(AlertMonitoringNamespace('/alerts'))
