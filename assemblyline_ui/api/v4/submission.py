@@ -592,6 +592,16 @@ def get_summary(sid, **kwargs):
                 if key not in output['map'][sha256]:
                     output['map'][sha256].append(key)
 
+                for sig in item['signatures']:
+                    sig_key = f"heuristic.signature__{sig}"
+                    output['map'].setdefault(sig_key, [])
+
+                    if sha256 not in output['map'][sig_key]:
+                        output['map'][sig_key].append(sha256)
+
+                    if sig_key not in output['map'][sha256]:
+                        output['map'][sha256].append(sig_key)
+
                 output['heuristics'].setdefault(cat, [])
                 if (heur_id, item['name']) not in output['heuristics'][cat]:
                     output['heuristics'][cat].append((heur_id, item['name']))
