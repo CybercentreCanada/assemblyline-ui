@@ -4,6 +4,7 @@ import os
 import shutil
 
 from flask import request
+from requests.exceptions import ConnectionError
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
@@ -384,7 +385,7 @@ def submit(**kwargs):
                 try:
                     if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
                                              proxies=config.ui.url_submission_proxies):
-                        return make_api_response({}, "Submitted URL cannot be found.", 400)
+                        return make_api_response({}, "File referenced by this URL cannot be found.", 404)
 
                     extra_meta['submitted_url'] = url
                 except FileTooBigException:
@@ -393,6 +394,10 @@ def submit(**kwargs):
                     return make_api_response({}, "Url provided is invalid.", 400)
                 except ForbiddenLocation:
                     return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
+                except ConnectionError:
+                    return make_api_response({}, "Connection to this URL was refused.", 400)
+                except Exception as e:
+                    return make_api_response({}, str(e), 400)
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
