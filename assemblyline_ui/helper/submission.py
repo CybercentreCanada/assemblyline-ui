@@ -106,7 +106,7 @@ def download_from_url(download_url, target, data=None, method="GET",
 
 def get_or_create_summary(sid, results, user_classification, completed):
     user_classification = CLASSIFICATION.normalize_classification(user_classification, long_format=False)
-    cache_key = f"{sid}_{user_classification}_with_sections"
+    cache_key = f"{sid}_{user_classification}_sec_sigs"
     for illegal_char in [" ", ":", "/"]:
         cache_key = cache_key.replace(illegal_char, "")
 
