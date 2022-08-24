@@ -4,7 +4,6 @@ import os
 import shutil
 
 from flask import request
-from requests.exceptions import ConnectionError
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
@@ -16,8 +15,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
     IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, InvalidUrlException, \
-    ForbiddenLocation, submission_received
+from assemblyline_ui.helper.submission import cart_url, download_from_url, FileTooBigException, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -382,22 +380,9 @@ def submit(**kwargs):
                 if not config.ui.allow_url_submissions:
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
-                try:
-                    if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                             proxies=config.ui.url_submission_proxies):
-                        return make_api_response({}, "File referenced by this URL cannot be found.", 404)
-
-                    extra_meta['submitted_url'] = url
-                except FileTooBigException:
-                    return make_api_response({}, "File too big to be scanned.", 400)
-                except InvalidUrlException:
-                    return make_api_response({}, "Url provided is invalid.", 400)
-                except ForbiddenLocation:
-                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
-                except ConnectionError:
-                    return make_api_response({}, "Connection to this URL was refused.", 400)
-                except Exception as e:
-                    return make_api_response({}, str(e), 400)
+                # Create a CaRTed file with special metadata to route file to URL downloading service(s)
+                cart_url(url, out_file)
+                extra_meta['submitted_url'] = url
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
