@@ -385,7 +385,8 @@ def ingest_single_file(**kwargs):
         metadata.update(extra_meta)
 
         # Set description if it does not exists
-        s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of file: {name}"
+        s_type = "URL" if url else "file"
+        s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of {s_type}: {name}"
 
         # Create submission object
         try:

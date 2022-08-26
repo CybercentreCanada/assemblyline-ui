@@ -305,8 +305,9 @@ def submit(**kwargs):
 
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']
+        s_type = "URL" if url else "file"
         if not s_params['description']:
-            s_params['description'] = "Inspection of file: %s" % name
+            s_params['description'] = f"Inspection of {s_type}: {name}"
 
         # Check if external submit is allowed
         default_external_sources = s_params.pop('default_external_sources', [])
