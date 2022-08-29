@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import shutil
@@ -183,7 +184,7 @@ def ingest_single_file(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or os.path.basename(url) or None
+            name = data.get("name", None) or sha256 or hashlib.sha256(url.encode()).hexdigest() or None
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -384,10 +385,18 @@ def ingest_single_file(**kwargs):
             metadata['ts'] = now_as_iso()
         metadata.update(extra_meta)
 
-        # Set description if it does not exists
-        s_type = "URL" if url else "file"
-        s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of {s_type}: {name}"
+        s_type = "file"
 
+        # If the submission is a URL, ensure the service is enabled and alter the description
+        if url:
+            s_type = 'URL'
+            if 'URLDownloader' not in s_params['service_spec']:
+                # Assumes that if the intention was to submit the URL only, then only fetch the submitted URL
+                s_params['services']['selected'].extend(['URLDownloader'])
+                s_params['service_spec']['URLDownloader'] = {'submitted_url_only': True}
+
+        # Set description if it does not exists
+        s_params['description'] = s_params['description'] or f"[{s_params['type']}] Inspection of {s_type}: {name}"
         # Create submission object
         try:
             submission_obj = Submission({

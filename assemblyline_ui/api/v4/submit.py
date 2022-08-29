@@ -1,4 +1,4 @@
-
+import hashlib
 import json
 import os
 import shutil
@@ -279,7 +279,7 @@ def submit(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or os.path.basename(url) or None
+            name = data.get("name", None) or sha256 or hashlib.sha256(url.encode()).hexdigest() or None
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -305,7 +305,17 @@ def submit(**kwargs):
 
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']
-        s_type = "URL" if url else "file"
+
+        s_type = "file"
+
+        # If the submission is a URL, ensure the service is enabled and alter the description
+        if url:
+            s_type = 'URL'
+            if 'URLDownloader' not in s_params['service_spec']:
+                # Assumes that if the intention was to submit the URL only, then only fetch the submitted URL
+                s_params['services']['selected'].extend(['URLDownloader'])
+                s_params['service_spec']['URLDownloader'] = {'submitted_url_only': True}
+
         if not s_params['description']:
             s_params['description'] = f"Inspection of {s_type}: {name}"
 
