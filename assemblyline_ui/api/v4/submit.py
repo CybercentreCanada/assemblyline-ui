@@ -1,9 +1,9 @@
-import hashlib
 import json
 import os
 import shutil
 
 from flask import request
+from hashlib import sha256 as hashlib_sha256
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
@@ -279,7 +279,7 @@ def submit(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or hashlib.sha256(url.encode()).hexdigest() or None
+            name = data.get("name", None) or sha256 or hashlib_sha256(url.encode()).hexdigest() or None
         else:
             return make_api_response({}, "Invalid content type", 400)
 
