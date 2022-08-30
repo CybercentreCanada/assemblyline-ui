@@ -1,9 +1,9 @@
-
 import json
 import os
 import shutil
 
 from flask import request
+from hashlib import sha256 as hashlib_sha256
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
@@ -274,12 +274,14 @@ def submit(**kwargs):
             name = data.get("name", binary.filename)
             sha256 = None
             url = None
+            default_description = f"Inspection of file: {name}"
         elif 'application/json' in request.content_type:
             data = request.json
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or os.path.basename(url) or None
+            name = data.get("name", None) or sha256 or hashlib_sha256(url.encode()).hexdigest() or None
+            default_description = f"Inspection of URL: {url}"
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -305,9 +307,16 @@ def submit(**kwargs):
 
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']
-        s_type = "URL" if url else "file"
+
+        # If the submission is a URL, ensure the service is enabled and alter the description
+        if url:
+            if 'URLDownloader' not in s_params['service_spec']:
+                # Assumes that if the intention was to submit the URL only, then only fetch the submitted URL
+                s_params['services']['selected'].extend(['URLDownloader'])
+                s_params['service_spec']['URLDownloader'] = {'submitted_url_only': True}
+
         if not s_params['description']:
-            s_params['description'] = f"Inspection of {s_type}: {name}"
+            s_params['description'] = default_description
 
         # Check if external submit is allowed
         default_external_sources = s_params.pop('default_external_sources', [])
