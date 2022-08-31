@@ -1,9 +1,7 @@
-import cart
 import json
 import requests
 import os
 import socket
-import tempfile
 from urllib.parse import urlparse
 
 from assemblyline.common.isotime import now_as_iso
@@ -56,14 +54,6 @@ def validate_redirect(r, **_):
             validate_url(location)
         except Exception:
             raise InvalidUrlException('Url provided is invalid.')
-
-
-def cart_url(download_url, target):
-    with tempfile.NamedTemporaryFile(mode='w') as temp_input:
-        temp_input.write(download_url)
-        temp_input.seek(0)
-
-        cart.pack_file(input_path=temp_input.name, output_path=target, optional_header={'al': {'type': 'url'}})
 
 
 def download_from_url(download_url, target, data=None, method="GET",
