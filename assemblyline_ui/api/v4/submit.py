@@ -3,7 +3,6 @@ import os
 import shutil
 
 from flask import request
-from hashlib import sha256 as hashlib_sha256
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
@@ -15,7 +14,8 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
     IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import cart_url, download_from_url, FileTooBigException, submission_received
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, InvalidUrlException, \
+    ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -280,7 +280,7 @@ def submit(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or hashlib_sha256(url.encode()).hexdigest() or None
+            name = data.get("name", None) or sha256 or os.path.basename(url) or None
             default_description = f"Inspection of URL: {url}"
         else:
             return make_api_response({}, "Invalid content type", 400)
@@ -307,13 +307,6 @@ def submit(**kwargs):
 
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']
-
-        # If the submission is a URL, ensure the service is enabled and alter the description
-        if url:
-            if 'URLDownloader' not in s_params['service_spec']:
-                # Assumes that if the intention was to submit the URL only, then only fetch the submitted URL
-                s_params['services']['selected'].extend(['URLDownloader'])
-                s_params['service_spec']['URLDownloader'] = {'submitted_url_only': True}
 
         if not s_params['description']:
             s_params['description'] = default_description
@@ -390,9 +383,18 @@ def submit(**kwargs):
                 if not config.ui.allow_url_submissions:
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
-                # Create a CaRTed file with special metadata to route file to URL downloading service(s)
-                cart_url(url, out_file)
-                extra_meta['submitted_url'] = url
+                try:
+                    if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
+                                             proxies=config.ui.url_submission_proxies):
+                        return make_api_response({}, "Submitted URL cannot be found.", 400)
+
+                    extra_meta['submitted_url'] = url
+                except FileTooBigException:
+                    return make_api_response({}, "File too big to be scanned.", 400)
+                except InvalidUrlException:
+                    return make_api_response({}, "Url provided is invalid.", 400)
+                except ForbiddenLocation:
+                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
