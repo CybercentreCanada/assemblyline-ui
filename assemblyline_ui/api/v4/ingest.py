@@ -397,13 +397,6 @@ def ingest_single_file(**kwargs):
             metadata['ts'] = now_as_iso()
         metadata.update(extra_meta)
 
-        # If the submission is a URL, ensure the service is enabled and alter the description
-        if url:
-            if 'URLDownloader' not in s_params['service_spec']:
-                # Assumes that if the intention was to submit the URL only, then only fetch the submitted URL
-                s_params['services']['selected'].extend(['URLDownloader'])
-                s_params['service_spec']['URLDownloader'] = {'submitted_url_only': True}
-
         # Set description if it does not exists
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
         # Create submission object
