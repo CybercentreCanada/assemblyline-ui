@@ -186,7 +186,11 @@ def ingest_single_file(**kwargs):
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
             name = data.get("name", None) or sha256 or os.path.basename(url) or None
-            default_description = f"Inspection of URL: {url}"
+            default_description = f"Inspection of {name}"
+            if sha256:
+                default_description = f"Inspection of file: {sha256}"
+            elif url:
+                default_description = f"Inspection of URL: {url}"
 
         else:
             return make_api_response({}, "Invalid content type", 400)
