@@ -1,8 +1,7 @@
-from copy import copy
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import USER_TYPE_DEP, User
+from assemblyline.odm.models.user import USER_TYPE_DEP, USER_TYPE_DEP_LOOKUP_ORDER, User
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
     SERVICE_LIST
@@ -54,6 +53,14 @@ def decrement_submission_quota(user):
     SUBMISSION_TRACKER.end(user['uname'])
 
 
+def _update_role_dep(roles):
+    for role in USER_TYPE_DEP_LOOKUP_ORDER:
+        if role in roles:
+            roles = roles.union(USER_TYPE_DEP[role])
+
+    return list(roles)
+
+
 def login(uname):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
@@ -79,9 +86,7 @@ def login(uname):
     user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
-    for role in copy(user['type']):
-        user['type'].extend(USER_TYPE_DEP.get(role, []))
-        user['type'] = list(set(user['type']))
+    user['type'] = _update_role_dep(set(user['type']))
 
     return user
 
