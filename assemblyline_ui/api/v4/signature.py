@@ -505,7 +505,7 @@ def _get_cached_signatures(signature_cache, query_hash):
 
 @signature_api.route("/download/", methods=["GET"])
 @api_login(required_priv=['R'], check_xsrf_token=False, allow_readonly=False,
-           require_type=['signature_importer', 'user'])
+           require_type=['signature_importer', 'signature_download'])
 def download_signatures(**kwargs):
     """
     Download signatures from the system.
@@ -571,7 +571,7 @@ def download_signatures(**kwargs):
 
 
 @signature_api.route("/<signature_id>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
+@api_login(required_priv=['R'], allow_readonly=False, require_type=['signature_view'])
 def get_signature(signature_id, **kwargs):
     """
     Get the detail of a signature based of its ID and revision
@@ -739,7 +739,7 @@ def update_signature_source(service, name, **_):
 
 
 @signature_api.route("/stats/", methods=["GET"])
-@api_login(allow_readonly=False, required_priv=['R'])
+@api_login(allow_readonly=False, required_priv=['R'], require_type=['signature_view'])
 def signature_statistics(**kwargs):
     """
     Gather all signatures stats in system
@@ -791,7 +791,7 @@ def signature_statistics(**kwargs):
 
 @signature_api.route("/update_available/", methods=["GET"])
 @api_login(required_priv=['R'], allow_readonly=False,
-           require_type=['signature_importer', 'user'])
+           require_type=['signature_importer', 'signature_view'])
 def update_available(**_):
     """
     Check if updated signatures are.
