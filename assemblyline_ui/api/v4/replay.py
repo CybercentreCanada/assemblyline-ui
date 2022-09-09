@@ -80,7 +80,7 @@ def put_message(message_type, **_):
 
 
 @replay_api.route("/<index>/<doc_id>/", methods=["GET"])
-@api_login(audit=True, required_priv=['W'], require_type=['submission_replay'])
+@api_login(audit=True, required_priv=['W'], require_type=['replay'])
 def request_replay(index, doc_id, **kwargs):
     """
     Request an alert or a submission to be transfered to another system
