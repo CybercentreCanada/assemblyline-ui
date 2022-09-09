@@ -290,8 +290,7 @@ def stream_binary_response(reader, status_code=200):
 #####################################
 # API list API (API inception)
 @api.route("/")
-@api_login(audit=False, required_priv=['R', 'W'],
-           require_type=["user", "signature_importer", "signature_manager", "admin"])
+@api_login(audit=False, required_priv=['R', 'W'])
 def api_version_list(**_):
     """
     List all available API versions.
@@ -355,7 +354,7 @@ def site_map(**_):
             if item != "OPTIONS" and item != "HEAD":
                 methods.append(item)
         protected = func.__dict__.get('protected', False)
-        required_type = func.__dict__.get('require_type', ['user'])
+        required_type = func.__dict__.get('require_type', [])
         audit = func.__dict__.get('audit', False)
         priv = func.__dict__.get('required_priv', '')
         allow_readonly = func.__dict__.get('allow_readonly', True)
