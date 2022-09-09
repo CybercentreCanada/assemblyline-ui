@@ -26,7 +26,7 @@ class BaseSecurityRenderer(object):
         if required_priv is None:
             required_priv = ["E"]
         if require_type is None:
-            require_type = ["user"]
+            require_type = []
 
         self.require_type = require_type
         self.audit = audit and AUDIT
@@ -146,6 +146,9 @@ class BaseSecurityRenderer(object):
         return session.get("username", None)
 
     def test_require_type(self, user, r_type):
+        if not self.require_type:
+            return
+
         for required_type in self.require_type:
             if required_type in user['type']:
                 return
