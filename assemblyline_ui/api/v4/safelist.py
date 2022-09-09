@@ -312,7 +312,7 @@ def add_update_many_hashes(**_):
 
 
 @safelist_api.route("/<qhash>/", methods=["GET"])
-@api_login(required_priv=["R"])
+@api_login(required_priv=["R"], require_type=['safelist_view'])
 def check_hash_exists(qhash, **kwargs):
     """
     Check if a hash exists in the safelist.
