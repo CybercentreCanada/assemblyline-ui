@@ -231,7 +231,7 @@ def add_update_many_signature(**_):
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_manager'])
 def add_signature_source(service, **_):
     """
     Add a signature source for a given service
@@ -307,7 +307,7 @@ def add_signature_source(service, **_):
 
 # noinspection PyPep8Naming
 @signature_api.route("/change_status/<signature_id>/<status>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+@api_login(required_priv=['W'], allow_readonly=False, require_type=['signature_manager'])
 def change_status(signature_id, status, **kwargs):
     """
     Change the status of a signature
@@ -384,7 +384,7 @@ def change_status(signature_id, status, **kwargs):
 
 
 @signature_api.route("/<signature_id>/", methods=["DELETE"])
-@api_login(required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+@api_login(required_priv=['W'], allow_readonly=False, require_type=['signature_manager'])
 def delete_signature(signature_id, **kwargs):
     """
     Delete a signature based of its ID
@@ -423,7 +423,7 @@ def delete_signature(signature_id, **kwargs):
 
 
 @signature_api.route("/sources/<service>/<path:name>/", methods=["DELETE"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_manager'])
 def delete_signature_source(service, name, **_):
     """
     Delete a signature source by name for a given service
@@ -606,7 +606,7 @@ def get_signature(signature_id, **kwargs):
 
 
 @signature_api.route("/sources/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+@api_login(audit=False, required_priv=['R'], allow_readonly=False, require_type=['signature_manager'])
 def get_signature_sources(**_):
     """
     Get all signature sources
@@ -649,7 +649,7 @@ def get_signature_sources(**_):
 
 
 @signature_api.route("/sources/<service>/<name>/", methods=["POST"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['admin', 'signature_manager'])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_manager'])
 def update_signature_source(service, name, **_):
     """
     Update a signature source by name for a given service
