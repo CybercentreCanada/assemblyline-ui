@@ -1,7 +1,7 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import User
+from assemblyline.odm.models.user import USER_TYPE_SPEC_ROLES, User
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
     SERVICE_LIST
@@ -78,6 +78,8 @@ def login(uname):
     user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
+    if 'user' in user['type']:
+        user['type'].extend(USER_TYPE_SPEC_ROLES)
 
     return user
 
