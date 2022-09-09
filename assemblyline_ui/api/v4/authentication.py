@@ -42,7 +42,7 @@ auth_api._doc = "Allow user to authenticate to the web server"
 
 
 @auth_api.route("/apikey/<name>/<priv>/", methods=["GET"])
-@api_login(audit=False, require_type=['api_key_access'])
+@api_login(audit=False, require_type=['apikey_access'])
 def add_apikey(name, priv, **kwargs):
     """
     Add an API Key for the currently logged in user with given privileges
@@ -78,7 +78,7 @@ def add_apikey(name, priv, **kwargs):
 
 
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
-@api_login(audit=False, require_type=['api_key_access'])
+@api_login(audit=False, require_type=['apikey_access'])
 def delete_apikey(name, **kwargs):
     """
     Delete an API Key matching specified name for the currently logged in user
