@@ -1,5 +1,5 @@
 
-from flask import request
+from flask import abort, request
 
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -9,6 +9,23 @@ from assemblyline_ui.helper.search import get_collection, get_default_sort, has_
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
 search_api._doc = "Perform search queries"
+
+ROLE_INDEX_MAP = {
+    "alert": "alert_view",
+    "file": "submission_view",
+    "result": "submission_view",
+    "submission": "submission_view",
+    "signature": "signature_view",
+    "safelist": "safelist_view",
+    "workflow": "workflow_view"
+}
+
+
+def check_role_for_index(index, user):
+    required_role = ROLE_INDEX_MAP.get(index, 'administration')
+    if required_role not in user['roles']:
+        abort(403, f"API {request.path} requires one of the following "
+              f"role '{required_role}' for request on index '{index}'")
 
 
 @search_api.route("/<index>/", methods=["GET", "POST"])
@@ -53,6 +70,7 @@ def search(index, **kwargs):
      "items": []}                           # List of results
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
     if collection is None or default_sort is None:
@@ -131,6 +149,7 @@ def group_search(index, group_field, **kwargs):
      "items": []}        # List of results
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
     if collection is None or default_sort is None:
@@ -194,6 +213,7 @@ def list_index_fields(index, **kwargs):
     }
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     if collection is not None:
         return make_api_response(collection.fields())
@@ -234,6 +254,7 @@ def facet(index, field, **kwargs):
     }
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     if collection is None:
         return make_api_response("", f"Not a valid index to search in: {index}", 400)
@@ -304,6 +325,7 @@ def histogram(index, field, **kwargs):
     fields = ["query", "mincount", "start", "end", "gap"]
     multi_fields = ['filters']
     user = kwargs['user']
+    check_role_for_index(index, user)
 
     collection = get_collection(index, user)
     if collection is None:
@@ -379,6 +401,7 @@ def stats(index, int_field, **kwargs):
     }
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     if collection is None:
         return make_api_response("", f"Not a valid index to search in: {index}", 400)
