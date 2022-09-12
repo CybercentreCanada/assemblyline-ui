@@ -54,7 +54,7 @@ def decrement_submission_quota(user):
 
 
 def _load_roles(types):
-    roles = {}
+    roles = set({})
     for user_type in USER_TYPE_DEP.keys():
         if user_type in types:
             roles = roles.union(USER_TYPE_DEP[user_type])

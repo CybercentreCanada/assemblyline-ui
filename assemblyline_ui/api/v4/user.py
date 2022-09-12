@@ -90,8 +90,10 @@ def who_am_i(**kwargs):
     }
 
     """
-    user_data = {k: v for k, v in kwargs['user'].items()
-                 if k in ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "type", "uname"]}
+    user_data = {
+        k: v for k, v in kwargs['user'].items()
+        if k in
+        ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "roles", "type", "uname"]}
 
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
