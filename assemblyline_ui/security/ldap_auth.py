@@ -6,6 +6,7 @@ import time
 
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.config import config, CLASSIFICATION
+from assemblyline.odm.models.user import load_roles
 from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 
@@ -54,11 +55,13 @@ class BasicLDAPWrapper(object):
         return group_list
 
     def get_user_types(self, group_dn_list):
-        user_type = ['user']
+        user_type = []
         if self.admin_dn in group_dn_list:
             user_type.append('admin')
-        if self.sm_dn in group_dn_list:
+        elif self.sm_dn in group_dn_list:
             user_type.append('signature_manager')
+        else:
+            user_type.append('user')
         if self.si_dn in group_dn_list:
             user_type.append('signature_importer')
         return user_type
@@ -128,6 +131,7 @@ class BasicLDAPWrapper(object):
                                "connection": ldap_server, "details": details, "cached": False,
                                "classification": self.get_user_classification(group_list),
                                "type": self.get_user_types(group_list), 'dn': dn}
+                cache_entry['roles'] = load_roles(cache_entry['type'], None)
                 self.cache[user] = cache_entry
                 return cache_entry
         except Exception as e:
