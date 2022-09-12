@@ -144,7 +144,8 @@ def who_am_i(**kwargs):
         "user": {
             "roles": list(USER_TYPES),
             "role_dependencies": {k: list(v) for k, v in USER_TYPE_DEP.items()},
-            "role_lookup_order": USER_TYPE_DEP_LOOKUP_ORDER
+            "role_lookup_order": USER_TYPE_DEP_LOOKUP_ORDER,
+            "role_parent": {r: k for k, v in USER_TYPE_DEP.items() for r in v}
         }
     }
     user_data['indexes'] = list_all_fields(user_data)
