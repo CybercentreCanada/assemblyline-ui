@@ -53,6 +53,15 @@ def decrement_submission_quota(user):
     SUBMISSION_TRACKER.end(user['uname'])
 
 
+def _load_roles(types):
+    roles = {}
+    for user_type in USER_TYPE_DEP.keys():
+        if user_type in types:
+            roles = roles.union(USER_TYPE_DEP[user_type])
+
+    return list(roles)
+
+
 def login(uname):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
@@ -78,7 +87,7 @@ def login(uname):
     user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
-    user['roles'] = USER_TYPE_DEP.get(user['type'], user.get('roles', []))
+    user['roles'] = _load_roles(user['type']) or user.get('roles', [])
 
     return user
 
