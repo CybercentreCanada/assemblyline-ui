@@ -252,7 +252,7 @@ def get_user_account(username, **kwargs):
      "groups": ["TEST"]          # Groups the user is member of
     }
     """
-    if username != kwargs['user']['uname'] and 'admin' not in kwargs['user']['type']:
+    if username != kwargs['user']['uname'] and 'administration' not in kwargs['user']['roles']:
         return make_api_response({}, "You are not allow to view other users then yourself.", 403)
 
     user = STORAGE.user.get(username, as_obj=False)
@@ -269,7 +269,7 @@ def get_user_account(username, **kwargs):
     if "load_avatar" in request.args:
         user['avatar'] = STORAGE.user_avatar.get(username)
 
-    user['roles'] = load_roles(user['type']) or user.get('roles', [])
+    user['roles'] = load_roles(user['type'], user.get('roles', None))
 
     return make_api_response(user)
 

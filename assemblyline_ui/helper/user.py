@@ -78,7 +78,7 @@ def login(uname):
     user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
-    user['roles'] = load_roles(user['type']) or user.get('roles', [])
+    user['roles'] = load_roles(user['type'], user.get('roles', None))
 
     return user
 
@@ -95,12 +95,12 @@ def save_user_account(username, data, user):
     if username != data['uname']:
         raise AccessDeniedException("You are not allowed to change the username.")
 
-    if username != user['uname'] and 'admin' not in user['type']:
+    if username != user['uname'] and 'administration' not in user['roles']:
         raise AccessDeniedException("You are not allowed to change another user then yourself.")
 
     current = STORAGE.user.get(username, as_obj=False)
     if current:
-        if 'admin' not in user['type']:
+        if 'administration' not in user['roles']:
             for key in current.keys():
                 if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
                     raise AccessDeniedException("Only Administrators can change the value of the field [%s]." % key)

@@ -43,7 +43,7 @@ def get_api_documentation(**kwargs):
       'complete' : True},               # Is the API stable?
       ...]
     """
-    user_types = kwargs['user']['type']
+    user_roles = kwargs['user']['roles']
 
     api_blueprints = {}
     api_list = []
@@ -62,7 +62,7 @@ def get_api_documentation(**kwargs):
             if config.ui.read_only and not allow_readonly:
                 continue
 
-            for u_type in user_types:
+            for u_type in user_roles:
                 if u_type in require_role:
                     doc_string = func.__doc__
                     func_title = " ".join([x.capitalize()

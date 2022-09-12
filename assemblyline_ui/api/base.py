@@ -156,7 +156,7 @@ class api_login(BaseSecurityRenderer):
                         and not kwargs[self.username_key] == "__global__" \
                         and not kwargs[self.username_key] == "__workflow__" \
                         and not kwargs[self.username_key].lower() == "__current__" \
-                        and 'admin' not in user['type']:
+                        and 'administration' not in user['roles']:
                     return make_api_response({}, "Your username does not match requested username", 403)
 
             self.audit_if_required(args, kwargs, logged_in_uname, user, func, impersonator=impersonator)
