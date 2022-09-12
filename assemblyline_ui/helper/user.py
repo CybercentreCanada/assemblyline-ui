@@ -1,7 +1,7 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import USER_TYPE_DEP, User
+from assemblyline.odm.models.user import User, load_roles
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
     SERVICE_LIST
@@ -53,15 +53,6 @@ def decrement_submission_quota(user):
     SUBMISSION_TRACKER.end(user['uname'])
 
 
-def _load_roles(types):
-    roles = set({})
-    for user_type in USER_TYPE_DEP.keys():
-        if user_type in types:
-            roles = roles.union(USER_TYPE_DEP[user_type])
-
-    return list(roles)
-
-
 def login(uname):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
@@ -87,7 +78,7 @@ def login(uname):
     user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
-    user['roles'] = _load_roles(user['type']) or user.get('roles', [])
+    user['roles'] = load_roles(user['type']) or user.get('roles', [])
 
     return user
 

@@ -5,7 +5,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import USER_ROLES, USER_TYPE_DEP, USER_TYPES, User
+from assemblyline.odm.models.user import USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -146,7 +146,7 @@ def who_am_i(**kwargs):
         "user": {
             "roles": list(USER_ROLES),
             "role_dependencies": {k: list(v) for k, v in USER_TYPE_DEP.items()},
-            "types": list(USER_TYPES)
+            "types": [t for t in USER_TYPES if t != 'custom']
         }
     }
     user_data['indexes'] = list_all_fields(user_data)
@@ -269,6 +269,8 @@ def get_user_account(username, **kwargs):
 
     if "load_avatar" in request.args:
         user['avatar'] = STORAGE.user_avatar.get(username)
+
+    user['roles'] = load_roles(user['type']) or user.get('roles', [])
 
     return make_api_response(user)
 
