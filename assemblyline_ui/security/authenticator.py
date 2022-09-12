@@ -159,7 +159,7 @@ class BaseSecurityRenderer(object):
             return
 
         for required_type in self.require_role:
-            if required_type in user['type']:
+            if required_type in user['roles']:
                 return
 
         abort(403, f"{r_type} {request.path} requires one of the following roles: {', '.join(self.require_role)}")
