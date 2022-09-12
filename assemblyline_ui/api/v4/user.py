@@ -5,7 +5,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import User
+from assemblyline.odm.models.user import USER_TYPE_DEP, USER_TYPE_DEP_LOOKUP_ORDER, USER_TYPES, User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -141,6 +141,11 @@ def who_am_i(**kwargs):
             "tos_lockout": config.ui.tos_lockout,
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
         },
+        "user": {
+            "roles": list(USER_TYPES),
+            "role_dependencies": {k: list(v) for k, v in USER_TYPE_DEP.items()},
+            "role_lookup_order": USER_TYPE_DEP_LOOKUP_ORDER
+        }
     }
     user_data['indexes'] = list_all_fields(user_data)
     user_data['settings'] = load_user_settings(kwargs['user'])
