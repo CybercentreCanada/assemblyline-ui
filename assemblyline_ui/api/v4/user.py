@@ -98,7 +98,6 @@ def who_am_i(**kwargs):
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
     user_data['is_admin'] = "administration" in user_data['roles']
-    user_data['roles'] = user_data.pop('type')
 
     # System configuration
     user_data['c12nDef'] = classification_definition
