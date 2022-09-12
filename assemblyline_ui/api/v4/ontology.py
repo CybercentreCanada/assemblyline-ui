@@ -51,7 +51,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
 
 @ontology_api.route("/alert/<alert_id>/", methods=["GET"])
-@api_login(required_priv=['R'], require_type=['alert_view'])
+@api_login(required_priv=['R'], require_role=['alert_view'])
 def get_ontology_for_alert(alert_id, **kwargs):
     """
     WARNING:
@@ -143,7 +143,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
 
 
 @ontology_api.route("/submission/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_type=['submission_view'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_ontology_for_submission(sid, **kwargs):
     """
     WARNING:
@@ -227,7 +227,7 @@ def get_ontology_for_submission(sid, **kwargs):
 
 
 @ontology_api.route("/file/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_type=['submission_view'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_ontology_for_file(sha256, **kwargs):
     """
     WARNING:

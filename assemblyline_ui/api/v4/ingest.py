@@ -34,7 +34,7 @@ MAX_SIZE = config.submission.max_file_size
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False, require_type=['submission_create'])
+@api_login(required_priv=['R'], allow_readonly=False, require_role=['submission_create'])
 def get_message(notification_queue, **kwargs):
     """
     Get one message on the specified notification queue
@@ -62,7 +62,7 @@ def get_message(notification_queue, **kwargs):
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message_list/<notification_queue>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False, require_type=['submission_create'])
+@api_login(required_priv=['R'], allow_readonly=False, require_role=['submission_create'])
 def get_all_messages(notification_queue, **kwargs):
     """
     Get all messages on the specified notification queue
@@ -97,7 +97,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False, require_type=['submission_create'])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system

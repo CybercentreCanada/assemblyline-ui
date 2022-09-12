@@ -12,7 +12,7 @@ error_api._doc = "Perform operations on service errors"
 
 
 @error_api.route("/<error_key>/", methods=["GET"])
-@api_login(required_priv=['R'], require_type=['submission_view'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_error(error_key, **kwargs):
     """
     Get the error details for a given error key
@@ -41,7 +41,7 @@ def get_error(error_key, **kwargs):
 
 
 @error_api.route("/list/", methods=["GET"])
-@api_login(require_type=['admin'])
+@api_login(require_role=['administration'])
 def list_errors(**_):
     """
     List all error in the system (per page)

@@ -39,7 +39,7 @@ def get_api_documentation(**kwargs):
       'id': "api_doc",                  # Unique ID for the API
       'function': "apiv4.api_doc",      # Function called in the code
       'protected': False,               # Does the API require login?
-      'require_type': ['user'],         # Type of users allowed to use API
+      'require_role': ['user'],         # Type of users allowed to use API
       'complete' : True},               # Is the API stable?
       ...]
     """
@@ -56,14 +56,14 @@ def get_api_documentation(**kwargs):
                     methods.append(item)
 
             func = current_app.view_functions[rule.endpoint]
-            require_type = func.__dict__.get('require_type', ['user'])
+            require_role = func.__dict__.get('require_role', ['user'])
             allow_readonly = func.__dict__.get('allow_readonly', True)
 
             if config.ui.read_only and not allow_readonly:
                 continue
 
             for u_type in user_types:
-                if u_type in require_type:
+                if u_type in require_role:
                     doc_string = func.__doc__
                     func_title = " ".join([x.capitalize()
                                            for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
@@ -88,7 +88,7 @@ def get_api_documentation(**kwargs):
 
                     api_list.append({
                         "protected": func.__dict__.get('protected', False),
-                        "require_type": require_type,
+                        "require_role": require_role,
                         "name": func_title,
                         "id": api_id,
                         "function": f"api.v4.{rule.endpoint}",

@@ -5,7 +5,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import USER_TYPE_DEP, USER_TYPE_DEP_LOOKUP_ORDER, USER_TYPES, User
+from assemblyline.odm.models.user import USER_ROLES, USER_TYPE_DEP, USER_TYPES, User
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -142,10 +142,9 @@ def who_am_i(**kwargs):
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
         },
         "user": {
-            "roles": list(USER_TYPES),
+            "roles": list(USER_ROLES),
             "role_dependencies": {k: list(v) for k, v in USER_TYPE_DEP.items()},
-            "role_lookup_order": USER_TYPE_DEP_LOOKUP_ORDER,
-            "role_parent": {r: k for k, v in USER_TYPE_DEP.items() for r in v}
+            "types": list(USER_TYPES)
         }
     }
     user_data['indexes'] = list_all_fields(user_data)
@@ -159,7 +158,7 @@ def who_am_i(**kwargs):
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_type=['admin'])
+@api_login(require_role=['administration'])
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -273,7 +272,7 @@ def get_user_account(username, **kwargs):
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_type=['admin'])
+@api_login(require_role=['administration'])
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -645,7 +644,7 @@ def set_user_favorites(username, **_):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_type=['admin'], audit=False)
+@api_login(require_role=['administration'], audit=False)
 def list_users(**_):
     """
     List all users of the system.

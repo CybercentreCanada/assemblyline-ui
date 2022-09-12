@@ -25,7 +25,7 @@ submit_api._doc = "Submit files to the system"
 
 # noinspection PyUnusedLocal
 @submit_api.route("/dynamic/<sha256>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_type=['submission_create'])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
 def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     Resubmit a file for dynamic analysis
@@ -124,7 +124,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
 # noinspection PyUnusedLocal
 @submit_api.route("/resubmit/<sid>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_type=['submission_create'])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
 def resubmit_submission_for_analysis(sid, *args, **kwargs):
     """
     Resubmit a submission for analysis with the exact same parameters as before
@@ -196,7 +196,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['submission_create'])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis
