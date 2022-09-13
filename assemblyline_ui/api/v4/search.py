@@ -25,8 +25,7 @@ ROLE_INDEX_MAP = {
 def check_role_for_index(index, user):
     required_role = ROLE_INDEX_MAP.get(index, 'administration')
     if required_role not in user['roles']:
-        abort(403, f"API {request.path} requires one of the following "
-              f"role '{required_role}' for request on index '{index}'")
+        abort(403, f"API {request.path} requires the role '{required_role}' for request on index '{index}'")
 
 
 @search_api.route("/<index>/", methods=["GET", "POST"])
