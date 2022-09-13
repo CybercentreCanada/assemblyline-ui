@@ -13,6 +13,7 @@ search_api._doc = "Perform search queries"
 ROLE_INDEX_MAP = {
     "alert": "alert_view",
     "file": "submission_view",
+    'heuristic': "heuristic_view",
     "result": "submission_view",
     "submission": "submission_view",
     "signature": "signature_view",
