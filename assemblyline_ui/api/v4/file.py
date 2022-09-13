@@ -424,7 +424,7 @@ def get_file_children(sha256, **kwargs):
 
 
 @file_api.route("/info/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=['submission_view'])
+@api_login(required_priv=['R'], require_role=['submission_view', 'file_detail'])
 def get_file_information(sha256, **kwargs):
     """
     Get information about the file like:
