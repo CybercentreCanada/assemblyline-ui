@@ -30,7 +30,7 @@ def check_role_for_index(index, user):
 
 @search_api.route("/<index>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'],
-           require_role=["heuristic_view", "alert_view", "submission_view", "signature_view", "safelist_view",
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                          "workflow_view"])
 def search(index, **kwargs):
     """
@@ -111,7 +111,7 @@ def search(index, **kwargs):
 
 @search_api.route("/grouped/<index>/<group_field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'],
-           require_role=["heuristic_view", "alert_view", "submission_view", "signature_view", "safelist_view",
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                          "workflow_view"])
 def group_search(index, group_field, **kwargs):
     """
@@ -188,7 +188,7 @@ def group_search(index, group_field, **kwargs):
 # noinspection PyUnusedLocal
 @search_api.route("/fields/<index>/", methods=["GET"])
 @api_login(required_priv=['R'],
-           require_role=["heuristic_view", "alert_view", "submission_view", "signature_view", "safelist_view",
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                          "workflow_view"])
 def list_index_fields(index, **kwargs):
     """
@@ -228,7 +228,7 @@ def list_index_fields(index, **kwargs):
 
 @search_api.route("/facet/<index>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'],
-           require_role=["heuristic_view", "alert_view", "submission_view", "signature_view", "safelist_view",
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                          "workflow_view"])
 def facet(index, field, **kwargs):
     """
@@ -291,7 +291,7 @@ def facet(index, field, **kwargs):
 
 @search_api.route("/histogram/<index>/<field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'],
-           require_role=["heuristic_view", "alert_view", "submission_view", "signature_view", "safelist_view",
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                          "workflow_view"])
 def histogram(index, field, **kwargs):
     """
@@ -379,7 +379,7 @@ def histogram(index, field, **kwargs):
 
 @search_api.route("/stats/<index>/<int_field>/", methods=["GET", "POST"])
 @api_login(required_priv=['R'],
-           require_role=["heuristic_view", "alert_view", "submission_view", "signature_view", "safelist_view",
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                          "workflow_view"])
 def stats(index, int_field, **kwargs):
     """
