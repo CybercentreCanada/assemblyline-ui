@@ -2,6 +2,7 @@ import base64
 import hashlib
 import ldap
 import logging
+import re
 import time
 
 from assemblyline.common.str_utils import safe_str
@@ -56,14 +57,17 @@ class BasicLDAPWrapper(object):
 
     def get_user_types(self, group_dn_list):
         user_type = []
+
         if self.admin_dn in group_dn_list:
             user_type.append('admin')
         elif self.sm_dn in group_dn_list:
             user_type.append('signature_manager')
         else:
             user_type.append('user')
+
         if self.si_dn in group_dn_list:
             user_type.append('signature_importer')
+
         return user_type
 
     def get_user_classification(self, group_dn_list):
@@ -125,13 +129,87 @@ class BasicLDAPWrapper(object):
             ldap_ret = self.get_details_from_uid(user, ldap_server=ldap_server)
             if ldap_ret and len(ldap_ret) == 2:
                 dn, details = ldap_ret
-                group_list = self.get_group_list(dn, ldap_server=ldap_server)
                 ldap_server.simple_bind_s(dn, password)
+
+                # Add fields to details
+                details['dn'] = dn
+                details['groups'] = self.get_group_list(dn, ldap_server=ldap_server)
+
+                # Parse auto-properties
+                access = True
+                user_type = []
+                roles = []
+                remove_roles = set()
+                classification = self.get_user_classification(details['groups'])
+                for auto_prop in config.auth.ldap.auto_properties:
+                    if auto_prop.type == "access":
+                        # Set default access value for access pattern
+                        access = auto_prop.value != "True"
+
+                    # Get values for field
+                    field_data = details.get(auto_prop.field, [])
+                    if not isinstance(field_data, list):
+                        field_data = [field_data]
+                    field_data = [safe_str(x) for x in field_data]
+
+                    # Analyse field values
+                    for value in field_data:
+                        # If there is no value, no need to do any tests
+                        if value is None:
+                            continue
+
+                        # Check access
+                        if auto_prop.type == "access":
+                            if re.match(auto_prop.pattern, value) is not None:
+                                access = auto_prop.value == "True"
+                                break
+
+                        # Append user type from matching patterns
+                        elif auto_prop.type == "type":
+                            if re.match(auto_prop.pattern, value):
+                                user_type = [auto_prop.value]
+                                break
+
+                        # Append roles from matching patterns
+                        elif auto_prop.type == "role":
+                            if re.match(auto_prop.pattern, value):
+                                # Did we just put an account type in the roles field?
+                                roles.append(auto_prop.value)
+                                break
+
+                        # Append roles from matching patterns
+                        elif auto_prop.type == "remove_role":
+                            if re.match(auto_prop.pattern, value):
+                                remove_roles.add(auto_prop.value)
+                                break
+
+                        # Compute classification from matching patterns
+                        elif auto_prop.type == "classification":
+                            if re.match(auto_prop.pattern, value):
+                                classification = CLASSIFICATION.build_user_classification(
+                                    classification, auto_prop.value)
+                                break
+
+                # if not user type was assigned
+                if not user_type:
+                    # if also no roles were assigned
+                    if not roles:
+                        # Set the default user type
+                        user_type = self.get_user_types(details['groups'])
+                    else:
+                        # Because roles were assigned set user type to custom
+                        user_type = ['custom']
+
+                # Properly load roles based of user type
+                roles = load_roles(user_type, roles)
+
+                # Remove all roles marked for removal
+                roles = [role for role in roles if role not in remove_roles]
+
                 cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
                                "connection": ldap_server, "details": details, "cached": False,
-                               "classification": self.get_user_classification(group_list),
-                               "type": self.get_user_types(group_list), 'dn': dn}
-                cache_entry['roles'] = load_roles(cache_entry['type'], None)
+                               "classification": classification, "type": user_type, 'roles': roles, 'dn': dn,
+                               'access': access}
                 self.cache[user] = cache_entry
                 return cache_entry
         except Exception as e:
@@ -170,6 +248,9 @@ def validate_ldapuser(username, password, storage):
         ldap_obj = BasicLDAPWrapper(config.auth.ldap)
         ldap_info = ldap_obj.login(username, password)
         if ldap_info:
+            if not ldap_info['access']:
+                raise AuthenticationException("This user is not allowed access to the system")
+
             cur_user = storage.user.get(username, as_obj=False) or {}
 
             # Make sure the user exists in AL and is in sync
@@ -190,6 +271,7 @@ def validate_ldapuser(username, password, storage):
                     email=email,
                     password="__NO_PASSWORD__",
                     type=ldap_info['type'],
+                    roles=ldap_info['roles'],
                     dn=ldap_info['dn']
                 )
 
