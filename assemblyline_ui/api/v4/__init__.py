@@ -12,8 +12,7 @@ apiv4._doc = "Version 4 Api Documentation"
 # API DOCUMENTATION
 # noinspection PyProtectedMember,PyBroadException
 @apiv4.route("/")
-@api_login(audit=False, required_priv=['R', 'W'],
-           require_type=["user", "signature_importer", "signature_manager", "admin"])
+@api_login(audit=False, required_priv=['R', 'W'])
 def get_api_documentation(**kwargs):
     """
     Full API doc.
@@ -40,11 +39,11 @@ def get_api_documentation(**kwargs):
       'id': "api_doc",                  # Unique ID for the API
       'function': "apiv4.api_doc",      # Function called in the code
       'protected': False,               # Does the API require login?
-      'require_type': ['user'],         # Type of users allowed to use API
+      'require_role': ['user'],         # Type of users allowed to use API
       'complete' : True},               # Is the API stable?
       ...]
     """
-    user_types = kwargs['user']['type']
+    user_roles = kwargs['user']['roles']
 
     api_blueprints = {}
     api_list = []
@@ -57,48 +56,53 @@ def get_api_documentation(**kwargs):
                     methods.append(item)
 
             func = current_app.view_functions[rule.endpoint]
-            require_type = func.__dict__.get('require_type', ['user'])
+            require_role = func.__dict__.get('require_role', [])
             allow_readonly = func.__dict__.get('allow_readonly', True)
 
             if config.ui.read_only and not allow_readonly:
                 continue
 
-            for u_type in user_types:
-                if u_type in require_type:
-                    doc_string = func.__doc__
-                    func_title = " ".join([x.capitalize()
-                                           for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
-                    blueprint = rule.endpoint[:rule.endpoint.rindex(".")]
-                    if blueprint == "apiv4":
-                        blueprint = "documentation"
+            # Check role requirements
+            allowed = not require_role
+            if not allowed:
+                for u_type in user_roles:
+                    if u_type in require_role:
+                        allowed = True
+                        break
 
-                    if blueprint not in api_blueprints:
-                        try:
-                            doc = current_app.blueprints[rule.endpoint[:rule.endpoint.rindex(".")]]._doc
-                        except Exception:
-                            doc = ""
+            if allowed:
+                doc_string = func.__doc__
+                func_title = " ".join([x.capitalize()
+                                       for x in rule.endpoint[rule.endpoint.rindex(".") + 1:].split("_")])
+                blueprint = rule.endpoint[:rule.endpoint.rindex(".")]
+                if blueprint == "apiv4":
+                    blueprint = "documentation"
 
-                        api_blueprints[blueprint] = doc
-
+                if blueprint not in api_blueprints:
                     try:
-                        description = "\n".join([x[4:] for x in doc_string.splitlines()])
+                        doc = current_app.blueprints[rule.endpoint[:rule.endpoint.rindex(".")]]._doc
                     except Exception:
-                        description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
+                        doc = ""
 
-                    api_id = rule.endpoint.replace("apiv4.", "").replace(".", "_")
+                    api_blueprints[blueprint] = doc
 
-                    api_list.append({
-                        "protected": func.__dict__.get('protected', False),
-                        "require_type": require_type,
-                        "name": func_title,
-                        "id": api_id,
-                        "function": f"api.v4.{rule.endpoint}",
-                        "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
-                        "methods": methods, "description": description,
-                        "complete": "[INCOMPLETE]" not in description,
-                        "required_priv": func.__dict__.get('required_priv', "")
-                    })
+                try:
+                    description = "\n".join([x[4:] for x in doc_string.splitlines()])
+                except Exception:
+                    description = "[INCOMPLETE]\n\nTHIS API HAS NOT BEEN DOCUMENTED YET!"
 
-                    break
+                api_id = rule.endpoint.replace("apiv4.", "").replace(".", "_")
+
+                api_list.append({
+                    "protected": func.__dict__.get('protected', False),
+                    "require_role": require_role,
+                    "name": func_title,
+                    "id": api_id,
+                    "function": f"api.v4.{rule.endpoint}",
+                    "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
+                    "methods": methods, "description": description,
+                    "complete": "[INCOMPLETE]" not in description,
+                    "required_priv": func.__dict__.get('required_priv', "")
+                })
 
     return make_api_response({"apis": api_list, "blueprints": api_blueprints})

@@ -2,11 +2,12 @@ from assemblyline_ui.config import STORAGE
 
 
 def get_collection(bucket, user):
-    return BUCKET_MAP.get(bucket, ADMIN_BUCKET_MAP.get(bucket, None) if 'admin' in user['type'] else None)
+    return BUCKET_MAP.get(bucket, ADMIN_BUCKET_MAP.get(bucket, None) if 'administration' in user['roles'] else None)
 
 
 def get_default_sort(bucket, user):
-    return BUCKET_ORDER_MAP.get(bucket, ADMIN_BUCKET_ORDER_MAP.get(bucket, None) if 'admin' in user['type'] else None)
+    return BUCKET_ORDER_MAP.get(bucket, ADMIN_BUCKET_ORDER_MAP.get(bucket, None)
+                                if 'administration' in user['roles'] else None)
 
 
 def has_access_control(bucket):

@@ -37,9 +37,9 @@ def make_subapi_blueprint(name, api_version=4):
 # API Helper func and decorators
 # noinspection PyPep8Naming
 class api_login(BaseSecurityRenderer):
-    def __init__(self, require_type=None, username_key='username', audit=True, required_priv=None,
+    def __init__(self, require_role=None, username_key='username', audit=True, required_priv=None,
                  check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
-        super().__init__(require_type, audit, required_priv, allow_readonly)
+        super().__init__(require_role, audit, required_priv, allow_readonly)
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
@@ -140,7 +140,7 @@ class api_login(BaseSecurityRenderer):
                 abort(403, "Agree to Terms of Service before you can make any API calls")
                 return
 
-            self.test_require_type(user, "API")
+            self.test_require_role(user, "API")
 
             #############################################
             # Special username api query validation
@@ -156,7 +156,7 @@ class api_login(BaseSecurityRenderer):
                         and not kwargs[self.username_key] == "__global__" \
                         and not kwargs[self.username_key] == "__workflow__" \
                         and not kwargs[self.username_key].lower() == "__current__" \
-                        and 'admin' not in user['type']:
+                        and 'administration' not in user['roles']:
                     return make_api_response({}, "Your username does not match requested username", 403)
 
             self.audit_if_required(args, kwargs, logged_in_uname, user, func, impersonator=impersonator)
@@ -187,7 +187,7 @@ class api_login(BaseSecurityRenderer):
 
             return func(*args, **kwargs)
         base.protected = True
-        base.require_type = self.require_type
+        base.require_role = self.require_role
         base.audit = self.audit
         base.required_priv = self.required_priv
         base.check_xsrf_token = self.check_xsrf_token
@@ -290,8 +290,7 @@ def stream_binary_response(reader, status_code=200):
 #####################################
 # API list API (API inception)
 @api.route("/")
-@api_login(audit=False, required_priv=['R', 'W'],
-           require_type=["user", "signature_importer", "signature_manager", "admin"])
+@api_login(audit=False, required_priv=['R', 'W'])
 def api_version_list(**_):
     """
     List all available API versions.
@@ -324,7 +323,7 @@ def api_version_list(**_):
 
 
 @api.route("/site_map/")
-@api_login(require_type=['admin'], audit=False)
+@api_login(require_role=['administration'], audit=False)
 def site_map(**_):
     """
     Check if all pages have been protected by a login decorator
@@ -343,7 +342,7 @@ def site_map(**_):
      {"function": views.default,     #Function name
       "url": "/",                    #Url to page
       "protected": true,             #Is function login protected
-      "require_type": false,         #List of user type allowed to view the page
+      "require_role": false,         #List of user type allowed to view the page
       "methods": ["GET"]},           #Methods allowed to access the page
     ]
     """
@@ -355,7 +354,7 @@ def site_map(**_):
             if item != "OPTIONS" and item != "HEAD":
                 methods.append(item)
         protected = func.__dict__.get('protected', False)
-        required_type = func.__dict__.get('require_type', ['user'])
+        required_type = func.__dict__.get('require_role', [])
         audit = func.__dict__.get('audit', False)
         priv = func.__dict__.get('required_priv', '')
         allow_readonly = func.__dict__.get('allow_readonly', True)

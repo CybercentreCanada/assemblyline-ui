@@ -3,6 +3,7 @@ import hashlib
 import re
 import requests
 
+from assemblyline.odm.models.user import load_roles, USER_TYPE_DEP
 from assemblyline.common.random_user import random_user
 from assemblyline_ui.config import config, CLASSIFICATION as cl_engine
 
@@ -68,9 +69,11 @@ def parse_profile(profile, provider):
     else:
         alternate = None
 
-    # Compute access, roles and classification using auto_properties
+    # Compute access, user_type, roles and classification using auto_properties
     access = True
-    roles = ['user']
+    user_type = []
+    roles = []
+    remove_roles = set()
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
@@ -95,10 +98,28 @@ def parse_profile(profile, provider):
                         access = auto_prop.value == "True"
                         break
 
+                # Append user type from matching patterns
+                elif auto_prop.type == "type":
+                    if re.match(auto_prop.pattern, value):
+                        user_type = [auto_prop.value]
+                        break
+
                 # Append roles from matching patterns
                 elif auto_prop.type == "role":
                     if re.match(auto_prop.pattern, value):
-                        roles.append(auto_prop.value)
+                        # Did we just put an account type in the roles field?
+                        if auto_prop.value in USER_TYPE_DEP:
+                            # Support of legacy configurations
+                            user_type = [auto_prop.value]
+                            roles = list(set(roles).union(USER_TYPE_DEP[auto_prop.value]))
+                        else:
+                            roles.append(auto_prop.value)
+                        break
+
+                # Append roles from matching patterns
+                elif auto_prop.type == "remove_role":
+                    if re.match(auto_prop.pattern, value):
+                        remove_roles.add(auto_prop.value)
                         break
 
                 # Compute classification from matching patterns
@@ -107,9 +128,26 @@ def parse_profile(profile, provider):
                         classification = cl_engine.build_user_classification(classification, auto_prop.value)
                         break
 
+    # if not user type was assigned
+    if not user_type:
+        # if also no roles were assigned
+        if not roles:
+            # Set the default user type
+            user_type = ['user']
+        else:
+            # Because roles were assigned set user type to custom
+            user_type = ['custom']
+
+    # Properly load roles based of user type
+    roles = load_roles(user_type, roles)
+
+    # Remove all roles marked for removal
+    roles = [role for role in roles if role not in remove_roles]
+
     return dict(
         access=access,
-        type=roles,
+        type=user_type,
+        roles=roles,
         classification=classification,
         uname=uname,
         name=name,

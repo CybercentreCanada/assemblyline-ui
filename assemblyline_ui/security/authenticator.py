@@ -1,5 +1,6 @@
 import base64
 import zlib
+from assemblyline.odm.models.user import USER_ROLES
 
 from flask import abort, request, current_app, session as flsk_session
 
@@ -21,14 +22,22 @@ nonpersistent_config = {
 }
 
 
+class InvalidRole(Exception):
+    pass
+
+
 class BaseSecurityRenderer(object):
-    def __init__(self, require_type=None, audit=True, required_priv=None, allow_readonly=True):
+    def __init__(self, require_role=None, audit=True, required_priv=None, allow_readonly=True):
         if required_priv is None:
             required_priv = ["E"]
-        if require_type is None:
-            require_type = ["user"]
+        if require_role is None:
+            require_role = []
 
-        self.require_type = require_type
+        for role in require_role:
+            if role not in USER_ROLES:
+                raise InvalidRole(f"Role '{role}' is not a valid role.")
+
+        self.require_role = require_role
         self.audit = audit and AUDIT
         self.required_priv = required_priv
         self.allow_readonly = allow_readonly
@@ -145,12 +154,15 @@ class BaseSecurityRenderer(object):
 
         return session.get("username", None)
 
-    def test_require_type(self, user, r_type):
-        for required_type in self.require_type:
-            if required_type in user['type']:
+    def test_require_role(self, user, r_type):
+        if not self.require_role:
+            return
+
+        for required_type in self.require_role:
+            if required_type in user['roles']:
                 return
 
-        abort(403, f"{r_type} {request.path} requires one of the following privileges: {', '.join(self.require_type)}")
+        abort(403, f"{r_type} {request.path} requires one of the following roles: {', '.join(self.require_role)}")
 
     def test_readonly(self, r_type):
         if not self.allow_readonly and config.ui.read_only:

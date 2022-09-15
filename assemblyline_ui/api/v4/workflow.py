@@ -23,7 +23,7 @@ def verify_query(query):
 
 
 @workflow_api.route("/", methods=["PUT"])
-@api_login(allow_readonly=False)
+@api_login(allow_readonly=False, require_role=['workflow_manage'])
 def add_workflow(**kwargs):
     """
     Add a workflow to the system
@@ -81,7 +81,7 @@ def add_workflow(**kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["POST"])
-@api_login(allow_readonly=False)
+@api_login(allow_readonly=False, require_role=['workflow_manage'])
 def edit_workflow(workflow_id, **kwargs):
     """
     Edit a workflow.
@@ -138,7 +138,7 @@ def edit_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, required_priv=['R'])
+@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=['workflow_view'])
 def get_workflow(workflow_id, **kwargs):
     """
     Load the user account information.
@@ -177,7 +177,7 @@ def get_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/labels/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, required_priv=['R'])
+@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=['workflow_view'])
 def list_workflow_labels(**kwargs):
     """
     List all labels from the workflows
@@ -203,7 +203,7 @@ def list_workflow_labels(**kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["DELETE"])
-@api_login(audit=False, allow_readonly=False)
+@api_login(audit=False, allow_readonly=False, require_role=['workflow_manage'])
 def remove_workflow(workflow_id, **_):
     """
     Remove the specified workflow.

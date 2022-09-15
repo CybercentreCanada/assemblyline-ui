@@ -23,7 +23,7 @@ HEUR_RANK_MAP = {
 
 
 @submission_api.route("/<sid>/", methods=["DELETE"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=['submission_delete'])
 def delete_submission(sid, **kwargs):
     """
     Delete a submission as well as all related
@@ -48,7 +48,7 @@ def delete_submission(sid, **kwargs):
         return make_api_response("", f"There are not submission with sid: {sid}", 404)
 
     if Classification.is_accessible(user['classification'], submission['classification']) \
-            and (submission['params']['submitter'] == user['uname'] or 'admin' in user['type']):
+            and (submission['params']['submitter'] == user['uname'] or 'administration' in user['roles']):
         STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
         STORAGE.submission.commit()
         return make_api_response({"success": True})
@@ -58,7 +58,7 @@ def delete_submission(sid, **kwargs):
 
 # noinspection PyBroadException
 @submission_api.route("/<sid>/file/<sha256>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_file_submission_results(sid, sha256, **kwargs):
     """
     Get the all the results and errors of a specific file
@@ -215,7 +215,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
 
 @submission_api.route("/tree/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_file_tree(sid, **kwargs):
     """
     Get the file hierarchy of a given Submission ID. This is
@@ -258,7 +258,7 @@ def get_file_tree(sid, **kwargs):
 
 
 @submission_api.route("/full/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_full_results(sid, **kwargs):
     """
     Get the full results for a given Submission ID. The difference
@@ -421,7 +421,7 @@ def get_full_results(sid, **kwargs):
 
 
 @submission_api.route("/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_submission(sid, **kwargs):
     """
     Get the submission details for a given Submission ID
@@ -476,7 +476,7 @@ def get_submission(sid, **kwargs):
 
 # noinspection PyTypeChecker,PyUnresolvedReferences
 @submission_api.route("/summary/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def get_summary(sid, **kwargs):
     """
     Retrieve the executive summary of a given submission ID. This
@@ -653,7 +653,7 @@ def get_summary(sid, **kwargs):
 
 # noinspection PyUnusedLocal
 @submission_api.route("/is_completed/<sid>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'])
+@api_login(audit=False, required_priv=['R'], require_role=['submission_view'])
 def is_submission_completed(sid, **kwargs):
     """
     Check if a submission is completed
@@ -678,7 +678,7 @@ def is_submission_completed(sid, **kwargs):
 
 
 @submission_api.route("/list/group/<group>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def list_submissions_for_group(group, **kwargs):
     """
     List all submissions of a given group.
@@ -735,7 +735,7 @@ def list_submissions_for_group(group, **kwargs):
 
 
 @submission_api.route("/list/user/<username>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=['submission_view'])
 def list_submissions_for_user(username, **kwargs):
     """
     List all submissions of a given user.
@@ -792,7 +792,7 @@ def list_submissions_for_user(username, **kwargs):
 
 
 @submission_api.route("/report/<submission_id>/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, require_role=['submission_view'])
 def get_report(submission_id, **kwargs):
     """
     Create a report for a submission based on its ID.
@@ -936,7 +936,7 @@ def get_report(submission_id, **kwargs):
 
 
 @submission_api.route("/verdict/<submission_id>/<verdict>/", methods=["PUT"])
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, require_role=['submission_manage'])
 def set_verdict(submission_id, verdict, **kwargs):
     """
     Set the verdict of a submission based on its ID.

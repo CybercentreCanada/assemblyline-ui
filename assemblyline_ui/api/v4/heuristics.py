@@ -8,7 +8,7 @@ heuristics_api._doc = "View the different heuristics of the system"
 
 
 @heuristics_api.route("/<heuristic_id>/", methods=["GET"])
-@api_login(allow_readonly=False, required_priv=["R"])
+@api_login(allow_readonly=False, required_priv=["R"], require_role=['heuristic_view'])
 def get_heuristic(heuristic_id, **kwargs):
     """
     Get a specific heuristic's detail from the system
@@ -45,7 +45,7 @@ def get_heuristic(heuristic_id, **kwargs):
 
 
 @heuristics_api.route("/stats/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
+@api_login(required_priv=['R'], allow_readonly=False, require_role=['heuristic_view'])
 def heuritics_statistics(**kwargs):
     """
     Gather all heuristics stats in system

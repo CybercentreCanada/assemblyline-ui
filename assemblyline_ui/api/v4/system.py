@@ -42,7 +42,7 @@ PREPARED_POSTPROCESSING_ACTIONS = {
 
 
 @system_api.route("/system_message/", methods=["DELETE"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def clear_system_message(**_):
     """
     Clear the current system message
@@ -64,7 +64,7 @@ def clear_system_message(**_):
 
 
 @system_api.route("/system_message/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_system_message(**_):
     """
     Get the current system message
@@ -90,7 +90,7 @@ def get_system_message(**_):
 
 
 @system_api.route("/tag_safelist/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_tag_safelist(**_):
     """
     Get the current tag_safelist
@@ -122,7 +122,7 @@ def get_tag_safelist(**_):
 
 
 @system_api.route("identify/magic/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_identify_custom_magic_file(**_):
     """
     Get identify's current custom LibMagic file
@@ -151,7 +151,7 @@ def get_identify_custom_magic_file(**_):
 
 
 @system_api.route("identify/mimes/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_identify_trusted_mimetypes(**_):
     """
     Get identify's trusted mimetypes map
@@ -179,7 +179,7 @@ def get_identify_trusted_mimetypes(**_):
 
 
 @system_api.route("identify/patterns/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_identify_magic_patterns(**_):
     """
     Get identify's magic patterns
@@ -207,7 +207,7 @@ def get_identify_magic_patterns(**_):
 
 
 @system_api.route("identify/yara/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_identify_custom_yara_file(**_):
     """
     Get identify's current custom Yara file
@@ -267,7 +267,7 @@ def get_system_status(component, **_):
 
 
 @system_api.route("/system_message/", methods=["PUT", "POST"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def set_system_message(**kwargs):
     """
     Set the current system message
@@ -299,7 +299,7 @@ def set_system_message(**kwargs):
 
 
 @system_api.route("/tag_safelist/", methods=["PUT"])
-@api_login(require_type=['admin'], allow_readonly=False, required_priv=['W'])
+@api_login(require_role=['administration'], allow_readonly=False, required_priv=['W'])
 def put_tag_safelist(**_):
     """
     Save a new version of the tag_safelist file
@@ -342,7 +342,7 @@ def put_tag_safelist(**_):
 
 
 @system_api.route("identify/magic/", methods=["PUT"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def put_identify_custom_magic_file(**_):
     """
     Save a new version of identify's custom LibMagic file
@@ -389,7 +389,7 @@ def put_identify_custom_magic_file(**_):
 
 
 @system_api.route("identify/mimes/", methods=["PUT"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def put_identify_trusted_mimetypes(**_):
     """
     Save a new version of identify's trusted mimetypes file
@@ -433,7 +433,7 @@ def put_identify_trusted_mimetypes(**_):
 
 
 @system_api.route("identify/patterns/", methods=["PUT"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def put_identify_magic_patterns(**_):
     """
     Save a new version of identify's magic patterns file
@@ -484,7 +484,7 @@ def put_identify_magic_patterns(**_):
 
 
 @system_api.route("identify/yara/", methods=["PUT"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def put_identify_custom_yara_file(**_):
     """
     Save a new version of identify's custom Yara file
@@ -534,7 +534,7 @@ def put_identify_custom_yara_file(**_):
 
 
 @system_api.route("/status/<component>/", methods=["PUT", "POST"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def put_system_status(component, **_):
     """
     Set the status of system components.
@@ -572,7 +572,7 @@ def put_system_status(component, **_):
 
 
 @system_api.route("/actions/", methods=["GET"])
-@api_login(require_type=['admin'], required_priv=['R'])
+@api_login(require_role=['administration'], required_priv=['R'])
 def get_post_processing_actions(**_):
     """
     Get rules to determine post processing actions.
@@ -610,7 +610,7 @@ def get_post_processing_actions(**_):
 
 
 @system_api.route("/actions/", methods=["PUT"])
-@api_login(require_type=['admin'], required_priv=['W'])
+@api_login(require_role=['administration'], required_priv=['W'])
 def put_post_processing_actions(**_):
     """
     Save a new version of the post processing actions.
