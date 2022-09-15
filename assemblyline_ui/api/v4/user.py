@@ -53,7 +53,13 @@ def who_am_i(**kwargs):
        "submission": {                            # Submission Configuration
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
-         "has_sha256_sources": False                # Can Assemblyline lookup sha256 submissions on another system
+         "sha256_sources": [],                      # List of sources SHA256 submissions lookup on other systems
+         "verdicts": {                              # Verdict scoring configuration
+            "info": 0,                                # Default minimum score for info
+            "suspicious": 300,                        # Default minimum score for suspicious
+            "highly_suspicious": 700,                 # Default minimum score for highly_suspicious
+            "malicious": 1000,                        # Default minimum score for malicious
+         }
        },
        "system": {                                # System Configuration
          "organisation": "ACME",                    # Organisation name
@@ -113,7 +119,13 @@ def who_am_i(**kwargs):
             "max_dtl": config.submission.max_dtl,
             "sha256_sources": [x.name for x in config.submission.sha256_sources
                                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                               x.classification)]
+                                                               x.classification)],
+            "verdicts": {
+                "info": config.submission.verdicts.info,
+                "suspicious": config.submission.verdicts.suspicious,
+                "highly_suspicious": config.submission.verdicts.highly_suspicious,
+                "malicious": config.submission.verdicts.malicious
+            }
         },
         "system": {
             "organisation": config.system.organisation,
