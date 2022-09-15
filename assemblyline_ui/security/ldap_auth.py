@@ -129,6 +129,10 @@ class BasicLDAPWrapper(object):
             ldap_ret = self.get_details_from_uid(user, ldap_server=ldap_server)
             if ldap_ret and len(ldap_ret) == 2:
                 dn, details = ldap_ret
+                if not dn:
+                    return None
+
+                # Authenticate user
                 ldap_server.simple_bind_s(dn, password)
 
                 # Add fields to details
