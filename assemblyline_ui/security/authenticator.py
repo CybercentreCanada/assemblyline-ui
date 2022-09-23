@@ -10,7 +10,7 @@ from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser
-from assemblyline_ui.security.oauth_auth import validate_oauth
+from assemblyline_ui.security.oauth_auth import validate_oauth_id, validate_oauth_token
 from assemblyline_ui.security.second_factor_auth import validate_2fa
 from assemblyline_ui.security.userpass_auth import validate_userpass
 
@@ -176,9 +176,11 @@ def default_authenticator(auth, req, ses, storage):
     state = ses.pop('state', None)
     password = auth.get('password', None)
     uname = auth.get('username', None)
+    oauth_token_id = auth.get('oauth_token_id', None)
     oauth_token = auth.get('oauth_token', None)
+    oauth_provider = auth.get('oauth_provider', None)
 
-    if not uname:
+    if not uname and not oauth_token:
         raise AuthenticationException('No user specified for authentication')
 
     # Bruteforce protection
@@ -191,11 +193,15 @@ def default_authenticator(auth, req, ses, storage):
                                                           ttl=config.auth.internal.failure_ttl))
 
     try:
+        # These steps skips 2FA
         validated_user, priv = validate_apikey(uname, apikey, storage)
+        if not validated_user:
+            validated_user, priv = validate_oauth_token(oauth_token, oauth_provider)
         if validated_user:
             return validated_user, priv
 
-        validated_user, priv = validate_oauth(uname, oauth_token)
+        # Following steps will go through the 2FA process
+        validated_user, priv = validate_oauth_id(uname, oauth_token_id)
         if not validated_user:
             validated_user, priv = validate_ldapuser(uname, password, storage)
         if not validated_user:
