@@ -51,8 +51,8 @@ def validate_oauth_token(oauth_token, oauth_provider):
                     signing_key.key,
                     algorithms=[headers['alg']],
                     audience=audiences)
-            except jwt.PyJWTError:
-                raise AuthenticationException("Invalid token")
+            except jwt.PyJWTError as e:
+                raise AuthenticationException(f"Invalid token - {str(e)}")
 
             # Get user's email from profile
             email = parse_profile(jwt_data, oauth_provider_config).get('email', None)
