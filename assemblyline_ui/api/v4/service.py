@@ -851,6 +851,58 @@ def update_service(**_):
     return make_api_response({'success': True, 'status': "updating"})
 
 
+@service_api.route("/update_all/", methods=["GET"])
+@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+def update_all_services(**_):
+    """
+        Update all service that require an update
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+        {
+          "updated": [ "ResultSample" ],    # List of services that were updated
+          "updating": [ "ExtraFeature" ]    # List of service being updated
+        }
+    """
+    output = {"updating": [], "updated": []}
+    for service in STORAGE.list_all_services(full=True, as_obj=False):
+        name = service['name']
+        update_info = latest_service_tags.get(name) or {}
+        latest_tag = update_info.get(service['update_channel'], None)
+        clean_latest_tag = latest_tag.replace('stable', '') if latest_tag is not None else latest_tag
+        srv_update_available = latest_tag is not None and clean_latest_tag != service['version']
+        srv_updating = service_update.exists(name)
+        if srv_update_available and not srv_updating:
+            # Check is the version we are trying to update to already exists
+            if STORAGE.service.get_if_exists(f"{name}_{clean_latest_tag}"):
+                operations = [(STORAGE.service_delta.UPDATE_SET, 'version', clean_latest_tag)]
+                if STORAGE.service_delta.update(name, operations):
+                    event_sender.send(name, {
+                        'operation': Operation.Modified,
+                        'name': name
+                    })
+                    output['updated'].append(name)
+            else:
+                service_update.set(name, {
+                    "auth": update_info['auth'],
+                    "image": f"{update_info['image']}:{latest_tag or 'latest'}",
+                    "latest_tag": latest_tag,
+                    "update_available": srv_update_available,
+                    "updating": srv_updating
+                })
+                output['updating'].append(name)
+
+    return make_api_response(output)
+
+
 @service_api.route("/stats/<service_name>/", methods=["GET"])
 @api_login(audit=False, required_priv=['R'], require_type=['admin'])
 def service_statistics(service_name, **_):
