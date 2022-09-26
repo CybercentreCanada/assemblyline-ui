@@ -313,9 +313,10 @@ def login(**_):
     apikey = data.get('apikey', None)
     webauthn_auth_resp = data.get('webauthn_auth_resp', None)
     oauth_provider = data.get('oauth_provider', None)
+    oauth_token_id = data.get('oauth_token_id', None)
     oauth_token = data.get('oauth_token', None)
 
-    if config.auth.oauth.enabled and oauth_provider:
+    if config.auth.oauth.enabled and oauth_provider and oauth_token is None:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
         provider = oauth.create_client(oauth_provider)
 
@@ -328,14 +329,16 @@ def login(**_):
     except Exception:
         raise AuthenticationException('Invalid OTP token')
 
-    if (user and password) or (user and apikey) or (user and oauth_token):
+    if (user and password) or (user and apikey) or (user and oauth_token_id) or oauth_token:
         auth = {
             'username': user,
             'password': password,
             'otp': otp,
             'webauthn_auth_resp': webauthn_auth_resp,
             'apikey': apikey,
-            'oauth_token': oauth_token
+            'oauth_token_id': oauth_token_id,
+            'oauth_token': oauth_token,
+            'oauth_provider': oauth_provider
         }
 
         logged_in_uname = None
@@ -434,7 +437,7 @@ def oauth_validate(**_):
     Result example:
     {
      "avatar": "data:image...",
-     "oauth_token": "123123...123213",
+     "oauth_token_id": "123123...123213",
      "username": "user"
     }
     """
@@ -442,7 +445,7 @@ def oauth_validate(**_):
     avatar = None
     username = None
     email_adr = None
-    oauth_token = None
+    oauth_token_id = None
 
     if config.auth.oauth.enabled:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -568,8 +571,8 @@ def oauth_validate(**_):
                         if cur_user:
                             if avatar is None:
                                 avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-                            oauth_token = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
-                            get_token_store(username).add(oauth_token)
+                            oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+                            get_token_store(username).add(oauth_token_id)
                         else:
                             return make_api_response({"err_code": 3},
                                                      err="User auto-creation is disabled",
@@ -593,7 +596,7 @@ def oauth_validate(**_):
     return make_api_response({
         "avatar": avatar,
         "username": username,
-        "oauth_token": oauth_token,
+        "oauth_token_id": oauth_token_id,
         "email_adr": email_adr
     })
 
