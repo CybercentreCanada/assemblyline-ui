@@ -852,7 +852,7 @@ def update_service(**_):
 
 
 @service_api.route("/update_all/", methods=["GET"])
-@api_login(audit=False, require_type=['admin'], allow_readonly=False)
+@api_login(audit=False, require_role=['administration'], allow_readonly=False)
 def update_all_services(**_):
     """
         Update all service that require an update
