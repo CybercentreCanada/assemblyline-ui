@@ -2,6 +2,7 @@
 from flask import abort, request
 
 from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
 from assemblyline_ui.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
@@ -11,14 +12,14 @@ search_api = make_subapi_blueprint(SUB_API, api_version=4)
 search_api._doc = "Perform search queries"
 
 ROLE_INDEX_MAP = {
-    "alert": "alert_view",
-    "file": "submission_view",
-    'heuristic': "heuristic_view",
-    "result": "submission_view",
-    "submission": "submission_view",
-    "signature": "signature_view",
-    "safelist": "safelist_view",
-    "workflow": "workflow_view"
+    "alert": ROLES.alert_view,
+    "file": ROLES.submission_view,
+    'heuristic': ROLES.heuristic_view,
+    "result": ROLES.submission_view,
+    "submission": ROLES.submission_view,
+    "signature": ROLES.signature_view,
+    "safelist": ROLES.safelist_view,
+    "workflow": ROLES.workflow_view
 }
 
 

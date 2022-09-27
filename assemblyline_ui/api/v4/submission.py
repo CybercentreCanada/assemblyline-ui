@@ -49,7 +49,7 @@ def delete_submission(sid, **kwargs):
         return make_api_response("", f"There are not submission with sid: {sid}", 404)
 
     if Classification.is_accessible(user['classification'], submission['classification']) \
-            and (submission['params']['submitter'] == user['uname'] or 'administration' in user['roles']):
+            and (submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']):
         STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
         STORAGE.submission.commit()
         return make_api_response({"success": True})

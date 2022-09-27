@@ -176,7 +176,7 @@ def add_or_update_hash(**kwargs):
                 return make_api_response(
                     {}, f"You cannot add a source for another user. {src['name']} != {user['uname']}", 400)
         else:
-            if 'signature_importer' not in user['type']:
+            if ROLES.signature_import not in user['roles']:
                 return make_api_response(
                     {}, "You do not have sufficient priviledges to add an external source.", 403)
 
@@ -400,7 +400,7 @@ def set_hash_status(qhash, **kwargs):
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
 
-    if 'admin' in user['type'] or 'signature_manager' in user['type']:
+    if ROLES.administration in user['roles'] or ROLES.signature_manage in user['roles']:
         return make_api_response({'success': STORAGE.safelist.update(
             qhash, [(STORAGE.safelist.UPDATE_SET, 'enabled', data)])})
 
@@ -433,7 +433,7 @@ def delete_hash(qhash, **kwargs):
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
 
-    if 'admin' in user['type'] or 'signature_manager' in user['type']:
+    if ROLES.administration in user['roles'] or ROLES.signature_manage in user['roles']:
         return make_api_response({'success': STORAGE.safelist.delete(qhash)})
     else:
         safe_hash = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
