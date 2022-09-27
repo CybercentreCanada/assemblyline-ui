@@ -4,7 +4,6 @@ import random
 
 from conftest import get_api_data, APIError
 
-from assemblyline.common import forge
 from assemblyline.odm.models.service import UpdateSource
 from assemblyline.odm.models.signature import Signature
 from assemblyline.odm.randomizer import random_model_obj

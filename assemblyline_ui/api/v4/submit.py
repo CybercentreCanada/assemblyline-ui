@@ -9,6 +9,7 @@ from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
+from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
@@ -25,7 +26,7 @@ submit_api._doc = "Submit files to the system"
 
 # noinspection PyUnusedLocal
 @submit_api.route("/dynamic/<sha256>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
 def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     Resubmit a file for dynamic analysis
@@ -124,7 +125,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
 # noinspection PyUnusedLocal
 @submit_api.route("/resubmit/<sid>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
 def resubmit_submission_for_analysis(sid, *args, **kwargs):
     """
     Resubmit a submission for analysis with the exact same parameters as before
@@ -196,7 +197,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=['submission_create'])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis

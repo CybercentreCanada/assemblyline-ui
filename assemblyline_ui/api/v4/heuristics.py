@@ -1,4 +1,5 @@
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification
 
@@ -8,7 +9,7 @@ heuristics_api._doc = "View the different heuristics of the system"
 
 
 @heuristics_api.route("/<heuristic_id>/", methods=["GET"])
-@api_login(allow_readonly=False, required_priv=["R"], require_role=['heuristic_view'])
+@api_login(allow_readonly=False, required_priv=["R"], require_role=[ROLES.heuristic_view])
 def get_heuristic(heuristic_id, **kwargs):
     """
     Get a specific heuristic's detail from the system
@@ -45,7 +46,7 @@ def get_heuristic(heuristic_id, **kwargs):
 
 
 @heuristics_api.route("/stats/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False, require_role=['heuristic_view'])
+@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.heuristic_view])
 def heuritics_statistics(**kwargs):
     """
     Gather all heuristics stats in system

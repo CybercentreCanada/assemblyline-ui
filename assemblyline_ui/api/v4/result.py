@@ -1,4 +1,5 @@
 from assemblyline.datastore.exceptions import MultiKeyError
+from assemblyline.odm.models.user import ROLES
 from flask import request
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -11,7 +12,7 @@ result_api._doc = "Manage the different services"
 
 
 @result_api.route("/multiple_keys/", methods=["POST"])
-@api_login(audit=False, required_priv=['R'], require_role=['submission_view'])
+@api_login(audit=False, required_priv=['R'], require_role=[ROLES.submission_view])
 def get_multiple_service_results(**kwargs):
     """
     Get multiple result and error keys at the same time
@@ -64,7 +65,7 @@ def get_multiple_service_results(**kwargs):
 
 
 @result_api.route("/error/<path:cache_key>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=['submission_view'])
+@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
 def get_service_error(cache_key, **_):
     """
     Get the content off a given service error cache key.
@@ -97,7 +98,7 @@ def get_service_error(cache_key, **_):
 
 
 @result_api.route("/<path:cache_key>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=['submission_view'])
+@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
 def get_service_result(cache_key, **kwargs):
     """
     Get the result for a given service cache key.

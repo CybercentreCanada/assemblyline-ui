@@ -5,7 +5,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles
+from assemblyline.odm.models.user import ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -91,7 +91,7 @@ def who_am_i(**kwargs):
      "indexes": {},                             # Search indexes definitions
      "is_active": True,                         # Is the user active
      "name": "Basic user",                      # Name of the user
-     "type": ["user", "admin"],                 # Roles the user is member of
+     "type": ["admin"],                 # Roles the user is member of
      "uname": "sgaron-cyber"                    # Username of the current user
     }
 
@@ -171,7 +171,7 @@ def who_am_i(**kwargs):
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_role=['administration'])
+@api_login(require_role=[ROLES.administration])
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -287,7 +287,7 @@ def get_user_account(username, **kwargs):
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_role=['administration'])
+@api_login(require_role=[ROLES.administration])
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -659,7 +659,7 @@ def set_user_favorites(username, **_):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_role=['administration'], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False)
 def list_users(**_):
     """
     List all users of the system.

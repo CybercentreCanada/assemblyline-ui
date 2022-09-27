@@ -10,6 +10,7 @@ from assemblyline.common import forge
 from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification, \
     IDENTIFY
@@ -37,7 +38,7 @@ def get_cache_name(identifier, chunk_number=None):
 
 # noinspection PyUnusedLocal
 @ui_api.route("/flowjs/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False, allow_readonly=False, require_role=['submission_create'])
+@api_login(audit=False, check_xsrf_token=False, allow_readonly=False, require_role=[ROLES.submission_create])
 def flowjs_check_chunk(**kwargs):
     """
     Flowjs check file chunk.
@@ -86,7 +87,7 @@ def flowjs_check_chunk(**kwargs):
 
 # noinspection PyBroadException, PyUnusedLocal
 @ui_api.route("/flowjs/", methods=["POST"])
-@api_login(audit=False, check_xsrf_token=False, allow_readonly=False, require_role=['submission_create'])
+@api_login(audit=False, check_xsrf_token=False, allow_readonly=False, require_role=[ROLES.submission_create])
 def flowjs_upload_chunk(**kwargs):
     """
     Flowjs upload file chunk.
@@ -177,7 +178,7 @@ def flowjs_upload_chunk(**kwargs):
 
 # noinspection PyBroadException
 @ui_api.route("/start/<ui_sid>/", methods=["POST"])
-@api_login(audit=False, allow_readonly=False, require_role=['submission_create'])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create])
 def start_ui_submission(ui_sid, **kwargs):
     """
     Start UI submission.
