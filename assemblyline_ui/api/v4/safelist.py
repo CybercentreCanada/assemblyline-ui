@@ -176,7 +176,7 @@ def add_or_update_hash(**kwargs):
                 return make_api_response(
                     {}, f"You cannot add a source for another user. {src['name']} != {user['uname']}", 400)
         else:
-            if 'signature_importer' not in user['type']:
+            if ROLES.signature_import not in user['roles']:
                 return make_api_response(
                     {}, "You do not have sufficient priviledges to add an external source.", 403)
 

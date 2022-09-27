@@ -1,7 +1,7 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import User, load_roles
+from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
     SERVICE_LIST
@@ -95,12 +95,12 @@ def save_user_account(username, data, user):
     if username != data['uname']:
         raise AccessDeniedException("You are not allowed to change the username.")
 
-    if username != user['uname'] and 'administration' not in user['roles']:
+    if username != user['uname'] and ROLES.administration not in user['roles']:
         raise AccessDeniedException("You are not allowed to change another user then yourself.")
 
     current = STORAGE.user.get(username, as_obj=False)
     if current:
-        if 'administration' not in user['roles']:
+        if ROLES.administration not in user['roles']:
             for key in current.keys():
                 if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
                     raise AccessDeniedException("Only Administrators can change the value of the field [%s]." % key)
