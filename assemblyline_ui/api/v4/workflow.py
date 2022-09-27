@@ -3,6 +3,7 @@ from flask import request
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION
 from assemblyline.odm.models.workflow import Workflow
@@ -23,7 +24,7 @@ def verify_query(query):
 
 
 @workflow_api.route("/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=['workflow_manage'])
+@api_login(allow_readonly=False, require_role=[ROLES.WORKFLOW_MANAGE])
 def add_workflow(**kwargs):
     """
     Add a workflow to the system
@@ -81,7 +82,7 @@ def add_workflow(**kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=['workflow_manage'])
+@api_login(allow_readonly=False, require_role=[ROLES.WORKFLOW_MANAGE])
 def edit_workflow(workflow_id, **kwargs):
     """
     Edit a workflow.
@@ -138,7 +139,7 @@ def edit_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=['workflow_view'])
+@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=[ROLES.WORKFLOW_VIEW])
 def get_workflow(workflow_id, **kwargs):
     """
     Load the user account information.
@@ -177,7 +178,7 @@ def get_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/labels/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=['workflow_view'])
+@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=[ROLES.WORKFLOW_VIEW])
 def list_workflow_labels(**kwargs):
     """
     List all labels from the workflows
@@ -203,7 +204,7 @@ def list_workflow_labels(**kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["DELETE"])
-@api_login(audit=False, allow_readonly=False, require_role=['workflow_manage'])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.WORKFLOW_MANAGE])
 def remove_workflow(workflow_id, **_):
     """
     Remove the specified workflow.

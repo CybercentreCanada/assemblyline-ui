@@ -16,6 +16,7 @@ from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
+from assemblyline.odm.models.user import ROLES
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -323,7 +324,7 @@ def api_version_list(**_):
 
 
 @api.route("/site_map/")
-@api_login(require_role=['administration'], audit=False)
+@api_login(require_role=[ROLES.ADMINISTRATION], audit=False)
 def site_map(**_):
     """
     Check if all pages have been protected by a login decorator

@@ -3,6 +3,7 @@ import concurrent.futures
 from flask import request
 
 from assemblyline.common.importing import load_module_by_path
+from assemblyline.odm.models.user import ROLES
 from assemblyline.datasource.common import hash_type
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, config
@@ -59,7 +60,7 @@ except Exception:
 
 # noinspection PyUnusedLocal
 @hash_search_api.route("/<file_hash>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=['alert_view', 'submission_view'])
+@api_login(required_priv=['R'], require_role=[ROLES.ALERT_VIEW, ROLES.SUBMISSION_VIEW])
 def search_hash(file_hash, *args, **kwargs):
     """
     Search for a hash in multiple data sources as configured in the seed.
@@ -131,7 +132,7 @@ def search_hash(file_hash, *args, **kwargs):
 
 # noinspection PyUnusedLocal
 @hash_search_api.route("/list_data_sources/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], require_role=['alert_view', 'submission_view'])
+@api_login(audit=False, required_priv=['R'], require_role=[ROLES.ALERT_VIEW, ROLES.SUBMISSION_VIEW])
 def list_data_sources(*args, **kwargs):
     """
     List all available data sources to use the hash_search API
