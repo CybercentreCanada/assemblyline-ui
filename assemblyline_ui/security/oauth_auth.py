@@ -30,6 +30,9 @@ def validate_oauth_token(oauth_token, oauth_provider):
         if not oauth_provider_config.allow_external_tokens:
             raise AuthenticationException(f"External tokens are not accepted for oAuth provider: {oauth_provider}")
 
+        if not oauth_provider_config.jwks_uri:
+            raise AuthenticationException(f"oAuth provider '{oauth_provider}' does not have a jwks_uri configured.")
+
         # Gather provider valid audiences
         audiences = copy(oauth_provider_config.external_token_alternate_audiences)
         audiences.append(oauth_provider_config.client_id)
