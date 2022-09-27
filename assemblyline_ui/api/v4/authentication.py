@@ -473,11 +473,13 @@ def oauth_validate(**_):
                     token = provider.authorize_access_token()
                     app_provider = None
 
-                user_data = None
+                user_data = {}
+
+                # Add user_data info from received token
                 if oauth_provider_config.jwks_uri:
                     user_data = provider.parse_id_token(token)
 
-                # Get user data from endpoint
+                # Add user data from app_provider endpoint
                 if app_provider and oauth_provider_config.app_provider.user_get:
                     url = oauth_provider_config.app_provider.user_get
                     uid = user_data.get('id', None)
@@ -487,11 +489,12 @@ def oauth_validate(**_):
                         url = url.format(id=uid)
                     resp = app_provider.get(url)
                     if resp.ok:
-                        user_data = resp.json()
-                elif not user_data:
+                        user_data.update(resp.json())
+                # Add user data from user_get endpoint
+                elif oauth_provider_config.user_get:
                     resp = provider.get(oauth_provider_config.user_get)
                     if resp.ok:
-                        user_data = resp.json()
+                        user_data.update(resp.json())
 
                 # Add group data if API is configured for it
                 groups = []
