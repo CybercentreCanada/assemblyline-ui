@@ -159,7 +159,7 @@ def who_am_i(**kwargs):
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_role=[ROLES.ADMINISTRATION])
+@api_login(require_role=[ROLES.administration])
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -275,7 +275,7 @@ def get_user_account(username, **kwargs):
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.ADMINISTRATION])
+@api_login(require_role=[ROLES.administration])
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -647,7 +647,7 @@ def set_user_favorites(username, **_):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_role=[ROLES.ADMINISTRATION], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False)
 def list_users(**_):
     """
     List all users of the system.

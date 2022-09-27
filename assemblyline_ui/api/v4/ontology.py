@@ -5,6 +5,7 @@ from io import StringIO
 
 from assemblyline.common.dict_utils import recursive_update
 from assemblyline.datastore.exceptions import MultiKeyError
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
 
@@ -51,7 +52,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
 
 @ontology_api.route("/alert/<alert_id>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.ALERT_VIEW])
+@api_login(required_priv=['R'], require_role=[ROLES.alert_view])
 def get_ontology_for_alert(alert_id, **kwargs):
     """
     WARNING:
@@ -143,7 +144,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
 
 
 @ontology_api.route("/submission/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
 def get_ontology_for_submission(sid, **kwargs):
     """
     WARNING:
@@ -227,7 +228,7 @@ def get_ontology_for_submission(sid, **kwargs):
 
 
 @ontology_api.route("/file/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
 def get_ontology_for_file(sha256, **kwargs):
     """
     WARNING:

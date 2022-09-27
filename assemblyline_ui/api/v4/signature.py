@@ -69,7 +69,7 @@ DELIMITERS = forge.CachedObject(_get_signature_delimiters)
 
 
 @signature_api.route("/add_update/", methods=["POST", "PUT"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_IMPORT])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_import])
 def add_update_signature(**_):
     """
     Add or Update the signature based on the signature ID, type and source.
@@ -147,7 +147,7 @@ def add_update_signature(**_):
 
 
 @signature_api.route("/add_update_many/", methods=["POST", "PUT"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_IMPORT])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_import])
 def add_update_many_signature(**_):
     """
     Add or Update a list of the signatures based on their signature ID, type and source.
@@ -232,7 +232,7 @@ def add_update_many_signature(**_):
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_MANAGE])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_manage])
 def add_signature_source(service, **_):
     """
     Add a signature source for a given service
@@ -308,7 +308,7 @@ def add_signature_source(service, **_):
 
 # noinspection PyPep8Naming
 @signature_api.route("/change_status/<signature_id>/<status>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_MANAGE])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_manage])
 def change_status(signature_id, status, **kwargs):
     """
     Change the status of a signature
@@ -385,7 +385,7 @@ def change_status(signature_id, status, **kwargs):
 
 
 @signature_api.route("/<signature_id>/", methods=["DELETE"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_MANAGE])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_manage])
 def delete_signature(signature_id, **kwargs):
     """
     Delete a signature based of its ID
@@ -424,7 +424,7 @@ def delete_signature(signature_id, **kwargs):
 
 
 @signature_api.route("/sources/<service>/<path:name>/", methods=["DELETE"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_MANAGE])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_manage])
 def delete_signature_source(service, name, **_):
     """
     Delete a signature source by name for a given service
@@ -506,7 +506,7 @@ def _get_cached_signatures(signature_cache, query_hash):
 
 @signature_api.route("/download/", methods=["GET"])
 @api_login(required_priv=['R'], check_xsrf_token=False, allow_readonly=False,
-           require_role=[ROLES.SIGNATURE_DOWNLOAD])
+           require_role=[ROLES.signature_download])
 def download_signatures(**kwargs):
     """
     Download signatures from the system.
@@ -572,7 +572,7 @@ def download_signatures(**kwargs):
 
 
 @signature_api.route("/<signature_id>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.SIGNATURE_VIEW])
+@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.signature_view])
 def get_signature(signature_id, **kwargs):
     """
     Get the detail of a signature based of its ID and revision
@@ -607,7 +607,7 @@ def get_signature(signature_id, **kwargs):
 
 
 @signature_api.route("/sources/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False, require_role=[ROLES.SIGNATURE_MANAGE])
+@api_login(audit=False, required_priv=['R'], allow_readonly=False, require_role=[ROLES.signature_manage])
 def get_signature_sources(**_):
     """
     Get all signature sources
@@ -650,7 +650,7 @@ def get_signature_sources(**_):
 
 
 @signature_api.route("/sources/<service>/<name>/", methods=["POST"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.SIGNATURE_MANAGE])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_manage])
 def update_signature_source(service, name, **_):
     """
     Update a signature source by name for a given service
@@ -740,7 +740,7 @@ def update_signature_source(service, name, **_):
 
 
 @signature_api.route("/stats/", methods=["GET"])
-@api_login(allow_readonly=False, required_priv=['R'], require_role=[ROLES.SIGNATURE_VIEW])
+@api_login(allow_readonly=False, required_priv=['R'], require_role=[ROLES.signature_view])
 def signature_statistics(**kwargs):
     """
     Gather all signatures stats in system
@@ -792,7 +792,7 @@ def signature_statistics(**kwargs):
 
 @signature_api.route("/update_available/", methods=["GET"])
 @api_login(required_priv=['R'], allow_readonly=False,
-           require_role=[ROLES.SIGNATURE_VIEW])
+           require_role=[ROLES.signature_view])
 def update_available(**_):
     """
     Check if updated signatures are.

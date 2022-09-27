@@ -60,7 +60,7 @@ except Exception:
 
 # noinspection PyUnusedLocal
 @hash_search_api.route("/<file_hash>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.ALERT_VIEW, ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['R'], require_role=[ROLES.alert_view, ROLES.submission_view])
 def search_hash(file_hash, *args, **kwargs):
     """
     Search for a hash in multiple data sources as configured in the seed.
@@ -132,7 +132,7 @@ def search_hash(file_hash, *args, **kwargs):
 
 # noinspection PyUnusedLocal
 @hash_search_api.route("/list_data_sources/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], require_role=[ROLES.ALERT_VIEW, ROLES.SUBMISSION_VIEW])
+@api_login(audit=False, required_priv=['R'], require_role=[ROLES.alert_view, ROLES.submission_view])
 def list_data_sources(*args, **kwargs):
     """
     List all available data sources to use the hash_search API

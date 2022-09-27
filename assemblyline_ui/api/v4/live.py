@@ -11,7 +11,7 @@ live_api._doc = "Interact with live processing messages"
 
 
 @live_api.route("/get_message/<wq_id>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_view])
 def get_message(wq_id, **_):
     """
     Get a message from a live watch queue.
@@ -56,7 +56,7 @@ def get_message(wq_id, **_):
 
 
 @live_api.route("/get_message_list/<wq_id>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_view])
 def get_messages(wq_id, **_):
     """
     Get all messages currently on a watch queue.
@@ -102,7 +102,7 @@ def get_messages(wq_id, **_):
 
 
 @live_api.route("/outstanding_services/<sid>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_view])
 def outstanding_services(sid, **kwargs):
     """
     List outstanding services and the number of file each
@@ -130,7 +130,7 @@ def outstanding_services(sid, **kwargs):
 
 
 @live_api.route("/setup_watch_queue/<sid>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SUBMISSION_VIEW])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_view])
 def setup_watch_queue(sid, **kwargs):
     """
     Starts a watch queue to get live results

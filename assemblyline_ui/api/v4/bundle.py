@@ -23,7 +23,7 @@ bundle_api._doc = "Create and restore submission bundles"
 
 # noinspection PyBroadException
 @bundle_api.route("/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.BUNDLE_DOWNLOAD])
+@api_login(required_priv=['R'], require_role=[ROLES.bundle_download])
 def create_bundle(sid, **kwargs):
     """
     Creates a bundle containing the submission results and the associated files
@@ -74,7 +74,7 @@ def create_bundle(sid, **kwargs):
 
 
 @bundle_api.route("/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.SUBMISSION_CREATE])
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
 def import_bundle(**_):
     """
     Import a bundle file into the system

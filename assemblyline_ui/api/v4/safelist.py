@@ -74,7 +74,7 @@ def _merge_safe_hashes(new, old):
 
 
 @safelist_api.route("/", methods=["PUT", "POST"])
-@api_login(require_role=[ROLES.SAFELIST_MANAGE], allow_readonly=False, required_priv=["W"])
+@api_login(require_role=[ROLES.safelist_manage], allow_readonly=False, required_priv=["W"])
 def add_or_update_hash(**kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
@@ -206,7 +206,7 @@ def add_or_update_hash(**kwargs):
 
 @safelist_api.route("/add_update_many/", methods=["POST", "PUT"])
 @api_login(audit=False, required_priv=['W'],
-           allow_readonly=False, require_role=[ROLES.SAFELIST_MANAGE])
+           allow_readonly=False, require_role=[ROLES.safelist_manage])
 def add_update_many_hashes(**_):
     """
     Add or Update a list of the safe hashes
@@ -313,7 +313,7 @@ def add_update_many_hashes(**_):
 
 
 @safelist_api.route("/<qhash>/", methods=["GET"])
-@api_login(required_priv=["R"], require_role=[ROLES.SAFELIST_VIEW])
+@api_login(required_priv=["R"], require_role=[ROLES.safelist_view])
 def check_hash_exists(qhash, **kwargs):
     """
     Check if a hash exists in the safelist.
@@ -377,7 +377,7 @@ def check_hash_exists(qhash, **kwargs):
 
 
 @safelist_api.route("/enable/<qhash>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.SAFELIST_MANAGE])
+@api_login(allow_readonly=False, require_role=[ROLES.safelist_manage])
 def set_hash_status(qhash, **kwargs):
     """
     Set the enabled status of a hash
@@ -408,7 +408,7 @@ def set_hash_status(qhash, **kwargs):
 
 
 @safelist_api.route("/<qhash>/", methods=["DELETE"])
-@api_login(allow_readonly=False, require_role=[ROLES.SAFELIST_MANAGE])
+@api_login(allow_readonly=False, require_role=[ROLES.safelist_manage])
 def delete_hash(qhash, **kwargs):
     """
     Delete a hash from the safelist

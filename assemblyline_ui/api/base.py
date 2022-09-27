@@ -324,7 +324,7 @@ def api_version_list(**_):
 
 
 @api.route("/site_map/")
-@api_login(require_role=[ROLES.ADMINISTRATION], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False)
 def site_map(**_):
     """
     Check if all pages have been protected by a login decorator

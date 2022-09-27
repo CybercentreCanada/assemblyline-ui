@@ -195,7 +195,7 @@ def synchronize_sources(service_name, current_sources, new_sources):
 
 
 @service_api.route("/", methods=["PUT"])
-@api_login(require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(require_role=[ROLES.administration], allow_readonly=False)
 def add_service(**_):
     """
     Add a service using its yaml manifest
@@ -337,7 +337,7 @@ def add_service(**_):
 
 
 @service_api.route("/backup/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def backup(**_):
     """
     Create a backup of the current system configuration
@@ -375,7 +375,7 @@ def backup(**_):
 
 
 @service_api.route("/restore/", methods=["PUT", "POST"])
-@api_login(audit=False, require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def restore(**_):
     """
     Restore an old backup of the system configuration
@@ -432,7 +432,7 @@ def restore(**_):
 
 
 @service_api.route("/updates/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def check_for_service_updates(**_):
     """
         Check for potential updates for the given services.
@@ -509,7 +509,7 @@ def get_service_constants(**_):
 
 
 @service_api.route("/versions/<servicename>/", methods=["GET"])
-@api_login(require_role=[ROLES.ADMINISTRATION], audit=False, allow_readonly=False)
+@api_login(require_role=[ROLES.administration], audit=False, allow_readonly=False)
 def get_potential_versions(servicename, **_):
     """
     List the different versions of a service stored in the system
@@ -536,7 +536,7 @@ def get_potential_versions(servicename, **_):
 
 
 @service_api.route("/<servicename>/", methods=["GET"])
-@api_login(require_role=[ROLES.ADMINISTRATION], audit=False, allow_readonly=False)
+@api_login(require_role=[ROLES.administration], audit=False, allow_readonly=False)
 def get_service(servicename, **_):
     """
     Load the configuration for a given service
@@ -586,7 +586,7 @@ def get_service(servicename, **_):
 
 
 @service_api.route("/<servicename>/<version>/", methods=["GET"])
-@api_login(require_role=[ROLES.ADMINISTRATION], audit=False, allow_readonly=False)
+@api_login(require_role=[ROLES.administration], audit=False, allow_readonly=False)
 def get_service_defaults(servicename, version, **_):
     """
     Load the default configuration for a given service version
@@ -675,7 +675,7 @@ def list_all_services(**_):
 
 
 @service_api.route("/<servicename>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(require_role=[ROLES.administration], allow_readonly=False)
 def remove_service(servicename, **_):
     """
     Remove a service configuration
@@ -724,7 +724,7 @@ def remove_service(servicename, **_):
 
 
 @service_api.route("/<servicename>/", methods=["POST"])
-@api_login(require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(require_role=[ROLES.administration], allow_readonly=False)
 def set_service(servicename, **_):
     """
     Calculate the delta between the original service config and
@@ -812,7 +812,7 @@ def set_service(servicename, **_):
 
 
 @service_api.route("/update/", methods=["PUT"])
-@api_login(audit=False, require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def update_service(**_):
     """
         Update a given service
@@ -853,7 +853,7 @@ def update_service(**_):
 
 
 @service_api.route("/update_all/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.ADMINISTRATION], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def update_all_services(**_):
     """
         Update all service that require an update
@@ -905,7 +905,7 @@ def update_all_services(**_):
 
 
 @service_api.route("/stats/<service_name>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], require_role=[ROLES.ADMINISTRATION])
+@api_login(audit=False, required_priv=['R'], require_role=[ROLES.administration])
 def service_statistics(service_name, **_):
     """
         Get statistics for a service
