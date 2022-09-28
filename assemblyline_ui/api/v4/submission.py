@@ -159,14 +159,14 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 h_type = "info"
                 if sec.get('heuristic', False):
                     # Get the heuristics data
-                    if sec['heuristic']['score'] < 0:
-                        h_type = "safe"
-                    elif sec['heuristic']['score'] < 300:
-                        h_type = "info"
-                    elif sec['heuristic']['score'] < 1000:
-                        h_type = "suspicious"
-                    else:
+                    if sec['heuristic']['score'] >= config.submission.verdicts.malicious:
                         h_type = "malicious"
+                    elif sec['heuristic']['score'] >= config.submission.verdicts.suspicious:
+                        h_type = "suspicious"
+                    elif sec['heuristic']['score'] >= config.submission.verdicts.info:
+                        h_type = "info"
+                    else:
+                        h_type = "safe"
 
                     if sec['heuristic']['heur_id'] not in done_heuristics:
                         item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
