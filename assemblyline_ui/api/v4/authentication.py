@@ -18,7 +18,7 @@ from assemblyline.common.isotime import now
 from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
                                           get_password_requirement_message, get_random_password, get_totp_token)
 from assemblyline.common.uid import get_random_id
-from assemblyline.odm.models.user import User
+from assemblyline.odm.models.user import User, ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
                                     get_signup_queue, get_token_store, CLASSIFICATION as Classification)
@@ -42,7 +42,7 @@ auth_api._doc = "Allow user to authenticate to the web server"
 
 
 @auth_api.route("/apikey/<name>/<priv>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.apikey_access])
 def add_apikey(name, priv, **kwargs):
     """
     Add an API Key for the currently logged in user with given privileges
@@ -78,7 +78,7 @@ def add_apikey(name, priv, **kwargs):
 
 
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.apikey_access])
 def delete_apikey(name, **kwargs):
     """
     Delete an API Key matching specified name for the currently logged in user
@@ -106,7 +106,7 @@ def delete_apikey(name, **kwargs):
 
 
 @auth_api.route("/obo_token/<token_id>/", methods=["DELETE"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.obo_access])
 def delete_obo_token(token_id, **kwargs):
     """
     Delete an application access to your profile
@@ -163,7 +163,7 @@ def disable_otp(**kwargs):
 
 
 @auth_api.route("/obo_token/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.obo_access])
 def get_obo_token(**kwargs):
     """
     Get or create a token to allow an external application to impersonate your

@@ -2,6 +2,7 @@
 from flask import request
 
 from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.config import STORAGE
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
@@ -12,7 +13,7 @@ error_api._doc = "Perform operations on service errors"
 
 
 @error_api.route("/<error_key>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
 def get_error(error_key, **kwargs):
     """
     Get the error details for a given error key
@@ -41,7 +42,7 @@ def get_error(error_key, **kwargs):
 
 
 @error_api.route("/list/", methods=["GET"])
-@api_login(require_type=['admin'])
+@api_login(require_role=[ROLES.administration])
 def list_errors(**_):
     """
     List all error in the system (per page)

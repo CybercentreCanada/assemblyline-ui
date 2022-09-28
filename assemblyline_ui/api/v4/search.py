@@ -1,7 +1,8 @@
 
-from flask import request
+from flask import abort, request
 
 from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
 from assemblyline_ui.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
@@ -10,9 +11,28 @@ SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
 search_api._doc = "Perform search queries"
 
+ROLE_INDEX_MAP = {
+    "alert": ROLES.alert_view,
+    "file": ROLES.submission_view,
+    'heuristic': ROLES.heuristic_view,
+    "result": ROLES.submission_view,
+    "submission": ROLES.submission_view,
+    "signature": ROLES.signature_view,
+    "safelist": ROLES.safelist_view,
+    "workflow": ROLES.workflow_view
+}
+
+
+def check_role_for_index(index, user):
+    required_role = ROLE_INDEX_MAP.get(index, 'administration')
+    if required_role not in user['roles']:
+        abort(403, f"API {request.path} requires the role '{required_role}' for request on index '{index}'")
+
 
 @search_api.route("/<index>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'],
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                         "workflow_view"])
 def search(index, **kwargs):
     """
     Search through specified index for a given query.
@@ -52,6 +72,7 @@ def search(index, **kwargs):
      "items": []}                           # List of results
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
     if collection is None or default_sort is None:
@@ -90,7 +111,9 @@ def search(index, **kwargs):
 
 
 @search_api.route("/grouped/<index>/<group_field>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'],
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                         "workflow_view"])
 def group_search(index, group_field, **kwargs):
     """
     Search through all relevant indexs for a given query and
@@ -129,6 +152,7 @@ def group_search(index, group_field, **kwargs):
      "items": []}        # List of results
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     default_sort = get_default_sort(index, user)
     if collection is None or default_sort is None:
@@ -164,7 +188,9 @@ def group_search(index, group_field, **kwargs):
 
 # noinspection PyUnusedLocal
 @search_api.route("/fields/<index>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'],
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                         "workflow_view"])
 def list_index_fields(index, **kwargs):
     """
     List all available fields for a given index
@@ -191,6 +217,7 @@ def list_index_fields(index, **kwargs):
     }
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     if collection is not None:
         return make_api_response(collection.fields())
@@ -201,7 +228,9 @@ def list_index_fields(index, **kwargs):
 
 
 @search_api.route("/facet/<index>/<field>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'],
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                         "workflow_view"])
 def facet(index, field, **kwargs):
     """
     Perform field analysis on the selected field. (Also known as facetting in lucene)
@@ -230,6 +259,7 @@ def facet(index, field, **kwargs):
     }
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     if collection is None:
         return make_api_response("", f"Not a valid index to search in: {index}", 400)
@@ -261,7 +291,9 @@ def facet(index, field, **kwargs):
 
 
 @search_api.route("/histogram/<index>/<field>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'],
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                         "workflow_view"])
 def histogram(index, field, **kwargs):
     """
     Generate an histogram based on a time or and int field using a specific gap size
@@ -299,6 +331,7 @@ def histogram(index, field, **kwargs):
     fields = ["query", "mincount", "start", "end", "gap"]
     multi_fields = ['filters']
     user = kwargs['user']
+    check_role_for_index(index, user)
 
     collection = get_collection(index, user)
     if collection is None:
@@ -346,7 +379,9 @@ def histogram(index, field, **kwargs):
 
 
 @search_api.route("/stats/<index>/<int_field>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'],
+           require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                         "workflow_view"])
 def stats(index, int_field, **kwargs):
     """
     Perform statistical analysis of an integer field to get its min, max, average and count values
@@ -373,6 +408,7 @@ def stats(index, int_field, **kwargs):
     }
     """
     user = kwargs['user']
+    check_role_for_index(index, user)
     collection = get_collection(index, user)
     if collection is None:
         return make_api_response("", f"Not a valid index to search in: {index}", 400)

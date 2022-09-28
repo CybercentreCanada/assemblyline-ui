@@ -11,6 +11,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
+from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
@@ -34,7 +35,7 @@ MAX_SIZE = config.submission.max_file_size
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
+@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.submission_create])
 def get_message(notification_queue, **kwargs):
     """
     Get one message on the specified notification queue
@@ -62,7 +63,7 @@ def get_message(notification_queue, **kwargs):
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message_list/<notification_queue>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False)
+@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.submission_create])
 def get_all_messages(notification_queue, **kwargs):
     """
     Get all messages on the specified notification queue
@@ -97,7 +98,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system

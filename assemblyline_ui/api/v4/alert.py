@@ -5,6 +5,7 @@ from flask import request
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classification
@@ -58,7 +59,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
 
 
 @alert_api.route("/<alert_id>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=[ROLES.alert_view])
 def get_alert(alert_id, **kwargs):
     """
     Get the alert details for a given alert key
@@ -93,7 +94,7 @@ def get_alert(alert_id, **kwargs):
 
 
 @alert_api.route("/statistics/", methods=["GET"])
-@api_login()
+@api_login(require_role=[ROLES.alert_view])
 def alerts_statistics(**kwargs):
     """
     Load facet statistics for the alerts matching the query.
@@ -125,7 +126,7 @@ def alerts_statistics(**kwargs):
 
 
 @alert_api.route("/labels/", methods=["GET"])
-@api_login()
+@api_login(require_role=[ROLES.alert_view])
 def alerts_labels(**kwargs):
     """
     Run a facet search to find the different labels matching the query.
@@ -156,7 +157,7 @@ def alerts_labels(**kwargs):
 
 
 @alert_api.route("/priorities/", methods=["GET"])
-@api_login()
+@api_login(require_role=[ROLES.alert_view])
 def alerts_priorities(**kwargs):
     """
     Run a facet search to find the different priorities matching the query.
@@ -187,7 +188,7 @@ def alerts_priorities(**kwargs):
 
 
 @alert_api.route("/statuses/", methods=["GET"])
-@api_login()
+@api_login(require_role=[ROLES.alert_view])
 def alerts_statuses(**kwargs):
     """
     Run a facet search to find the different statuses matching the query.
@@ -218,7 +219,7 @@ def alerts_statuses(**kwargs):
 
 
 @alert_api.route("/list/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=[ROLES.alert_view])
 def list_alerts(**kwargs):
     """
     List all alert in the system (per page)
@@ -279,7 +280,7 @@ def list_alerts(**kwargs):
 
 
 @alert_api.route("/grouped/<field>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=[ROLES.alert_view])
 def list_grouped_alerts(field, **kwargs):
     """
     List all alert grouped by a given field
@@ -392,7 +393,7 @@ def list_grouped_alerts(field, **kwargs):
 
 
 @alert_api.route("/label/<alert_id>/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def add_labels(alert_id, **kwargs):
     """
     Add one or multiple labels to a given alert
@@ -437,7 +438,7 @@ def add_labels(alert_id, **kwargs):
 
 
 @alert_api.route("/label/batch/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def add_labels_by_batch(**kwargs):
     """
     Apply labels to all alerts matching the given filters
@@ -484,7 +485,7 @@ def add_labels_by_batch(**kwargs):
 
 
 @alert_api.route("/priority/<alert_id>/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def change_priority(alert_id, **kwargs):
     """
     Change the priority of a given alert
@@ -531,7 +532,7 @@ def change_priority(alert_id, **kwargs):
 
 
 @alert_api.route("/priority/batch/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def change_priority_by_batch(**kwargs):
     """
     Apply priority to all alerts matching the given filters
@@ -580,7 +581,7 @@ def change_priority_by_batch(**kwargs):
 
 
 @alert_api.route("/status/<alert_id>/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def change_status(alert_id, **kwargs):
     """
     Change the status of a given alert
@@ -627,7 +628,7 @@ def change_status(alert_id, **kwargs):
 
 
 @alert_api.route("/status/batch/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def change_status_by_batch(**kwargs):
     """
     Apply status to all alerts matching the given filters
@@ -676,7 +677,7 @@ def change_status_by_batch(**kwargs):
 
 
 @alert_api.route("/ownership/<alert_id>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def take_ownership(alert_id, **kwargs):
     """
     Take ownership of a given alert
@@ -719,7 +720,7 @@ def take_ownership(alert_id, **kwargs):
 
 
 @alert_api.route("/ownership/batch/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.alert_manage])
 def take_ownership_by_batch(**kwargs):
     """
     Take ownership of all alerts matching the given filters
@@ -761,7 +762,7 @@ def take_ownership_by_batch(**kwargs):
 
 
 @alert_api.route("/related/", methods=["GET"])
-@api_login()
+@api_login(require_role=[ROLES.alert_view])
 def find_related_alert_ids(**kwargs):
     """
     Return the list of all IDs related to the currently selected query
@@ -811,7 +812,7 @@ def find_related_alert_ids(**kwargs):
 
 
 @alert_api.route("/verdict/<alert_id>/<verdict>/", methods=["PUT"])
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, require_role=[ROLES.alert_manage])
 def set_verdict(alert_id, verdict, **kwargs):
     """
     Set the verdict of an alert based on its ID.

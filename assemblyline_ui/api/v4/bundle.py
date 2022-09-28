@@ -9,6 +9,7 @@ from assemblyline.common.bundling import create_bundle as bundle_create, import_
     SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
+from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
 from assemblyline_ui.config import BUNDLING_DIR, CLASSIFICATION as Classification, STORAGE, IDENTIFY
@@ -22,7 +23,7 @@ bundle_api._doc = "Create and restore submission bundles"
 
 # noinspection PyBroadException
 @bundle_api.route("/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'])
+@api_login(required_priv=['R'], require_role=[ROLES.bundle_download])
 def create_bundle(sid, **kwargs):
     """
     Creates a bundle containing the submission results and the associated files
@@ -73,7 +74,7 @@ def create_bundle(sid, **kwargs):
 
 
 @bundle_api.route("/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False)
+@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
 def import_bundle(**_):
     """
     Import a bundle file into the system

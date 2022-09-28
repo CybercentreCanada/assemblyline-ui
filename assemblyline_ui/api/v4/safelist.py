@@ -3,6 +3,7 @@ import hashlib
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION, STORAGE
@@ -73,7 +74,7 @@ def _merge_safe_hashes(new, old):
 
 
 @safelist_api.route("/", methods=["PUT", "POST"])
-@api_login(require_type=['user', 'signature_importer'], allow_readonly=False, required_priv=["W"])
+@api_login(require_role=[ROLES.safelist_manage], allow_readonly=False, required_priv=["W"])
 def add_or_update_hash(**kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
@@ -175,7 +176,7 @@ def add_or_update_hash(**kwargs):
                 return make_api_response(
                     {}, f"You cannot add a source for another user. {src['name']} != {user['uname']}", 400)
         else:
-            if 'signature_importer' not in user['type']:
+            if ROLES.signature_import not in user['roles']:
                 return make_api_response(
                     {}, "You do not have sufficient priviledges to add an external source.", 403)
 
@@ -204,7 +205,8 @@ def add_or_update_hash(**kwargs):
 
 
 @safelist_api.route("/add_update_many/", methods=["POST", "PUT"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_type=['signature_importer'])
+@api_login(audit=False, required_priv=['W'],
+           allow_readonly=False, require_role=[ROLES.safelist_manage])
 def add_update_many_hashes(**_):
     """
     Add or Update a list of the safe hashes
@@ -311,7 +313,7 @@ def add_update_many_hashes(**_):
 
 
 @safelist_api.route("/<qhash>/", methods=["GET"])
-@api_login(required_priv=["R"])
+@api_login(required_priv=["R"], require_role=[ROLES.safelist_view])
 def check_hash_exists(qhash, **kwargs):
     """
     Check if a hash exists in the safelist.
@@ -375,7 +377,7 @@ def check_hash_exists(qhash, **kwargs):
 
 
 @safelist_api.route("/enable/<qhash>/", methods=["PUT"])
-@api_login(allow_readonly=False)
+@api_login(allow_readonly=False, require_role=[ROLES.safelist_manage])
 def set_hash_status(qhash, **kwargs):
     """
     Set the enabled status of a hash
@@ -398,7 +400,7 @@ def set_hash_status(qhash, **kwargs):
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
 
-    if 'admin' in user['type'] or 'signature_manager' in user['type']:
+    if ROLES.administration in user['roles'] or ROLES.signature_manage in user['roles']:
         return make_api_response({'success': STORAGE.safelist.update(
             qhash, [(STORAGE.safelist.UPDATE_SET, 'enabled', data)])})
 
@@ -406,7 +408,7 @@ def set_hash_status(qhash, **kwargs):
 
 
 @safelist_api.route("/<qhash>/", methods=["DELETE"])
-@api_login(allow_readonly=False)
+@api_login(allow_readonly=False, require_role=[ROLES.safelist_manage])
 def delete_hash(qhash, **kwargs):
     """
     Delete a hash from the safelist
@@ -431,7 +433,7 @@ def delete_hash(qhash, **kwargs):
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
 
-    if 'admin' in user['type'] or 'signature_manager' in user['type']:
+    if ROLES.administration in user['roles'] or ROLES.signature_manage in user['roles']:
         return make_api_response({'success': STORAGE.safelist.delete(qhash)})
     else:
         safe_hash = STORAGE.safelist.get_if_exists(qhash, as_obj=False)

@@ -5,7 +5,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import User
+from assemblyline.odm.models.user import ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -91,18 +91,19 @@ def who_am_i(**kwargs):
      "indexes": {},                             # Search indexes definitions
      "is_active": True,                         # Is the user active
      "name": "Basic user",                      # Name of the user
-     "type": ["user", "admin"],                 # Roles the user is member of
+     "type": ["admin"],                 # Roles the user is member of
      "uname": "sgaron-cyber"                    # Username of the current user
     }
 
     """
-    user_data = {k: v for k, v in kwargs['user'].items()
-                 if k in ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "type", "uname"]}
+    user_data = {
+        k: v for k, v in kwargs['user'].items()
+        if k in
+        ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "roles", "type", "uname"]}
 
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
-    user_data['is_admin'] = "admin" in user_data['type']
-    user_data['roles'] = user_data.pop('type')
+    user_data['is_admin'] = "administration" in user_data['roles']
 
     # System configuration
     user_data['c12nDef'] = classification_definition
@@ -153,6 +154,11 @@ def who_am_i(**kwargs):
             "tos_lockout": config.ui.tos_lockout,
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
         },
+        "user": {
+            "roles": list(USER_ROLES),
+            "role_dependencies": {k: list(v) for k, v in USER_TYPE_DEP.items()},
+            "types": [t for t in USER_TYPES if t != 'custom']
+        }
     }
     user_data['indexes'] = list_all_fields(user_data)
     user_data['settings'] = load_user_settings(kwargs['user'])
@@ -165,7 +171,7 @@ def who_am_i(**kwargs):
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_type=['admin'])
+@api_login(require_role=[ROLES.administration])
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -258,7 +264,7 @@ def get_user_account(username, **kwargs):
      "groups": ["TEST"]          # Groups the user is member of
     }
     """
-    if username != kwargs['user']['uname'] and 'admin' not in kwargs['user']['type']:
+    if username != kwargs['user']['uname'] and 'administration' not in kwargs['user']['roles']:
         return make_api_response({}, "You are not allow to view other users then yourself.", 403)
 
     user = STORAGE.user.get(username, as_obj=False)
@@ -275,11 +281,13 @@ def get_user_account(username, **kwargs):
     if "load_avatar" in request.args:
         user['avatar'] = STORAGE.user_avatar.get(username)
 
+    user['roles'] = load_roles(user['type'], user.get('roles', None))
+
     return make_api_response(user)
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_type=['admin'])
+@api_login(require_role=[ROLES.administration])
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -651,7 +659,7 @@ def set_user_favorites(username, **_):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_type=['admin'], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False)
 def list_users(**_):
     """
     List all users of the system.
