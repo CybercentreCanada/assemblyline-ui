@@ -327,12 +327,19 @@ def put_tag_safelist(**_):
 
             fields = Tagging.flat_fields()
             for tag_type in ['match', 'regex']:
-                for key, value in yml_data[tag_type].items():
+                for key, values in yml_data[tag_type].items():
                     if key not in fields:
                         raise Exception(f'{key} is not a valid tag type')
 
-                    if not isinstance(value, list):
+                    if not isinstance(values, list):
                         raise Exception(f'Value for {key} should be a list of strings')
+
+                    for value in values:
+                        try:
+                            re.compile(value)
+                        except Exception as e:
+                            raise Exception(f"{e} in '{value}'")
+
     except Exception as e:
         return make_api_response(None, f"Invalid tag_safelist.yml file submitted: {str(e)}", 400)
 
@@ -467,8 +474,8 @@ def put_identify_magic_patterns(**_):
 
             try:
                 re.compile(pattern['regex'])
-            except Exception:
-                raise ValueError(f"Invalid regular expression in pattern: {str(pattern)}")
+            except Exception as e:
+                raise ValueError(f"Invalid regular expression in pattern: '{pattern['regex']}' ({e})")
     except Exception as e:
         return make_api_response({'success': False}, err=str(e), status_code=400)
 
