@@ -119,7 +119,7 @@ def get_or_create_summary(sid, results, user_classification, completed):
             results, cl_engine=CLASSIFICATION, user_classification=user_classification,
             keep_heuristic_sections=True)
 
-        expiry = now_as_iso(config.datastore.ilm.days_until_archive * 24 * 60 * 60)
+        expiry = now_as_iso(config.datastore.cache_dtl * 24 * 60 * 60)
         partial = not completed or "missing_results" in summary or "missing_files" in summary
 
         # Do not cache partial summary
