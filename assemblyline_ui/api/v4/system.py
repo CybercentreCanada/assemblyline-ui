@@ -327,12 +327,19 @@ def put_tag_safelist(**_):
 
             fields = Tagging.flat_fields()
             for tag_type in ['match', 'regex']:
-                for key, value in yml_data[tag_type].items():
+                for key, values in yml_data[tag_type].items():
                     if key not in fields:
                         raise Exception(f'{key} is not a valid tag type')
 
-                    if not isinstance(value, list):
+                    if not isinstance(values, list):
                         raise Exception(f'Value for {key} should be a list of strings')
+
+                    for value in values:
+                        try:
+                            re.compile(value)
+                        except Exception:
+                            raise Exception(f"Regular expression '{value}' is invalid.")
+
     except Exception as e:
         return make_api_response(None, f"Invalid tag_safelist.yml file submitted: {str(e)}", 400)
 
