@@ -474,8 +474,8 @@ def put_identify_magic_patterns(**_):
 
             try:
                 re.compile(pattern['regex'])
-            except Exception:
-                raise ValueError(f"Invalid regular expression in pattern: {str(pattern)}")
+            except Exception as e:
+                raise ValueError(f"Invalid regular expression in pattern: '{pattern['regex']}' ({e})")
     except Exception as e:
         return make_api_response({'success': False}, err=str(e), status_code=400)
 
