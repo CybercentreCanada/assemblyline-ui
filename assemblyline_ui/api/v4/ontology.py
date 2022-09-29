@@ -129,7 +129,8 @@ def get_ontology_for_alert(alert_id, **kwargs):
             'source_system': config.ui.fqdn,
             'sid': submission['sid'],
             'classification': submission['classification'],
-            'submitter': submission['params']['submitter']
+            'submitter': submission['params']['submitter'],
+            'groups': submission['params']['groups'],
         }
 
     }
@@ -213,7 +214,8 @@ def get_ontology_for_submission(sid, **kwargs):
             'source_system': config.ui.fqdn,
             'sid': sid,
             'classification': submission['classification'],
-            'submitter': submission['params']['submitter']
+            'submitter': submission['params']['submitter'],
+            'groups': submission['params']['groups'],
         }
 
     }
