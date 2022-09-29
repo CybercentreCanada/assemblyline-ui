@@ -337,8 +337,8 @@ def put_tag_safelist(**_):
                     for value in values:
                         try:
                             re.compile(value)
-                        except Exception:
-                            raise Exception(f"Regular expression '{value}' is invalid.")
+                        except Exception as e:
+                            raise Exception(f"{e} in '{value}'")
 
     except Exception as e:
         return make_api_response(None, f"Invalid tag_safelist.yml file submitted: {str(e)}", 400)
