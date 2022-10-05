@@ -1,7 +1,6 @@
 
 from assemblyline.common.archiving import SubmissionNotFound, WebhookFailed, archive_submission as do_archive_submission
 from assemblyline.odm.messages.submission import Submission as SubmissionMessage
-from assemblyline.odm.models.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.dispatching.schedules import Scheduler
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
@@ -34,16 +33,18 @@ def archive_submission(sid, **kwargs):
     None
 
     API call example:
-    /api/v4/archive/1234567890/
+    /api/v4/archive/12345...67890/
 
     Result example:
     {
-     "success": True,   # Was the archiving operation successful
-     "action": ""       # Which operation took place
+     "success": True,      # Was the archiving operation successful
+     "action": "archive",  # Which operation took place (archive or resubmit)
+     "sid": None           # (Optional) Submission ID of the new submission with extended
+                           #            service selection
     }
     """
     user = kwargs['user']
-    submission: Submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
+    submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
     if not submission:
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
 
@@ -78,14 +79,14 @@ def archive_submission(sid, **kwargs):
                 "params": params
             })
         except (ValueError, KeyError) as e:
-            return make_api_response("", err=str(e), status_code=400)
+            return make_api_response({"success": False}, err=str(e), status_code=400)
 
         try:
             submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
                                              config=config, identify=IDENTIFY).submit(submission_obj)
-
         except SubmissionException as e:
             return make_api_response({"success": False}, err=str(e), status_code=400)
+
         submission_received(submission_obj)
 
         return make_api_response({"success": True, "action": "resubmit", "sid": submit_result['sid']})
