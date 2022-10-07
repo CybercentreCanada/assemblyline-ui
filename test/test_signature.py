@@ -277,6 +277,8 @@ def test_set_signature_source(datastore, login_session):
     new_service_data = datastore.get_service_with_delta(service_data['name'], as_obj=False)
     found = False
     for source in new_service_data['update_config']['sources']:
+        # Drop status information from signature sources
+        source.pop('status', None)
         if source['name'] == original_source['name']:
             found = True
             assert original_source != source
