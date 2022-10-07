@@ -19,6 +19,7 @@ from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.signature import _reset_service_updates
 from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.helper.signature import append_source_status
 
 SUB_API = 'service'
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -579,6 +580,7 @@ def get_service(servicename, **_):
     version = request.args.get('version', None)
 
     service = STORAGE.get_service_with_delta(servicename, version=version, as_obj=False)
+    append_source_status(service)
     if service:
         return make_api_response(service)
     else:
@@ -625,6 +627,7 @@ def get_service_defaults(servicename, version, **_):
      'timeout': 60}
     """
     service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
+    append_source_status(service)
     if service:
         return make_api_response(service)
     else:
