@@ -642,7 +642,7 @@ def get_signature_sources(**_):
     services = STORAGE.list_all_services(full=True, as_obj=False)
 
     out = {}
-    for service in [s for s in services if s.get("update_config", {}).get("sources", [])]:
+    for service in [s for s in services if s.get("update_config", {})]:
         append_source_status(service)
         out[service['name']] = service['update_config']['sources']
 
