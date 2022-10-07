@@ -249,7 +249,7 @@ def test_get_signature_source(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v4/signature/sources/")
     for service in services:
-        assert service['name'] in resp
+        assert service['name'] in list(resp.keys())
 
 
 # noinspection PyUnusedLocal
