@@ -245,7 +245,7 @@ def test_get_signature(datastore, login_session):
 def test_get_signature_source(datastore, login_session):
     _, session, host = login_session
 
-    services = datastore.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']
+    services = datastore.service.search("update_config:*", rows=100, as_obj=False)['items']
 
     resp = get_api_data(session, f"{host}/api/v4/signature/sources/")
     for service in services:
