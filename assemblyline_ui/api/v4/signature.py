@@ -644,7 +644,8 @@ def get_signature_sources(**_):
     out = {}
     for service in [s for s in services if s.get("update_config", {})]:
         append_source_status(service)
-        out[service['name']] = service['update_config']['sources']
+        out[service['name']] = dict(sources=service['update_config']['sources'],
+                                    generates_signatures=service['update_config']['generates_signatures'])
 
     # Save the signature
     return make_api_response(out)
