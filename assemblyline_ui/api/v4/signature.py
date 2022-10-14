@@ -671,18 +671,6 @@ def trigger_signature_source_update(service, **_):
     {"success": True/False, "sources": ['SOURCE_A', 'SOURCE_B']}
     """
 
-    sources = request.args.get('sources', None)
-    if not sources:
-        # Update them all
-        sources = []
-
-    elif isinstance(sources, str):
-        # Update a subset
-        sources = sources.split(',')
-
-    source_event_sender = EventSender('changes.sources',
-                                      host=config.core.redis.nonpersistent.host,
-                                      port=config.core.redis.nonpersistent.port)
     service_delta = STORAGE.get_service_with_delta(service, as_obj=False)
     if not service_delta.get('update_config'):
         # Raise exception, service doesn't have an update configuration
@@ -690,14 +678,32 @@ def trigger_signature_source_update(service, **_):
                                  err="{service} doesn't contain an update configuration.",
                                  status_code=404)
 
-    # Ensure the source list passed is actually valid to the service
-    validated_sources = [src['name']
-                         for src in service_delta['update_config'].get('sources', []) if src['name'] in sources]
+    sources = request.args.get('sources', None)
+    if not sources:
+        # Update them all
+        sources = [src['name'] for src in service_delta['update_config']['sources']]
+
+    elif isinstance(sources, str):
+        # Update a subset
+        # Ensure the source list passed is actually valid to the service
+        sources = [src['name']
+                   for src in service_delta['update_config']['sources'] if src['name'] in sources.split(',')]
+
+    source_event_sender = EventSender('changes.sources',
+                                      host=config.core.redis.nonpersistent.host,
+                                      port=config.core.redis.nonpersistent.port)
+
+    # Set state to a queued state for all sources involved
+    service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
+                           config.core.redis.persistent.port)
+    [service_updates.set(
+        key=f'{src}.status', value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
+     for src in sources]
 
     # Send event to service update to trigger a targetted source update
-    source_event_sender.send(service.lower(), data=validated_sources)
+    source_event_sender.send(service.lower(), data=sources)
 
-    return make_api_response({"success": True, "sources": validated_sources})
+    return make_api_response({"success": True, "sources": sources})
 
 
 @signature_api.route("/sources/<service>/<name>/", methods=["POST"])
