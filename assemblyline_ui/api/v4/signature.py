@@ -16,6 +16,7 @@ from assemblyline.remote.datatypes.lock import Lock
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, SERVICE_LIST, STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.helper.signature import append_source_status
 
 SUB_API = 'signature'
 signature_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -641,12 +642,68 @@ def get_signature_sources(**_):
     services = STORAGE.list_all_services(full=True, as_obj=False)
 
     out = {}
-    for service in services:
-        if service.get("update_config", {}).get("generates_signatures", False):
-            out[service['name']] = service['update_config']['sources']
+    for service in [s for s in services if s.get("update_config", {})]:
+        append_source_status(service)
+        out[service['name']] = dict(sources=service['update_config']['sources'],
+                                    generates_signatures=service['update_config']['generates_signatures'])
 
     # Save the signature
     return make_api_response(out)
+
+
+@signature_api.route("/sources/update/<service>/", methods=["PUT"])
+@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.signature_manage])
+def trigger_signature_source_update(service, **_):
+    """
+    Manually trigger signature sources to update for a given service
+
+    Variables:
+    service           =>      Service to which we want to update the source
+
+    Arguments:
+    sources           =>      List of sources to trigger an update for.
+                              Default: Update all sources
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True/False, "sources": ['SOURCE_A', 'SOURCE_B']}
+    """
+
+    service_delta = STORAGE.get_service_with_delta(service, as_obj=False)
+    if not service_delta.get('update_config'):
+        # Raise exception, service doesn't have an update configuration
+        return make_api_response({"success": False},
+                                 err="{service} doesn't contain an update configuration.",
+                                 status_code=404)
+
+    sources = request.args.get('sources', None)
+    if not sources:
+        # Update them all
+        sources = [src['name'] for src in service_delta['update_config']['sources']]
+
+    elif isinstance(sources, str):
+        # Update a subset
+        # Ensure the source list passed is actually valid to the service
+        sources = [src['name']
+                   for src in service_delta['update_config']['sources'] if src['name'] in sources.split(',')]
+
+    source_event_sender = EventSender('changes.sources',
+                                      host=config.core.redis.nonpersistent.host,
+                                      port=config.core.redis.nonpersistent.port)
+
+    # Set state to a queued state for all sources involved
+    service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
+                           config.core.redis.persistent.port)
+    [service_updates.set(
+        key=f'{src}.status', value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
+     for src in sources]
+
+    # Send event to service update to trigger a targetted source update
+    source_event_sender.send(service.lower(), data=sources)
+
+    return make_api_response({"success": True, "sources": sources})
 
 
 @signature_api.route("/sources/<service>/<name>/", methods=["POST"])

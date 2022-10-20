@@ -72,6 +72,11 @@ def suricata_change_config(service_conf, login_session):
     return resp['success']
 
 
+def clear_signature_source_statuses(service_config: dict):
+    # Drop status information from signature sources
+    [s.pop('status', None)for s in service_config.get('update_config', {}).get('sources', [])]
+
+
 # noinspection PyUnusedLocal
 def test_backup_and_restore(datastore, login_session):
     _, session, host = login_session
@@ -112,6 +117,8 @@ def test_get_service(datastore, login_session):
     service = random.choice(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/")
     service_data = datastore.get_service_with_delta(service, as_obj=False)
+    # Drop status information from signature sources
+    [s.pop('status', None)for s in resp.get('update_config', {}).get('sources', [])]
     assert resp == service_data
 
 

@@ -245,11 +245,11 @@ def test_get_signature(datastore, login_session):
 def test_get_signature_source(datastore, login_session):
     _, session, host = login_session
 
-    services = datastore.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']
+    services = datastore.service.search("update_config:*", rows=100, as_obj=False)['items']
 
     resp = get_api_data(session, f"{host}/api/v4/signature/sources/")
     for service in services:
-        assert service['name'] in resp
+        assert service['name'] in list(resp.keys())
 
 
 # noinspection PyUnusedLocal
@@ -277,6 +277,8 @@ def test_set_signature_source(datastore, login_session):
     new_service_data = datastore.get_service_with_delta(service_data['name'], as_obj=False)
     found = False
     for source in new_service_data['update_config']['sources']:
+        # Drop status information from signature sources
+        source.pop('status', None)
         if source['name'] == original_source['name']:
             found = True
             assert original_source != source
