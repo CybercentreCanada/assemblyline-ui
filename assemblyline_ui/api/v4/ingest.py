@@ -217,7 +217,7 @@ def ingest_single_file(**kwargs):
             os.makedirs(out_dir)
         except Exception:
             pass
-        original_file = out_file = os.path.join(out_dir, name)
+        original_file = out_file = os.path.join(out_dir, get_random_id())
 
         # Prepare variables
         extra_meta = {}
