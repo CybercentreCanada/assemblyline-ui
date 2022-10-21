@@ -334,7 +334,7 @@ def submit(**kwargs):
             os.makedirs(out_dir)
         except Exception:
             pass
-        out_file = os.path.join(out_dir, name)
+        out_file = os.path.join(out_dir, get_random_id())
 
         # Get the output file
         extra_meta = {}
@@ -421,7 +421,7 @@ def submit(**kwargs):
         # Submit the task to the system
         try:
             submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY)\
-                .submit(submission_obj, local_files=[out_file])
+                .submit(submission_obj, local_files=[(name, out_file)])
             submission_received(submission_obj)
         except SubmissionException as e:
             return make_api_response("", err=str(e), status_code=400)
