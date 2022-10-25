@@ -5,17 +5,17 @@ from assemblyline_ui.config import config
 
 SUB_API = 'feed'
 feed_api = make_subapi_blueprint(SUB_API, api_version=4)
-feed_api._doc = "Fetch feed to provided link"
+feed_api._doc = "Fetch the RSS feeds"
 
 
 @feed_api.route("/", methods=["GET"])
 @api_login(required_priv=['R'])
 def get_feed_data(**_):
     """
-    Get and return the feed from the specified URL
+    Download all feeds from the configuration RSS feed list and return their results.
 
     Variables:
-    url         => to get the feed from
+    None
 
     Arguments:
     None
@@ -24,7 +24,13 @@ def get_feed_data(**_):
     None
 
     Result example:
-    {"feeds": { url: <XML_DATA>}, "errors": []}
+    {"feeds": {
+      <URL>: <XML_DATA>
+     },
+     "errors": {
+      <URL>: error
+     }
+    }
     """
     data = {"feeds": {}, "errors": {}}
     for feed in config.ui.rss_feeds:
