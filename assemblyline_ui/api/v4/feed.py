@@ -10,7 +10,7 @@ feed_api._doc = "Fetch feed to provided link"
 
 @feed_api.route("/", methods=["GET"])
 @api_login(required_priv=['R'])
-def get_feed_data(url, **kwargs):
+def get_feed_data(**_):
     """
     Get and return the feed from the specified URL
 
