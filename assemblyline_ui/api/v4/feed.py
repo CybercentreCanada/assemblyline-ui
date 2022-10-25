@@ -24,13 +24,13 @@ def get_feed_data(**_):
     None
 
     Result example:
-    <XML DATA>
+    {"feeds": { url: <XML_DATA>}, "errors": []}
     """
-    data = {}
-    try:
-        for feed in config.ui.rss_feeds:
-            data[feed] = requests.get(feed).content
+    data = {"feeds": {}, "errors": ""}
+    for feed in config.ui.rss_feeds:
+        try:
+            data["feeds"][feed] = requests.get(feed).content
+        except Exception as e:
+            data["errors"][feed].append(str(e))
 
-        return make_api_response(data)
-    except Exception as e:
-        return make_api_response(None, f"An exception occured while fetching the feed: {e}", 400)
+    return make_api_response(data)
