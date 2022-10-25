@@ -29,7 +29,7 @@ def get_feed_data(**_):
     data = {"feeds": {}, "errors": {}}
     for feed in config.ui.rss_feeds:
         try:
-            data["feeds"][feed] = requests.get(feed).content
+            data["feeds"][feed] = requests.get(feed).content.decode('utf-8')
         except Exception as e:
             data["errors"][feed] = str(e)
 
