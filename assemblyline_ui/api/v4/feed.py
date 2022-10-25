@@ -26,11 +26,11 @@ def get_feed_data(**_):
     Result example:
     {"feeds": { url: <XML_DATA>}, "errors": []}
     """
-    data = {"feeds": {}, "errors": ""}
+    data = {"feeds": {}, "errors": {}}
     for feed in config.ui.rss_feeds:
         try:
             data["feeds"][feed] = requests.get(feed).content
         except Exception as e:
-            data["errors"][feed].append(str(e))
+            data["errors"][feed] = str(e)
 
     return make_api_response(data)
