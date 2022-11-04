@@ -5,7 +5,6 @@ import shutil
 from flask import request
 
 from assemblyline.common.dict_utils import flatten
-from assemblyline.common.isotime import iso_to_epoch, epoch_to_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -22,6 +21,11 @@ from assemblyline_ui.helper.user import check_submission_quota, decrement_submis
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
 submit_api._doc = "Submit files to the system"
+
+
+# Since everything the submission client needs is already being initialized
+# at the global scope, we can create the submission client object at that scope as well
+submission_client = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY)
 
 
 # noinspection PyUnusedLocal
@@ -82,12 +86,6 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_params['classification'] = file_info['classification']
             expiry = file_info['expiry_ts']
 
-        # Calculate original submit time
-        if submission_params['ttl'] and expiry:
-            submit_time = epoch_to_iso(iso_to_epoch(expiry) - submission_params['ttl'] * 24 * 60 * 60)
-        else:
-            submit_time = None
-
         if not FILESTORE.exists(sha256):
             return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
                                      % sha256, status_code=404)
@@ -106,13 +104,11 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_obj = Submission({
                 "files": files,
                 "params": submission_params,
-                "time": submit_time
             })
         except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
 
-        submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
-                                         config=config, identify=IDENTIFY).submit(submission_obj)
+        submit_result = submission_client.submit(submission_obj, expiry=expiry)
         submission_received(submission_obj)
         return make_api_response(submit_result.as_primitives())
 
@@ -167,24 +163,16 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name']
                                                                                    for x in submission["files"]])
 
-        # Calculate original submit time
-        if submission_params['ttl'] and submission['expiry_ts']:
-            submit_time = epoch_to_iso(iso_to_epoch(submission['expiry_ts']) - submission_params['ttl'] * 24 * 60 * 60)
-        else:
-            submit_time = None
-
         try:
             submission_obj = Submission({
                 "files": submission["files"],
                 "metadata": submission['metadata'],
                 "params": submission_params,
-                "time": submit_time
             })
         except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
 
-        submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE,
-                                         config=config, identify=IDENTIFY).submit(submission_obj)
+        submit_result = submission_client.submit(submission_obj, expiry=submission['expiry_ts'])
         submission_received(submission_obj)
 
         return make_api_response(submit_result.as_primitives())
@@ -319,12 +307,6 @@ def submit(**kwargs):
         # Check if external submit is allowed
         default_external_sources = s_params.pop('default_external_sources', [])
 
-        # Enforce maximum DTL
-        if config.submission.max_dtl > 0:
-            s_params['ttl'] = min(
-                int(s_params['ttl']),
-                config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
-
         if not Classification.is_accessible(user['classification'], s_params['classification']):
             return make_api_response({}, "You cannot start a scan with higher "
                                      "classification then you're allowed to see", 400)
@@ -420,8 +402,7 @@ def submit(**kwargs):
 
         # Submit the task to the system
         try:
-            submit_result = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY)\
-                .submit(submission_obj, local_files=[(name, out_file)])
+            submit_result = submission_client.submit(submission_obj, local_files=[(name, out_file)])
             submission_received(submission_obj)
         except SubmissionException as e:
             return make_api_response("", err=str(e), status_code=400)
