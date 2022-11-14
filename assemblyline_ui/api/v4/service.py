@@ -814,6 +814,51 @@ def set_service(servicename, **_):
                               "removed_sources": removed_sources})
 
 
+@service_api.route("/install/", methods=["PUT"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def install_service(**_):
+    """
+        Install a given service
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        {
+          "name": "ResultSample"
+          "image": "cccs/assemblyline-service-resultsample:latest"
+        }
+
+        Result example:
+        {
+          success: true
+        }
+    """
+    data = request.json
+    print(data)
+
+    service_key = f"{data['name']}_{data['update_data']['latest_tag'].replace('stable', '')}"
+
+    print(service_key)
+
+    # # Check is the version we are trying to update to already exists
+    # if STORAGE.service.get_if_exists(service_key):
+    #     operations = [(STORAGE.service_delta.UPDATE_SET, 'version',
+    #                    data['update_data']['latest_tag'].replace('stable', ''))]
+    #     if STORAGE.service_delta.update(data['name'], operations):
+    #         event_sender.send(data['name'], {
+    #             'operation': Operation.Modified,
+    #             'name': data['name']
+    #         })
+    #         return make_api_response({'success': True, 'status': "updated"})
+
+    # service_update.set(data['name'], data['update_data'])
+    return make_api_response({'success': True, 'status': "install"})
+
+
 @service_api.route("/update/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def update_service(**_):
