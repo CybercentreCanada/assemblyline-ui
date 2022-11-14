@@ -9,6 +9,7 @@ from flask import request
 from assemblyline.common import forge
 from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -222,11 +223,12 @@ def start_ui_submission(ui_sid, **kwargs):
         # Download the file from the cache
         with forge.get_cachestore("flowjs", config) as cache:
             ui_sid = get_cache_name(ui_sid)
+            fname = ui_params.pop('filename', ui_sid)
             if cache.exists(ui_sid):
                 target_dir = os.path.join(TEMP_DIR, ui_sid)
                 os.makedirs(target_dir, exist_ok=True)
 
-                target_file = os.path.join(target_dir, ui_params.pop('filename', ui_sid))
+                target_file = os.path.join(target_dir, get_random_id())
 
                 if os.path.exists(target_file):
                     os.unlink(target_file)
@@ -248,7 +250,7 @@ def start_ui_submission(ui_sid, **kwargs):
                         return make_api_response({"started": True, "sid": submission['sid']})
 
             if not ui_params['description']:
-                ui_params['description'] = f"Inspection of file: {os.path.basename(submitted_file)}"
+                ui_params['description'] = f"Inspection of file: {fname}"
 
             # Submit to dispatcher
             try:
@@ -270,7 +272,7 @@ def start_ui_submission(ui_sid, **kwargs):
             try:
                 submit_result = SubmissionClient(
                     datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY).submit(
-                        submission_obj, local_files=[submitted_file])
+                        submission_obj, local_files=[(fname, submitted_file)])
                 submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
