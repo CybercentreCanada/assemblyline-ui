@@ -1,4 +1,6 @@
 
+from flask import request
+
 from assemblyline.odm.messages.submission import Submission as SubmissionMessage
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.dispatching.schedules import Scheduler
@@ -26,7 +28,7 @@ def archive_submission(sid, **kwargs):
     sid         => ID of the submission to send to the archive
 
     Arguments:
-    None
+    delete_after     => Delete data from hot storage after the move ? (Default: False)
 
     Data Block:
     None
@@ -43,6 +45,7 @@ def archive_submission(sid, **kwargs):
     }
     """
     user = kwargs['user']
+    delete_after = request.args.get('use_archive', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
     if not submission:
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
@@ -54,10 +57,11 @@ def archive_submission(sid, **kwargs):
     min_selected = scheduler.expand_categories(config.core.archive.minimum_required_services)
 
     if set(min_selected).issubset(set(sub_selected)):
-        ARCHIVE_QUEUE.push(('submission', sid))
+        ARCHIVE_QUEUE.push(('submission', sid, delete_after))
     else:
         params = submission['params']
         params['auto_archive'] = True
+        params['delete_after_archive'] = delete_after
         params['services']['selected'] = list(set(sub_selected).union(set(min_selected)))
         try:
             submission_obj = SubmissionMessage({
