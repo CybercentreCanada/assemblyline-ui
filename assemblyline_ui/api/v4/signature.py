@@ -275,10 +275,9 @@ def add_signature_source(service, **_):
         data['private_key'] += "\n"
 
     service_data = STORAGE.get_service_with_delta(service, as_obj=False)
-    if not service_data.get('update_config', {}).get('generates_signatures', False):
+    if not service_data.get('update_config', {}):
         return make_api_response({"success": False},
-                                 err="This service does not generate alerts therefor "
-                                     "you cannot add a source to get the alerts from.",
+                                 err="This service is not configured to use external sources.",
                                  status_code=400)
 
     current_sources = service_data.get('update_config', {}).get('sources', [])
