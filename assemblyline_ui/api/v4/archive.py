@@ -1,12 +1,11 @@
 
-from assemblyline.common.archiving import SubmissionNotFound, WebhookFailed, archive_submission as do_archive_submission
 from assemblyline.odm.messages.submission import Submission as SubmissionMessage
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.dispatching.schedules import Scheduler
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVESTORE, STORAGE, config, CLASSIFICATION as Classification, redis, IDENTIFY, \
-    FILESTORE
+from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classification, redis, IDENTIFY, \
+    FILESTORE, ARCHIVE_QUEUE
 from assemblyline_ui.helper.submission import submission_received
 
 SUB_API = 'archive'
@@ -55,19 +54,7 @@ def archive_submission(sid, **kwargs):
     min_selected = scheduler.expand_categories(config.core.archive.minimum_required_services)
 
     if set(min_selected).issubset(set(sub_selected)):
-        try:
-            do_archive_submission(sid, STORAGE, FILESTORE, ARCHIVESTORE)
-            return make_api_response({"success": True, "action": "archive"})
-        except WebhookFailed:
-            return make_api_response(
-                {"success": False},
-                f"The webhook failed before archiving submission '{sid}'", 500)
-        except SubmissionNotFound:
-            return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
-        except Exception as e:
-            return make_api_response(
-                {"success": False},
-                f"There were unforseen errors while archiving submission '{sid}' [{e}]", 500)
+        ARCHIVE_QUEUE.push(('submission', sid))
     else:
         params = submission['params']
         params['auto_archive'] = True
