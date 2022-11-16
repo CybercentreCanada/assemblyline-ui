@@ -1,16 +1,19 @@
 import logging
 import os
 
+from assemblyline.common.archiving import ArchiveManager
+from assemblyline.common.identify import Identify
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
+from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.filestore import FileStore
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
-from assemblyline_core.archiver.run_archiver import ARCHIVE_QUEUE_NAME
 from assemblyline_ui.helper.discover import get_apps_list
 
 config = forge.get_config()
@@ -59,9 +62,6 @@ SUBMISSION_TRAFFIC = CommsQueue('submissions', host=redis)
 REPLAY_ALERT_QUEUE = NamedQueue("replay_alert", host=redis)
 REPLAY_FILE_QUEUE = NamedQueue("replay_file", host=redis)
 REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
-
-# Archiving queue
-ARCHIVE_QUEUE: NamedQueue[dict] = NamedQueue(ARCHIVE_QUEUE_NAME, redis_persistent)
 
 
 def get_token_store(key):
@@ -134,10 +134,12 @@ LOGGER.debug('Logger ready!')
 #################################################################
 # Global instances
 APPS_LIST = forge.CachedObject(get_apps_list, refresh=3600)
-FILESTORE = forge.get_filestore(config=config)
-ARCHIVESTORE = forge.get_archivestore(config=config)
-STORAGE = forge.get_datastore(config=config, archive_access=True)
-IDENTIFY = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
+FILESTORE: FileStore = forge.get_filestore(config=config)
+ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
+STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
+IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
+ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
+    config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 # End global
 #################################################################
