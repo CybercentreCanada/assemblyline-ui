@@ -54,7 +54,7 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, f"The submission '{sid}' is not accessible by this user", 403)
 
     sub_selected = scheduler.expand_categories(submission['params']['services']['selected'])
-    min_selected = scheduler.expand_categories(config.core.archive.minimum_required_services)
+    min_selected = scheduler.expand_categories(config.core.archiver.minimum_required_services)
 
     if set(min_selected).issubset(set(sub_selected)):
         ARCHIVE_QUEUE.push(('submission', sid, delete_after))
