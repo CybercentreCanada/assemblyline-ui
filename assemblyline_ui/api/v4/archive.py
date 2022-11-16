@@ -45,6 +45,9 @@ def archive_submission(sid, **kwargs):
                            #            service selection
     }
     """
+    if not config.datastore.archive.enabled:
+        return make_api_response({"success": False}, "Archiving is disabled on the server.", 403)
+
     user = kwargs['user']
     delete_after = request.args.get('use_archive', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
