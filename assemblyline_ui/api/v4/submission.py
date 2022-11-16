@@ -470,10 +470,12 @@ def get_submission(sid, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        try:
-            data['archived'] = STORAGE.submission.exists_in_archive(sid)
-        except ArchiveDisabled:
-            data['archived'] = False
+        data['archived'] = False
+        if ROLES.archive_trigger in user['roles'] or ROLES.archive_view in user['roles']:
+            try:
+                data['archived'] = STORAGE.submission.exists_in_archive(sid)
+            except ArchiveDisabled:
+                pass
         return make_api_response(data)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
