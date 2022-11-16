@@ -1,4 +1,5 @@
 
+from assemblyline.datastore.collection import ESCollection
 from flask import request
 
 from assemblyline.odm.messages.submission import Submission as SubmissionMessage
@@ -80,5 +81,8 @@ def archive_submission(sid, **kwargs):
             return make_api_response({"success": False}, err=str(e), status_code=400)
 
         submission_received(submission_obj)
+
+        # Update current record
+        STORAGE.submission.update(sid, [(ESCollection.UPDATE_SET, 'archived', True)])
 
         return make_api_response({"success": True, "action": "resubmit", "sid": submit_result['sid']})
