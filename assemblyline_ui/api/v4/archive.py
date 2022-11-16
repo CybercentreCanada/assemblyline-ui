@@ -58,6 +58,7 @@ def archive_submission(sid, **kwargs):
 
     if set(min_selected).issubset(set(sub_selected)):
         ARCHIVE_QUEUE.push(('submission', sid, delete_after))
+        return make_api_response({"success": True, "action": "archive"})
     else:
         params = submission['params']
         params['auto_archive'] = True

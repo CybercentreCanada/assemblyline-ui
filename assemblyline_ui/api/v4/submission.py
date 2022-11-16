@@ -3,7 +3,7 @@ import time
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from assemblyline.datastore.exceptions import MultiKeyError, SearchException
+from assemblyline.datastore.exceptions import ArchiveDisabled, MultiKeyError, SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
@@ -470,6 +470,10 @@ def get_submission(sid, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
+        try:
+            data['archived'] = STORAGE.submission.exists_in_archive(sid)
+        except ArchiveDisabled:
+            data['archived'] = False
         return make_api_response(data)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
