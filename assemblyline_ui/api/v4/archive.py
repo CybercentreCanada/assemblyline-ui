@@ -42,7 +42,7 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, "Archiving is disabled on the server.", 403)
 
     user = kwargs['user']
-    delete_after = request.args.get('use_archive', 'false').lower() in ['true', '']
+    delete_after = request.args.get('delete_after', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
     if not submission:
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)

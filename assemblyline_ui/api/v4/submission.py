@@ -1,4 +1,5 @@
 import time
+from assemblyline.datastore.collection import Index
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -692,6 +693,7 @@ def list_submissions_for_group(group, **kwargs):
     rows              => Numbers of submissions to return
     query             => Query to filter to the submission list
     use_archive       => List submissions from archive as well (Default: False)
+    archive_only      => Only access the Malware archive (Default: False)
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
@@ -721,6 +723,14 @@ def list_submissions_for_group(group, **kwargs):
     filters = request.args.get('query', None) or None
     track_total_hits = request.args.get('track_total_hits', False)
     use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
+    archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
+
+    if archive_only:
+        index_type = Index.ARCHIVE
+    elif use_archive:
+        index_type = Index.HOT_AND_ARCHIVE
+    else:
+        index_type = Index.HOT
 
     if group == "ALL":
         group_query = "id:*"
@@ -730,7 +740,7 @@ def list_submissions_for_group(group, **kwargs):
         return make_api_response(STORAGE.submission.search(group_query, offset=offset, rows=rows, filters=filters,
                                                            access_control=user['access_control'],
                                                            sort='times.submitted desc', as_obj=False,
-                                                           use_archive=use_archive, track_total_hits=track_total_hits))
+                                                           index_type=index_type, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -749,6 +759,7 @@ def list_submissions_for_user(username, **kwargs):
     rows              => Numbers of submissions to return
     query             => Query to filter the submission list
     use_archive       => List submissions from archive as well (Default: False)
+    archive_only      => Only access the Malware archive (Default: False)
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
@@ -778,6 +789,14 @@ def list_submissions_for_user(username, **kwargs):
     query = request.args.get('query', None) or None
     track_total_hits = request.args.get('track_total_hits', False)
     use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
+    archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
+
+    if archive_only:
+        index_type = Index.ARCHIVE
+    elif use_archive:
+        index_type = Index.HOT_AND_ARCHIVE
+    else:
+        index_type = Index.HOT
 
     account = STORAGE.user.get(username)
     if not account:
@@ -787,7 +806,7 @@ def list_submissions_for_user(username, **kwargs):
         return make_api_response(STORAGE.submission.search(f"params.submitter:{username}", offset=offset, rows=rows,
                                                            filters=query, access_control=user['access_control'],
                                                            sort='times.submitted desc', as_obj=False,
-                                                           use_archive=use_archive, track_total_hits=track_total_hits))
+                                                           index_type=index_type, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 

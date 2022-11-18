@@ -21,7 +21,6 @@ from assemblyline_ui.helper.user import check_submission_quota, decrement_submis
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
 submit_api._doc = "Submit files to the system"
-archive_access = config.datastore.archive.update_archive and config.datastore.archive.enabled
 
 
 # Since everything the submission client needs is already being initialized
@@ -323,7 +322,7 @@ def submit(**kwargs):
         extra_meta = {}
         if not binary:
             if sha256:
-                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False, archive_access=archive_access)
+                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
                 if FILESTORE.exists(sha256):
                     if fileinfo:
                         if not Classification.is_accessible(user['classification'], fileinfo['classification']):

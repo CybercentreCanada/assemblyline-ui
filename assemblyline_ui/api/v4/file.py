@@ -74,7 +74,7 @@ def list_file_parents(sha256, access_control=None):
     output = []
 
     response = STORAGE.result.search(query, fl='id', sort="created desc",
-                                     access_control=access_control, as_obj=False, use_archive=True)
+                                     access_control=access_control, as_obj=False)
     for p in response['items']:
         key = p['id']
         sha256 = key[:64]
@@ -636,7 +636,7 @@ def get_file_results_for_service(sha256, service, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="*",
                                     rows=100 if "all" in request.args else 1,
-                                    access_control=user["access_control"], as_obj=False, use_archive=True)
+                                    access_control=user["access_control"], as_obj=False)
 
         results = []
         for r in res['items']:

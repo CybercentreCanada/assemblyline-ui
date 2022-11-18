@@ -31,7 +31,6 @@ ingest = NamedQueue(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
-archive_access = config.datastore.archive.update_archive and config.datastore.archive.enabled
 
 
 # noinspection PyUnusedLocal
@@ -248,7 +247,7 @@ def ingest_single_file(**kwargs):
         # Load file
         if not binary:
             if sha256:
-                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False, archive_access=archive_access)
+                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
                 if FILESTORE.exists(sha256):
                     if fileinfo:
                         if not Classification.is_accessible(user['classification'], fileinfo['classification']):
