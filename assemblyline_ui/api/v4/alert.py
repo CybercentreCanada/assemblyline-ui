@@ -46,14 +46,13 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
                                               field,
                                               query=query,
                                               filters=filters,
-                                              limit=100,
                                               access_control=access_control)
                        for field in fields}
 
             return make_api_response({k: v.result() for k, v in res.items()})
         else:
             return make_api_response(STORAGE.alert.facet(fields, query=query, filters=filters,
-                                                         limit=100, access_control=access_control))
+                                                         access_control=access_control))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
