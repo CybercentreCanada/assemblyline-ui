@@ -72,7 +72,7 @@ def list_errors(**_):
     query = request.args.get('query', "id:*") or "id:*"
     filters = request.args.getlist('filters', None) or None
     sort = request.args.get('sort', "created desc")
-    track_total_hits = request.args.get('track_total_hits', False)
+    track_total_hits = request.args.get('track_total_hits', None)
 
     try:
         return make_api_response(STORAGE.error.search(query, offset=offset, rows=rows, as_obj=False,

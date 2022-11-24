@@ -261,7 +261,7 @@ def list_alerts(**kwargs):
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
     timming_filter = get_timming_filter(tc_start, tc)
-    track_total_hits = request.args.get('track_total_hits', False)
+    track_total_hits = request.args.get('track_total_hits', None)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
@@ -323,7 +323,7 @@ def list_grouped_alerts(field, **kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
-    track_total_hits = request.args.get('track_total_hits', False)
+    track_total_hits = request.args.get('track_total_hits', None)
 
     if not tc_start:
         if "no_delay" not in request.args and config.core.alerter.delay != 0:

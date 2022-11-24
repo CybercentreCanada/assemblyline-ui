@@ -721,7 +721,7 @@ def list_submissions_for_group(group, **kwargs):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     filters = request.args.get('query', None) or None
-    track_total_hits = request.args.get('track_total_hits', False)
+    track_total_hits = request.args.get('track_total_hits', None)
     use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
 
@@ -787,7 +787,7 @@ def list_submissions_for_user(username, **kwargs):
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('query', None) or None
-    track_total_hits = request.args.get('track_total_hits', False)
+    track_total_hits = request.args.get('track_total_hits', None)
     use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
 
