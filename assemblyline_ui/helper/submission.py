@@ -78,7 +78,7 @@ def download_from_url(download_url, target, data=None, method="GET",
         raise InvalidUrlException(f"Unsupported method used: {method}")
 
     r = session_function(download_url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True,
-                         timeout=timeout)
+                         timeout=timeout, allow_redirects=True)
 
     if r.ok:
         if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
