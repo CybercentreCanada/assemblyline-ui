@@ -14,8 +14,8 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
     IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, InvalidUrlException, \
-    ForbiddenLocation, submission_received
+from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
+    InvalidUrlException, ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -372,7 +372,8 @@ def submit(**kwargs):
 
                 try:
                     if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                             proxies=config.ui.url_submission_proxies):
+                                             proxies=config.ui.url_submission_proxies,
+                                             timeout=config.ui.url_submission_timeout):
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
                     extra_meta['submitted_url'] = url
@@ -382,6 +383,8 @@ def submit(**kwargs):
                     return make_api_response({}, "Url provided is invalid.", 400)
                 except ForbiddenLocation:
                     return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
+                except ConnectTimeout:
+                    return make_api_response({}, 'Connection timeout has occurred while fetching data.', 400)
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
