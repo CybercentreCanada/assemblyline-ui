@@ -17,8 +17,8 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, InvalidUrlException, \
-    ForbiddenLocation, submission_received
+from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
+    InvalidUrlException, ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import load_user_settings
 
 
@@ -299,7 +299,9 @@ def ingest_single_file(**kwargs):
 
                 try:
                     if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                             proxies=config.ui.url_submission_proxies):
+                                             proxies=config.ui.url_submission_proxies,
+                                             timeout=config.ui.url_submission_timeout):
+
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
                     extra_meta['submitted_url'] = url
@@ -309,6 +311,8 @@ def ingest_single_file(**kwargs):
                     return make_api_response({}, "Url provided is invalid.", 400)
                 except ForbiddenLocation:
                     return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
+                except ConnectTimeout:
+                    return make_api_response({}, 'Connection timeout has occurred while fetching data.', 400)
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
