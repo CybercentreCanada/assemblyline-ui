@@ -9,6 +9,7 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config
+from requests.exceptions import ConnectTimeout
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
@@ -57,7 +58,8 @@ def validate_redirect(r, **_):
 
 
 def download_from_url(download_url, target, data=None, method="GET",
-                      headers={}, proxies={}, verify=True, validate=True, failure_pattern=None):
+                      headers={}, proxies={}, verify=True, validate=True, failure_pattern=None,
+                      timeout=None):
     hooks = None
     if validate:
         validate_url(download_url)
@@ -75,7 +77,8 @@ def download_from_url(download_url, target, data=None, method="GET",
     except Exception:
         raise InvalidUrlException(f"Unsupported method used: {method}")
 
-    r = session_function(download_url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True)
+    r = session_function(download_url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True,
+                         timeout=timeout, allow_redirects=True)
 
     if r.ok:
         if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
