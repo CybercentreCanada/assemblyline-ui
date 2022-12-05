@@ -190,7 +190,7 @@ def synchronize_sources(service_name, current_sources, new_sources):
             # If not a minor change, then assume change is drastically different (ie. removal)
             if not check_for_source_change(new_sources, source):
                 removed_sources[source['name']] = STORAGE.signature.delete_by_query(
-                    f'type:"{service_name.lower()}" AND source:"{source["name"]}"')
+                    f'type:"{service_name.lower()}" AND source:"{source["name"]}"') != 0
     _reset_service_updates(service_name)
     return removed_sources
 

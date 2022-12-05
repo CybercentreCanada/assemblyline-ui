@@ -10,6 +10,7 @@ from flask.logging import default_handler
 from assemblyline_ui.api.base import api
 from assemblyline_ui.api.v4 import apiv4
 from assemblyline_ui.api.v4.alert import alert_api
+from assemblyline_ui.api.v4.archive import archive_api
 from assemblyline_ui.api.v4.authentication import auth_api
 from assemblyline_ui.api.v4.bundle import bundle_api
 from assemblyline_ui.api.v4.error import error_api
@@ -62,6 +63,7 @@ app.register_blueprint(healthz)
 app.register_blueprint(api)
 app.register_blueprint(apiv4)
 app.register_blueprint(alert_api)
+app.register_blueprint(archive_api)
 app.register_blueprint(auth_api)
 app.register_blueprint(bundle_api)
 app.register_blueprint(errors)

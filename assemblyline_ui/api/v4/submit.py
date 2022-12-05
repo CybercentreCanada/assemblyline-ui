@@ -322,8 +322,7 @@ def submit(**kwargs):
         extra_meta = {}
         if not binary:
             if sha256:
-                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False,
-                                                      archive_access=config.datastore.ilm.update_archive)
+                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
                 if FILESTORE.exists(sha256):
                     if fileinfo:
                         if not Classification.is_accessible(user['classification'], fileinfo['classification']):
