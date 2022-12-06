@@ -7,7 +7,7 @@ from assemblyline.common.dict_utils import recursive_update
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
+from assemblyline_ui.config import ARCHIVESTORE, STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
 
 SUB_API = 'ontology'
 ontology_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -21,7 +21,21 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
         for supp in r.get('response', {}).get('supplementary', {}):
             if supp['name'].endswith('.ontology'):
                 try:
-                    ontology = json.loads(FILESTORE.get(supp['sha256']))
+                    # get ontology data
+                    ontology_data = FILESTORE.get(supp['sha256'])
+                    # Try to download from archive
+                    if not ontology_data and \
+                            ARCHIVESTORE is not None and \
+                            ARCHIVESTORE != FILESTORE and \
+                            ROLES.archive_download in user['roles']:
+                        ontology_data = ARCHIVESTORE.get(supp['sha256'])
+
+                    if not ontology_data:
+                        # Could not download the ontology supplementary file
+                        LOGGER.warning(f"Ontology file was not found filestores: {supp['name']} [{supp['sha256']}]")
+                        continue
+
+                    ontology = json.loads(ontology_data)
                     sha256 = ontology['file']['sha256']
                     c12n = ontology['classification']
                     if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
