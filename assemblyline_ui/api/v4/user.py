@@ -82,6 +82,7 @@ def who_am_i(**kwargs):
          "banner_level": True,                      # Banner color (info, success, warning, error)
          "read_only": False,                        # Is the interface to be displayed in read-only mode
          "rss_feeds": [],                           # List of RSS feeds
+         "services_feed": "",                       # Feed of all the services available
          "tos": True,                               # Are terms of service set in the system
          "tos_lockout": False,                      # Will agreeing to TOS lockout the user
          "tos_lockout_notify": False                # Will admin be auto-notified when a user is locked out
@@ -152,6 +153,7 @@ def who_am_i(**kwargs):
             "banner_level": config.ui.banner_level,
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
+            "services_feed": config.ui.services_feed,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]

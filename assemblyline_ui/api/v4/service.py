@@ -6,6 +6,8 @@ from flask import request
 from math import floor
 from packaging.version import parse
 
+from pprint import pprint
+
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.error import ERROR_TYPES
 from assemblyline.odm.models.heuristic import Heuristic
@@ -26,6 +28,12 @@ service_api = make_subapi_blueprint(SUB_API, api_version=4)
 service_api._doc = "Manage the different services"
 
 latest_service_tags = Hash('service-tags', get_client(
+    host=config.core.redis.persistent.host,
+    port=config.core.redis.persistent.port,
+    private=False,
+))
+
+service_install = Hash('container-install', get_client(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port,
     private=False,
@@ -388,7 +396,6 @@ def restore(**_):
     None
 
     Data Block:
-    <SERVICE BACKUP>
 
     Result example:
     {'success': true}
@@ -814,6 +821,73 @@ def set_service(servicename, **_):
                               "removed_sources": removed_sources})
 
 
+@service_api.route("/install_status/", methods=["POST"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def check_for_services_install_status(**_):
+    """
+        Check the install status for the given services.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        [
+            <LIST OF SERVICE NAMES>
+        ]
+
+        Result example:
+        {
+          '<service name>': {
+            'status': None | 'installing' | 'installed,
+            ...
+          }, ...
+        }
+    """
+
+    try:
+        output = {
+            'installing': [],
+            'installed': [],
+            'invalid': []
+        }
+        service_names = request.json
+
+        pprint(service_names)
+        if isinstance(service_names, (list, tuple)):
+            services = STORAGE.list_all_services(full=True, as_obj=False)
+
+            for name in service_names:
+                # Check if the service is waiting to be installed
+                if service_install.exists(name):
+                    output['installing'].append(name)
+
+                # Check if the service was installed successfully
+                elif latest_service_tags.exists(name):
+                    for service in services:
+                        if service.get('name', None) == name:
+                            output['installed'].append({
+                                'status': 'installed',
+                                'accepts': service.get('accepts', None),
+                                'category': service.get('category', None),
+                                'description': service.get('description', None),
+                                'enabled': service.get('enabled', False),
+                                'name': service.get('name', None),
+                                'privileged': service.get('privileged', False),
+                                'rejects': service.get('rejects', None),
+                                'stage': service.get('stage', None),
+                                'version': service.get('version', None)
+                            })
+                else:
+                    output['invalid'].append(name)
+
+        return make_api_response(output)
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
+
+
 @service_api.route("/install/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def install_service(**_):
@@ -829,7 +903,7 @@ def install_service(**_):
         Data Block:
         {
           "name": "ResultSample"
-          "image": "cccs/assemblyline-service-resultsample:latest"
+          "image": "cccs/assemblyline-service-resultsample:4.0.0dev0"
         }
 
         Result example:
@@ -837,26 +911,47 @@ def install_service(**_):
           success: true
         }
     """
-    data = request.json
-    print(data)
 
-    service_key = f"{data['name']}_{data['update_data']['latest_tag'].replace('stable', '')}"
+    try:
+        services = list(request.json)
+        output = {
+            'installing': [],
+            'installed': [],
+            'invalid': []
+        }
 
-    print(service_key)
+        installed_services = [doc.get('name') for doc in STORAGE.list_all_services(full=True, as_obj=False)]
 
-    # # Check is the version we are trying to update to already exists
-    # if STORAGE.service.get_if_exists(service_key):
-    #     operations = [(STORAGE.service_delta.UPDATE_SET, 'version',
-    #                    data['update_data']['latest_tag'].replace('stable', ''))]
-    #     if STORAGE.service_delta.update(data['name'], operations):
-    #         event_sender.send(data['name'], {
-    #             'operation': Operation.Modified,
-    #             'name': data['name']
-    #         })
-    #         return make_api_response({'success': True, 'status': "updated"})
+        for service in services:
+            if service.get('name') in installed_services:
+                for installed in STORAGE.list_all_services(full=True, as_obj=False):
+                    if service.get('name') == installed.get('name'):
+                        output.get('installed').append({
+                            'accepts': installed.get('accepts', None),
+                            'category': installed.get('category', None),
+                            'description': installed.get('description', None),
+                            'enabled': installed.get('enabled', False),
+                            'name': installed.get('name', None),
+                            'privileged': installed.get('privileged', False),
+                            'rejects': installed.get('rejects', None),
+                            'stage': installed.get('stage', None),
+                            'version': installed.get('version', None)
+                        })
+            else:
+                pprint(config)
+                service_install.set(service.get("name"), service.get("install_data"))
+                output.get('installing').append(service.get("name"))
 
-    # service_update.set(data['name'], data['update_data'])
-    return make_api_response({'success': True, 'status': "install"})
+            # for service in STORAGE.list_all_services(full=True, as_obj=False):
+            #     if service.get("name") is data.get("name"):
+            #         return make_api_response({'success': True, 'status': "installed"})
+
+            # service_install.set(data.get("name"), data.get("install_data"))
+            # return make_api_response({'success': True, 'status': "installing"})
+
+        return make_api_response(output)
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
 
 
 @service_api.route("/update/", methods=["PUT"])
