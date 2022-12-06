@@ -135,7 +135,10 @@ LOGGER.debug('Logger ready!')
 # Global instances
 APPS_LIST = forge.CachedObject(get_apps_list, refresh=3600)
 FILESTORE: FileStore = forge.get_filestore(config=config)
-ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
+if config.datastore.archive.enabled:
+    ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
+else:
+    ARCHIVESTORE = None
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
