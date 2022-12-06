@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import tempfile
 
 from flask import request
 
@@ -11,8 +12,8 @@ from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
-    IDENTIFY
+from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
+    CLASSIFICATION as Classification, IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
     InvalidUrlException, ForbiddenLocation, submission_received
@@ -87,8 +88,17 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             expiry = file_info['expiry_ts']
 
         if not FILESTORE.exists(sha256):
-            return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
-                                     % sha256, status_code=404)
+            if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
+                    ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
+
+                # File exists in the archivestore, copying it to the filestore
+                with tempfile.NamedTemporaryFile() as buf:
+                    ARCHIVESTORE.download(sha256, buf.name)
+                    FILESTORE.upload(buf.name, sha256, location='far')
+
+            else:
+                return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
+                                         % sha256, status_code=404)
 
         files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
 
@@ -322,19 +332,31 @@ def submit(**kwargs):
         extra_meta = {}
         if not binary:
             if sha256:
+                found = False
                 fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
-                if FILESTORE.exists(sha256):
-                    if fileinfo:
-                        if not Classification.is_accessible(user['classification'], fileinfo['classification']):
-                            return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
-                        else:
-                            # File's classification must be applied at a minimum
+
+                if fileinfo:
+                    # File exists in the DB
+                    if Classification.is_accessible(user['classification'], fileinfo['classification']):
+                        # User has access to the file
+                        if FILESTORE.exists(sha256):
+                            # File exists in the filestore
+                            FILESTORE.download(sha256, out_file)
+                            found = True
+
+                        elif ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
+                                ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
+                            # File exists in the archivestore
+                            ARCHIVESTORE.download(sha256, out_file)
+                            found = True
+
+                        if found:
+                            # Found the file, now apply its classification
                             s_params['classification'] = Classification.max_classification(s_params['classification'],
                                                                                            fileinfo['classification'])
 
-                    # File exists in the filestore and the user has appropriate file access
-                    FILESTORE.download(sha256, out_file)
-                elif default_external_sources:
+                if not found and default_external_sources:
+                    # File is not found still, and we have external sources
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
                                          if Classification.is_accessible(user['classification'],
@@ -360,10 +382,13 @@ def submit(**kwargs):
                         return make_api_response({}, "File too big to be scanned.", 400)
 
                     if not dl_from:
+                        # File was never found, error out
                         return make_api_response(
                             {},
                             "SHA256 does not exist in Assemblyline or any of the selected sources", 404)
-                else:
+
+                if not found:
+                    # File was never found, error out
                     return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
             elif url:
                 if not config.ui.allow_url_submissions:

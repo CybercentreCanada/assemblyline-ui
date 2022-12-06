@@ -14,7 +14,7 @@ from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
+from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
@@ -247,21 +247,35 @@ def ingest_single_file(**kwargs):
         # Load file
         if not binary:
             if sha256:
+                found = False
                 fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
-                if FILESTORE.exists(sha256):
-                    if fileinfo:
-                        if not Classification.is_accessible(user['classification'], fileinfo['classification']):
-                            return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
-                        else:
-                            # File's classification must be applied at a minimum
+
+                if fileinfo:
+                    # File exists in the DB
+                    if Classification.is_accessible(user['classification'], fileinfo['classification']):
+                        # User has access to the file
+                        if FILESTORE.exists(sha256):
+                            # File exists in the filestore
+                            FILESTORE.download(sha256, out_file)
+                            found = True
+                            # File is in storage and the DB no need to upload anymore
+                            do_upload = False
+
+                        elif ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
+                                ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
+                            # File exists in the archivestore
+                            ARCHIVESTORE.download(sha256, out_file)
+                            found = True
+                            # File is only in archivestorage so I'll still need to upload it to the hot storage
+                            do_upload = True
+
+                        if found:
+                            # Found the file, now apply its classification
                             s_params['classification'] = Classification.max_classification(s_params['classification'],
                                                                                            fileinfo['classification'])
-                    else:
-                        # File is in storage and the DB no need to upload anymore
-                        do_upload = False
-                    # File exists in the filestore and the user has appropriate file access
-                    FILESTORE.download(sha256, out_file)
-                elif default_external_sources:
+
+                if not found and default_external_sources:
+                    # File is not found still, and we have external sources
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
                                          if Classification.is_accessible(user['classification'],
@@ -287,10 +301,13 @@ def ingest_single_file(**kwargs):
                         return make_api_response({}, "File too big to be scanned.", 400)
 
                     if not dl_from:
+                        # File was never found, error out
                         return make_api_response(
                             {},
                             "SHA256 does not exist in Assemblyline or any of the selected sources", 404)
-                else:
+
+                if not found:
+                    # File was never found, error out
                     return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
             elif url:
                 if not config.ui.allow_url_submissions:
