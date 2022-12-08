@@ -6,8 +6,6 @@ from flask import request
 from math import floor
 from packaging.version import parse
 
-from pprint import pprint
-
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.error import ERROR_TYPES
 from assemblyline.odm.models.heuristic import Heuristic
@@ -821,11 +819,47 @@ def set_service(servicename, **_):
                               "removed_sources": removed_sources})
 
 
-@service_api.route("/install_status/", methods=["POST"])
+@service_api.route("/installing/", methods=["GET"])
 @api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
-def check_for_services_install_status(**_):
+def get_services_installing(**_):
     """
-        Check the install status for the given services.
+        Get the list of services currently being installed.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+
+        # List of services being installed
+        [{
+            "name": "ResultSample",
+            "image": "cccs/assemblyline-service-sample"
+        }]
+    """
+    try:
+        output = []
+        services = STORAGE.list_all_services(full=True, as_obj=False)
+
+        for item in service_install.items().items():
+            if next((item for service in services if item[0].lower() == service.get('name').lower()), None) is None:
+                output.append({'name': item[0], 'image': item[1].get('image')})
+
+        return make_api_response(output)
+    except ValueError as e:
+        return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/installing/", methods=["POST"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def post_services_installing(**_):
+    """
+        Get the list of services currently being installed.
 
         Variables:
         None
@@ -840,48 +874,29 @@ def check_for_services_install_status(**_):
 
         Result example:
         {
-          '<service name>': {
-            'status': None | 'installing' | 'installed,
-            ...
-          }, ...
+          "installed":      [ "ResultSample" ],     # List of services that were installed
+          "installing":     [ "ExtraFeature" ],     # List of services being installed
+          "not_installed":  ["rejectedFeature"]     # List of services that are not installed
         }
     """
 
     try:
-        output = {
-            'installing': [],
-            'installed': [],
-            'invalid': []
-        }
-        service_names = request.json
+        names = request.json
+        output = {'installing': [], 'installed': [], 'not_installed': []}
 
-        pprint(service_names)
-        if isinstance(service_names, (list, tuple)):
+        if isinstance(names, (list, tuple)):
             services = STORAGE.list_all_services(full=True, as_obj=False)
 
-            for name in service_names:
-                # Check if the service is waiting to be installed
-                if service_install.exists(name):
+            for name in names:
+                if next((item for item in services if item.get('name').lower() == name.lower()), None) is not None:
+                    output['installed'].append(name)
+
+                elif (next((item for item in service_install.items().items() if item[0].lower() == name.lower()), None)
+                      is not None):
                     output['installing'].append(name)
 
-                # Check if the service was installed successfully
-                elif latest_service_tags.exists(name):
-                    for service in services:
-                        if service.get('name', None) == name:
-                            output['installed'].append({
-                                'status': 'installed',
-                                'accepts': service.get('accepts', None),
-                                'category': service.get('category', None),
-                                'description': service.get('description', None),
-                                'enabled': service.get('enabled', False),
-                                'name': service.get('name', None),
-                                'privileged': service.get('privileged', False),
-                                'rejects': service.get('rejects', None),
-                                'stage': service.get('stage', None),
-                                'version': service.get('version', None)
-                            })
                 else:
-                    output['invalid'].append(name)
+                    output['not_installed'].append(name)
 
         return make_api_response(output)
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
@@ -890,9 +905,9 @@ def check_for_services_install_status(**_):
 
 @service_api.route("/install/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
-def install_service(**_):
+def install_services(**_):
     """
-        Install a given service
+        Install multiple services from a list provided as data
 
         Variables:
         None
@@ -901,53 +916,55 @@ def install_service(**_):
         None
 
         Data Block:
-        {
-          "name": "ResultSample"
-          "image": "cccs/assemblyline-service-resultsample:4.0.0dev0"
-        }
+        [{
+            "name": "ResultSample"
+            "install_data": {
+                "auth": {
+                    "username": "username",
+                    "password": "password"
+                },
+                "image": "cccs/assemblyline-service-resultsample"
+            }
+        }]
 
         Result example:
         {
-          success: true
+          "installed":  [ "ResultSample" ],     # List of services that were installed
+          "installing": [ "ExtraFeature" ],     # List of services being installed
+          "failed":     ["rejectedFeature"]     # List of services that failed to be installed
         }
     """
 
     try:
-        services = list(request.json)
-        output = {
-            'installing': [],
-            'installed': [],
-            'invalid': []
-        }
+        services = request.json
+        output = {'installing': [], 'installed': [], 'failed': []}
 
-        installed_services = [doc.get('name') for doc in STORAGE.list_all_services(full=True, as_obj=False)]
+        if isinstance(services, (list, tuple)):
+            services = list(services)
+            installed_services = list(STORAGE.list_all_services(full=True, as_obj=False))
 
-        for service in services:
-            if service.get('name') in installed_services:
-                for installed in STORAGE.list_all_services(full=True, as_obj=False):
-                    if service.get('name') == installed.get('name'):
-                        output.get('installed').append({
-                            'accepts': installed.get('accepts', None),
-                            'category': installed.get('category', None),
-                            'description': installed.get('description', None),
-                            'enabled': installed.get('enabled', False),
-                            'name': installed.get('name', None),
-                            'privileged': installed.get('privileged', False),
-                            'rejects': installed.get('rejects', None),
-                            'stage': installed.get('stage', None),
-                            'version': installed.get('version', None)
-                        })
-            else:
-                pprint(config)
-                service_install.set(service.get("name"), service.get("install_data"))
-                output.get('installing').append(service.get("name"))
+            for service in services:
 
-            # for service in STORAGE.list_all_services(full=True, as_obj=False):
-            #     if service.get("name") is data.get("name"):
-            #         return make_api_response({'success': True, 'status': "installed"})
+                installed_service = {}
+                installed_service = next((item for item in installed_services if item.get(
+                    'name').lower() == service.get('name').lower()), None)
 
-            # service_install.set(data.get("name"), data.get("install_data"))
-            # return make_api_response({'success': True, 'status': "installing"})
+                if installed_service is None:
+                    service_install.set(service.get("name"), service.get("install_data"))
+                    output.get('installing').append(service.get("name"))
+
+                else:
+                    output.get('installed').append({
+                        'accepts': installed_service.get('accepts', None),
+                        'category': installed_service.get('category', None),
+                        'description': installed_service.get('description', None),
+                        'enabled': installed_service.get('enabled', False),
+                        'name': installed_service.get('name', None),
+                        'privileged': installed_service.get('privileged', False),
+                        'rejects': installed_service.get('rejects', None),
+                        'stage': installed_service.get('stage', None),
+                        'version': installed_service.get('version', None)
+                    })
 
         return make_api_response(output)
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
