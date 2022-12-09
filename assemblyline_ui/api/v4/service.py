@@ -929,10 +929,9 @@ def install_services(**_):
 
         for service in services:
             if service["name"] not in installed_services:
+                image = service['image']
                 install_data = {
-                    # TODO: get auth if needed
-                    'auth': None,
-                    'image': f"${{REGISTRY}}{service['image']}"
+                    'image': f"${{REGISTRY}}{image}" if not image.startswith("$") else image
                 }
                 service_install.set(service["name"], install_data)
                 output.append(service["name"])
