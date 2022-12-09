@@ -837,18 +837,11 @@ def get_services_installing(**_):
         Result example:
 
         # List of services being installed
-        [{
-            "name": "ResultSample",
-            "image": "cccs/assemblyline-service-sample"
-        }]
+        ["ResultSample"]
     """
     try:
-        output = []
-        services = STORAGE.list_all_services(full=True, as_obj=False)
-
-        for item in service_install.items().items():
-            if next((item for service in services if item[0].lower() == service.get('name').lower()), None) is None:
-                output.append({'name': item[0], 'image': item[1].get('image')})
+        services = set(STORAGE.service_delta.keys())
+        output = [name for name in service_install.items() if name not in services]
 
         return make_api_response(output)
     except ValueError as e:
@@ -885,14 +878,14 @@ def post_services_installing(**_):
         output = {'installing': [], 'installed': [], 'not_installed': []}
 
         if isinstance(names, (list, tuple)):
-            services = STORAGE.list_all_services(full=True, as_obj=False)
+            services = set(STORAGE.service_delta.keys())
+            installing = service_install.items()
 
             for name in names:
-                if next((item for item in services if item.get('name').lower() == name.lower()), None) is not None:
+                if name in services:
                     output['installed'].append(name)
 
-                elif (next((item for item in service_install.items().items() if item[0].lower() == name.lower()), None)
-                      is not None):
+                elif name in installing:
                     output['installing'].append(name)
 
                 else:
@@ -918,53 +911,31 @@ def install_services(**_):
         Data Block:
         [{
             "name": "ResultSample"
-            "install_data": {
-                "auth": {
-                    "username": "username",
-                    "password": "password"
-                },
-                "image": "cccs/assemblyline-service-resultsample"
-            }
+            "image": "cccs/assemblyline-service-resultsample"
         }]
 
         Result example:
-        {
-          "installed":  [ "ResultSample" ],     # List of services that were installed
-          "installing": [ "ExtraFeature" ],     # List of services being installed
-          "failed":     ["rejectedFeature"]     # List of services that failed to be installed
-        }
+        [ "ExtraFeature" ]     # List of services being installed
     """
 
     try:
         services = request.json
-        output = {'installing': [], 'installed': [], 'failed': []}
+        output = []
 
-        if isinstance(services, (list, tuple)):
-            services = list(services)
-            installed_services = list(STORAGE.list_all_services(full=True, as_obj=False))
+        if not isinstance(services, list):
+            return make_api_response("", err="Invalid data sent to install API", status_code=400)
 
-            for service in services:
+        installed_services = set(STORAGE.service_delta.keys())
 
-                installed_service = {}
-                installed_service = next((item for item in installed_services if item.get(
-                    'name').lower() == service.get('name').lower()), None)
-
-                if installed_service is None:
-                    service_install.set(service.get("name"), service.get("install_data"))
-                    output.get('installing').append(service.get("name"))
-
-                else:
-                    output.get('installed').append({
-                        'accepts': installed_service.get('accepts', None),
-                        'category': installed_service.get('category', None),
-                        'description': installed_service.get('description', None),
-                        'enabled': installed_service.get('enabled', False),
-                        'name': installed_service.get('name', None),
-                        'privileged': installed_service.get('privileged', False),
-                        'rejects': installed_service.get('rejects', None),
-                        'stage': installed_service.get('stage', None),
-                        'version': installed_service.get('version', None)
-                    })
+        for service in services:
+            if service["name"] not in installed_services:
+                install_data = {
+                    # TODO: get auth if needed
+                    'auth': None,
+                    'image': f"${{REGISTRY}}{service['image']}"
+                }
+                service_install.set(service["name"], install_data)
+                output.append(service["name"])
 
         return make_api_response(output)
     except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
