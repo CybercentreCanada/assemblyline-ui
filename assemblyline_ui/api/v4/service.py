@@ -394,6 +394,7 @@ def restore(**_):
     None
 
     Data Block:
+    <SERVICE BACKUP>
 
     Result example:
     {'success': true}
