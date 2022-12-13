@@ -31,6 +31,12 @@ latest_service_tags = Hash('service-tags', get_client(
     private=False,
 ))
 
+service_install = Hash('container-install', get_client(
+    host=config.core.redis.persistent.host,
+    port=config.core.redis.persistent.port,
+    private=False,
+))
+
 service_update = Hash('container-update', get_client(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port,
@@ -812,6 +818,128 @@ def set_service(servicename, **_):
 
     return make_api_response({"success": success,
                               "removed_sources": removed_sources})
+
+
+@service_api.route("/installing/", methods=["GET"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def get_services_installing(**_):
+    """
+        Get the list of services currently being installed.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+
+        # List of services being installed
+        ["ResultSample"]
+    """
+    try:
+        services = set(STORAGE.service_delta.keys())
+        output = [name for name in service_install.items() if name not in services]
+
+        return make_api_response(output)
+    except ValueError as e:
+        return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/installing/", methods=["POST"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def post_services_installing(**_):
+    """
+        Get the list of services currently being installed.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        [
+            <LIST OF SERVICE NAMES>
+        ]
+
+        Result example:
+        {
+          "installed":      [ "ResultSample" ],     # List of services that were installed
+          "installing":     [ "ExtraFeature" ],     # List of services being installed
+          "not_installed":  ["rejectedFeature"]     # List of services that are not installed
+        }
+    """
+
+    try:
+        names = request.json
+        output = {'installing': [], 'installed': [], 'not_installed': []}
+
+        if isinstance(names, (list, tuple)):
+            services = set(STORAGE.service_delta.keys())
+            installing = service_install.items()
+
+            for name in names:
+                if name in services:
+                    output['installed'].append(name)
+
+                elif name in installing:
+                    output['installing'].append(name)
+
+                else:
+                    output['not_installed'].append(name)
+
+        return make_api_response(output)
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/install/", methods=["PUT"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def install_services(**_):
+    """
+        Install multiple services from a list provided as data
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        [{
+            "name": "ResultSample"
+            "image": "cccs/assemblyline-service-resultsample"
+        }]
+
+        Result example:
+        [ "ExtraFeature" ]     # List of services being installed
+    """
+
+    try:
+        services = request.json
+        output = []
+
+        if not isinstance(services, list):
+            return make_api_response("", err="Invalid data sent to install API", status_code=400)
+
+        installed_services = set(STORAGE.service_delta.keys())
+
+        for service in services:
+            if service["name"] not in installed_services:
+                image = service['image']
+                install_data = {
+                    'image': f"${{REGISTRY}}{image}" if not image.startswith("$") else image
+                }
+                service_install.set(service["name"], install_data)
+                output.append(service["name"])
+
+        return make_api_response(output)
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
 
 
 @service_api.route("/update/", methods=["PUT"])
