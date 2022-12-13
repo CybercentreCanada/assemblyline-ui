@@ -3,6 +3,7 @@ import os
 import shutil
 
 from flask import request
+from requests.exceptions import ConnectTimeout
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
@@ -14,7 +15,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, CLASSIFICATION as Classification, \
     IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, \
     InvalidUrlException, ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
@@ -350,7 +351,7 @@ def submit(**kwargs):
                                                         headers=source.headers, proxies=source.proxies,
                                                         verify=source.verify, validate=False,
                                                         failure_pattern=failure_pattern)
-                            if dl_from:
+                            if dl_from is not None:
                                 # Apply minimum classification for the source
                                 s_params['classification'] = \
                                     Classification.max_classification(s_params['classification'],
@@ -371,12 +372,15 @@ def submit(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
-                    if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                             proxies=config.ui.url_submission_proxies,
-                                             timeout=config.ui.url_submission_timeout):
+                    url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
+                                                    proxies=config.ui.url_submission_proxies,
+                                                    timeout=config.ui.url_submission_timeout)
+                    if url_history is None:
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
                     extra_meta['submitted_url'] = url
+                    for h_id, h_url in enumerate(url_history):
+                        extra_meta[f'url_redirect_{h_id}'] = h_url
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)
                 except InvalidUrlException:
