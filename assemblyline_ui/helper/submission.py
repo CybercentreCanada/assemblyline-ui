@@ -9,7 +9,6 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config
-from requests.exceptions import ConnectTimeout
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
@@ -39,13 +38,14 @@ def validate_url(url):
 
     host = parsed.hostname or parsed.netloc
 
-    try:
-        cur_ip = socket.gethostbyname(host)
-    except socket.gaierror:
-        cur_ip = '127.0.0.1'
+    if host:
+        try:
+            cur_ip = socket.gethostbyname(host)
+        except socket.gaierror:
+            cur_ip = '127.0.0.1'
 
-    if is_ip_reserved(cur_ip) or cur_ip == MYIP:
-        raise ForbiddenLocation("Location '%s' cannot be resolved." % host)
+        if is_ip_reserved(cur_ip) or cur_ip == MYIP:
+            raise ForbiddenLocation("Location '%s' cannot be resolved." % host)
 
 
 def validate_redirect(r, **_):
@@ -92,7 +92,7 @@ def download_from_url(download_url, target, data=None, method="GET",
                     if failure_pattern and failure_pattern in chunk:
                         f.close()
                         os.unlink(target)
-                        return False
+                        return None
 
                     written += 512 * 1024
                     if written > config.submission.max_file_size:
@@ -102,9 +102,9 @@ def download_from_url(download_url, target, data=None, method="GET",
                     f.write(chunk)
 
             if written > 0:
-                return True
+                return [r.url for r in r.history if r.url != download_url]
 
-    return False
+    return None
 
 
 def get_or_create_summary(sid, results, user_classification, completed):
