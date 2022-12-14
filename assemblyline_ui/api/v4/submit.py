@@ -382,7 +382,7 @@ def submit(**kwargs):
                     except FileTooBigException:
                         return make_api_response({}, "File too big to be scanned.", 400)
 
-                    if not dl_from:
+                    if not found:
                         # File was never found, error out
                         return make_api_response(
                             {},
