@@ -378,6 +378,7 @@ def submit(**kwargs):
                                     Classification.max_classification(s_params['classification'],
                                                                       source.classification)
                                 extra_meta['original_source'] = source.name
+                                found = True
                                 break
                     except FileTooBigException:
                         return make_api_response({}, "File too big to be scanned.", 400)
