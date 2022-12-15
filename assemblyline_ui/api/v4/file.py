@@ -15,7 +15,7 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
-    CLASSIFICATION as Classification
+    CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
@@ -74,7 +74,7 @@ def list_file_parents(sha256, access_control=None):
     output = []
 
     response = STORAGE.result.search(query, fl='id', sort="created desc",
-                                     access_control=access_control, as_obj=False, use_archive=True)
+                                     access_control=access_control, as_obj=False)
     for p in response['items']:
         key = p['id']
         sha256 = key[:64]
@@ -118,6 +118,13 @@ def get_file_ascii(sha256, **kwargs):
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         data = FILESTORE.get(sha256)
+
+        # Try to download from archive
+        if not data and \
+                ARCHIVESTORE is not None and \
+                ARCHIVESTORE != FILESTORE and \
+                ROLES.archive_download in user['roles']:
+            data = ARCHIVESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -210,6 +217,13 @@ def download_file(sha256, **kwargs):
         try:
             downloaded_from = FILESTORE.download(sha256, download_path)
 
+            # Try to download from archive
+            if not downloaded_from and \
+                    ARCHIVESTORE is not None and \
+                    ARCHIVESTORE != FILESTORE and \
+                    ROLES.archive_download in user['roles']:
+                downloaded_from = ARCHIVESTORE.download(sha256, download_path)
+
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
 
@@ -277,6 +291,13 @@ def get_file_hex(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         data = FILESTORE.get(sha256)
 
+        # Try to download from archive
+        if not data and \
+                ARCHIVESTORE is not None and \
+                ARCHIVESTORE != FILESTORE and \
+                ROLES.archive_download in user['roles']:
+            data = ARCHIVESTORE.get(sha256)
+
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
@@ -321,6 +342,13 @@ def get_file_image_datastream(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         data = FILESTORE.get(sha256)
 
+        # Try to download from archive
+        if not data and \
+                ARCHIVESTORE is not None and \
+                ARCHIVESTORE != FILESTORE and \
+                ROLES.archive_download in user['roles']:
+            data = ARCHIVESTORE.get(sha256)
+
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
@@ -359,6 +387,13 @@ def get_file_strings(sha256, **kwargs):
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         data = FILESTORE.get(sha256)
+
+        # Try to download from archive
+        if not data and \
+                ARCHIVESTORE is not None and \
+                ARCHIVESTORE != FILESTORE and \
+                ROLES.archive_download in user['roles']:
+            data = ARCHIVESTORE.get(sha256)
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
@@ -636,7 +671,7 @@ def get_file_results_for_service(sha256, service, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="*",
                                     rows=100 if "all" in request.args else 1,
-                                    access_control=user["access_control"], as_obj=False, use_archive=True)
+                                    access_control=user["access_control"], as_obj=False)
 
         results = []
         for r in res['items']:

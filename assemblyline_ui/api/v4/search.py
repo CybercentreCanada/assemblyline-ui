@@ -1,4 +1,5 @@
 
+from assemblyline.datastore.collection import Index
 from flask import abort, request
 
 from assemblyline.datastore.exceptions import SearchException
@@ -52,7 +53,8 @@ def search(index, **kwargs):
     sort           =>   How to sort the results (not available in deep paging)
     fl             =>   List of fields to return
     timeout        =>   Maximum execution time (ms)
-    use_archive    =>   Allow access to the datastore achive (Default: False)
+    use_archive    =>   Allow access to the malware archive (Default: False)
+    archive_only   =>   Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {"query": "query",     # Query to search for
@@ -80,7 +82,7 @@ def search(index, **kwargs):
 
     fields = ["offset", "rows", "sort", "fl", "timeout", "deep_paging_id", 'track_total_hits']
     multi_fields = ['filters']
-    boolean_fields = ['use_archive']
+    boolean_fields = ['use_archive', 'archive_only']
 
     if request.method == "POST":
         req_data = request.json
@@ -93,6 +95,15 @@ def search(index, **kwargs):
     params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
                    for k in boolean_fields
                    if req_data.get(k, None) is not None})
+
+    use_archive = params.pop('use_archive', False)
+    archive_only = params.pop('archive_only', False)
+    if archive_only:
+        params['index_type'] = Index.ARCHIVE
+    elif use_archive:
+        params['index_type'] = Index.HOT_AND_ARCHIVE
+    else:
+        params['index_type'] = Index.HOT
 
     if has_access_control(index):
         params.update({'access_control': user['access_control']})

@@ -1,9 +1,13 @@
 import logging
 import os
 
+from assemblyline.common.archiving import ArchiveManager
+from assemblyline.common.identify import Identify
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
+from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.filestore import FileStore
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
@@ -130,9 +134,15 @@ LOGGER.debug('Logger ready!')
 #################################################################
 # Global instances
 APPS_LIST = forge.CachedObject(get_apps_list, refresh=3600)
-FILESTORE = forge.get_filestore(config=config)
-STORAGE = forge.get_datastore(config=config, archive_access=True)
-IDENTIFY = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
+FILESTORE: FileStore = forge.get_filestore(config=config)
+if config.datastore.archive.enabled:
+    ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
+else:
+    ARCHIVESTORE = None
+STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
+IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
+ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
+    config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 # End global
 #################################################################

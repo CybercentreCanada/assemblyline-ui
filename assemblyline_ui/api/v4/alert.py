@@ -46,14 +46,13 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
                                               field,
                                               query=query,
                                               filters=filters,
-                                              limit=100,
                                               access_control=access_control)
                        for field in fields}
 
             return make_api_response({k: v.result() for k, v in res.items()})
         else:
             return make_api_response(STORAGE.alert.facet(fields, query=query, filters=filters,
-                                                         limit=100, access_control=access_control))
+                                                         access_control=access_control))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -235,7 +234,6 @@ def list_alerts(**kwargs):
     rows              => Numbers of alerts to return
     tc_start          => Time offset at which we start the time constraint
     tc                => Time constraint applied to the API
-    use_archive       => List alerts from archive as well (Default: False)
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
@@ -253,7 +251,6 @@ def list_alerts(**kwargs):
     """
     user = kwargs['user']
 
-    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
     offset = int(request.args.get('offset', 0))
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
@@ -264,7 +261,7 @@ def list_alerts(**kwargs):
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
     timming_filter = get_timming_filter(tc_start, tc)
-    track_total_hits = request.args.get('track_total_hits', False)
+    track_total_hits = request.args.get('track_total_hits', None)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
@@ -274,7 +271,7 @@ def list_alerts(**kwargs):
         return make_api_response(STORAGE.alert.search(
             query, offset=offset, rows=rows, fl="*", sort="reporting_ts desc",
             access_control=user['access_control'],
-            filters=filters, as_obj=False, use_archive=use_archive, track_total_hits=track_total_hits))
+            filters=filters, as_obj=False, track_total_hits=track_total_hits))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -296,7 +293,6 @@ def list_grouped_alerts(field, **kwargs):
     rows              => Numbers of alerts to return
     tc_start          => Time offset at which we start the time constraint
     tc                => Time constraint applied to the API
-    use_archive       => List alerts from archive as well (Default: False)
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
 
     Data Block:
@@ -327,8 +323,7 @@ def list_grouped_alerts(field, **kwargs):
     rows = int(request.args.get('rows', 100))
     query = request.args.get('q', "alert_id:*") or "alert_id:*"
     tc_start = request.args.get('tc_start', None)
-    track_total_hits = request.args.get('track_total_hits', False)
-    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
+    track_total_hits = request.args.get('track_total_hits', None)
 
     if not tc_start:
         if "no_delay" not in request.args and config.core.alerter.delay != 0:
@@ -349,8 +344,7 @@ def list_grouped_alerts(field, **kwargs):
     try:
         res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
                                            group_sort="reporting_ts desc", access_control=user['access_control'],
-                                           filters=filters, fl="*", as_obj=False,
-                                           use_archive=use_archive, track_total_hits=track_total_hits)
+                                           filters=filters, fl="*", as_obj=False, track_total_hits=track_total_hits)
         alerts = []
         hash_list = []
         hint_list = set()

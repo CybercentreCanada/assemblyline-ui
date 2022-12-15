@@ -29,6 +29,7 @@ def datastore(datastore_connection, filestore):
             f = random_model_obj(File)
             if test_file is None:
                 test_file = f
+                test_file.from_archive = False
             ds.file.save(f.sha256, f)
 
             filestore.put(f.sha256, f.sha256)
