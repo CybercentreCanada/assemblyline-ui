@@ -46,12 +46,19 @@ AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 current_directory = os.path.dirname(__file__)
 app = Flask("assemblyline_ui")
 app.logger.setLevel(60)  # This completely turns off the flask logger
+ssl_context = None
 if AL_UNSECURED_UI:
     app.config.update(
         SESSION_COOKIE_SECURE=False,
         SECRET_KEY=config.SECRET_KEY,
         PREFERRED_URL_SCHEME='http'
     )
+    if config.config.system.internal_encryption.enabled:
+        # Setup SSL only on the internal API
+        ssl_context = (
+            os.environ.get('INTERNAL_UI_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/internal-ui.crt'),
+            os.environ.get('INTERNAL_UI_CLIENT_KEY_PATH', '/etc/assemblyline/ssl/internal-ui.key')
+        )
 else:
     app.config.update(
         SESSION_COOKIE_SECURE=True,
@@ -140,7 +147,7 @@ def main():
         wlog.addHandler(h)
 
     app.jinja_env.cache = {}
-    app.run(host="0.0.0.0", debug=False)
+    app.run(host="0.0.0.0", debug=False, ssl_context=ssl_context)
 
 
 if __name__ == '__main__':
