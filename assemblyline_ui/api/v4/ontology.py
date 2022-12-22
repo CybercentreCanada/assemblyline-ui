@@ -17,6 +17,13 @@ ontology_api._doc = "Download ontology results from the system"
 def generate_ontology_file(results, user, updates={}, fnames={}):
     # Load ontology files
     sio = StringIO()
+
+    # Compute files' score based on results
+    file_scores = {}
+    for r in results:
+        file_scores.setdefault(r['sha256'], 0)
+        file_scores[r['sha256']] += r["result"]["score"]
+
     for r in results:
         for supp in r.get('response', {}).get('supplementary', {}):
             if supp['name'].endswith('.ontology'):
@@ -54,6 +61,9 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
                         # Ensure SHA256 is set in final output
                         ontology['file']['sha256'] = sha256
+
+                        # Aggregated file score related to the results
+                        ontology['results']['score'] = file_scores[sha256]
 
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
@@ -145,6 +155,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
             'classification': submission['classification'],
             'submitter': submission['params']['submitter'],
             'groups': submission['params']['groups'],
+            'max_score': submission['max_score']
         }
 
     }
@@ -230,6 +241,7 @@ def get_ontology_for_submission(sid, **kwargs):
             'classification': submission['classification'],
             'submitter': submission['params']['submitter'],
             'groups': submission['params']['groups'],
+            'max_score': submission['max_score']
         }
 
     }
