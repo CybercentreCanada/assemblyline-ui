@@ -64,6 +64,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         return make_api_response("", "You are not allowed to re-submit a file that you don't have access to", 403)
 
     submit_result = None
+    metadata = {}
     try:
         copy_sid = request.args.get('copy_sid', None)
         name = safe_str(request.args.get('name', sha256))
@@ -82,6 +83,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_params = submission['params']
             submission_params['classification'] = submission['classification']
             expiry = submission['expiry_ts']
+            metadata = submission['metadata']
 
         else:
             submission_params = ui_to_submission_params(load_user_settings(user))
@@ -115,6 +117,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_obj = Submission({
                 "files": files,
                 "params": submission_params,
+                "metadata": metadata,
             })
         except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
