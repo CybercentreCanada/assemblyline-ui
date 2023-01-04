@@ -1,12 +1,14 @@
 
-import yaml
 import json
+import re
+import yaml
 
 from flask import request
 from math import floor
 from packaging.version import parse
 
 from assemblyline.common.dict_utils import get_recursive_delta
+from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.odm.models.error import ERROR_TYPES
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
@@ -533,11 +535,20 @@ def get_potential_versions(servicename, **_):
     Result example:
     ['3.1.0', '3.2.0', '3.3.0', '4.0.0', ...]     # List of service versions
     """
-    service = STORAGE.service_delta.get(servicename)
+    service = STORAGE.get_service_with_delta(servicename)
     if service:
-        return make_api_response(
-            sorted([item.version for item in STORAGE.service.stream_search(f"id:{servicename}*", fl="version")],
-                   key=lambda x: parse(x), reverse=True))
+        if service.update_channel != 'stable':
+            version_re = f"{FRAMEWORK_VERSION}\\.{SYSTEM_VERSION}\\.\\d+\\.{service.update_channel}\\d+"
+        else:
+            version_re = f"{FRAMEWORK_VERSION}\\.{SYSTEM_VERSION}\\.\\d+\\.\\w+"
+
+        versions = [
+            item.version
+            for item in STORAGE.service.stream_search(f"id:{servicename}*", fl="version")
+            if re.match(version_re, item.version)
+        ]
+
+        return make_api_response(sorted(versions, key=lambda x: parse(x), reverse=True))
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
 
