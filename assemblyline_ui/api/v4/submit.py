@@ -90,6 +90,9 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_params['classification'] = file_info['classification']
             expiry = file_info['expiry_ts']
 
+            # Ignore external sources
+            submission_params.pop('default_external_sources', None)
+
         if not FILESTORE.exists(sha256):
             if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
                     ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
