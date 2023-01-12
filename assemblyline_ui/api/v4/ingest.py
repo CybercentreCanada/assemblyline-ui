@@ -318,7 +318,7 @@ def ingest_single_file(**kwargs):
                 try:
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
                                                     proxies=config.ui.url_submission_proxies,
-                                                    timeout=config.ui.url_submission_timeout)
+                                                    timeout=config.ui.url_submission_timeout, verify=False)
                     if url_history is None:
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
