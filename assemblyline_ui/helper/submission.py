@@ -42,10 +42,14 @@ def validate_url(url):
         try:
             cur_ip = socket.gethostbyname(host)
         except socket.gaierror:
-            cur_ip = '127.0.0.1'
+            cur_ip = None
 
-        if is_ip_reserved(cur_ip) or cur_ip == MYIP:
-            raise ForbiddenLocation("Location '%s' cannot be resolved." % host)
+        if cur_ip is None:
+            raise ForbiddenLocation(f"Host '{host}' cannot be resolved.")
+
+        if is_ip_reserved(cur_ip):
+            raise ForbiddenLocation(
+                f"Host '{host}' resolves to a reserved IP address: '{cur_ip}'. The URL will not be downloaded.")
 
 
 def validate_redirect(r, **_):
