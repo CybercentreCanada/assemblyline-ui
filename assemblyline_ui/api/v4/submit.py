@@ -405,7 +405,8 @@ def submit(**kwargs):
                 try:
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
                                                     proxies=config.ui.url_submission_proxies,
-                                                    timeout=config.ui.url_submission_timeout)
+                                                    timeout=config.ui.url_submission_timeout,
+                                                    verify=False)
                     if url_history is None:
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
@@ -416,8 +417,8 @@ def submit(**kwargs):
                     return make_api_response({}, "File too big to be scanned.", 400)
                 except InvalidUrlException:
                     return make_api_response({}, "Url provided is invalid.", 400)
-                except ForbiddenLocation:
-                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
+                except ForbiddenLocation as fl:
+                    return make_api_response({}, str(fl), 400)
                 except ConnectTimeout:
                     return make_api_response({}, 'Connection timeout has occurred while fetching data.', 400)
             else:
