@@ -22,11 +22,6 @@ API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
 XSRF_ENABLED = True
-SCOPES = {
-    'r': ["R"],
-    'w': ["W"],
-    'rw': ["R", "W"],
-}
 
 
 def make_subapi_blueprint(name, api_version=4):
@@ -57,7 +52,7 @@ class api_login(BaseSecurityRenderer):
                     #       We could fix this by saving the hash of the combinaison of the
                     #       APIkey and the username in an ExpiringSet and looking it up for
                     #       sub-sequent calls...
-                    validated_user, priv = validate_apikey(uname, apikey, STORAGE)
+                    validated_user, roles_limit = validate_apikey(uname, apikey, STORAGE)
                 except AuthenticationException:
                     msg = "Invalid user or APIKey"
                     LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{msg}]")
@@ -66,24 +61,19 @@ class api_login(BaseSecurityRenderer):
 
                 if validated_user:
                     LOGGER.info(f"Login successful. (U:{uname} - IP:{ip})")
-                    if not set(self.required_priv).intersection(set(priv)):
-                        abort(403, "The method you've used to login does not give you access to this API")
-                        return
 
-                    return validated_user
+                    return validated_user, roles_limit
 
-        return None
+        return None, None
 
     def extra_session_checks(self, session):
-        if not set(self.required_priv).intersection(set(session.get("privileges", []))):
-            abort(403, "The method you've used to login does not give you access to this API")
-            return
+        if "roles_limit" not in session:
+            abort(401, "Invalid session")
 
-        if "E" in session.get("privileges", []) and self.check_xsrf_token and \
+        if session.get("roles_limit", []) is None and self.check_xsrf_token and \
                 session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN',
                                                                      request.args.get("XSRF_TOKEN", "")):
             abort(403, "Invalid XSRF token")
-            return
 
     def __call__(self, func):
         @functools.wraps(func)
@@ -96,7 +86,7 @@ class api_login(BaseSecurityRenderer):
                     return
 
             self.test_readonly("API")
-            logged_in_uname = self.get_logged_in_user()
+            logged_in_uname, roles_limit = self.get_logged_in_user()
             impersonator = None
 
             # Impersonate
@@ -121,9 +111,11 @@ class api_login(BaseSecurityRenderer):
                         logged_in_uname = headers['user']
                         LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
 
-                        if not set(self.required_priv).intersection(set(SCOPES[decoded["scope"]])):
-                            abort(403, "The method you've used to login does not give you access to this API")
-                            return
+                        if roles_limit:
+                            roles_limit = [r for r in decoded['roles'] if r in roles_limit]
+                        else:
+                            roles_limit = decoded["roles"]
+
                     else:
                         abort(403, "Invalid bearer token")
                         return
@@ -131,7 +123,7 @@ class api_login(BaseSecurityRenderer):
                     abort(404, "User not found")
                     return
 
-            user = login(logged_in_uname)
+            user = login(logged_in_uname, roles_limit)
 
             # Terms of Service
             if request.path not in ["/api/v4/help/tos/", "/api/v4/user/whoami/",
@@ -190,7 +182,6 @@ class api_login(BaseSecurityRenderer):
         base.protected = True
         base.require_role = self.require_role
         base.audit = self.audit
-        base.required_priv = self.required_priv
         base.check_xsrf_token = self.check_xsrf_token
         base.allow_readonly = self.allow_readonly
         return base

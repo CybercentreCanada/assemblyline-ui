@@ -11,9 +11,16 @@
 {% if token_headers.token_id %}
 <div>Token ID: {{ token_headers.token_id }}</div>
 {% else %}
-<a href="https://{{ al_server }}/authorize?client_id={{ al_user }}&scope=r&server=OBO Test&redirect_url=https%3A%2F%2F{{ obo_server }}:5100%2Ftoken%2F">
-    Connect to AL using OBO token
-</a>
+<div>
+    <a href="https://{{ al_server }}/authorize?client_id={{ al_user }}&scope=r&server=OBO Test&redirect_url=https%3A%2F%2F{{ obo_server }}:5100%2Ftoken%2F">
+        Request a Token with READ scope to AL
+    </a>
+</div>
+<div>
+    <a href="https://{{ al_server }}/authorize?client_id={{ al_user }}&roles=submission_view,file_detail&server=OBO Test&redirect_url=https%3A%2F%2F{{ obo_server }}:5100%2Ftoken%2F">
+        Request a Token with specific roles to AL
+    </a>
+</div>
 {% endif %}
 
 

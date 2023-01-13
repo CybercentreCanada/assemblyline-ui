@@ -53,7 +53,7 @@ def decrement_submission_quota(user):
     SUBMISSION_TRACKER.end(user['uname'])
 
 
-def login(uname):
+def login(uname, roles_limit):
     user = STORAGE.user.get(uname, as_obj=False)
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
@@ -78,7 +78,10 @@ def login(uname):
     user['security_token_enabled'] = len(security_tokens) != 0
     user['read_only'] = config.ui.read_only
     user['authenticated'] = True
-    user['roles'] = load_roles(user['type'], user.get('roles', None))
+    user['roles'] = [
+        r for r in load_roles(user['type'], user.get('roles', None))
+        if roles_limit is None or r in roles_limit
+    ]
 
     return user
 

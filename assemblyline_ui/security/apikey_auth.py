@@ -1,3 +1,4 @@
+from assemblyline.odm.models.user import load_roles_form_acls
 from assemblyline_ui.config import config
 from assemblyline.common.security import verify_password
 from assemblyline_ui.http_exceptions import AuthenticationException
@@ -15,7 +16,10 @@ def validate_apikey(username, apikey, storage):
 
                 if key is not None:
                     if verify_password(apikey_password, key.password):
-                        return username, key.acl
+                        # Load user and API key roles
+                        apikey_roles_limit = load_roles_form_acls(key.acl, key.roles)
+
+                        return username, apikey_roles_limit
             except ValueError:
                 pass
 

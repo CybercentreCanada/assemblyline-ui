@@ -18,7 +18,7 @@ from assemblyline.common.isotime import now
 from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
                                           get_password_requirement_message, get_random_password, get_totp_token)
 from assemblyline.common.uid import get_random_id
-from assemblyline.odm.models.user import User, ROLES
+from assemblyline.odm.models.user import User, ROLES, load_roles_form_acls
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
                                     get_signup_queue, get_token_store, CLASSIFICATION as Classification)
@@ -30,7 +30,14 @@ from assemblyline_ui.security.authenticator import default_authenticator
 API_PRIV_MAP = {
     "READ": ["R"],
     "READ_WRITE": ["R", "W"],
-    "WRITE": ["W"]
+    "WRITE": ["W"],
+    "CUSTOM": None
+}
+
+SCOPES = {
+    'r': ["R"],
+    'w': ["W"],
+    'rw': ["R", "W"]
 }
 
 if config.auth.allow_extended_apikeys:
@@ -41,7 +48,7 @@ auth_api = make_subapi_blueprint(SUB_API, api_version=4)
 auth_api._doc = "Allow user to authenticate to the web server"
 
 
-@auth_api.route("/apikey/<name>/<priv>/", methods=["GET"])
+@auth_api.route("/apikey/<name>/<priv>/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.apikey_access])
 def add_apikey(name, priv, **kwargs):
     """
@@ -55,7 +62,7 @@ def add_apikey(name, priv, **kwargs):
     None
 
     Data Block:
-    None
+    ['submission_view', 'file_detail']  # List of roles if priv is CUSTOM
 
     Result example:
     {"apikey": <ramdomly_generated_password>}
@@ -70,8 +77,22 @@ def add_apikey(name, priv, **kwargs):
         return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()}",
                                  status_code=400)
 
+    if priv == "CUSTOM":
+        try:
+            roles = request.json
+        except BadRequest:
+            return make_api_response("", err="Invalid data block provided. Provide a list of roles as JSON.",
+                                     status_code=400)
+    else:
+        roles = None
+
     random_pass = get_random_password(length=48)
-    user_data.apikeys[name] = {"password": bcrypt.encrypt(random_pass), "acl": API_PRIV_MAP[priv]}
+    priv_map = API_PRIV_MAP[priv]
+    user_data.apikeys[name] = {
+        "password": bcrypt.encrypt(random_pass),
+        "acl": priv_map,
+        "roles": load_roles_form_acls(priv_map, roles)
+    }
     STORAGE.user.save(user['uname'], user_data)
 
     return make_api_response({"apikey": f"{name}:{random_pass}"})
@@ -191,10 +212,20 @@ def get_obo_token(**kwargs):
     client_id = params.get('client_id', None)
     redirect_url = params.get('redirect_url', None)
     scope = params.get('scope', None)
+    roles = params.get('roles', None)
     server = params.get('server', None)
 
     if not redirect_url:
-        return make_api_response({"success": False}, "redirect_url missing", 400)
+        return make_api_response({"success": False}, "Redirect_url missing", 400)
+
+    if roles:
+        scope = 'c'
+        roles = roles.split(",")
+    else:
+        if scope not in SCOPES:
+            return make_api_response({"success": False}, "Invalid Scope selected", 400)
+
+        roles = load_roles_form_acls(SCOPES[scope], roles)
 
     parsed_url = urlparse(redirect_url)
     if parsed_url.scheme != 'https':
@@ -205,15 +236,21 @@ def get_obo_token(**kwargs):
     else:
         redirect_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?"
 
-    if not client_id or not scope or not server:
+    if not client_id or not roles or not server:
         err_type = "missing_arguments"
-        err_description = "client_id, scope and server are required arguments"
+        err_description = \
+            "client_id, roles and server are required arguments. You can also use scope to define a set of roles."
         return redirect(f"{redirect_url}error={err_type}&error_description={err_description}")
 
     uname = kwargs['user']['uname']
     user_data = STORAGE.user.get(uname, as_obj=False)
 
-    token_data = {'client_id': client_id, 'scope': scope, 'netloc': parsed_url.netloc, 'server': server}
+    token_data = {
+        'client_id': client_id,
+        'scope': scope,
+        'netloc': parsed_url.netloc,
+        'server': server,
+        'roles': roles}
     token_id = None
     for k, v in user_data.get('apps', {}).items():
         if v == token_data:
@@ -344,14 +381,14 @@ def login(**_):
         logged_in_uname = None
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         try:
-            logged_in_uname, priv = default_authenticator(auth, request, flsk_session, STORAGE)
+            logged_in_uname, roles_limit = default_authenticator(auth, request, flsk_session, STORAGE)
             session_duration = config.ui.session_duration
             cur_time = now()
             xsrf_token = generate_random_secret()
             current_session = {
                 'duration': session_duration,
                 'ip': ip,
-                'privileges': priv,
+                'roles_limit': roles_limit,
                 'time': int(cur_time) - (int(cur_time) % session_duration),
                 'user_agent': request.headers.get("User-Agent", None),
                 'username': logged_in_uname,
@@ -372,7 +409,7 @@ def login(**_):
             KV_SESSION.add(session_id, current_session)
             return make_api_response({
                 "username": logged_in_uname,
-                "privileges": priv,
+                "roles_limit": roles_limit,
                 "session_duration": session_duration
             }, cookies={'XSRF-TOKEN': xsrf_token})
         except AuthenticationException as wpe:
