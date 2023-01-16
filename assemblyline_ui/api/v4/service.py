@@ -481,7 +481,7 @@ def check_for_service_updates(**_):
 
 
 @service_api.route("/constants/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False)
+@api_login(audit=False, allow_readonly=False)
 def get_service_constants(**_):
     """
     Get global service constants.
@@ -652,7 +652,7 @@ def get_service_defaults(servicename, version, **_):
 
 
 @service_api.route("/all/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False)
+@api_login(audit=False, allow_readonly=False)
 def list_all_services(**_):
     """
     List all service configurations of the system.
@@ -1047,7 +1047,7 @@ def update_all_services(**_):
 
 
 @service_api.route("/stats/<service_name>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], require_role=[ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.administration])
 def service_statistics(service_name, **_):
     """
         Get statistics for a service

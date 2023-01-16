@@ -139,7 +139,7 @@ def edit_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/<workflow_id>/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=[ROLES.workflow_view])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_view])
 def get_workflow(workflow_id, **kwargs):
     """
     Load the user account information.
@@ -178,7 +178,7 @@ def get_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/labels/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False, required_priv=['R'], require_role=[ROLES.workflow_view])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_view])
 def list_workflow_labels(**kwargs):
     """
     List all labels from the workflows

@@ -424,7 +424,7 @@ def login(**_):
 
 
 @auth_api.route("/logout/", methods=["GET"])
-@api_login(audit=False, required_priv=['R', 'W'], check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False)
 def logout(**_):
     """
     Logout from the system clearing the current session

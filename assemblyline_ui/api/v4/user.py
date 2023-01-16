@@ -23,7 +23,7 @@ classification_definition = CLASSIFICATION.get_parsed_classification_definition(
 
 
 @user_api.route("/whoami/", methods=["GET"])
-@api_login(required_priv=["R"])
+@api_login()
 def who_am_i(**kwargs):
     """
     Return the currently logged in user as well as the system configuration
@@ -248,7 +248,7 @@ def add_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'])
+@api_login(audit=False)
 def get_user_account(username, **kwargs):
     """
     Load the user account information.
@@ -422,7 +422,7 @@ def set_user_account(username, **kwargs):
 
 
 @user_api.route("/avatar/<username>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'])
+@api_login(audit=False)
 def get_user_avatar(username, **_):
     """
     Loads the user's avatar.
@@ -532,7 +532,7 @@ def add_to_user_favorite(username, favorite_type, **kwargs):
 
 
 @user_api.route("/favorites/<username>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'])
+@api_login(audit=False)
 def get_user_favorites(username, **kwargs):
     """
     Loads the user's favorites.
@@ -718,7 +718,7 @@ def list_users(**_):
 
 
 @user_api.route("/settings/<username>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False)
 def get_user_settings(username, **kwargs):
     """
     Load the user's settings.
@@ -808,7 +808,7 @@ def set_user_settings(username, **_):
 ######################################################
 
 @user_api.route("/submission_params/<username>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False)
 def get_user_submission_params(username, **kwargs):
     """
     Load the user's default submission params that should be passed to the submit API.

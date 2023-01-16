@@ -33,9 +33,9 @@ def make_subapi_blueprint(name, api_version=4):
 # API Helper func and decorators
 # noinspection PyPep8Naming
 class api_login(BaseSecurityRenderer):
-    def __init__(self, require_role=None, username_key='username', audit=True, required_priv=None,
+    def __init__(self, require_role=None, username_key='username', audit=True,
                  check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
-        super().__init__(require_role, audit, required_priv, allow_readonly)
+        super().__init__(require_role, audit, allow_readonly)
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
@@ -282,7 +282,7 @@ def stream_binary_response(reader, status_code=200):
 #####################################
 # API list API (API inception)
 @api.route("/")
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False)
 def api_version_list(**_):
     """
     List all available API versions.
@@ -348,7 +348,6 @@ def site_map(**_):
         protected = func.__dict__.get('protected', False)
         required_type = func.__dict__.get('require_role', [])
         audit = func.__dict__.get('audit', False)
-        priv = func.__dict__.get('required_priv', '')
         allow_readonly = func.__dict__.get('allow_readonly', True)
         if "/api/v4/" in rule.rule:
             prefix = "api.v4."
@@ -366,7 +365,6 @@ def site_map(**_):
                       "methods": methods,
                       "protected": protected,
                       "required_type": required_type,
-                      "audit": audit,
-                      "req_priv": priv})
+                      "audit": audit})
 
     return make_api_response(sorted(pages, key=lambda i: i['url']))

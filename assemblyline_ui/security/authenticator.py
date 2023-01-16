@@ -27,9 +27,7 @@ class InvalidRole(Exception):
 
 
 class BaseSecurityRenderer(object):
-    def __init__(self, require_role=None, audit=True, required_priv=None, allow_readonly=True):
-        if required_priv is None:
-            required_priv = ["E"]
+    def __init__(self, require_role=None, audit=True, allow_readonly=True):
         if require_role is None:
             require_role = []
 
