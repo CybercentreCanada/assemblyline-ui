@@ -273,8 +273,8 @@ def get_user_account(username, **kwargs):
      "groups": ["TEST"]          # Groups the user is member of
     }
     """
-    if username != kwargs['user']['uname'] and 'administration' not in kwargs['user']['roles']:
-        return make_api_response({}, "You are not allow to view other users then yourself.", 403)
+    if username != kwargs['user']['uname'] and ROLES.administration not in kwargs['user']['roles']:
+        raise AccessDeniedException("You are not allowed to view another user then yourself.")
 
     user = STORAGE.user.get(username, as_obj=False)
     if not user:
@@ -334,7 +334,7 @@ def remove_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["POST"])
-@api_login()
+@api_login(require_role=[ROLES.self_manage, ROLES.administration])
 def set_user_account(username, **kwargs):
     """
     Save the user account information.
@@ -447,7 +447,7 @@ def get_user_avatar(username, **_):
 
 
 @user_api.route("/avatar/<username>/", methods=["POST"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
 def set_user_avatar(username, **kwargs):
     """
     Sets the user's Avatar
@@ -466,8 +466,9 @@ def set_user_avatar(username, **kwargs):
      "success": true    # Was saving the avatar successful ?
     }
     """
-    if username != kwargs['user']['uname']:
-        return make_api_response({"success": False}, "Cannot save the avatar of another user.", 403)
+    user = kwargs['user']
+    if username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to set avatar for another user then yourself.")
 
     data = request.data
     if data:
@@ -486,7 +487,7 @@ def set_user_avatar(username, **kwargs):
 
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
 def add_to_user_favorite(username, favorite_type, **kwargs):
     """
     Add an entry to the user's favorites
@@ -507,6 +508,10 @@ def add_to_user_favorite(username, favorite_type, **kwargs):
     Result example:
     { "success": true }
     """
+    user = kwargs['user']
+    if username != "__global__" and username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to add favorites for another user then yourself.")
+
     if favorite_type not in ALLOWED_FAVORITE_TYPE:
         return make_api_response({}, "%s is not a valid favorite type" % favorite_type, 500)
 
@@ -554,6 +559,8 @@ def get_user_favorites(username, **kwargs):
     }
     """
     user = kwargs['user']
+    if username != "__global__" and username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to view favorites for another user then yourself.")
 
     favorites = {
         "alert": [],
@@ -581,8 +588,8 @@ def get_user_favorites(username, **kwargs):
 
 # noinspection PyBroadException
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["DELETE"])
-@api_login()
-def remove_user_favorite(username, favorite_type, **_):
+@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+def remove_user_favorite(username, favorite_type, **kwargs):
     """
     Remove a favorite from the user's favorites.
 
@@ -601,6 +608,10 @@ def remove_user_favorite(username, favorite_type, **_):
      "success": true  # Was the remove successful?
     }
     """
+    user = kwargs['user']
+    if username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to remove favorites for another user then yourself.")
+
     if favorite_type not in ALLOWED_FAVORITE_TYPE:
         return make_api_response({}, "%s is not a valid favorite type" % favorite_type, 500)
 
@@ -621,8 +632,8 @@ def remove_user_favorite(username, favorite_type, **_):
 
 
 @user_api.route("/favorites/<username>/", methods=["POST"])
-@api_login(audit=False)
-def set_user_favorites(username, **_):
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+def set_user_favorites(username, **kwargs):
     """
     Sets the user's Favorites
 
@@ -645,6 +656,10 @@ def set_user_favorites(username, **_):
      "success": true    # Was saving the favorites successful ?
     }
     """
+    user = kwargs['user']
+    if username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to set favorites for another user then yourself.")
+
     data = request.json
     favorites = {
         "alert": [],
@@ -751,13 +766,16 @@ def get_user_settings(username, **kwargs):
     user = kwargs['user']
 
     if username != user['uname']:
+        if ROLES.administration not in user['roles']:
+            raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
         user = STORAGE.user.get(username, as_obj=False)
+
     return make_api_response(load_user_settings(user))
 
 
 @user_api.route("/settings/<username>/", methods=["POST"])
-@api_login()
-def set_user_settings(username, **_):
+@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+def set_user_settings(username, **kwargs):
     """
     Save the user's settings.
 
@@ -789,6 +807,10 @@ def set_user_settings(username, **_):
      "success"': True              # Was saving the params successful ?
     }
     """
+    user = kwargs['user']
+    if username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to set settings for another user then yourself.")
+
     try:
         data = request.json
         data['service_spec'] = simplify_service_spec(data.get('service_spec', {}))
@@ -841,6 +863,8 @@ def get_user_submission_params(username, **kwargs):
     user = kwargs['user']
 
     if username != "__CURRENT__" and username != user['uname']:
+        if username != user['uname'] and ROLES.administration not in user['roles']:
+            raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
         user = STORAGE.user.get(username, as_obj=False)
 
     params = load_user_settings(user)
@@ -856,7 +880,7 @@ def get_user_submission_params(username, **kwargs):
 ######################################################
 
 @user_api.route("/tos/<username>/", methods=["GET"])
-@api_login()
+@api_login(require_role=[ROLES.self_manage])
 def agree_with_tos(username, **kwargs):
     """
     Specified user send agreement to Terms of Service
@@ -877,9 +901,7 @@ def agree_with_tos(username, **kwargs):
     """
     logged_in_user = kwargs['user']
     if logged_in_user['uname'] != username:
-        return make_api_response({"success": False},
-                                 "You can't agree to Terms Of Service on behalf of someone else!",
-                                 400)
+        raise AccessDeniedException("You can't agree to Terms Of Service on behalf of someone else!")
 
     user = STORAGE.user.get(username)
 

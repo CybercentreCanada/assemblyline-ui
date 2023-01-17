@@ -156,7 +156,7 @@ def delete_obo_token(token_id, **kwargs):
 
 
 @auth_api.route("/disable_otp/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage])
 def disable_otp(**kwargs):
     """
     Disable OTP for the currently logged in user
@@ -711,7 +711,7 @@ def reset_pwd(**_):
 
 
 @auth_api.route("/setup_otp/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage])
 def setup_otp(**kwargs):
     """
     Setup OTP for the currently logged in user
