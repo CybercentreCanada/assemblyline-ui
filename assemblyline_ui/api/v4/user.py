@@ -5,7 +5,8 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles
+from assemblyline.odm.models.user import (ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
+                                          load_roles_form_acls)
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -281,7 +282,10 @@ def get_user_account(username, **kwargs):
         return make_api_response({}, "User %s does not exists" % username, 404)
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['apikeys'] = list(user.get('apikeys', {}).keys())
+    user['apikeys'] = {
+        name: {'acl': detail['acl'], 'roles': load_roles_form_acls(detail['acl'], detail.get('roles', None))}
+        for name, detail in user.get('apikeys', {}).items()
+    }
     user['has_password'] = user.pop('password', "") != ""
     security_tokens = user.get('security_tokens', {}) or {}
     user['security_tokens'] = list(security_tokens.keys())
