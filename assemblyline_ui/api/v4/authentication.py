@@ -23,25 +23,16 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
                                     get_signup_queue, get_token_store, CLASSIFICATION as Classification)
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
-from assemblyline_ui.helper.user import get_dynamic_classification
+from assemblyline_ui.helper.user import get_dynamic_classification, API_PRIV_MAP
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
-API_PRIV_MAP = {
-    "READ": ["R"],
-    "READ_WRITE": ["R", "W"],
-    "WRITE": ["W"],
-    "CUSTOM": None
-}
 
 SCOPES = {
     'r': ["R"],
     'w': ["W"],
     'rw': ["R", "W"]
 }
-
-if config.auth.allow_extended_apikeys:
-    API_PRIV_MAP["EXTENDED"] = ["R", "W", "E"]
 
 SUB_API = 'auth'
 auth_api = make_subapi_blueprint(SUB_API, api_version=4)

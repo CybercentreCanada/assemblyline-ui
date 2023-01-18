@@ -5,14 +5,14 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.user import (ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
+from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
-                                         save_user_settings)
+                                         save_user_settings, API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
 SUB_API = 'user'
@@ -165,6 +165,8 @@ def who_am_i(**kwargs):
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
         },
         "user": {
+            "api_priv_map": API_PRIV_MAP,
+            "priv_role_dependencies": ACL_MAP,
             "roles": list(USER_ROLES),
             "role_dependencies": {k: list(v) for k, v in USER_TYPE_DEP.items()},
             "types": [t for t in USER_TYPES if t != 'custom']

@@ -10,6 +10,16 @@ from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataEx
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "groups", "password"]
 
+API_PRIV_MAP = {
+    "READ": ["R"],
+    "READ_WRITE": ["R", "W"],
+    "WRITE": ["W"],
+    "CUSTOM": None
+}
+
+if config.auth.allow_extended_apikeys:
+    API_PRIV_MAP["EXTENDED"] = ["R", "W", "E"]
+
 
 ###########################
 # User Functions
