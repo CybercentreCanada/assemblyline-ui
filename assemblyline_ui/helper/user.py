@@ -14,7 +14,7 @@ API_PRIV_MAP = {
     "READ": ["R"],
     "READ_WRITE": ["R", "W"],
     "WRITE": ["W"],
-    "CUSTOM": None
+    "CUSTOM": ["C"]
 }
 
 if config.auth.allow_extended_apikeys:
