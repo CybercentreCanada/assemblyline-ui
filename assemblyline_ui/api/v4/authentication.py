@@ -18,7 +18,7 @@ from assemblyline.common.isotime import now
 from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
                                           get_password_requirement_message, get_random_password, get_totp_token)
 from assemblyline.common.uid import get_random_id
-from assemblyline.odm.models.user import User, ROLES, load_roles_form_acls
+from assemblyline.odm.models.user import User, ROLES, load_roles, load_roles_form_acls
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
                                     get_signup_queue, get_token_store, CLASSIFICATION as Classification)
@@ -59,9 +59,9 @@ def add_apikey(name, priv, **kwargs):
     {"apikey": <ramdomly_generated_password>}
     """
     user = kwargs['user']
-    user_data = STORAGE.user.get(user['uname'])
+    user_data = STORAGE.user.get(user['uname'], as_obj=False)
 
-    if name in user_data.apikeys:
+    if name in user_data['apikeys']:
         return make_api_response("", err=f"APIKey '{name}' already exist", status_code=400)
 
     if priv not in API_PRIV_MAP:
@@ -79,14 +79,21 @@ def add_apikey(name, priv, **kwargs):
 
     random_pass = get_random_password(length=48)
     priv_map = API_PRIV_MAP[priv]
-    user_data.apikeys[name] = {
+    roles = [r for r in load_roles_form_acls(priv_map, roles)
+             if r in load_roles(user_data['type'], user_data.get('roles', None))]
+
+    if not roles:
+        return make_api_response(
+            "", err="None of the roles you've requested for this key are allowed for this user.", status_code=400)
+
+    user_data['apikeys'][name] = {
         "password": bcrypt.encrypt(random_pass),
         "acl": priv_map,
-        "roles": load_roles_form_acls(priv_map, roles)
+        "roles": roles
     }
     STORAGE.user.save(user['uname'], user_data)
 
-    return make_api_response({"apikey": f"{name}:{random_pass}"})
+    return make_api_response({"acl": priv_map, "apikey": f"{name}:{random_pass}", "name": name,  "roles": roles})
 
 
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
