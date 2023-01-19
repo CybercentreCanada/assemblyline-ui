@@ -31,7 +31,8 @@ from assemblyline_ui.security.authenticator import default_authenticator
 SCOPES = {
     'r': ["R"],
     'w': ["W"],
-    'rw': ["R", "W"]
+    'rw': ["R", "W"],
+    'c': ["C"]
 }
 
 SUB_API = 'auth'
@@ -223,7 +224,9 @@ def get_obo_token(**kwargs):
         if scope not in SCOPES:
             return make_api_response({"success": False}, "Invalid Scope selected", 400)
 
-        roles = load_roles_form_acls(SCOPES[scope], roles)
+    # Load roles from ACL if needed and validate them
+    roles = [r for r in load_roles_form_acls(SCOPES[scope], roles)
+             if ROLES.contains_value(r)]
 
     parsed_url = urlparse(redirect_url)
     if parsed_url.scheme != 'https':
