@@ -283,9 +283,14 @@ def get_user_account(username, **kwargs):
     if not user:
         return make_api_response({}, "User %s does not exists" % username, 404)
 
+    user_roles = load_roles(user['type'], user.get('roles', None))
+
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['apikeys'] = {
-        name: {'acl': detail['acl'], 'roles': load_roles_form_acls(detail['acl'], detail.get('roles', None))}
+        name: {
+            'acl': detail['acl'],
+            'roles': [r for r in load_roles_form_acls(detail['acl'], detail.get('roles', None)) if r in user_roles]
+        }
         for name, detail in user.get('apikeys', {}).items()
     }
     user['has_password'] = user.pop('password', "") != ""
