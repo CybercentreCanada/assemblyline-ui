@@ -1,4 +1,4 @@
-from assemblyline.odm.models.user import load_roles_form_acls
+from assemblyline.odm.models.user import load_roles_form_acls, ROLES, load_roles
 from assemblyline_ui.config import config
 from assemblyline.common.security import verify_password
 from assemblyline_ui.http_exceptions import AuthenticationException
@@ -10,6 +10,9 @@ def validate_apikey(username, apikey, storage):
     if config.auth.allow_apikeys and apikey:
         user_data = storage.user.get(username)
         if user_data:
+            if ROLES.apikey_access not in load_roles(user_data.type, user_data.roles):
+                raise AuthenticationException("This user is not allow to user API Keys")
+
             try:
                 name, apikey_password = apikey.split(":", 1)
                 key = user_data.apikeys.get(name, None)
@@ -23,6 +26,6 @@ def validate_apikey(username, apikey, storage):
             except ValueError:
                 pass
 
-        raise AuthenticationException("Invalid apikey")
+        raise AuthenticationException("Invalid user or APIKey")
 
     return None, None

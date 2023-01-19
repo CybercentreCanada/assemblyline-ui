@@ -53,10 +53,9 @@ class api_login(BaseSecurityRenderer):
                     #       APIkey and the username in an ExpiringSet and looking it up for
                     #       sub-sequent calls...
                     validated_user, roles_limit = validate_apikey(uname, apikey, STORAGE)
-                except AuthenticationException:
-                    msg = "Invalid user or APIKey"
-                    LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{msg}]")
-                    abort(401, msg)
+                except AuthenticationException as ae:
+                    LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{str(ae)}]")
+                    abort(401, str(ae))
                     return
 
                 if validated_user:
