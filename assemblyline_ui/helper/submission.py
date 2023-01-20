@@ -30,9 +30,15 @@ class ForbiddenLocation(Exception):
     pass
 
 
+def cleanup_url(url):
+    return url.replace('hxxp', 'http').replace("[.]", ".")
+
+
 def validate_url(url):
     try:
         parsed = urlparse(url)
+        if parsed.scheme in ['hxxp', 'hxxps']:
+            parsed = urlparse(cleanup_url(url))
     except Exception:
         raise InvalidUrlException('Url provided is invalid.')
 
