@@ -63,7 +63,7 @@ def validate_redirect(r, **_):
 
 def download_from_url(download_url, target, data=None, method="GET",
                       headers={}, proxies={}, verify=True, validate=True, failure_pattern=None,
-                      timeout=None):
+                      timeout=None, ignore_size=False):
     hooks = None
     if validate:
         validate_url(download_url)
@@ -85,7 +85,7 @@ def download_from_url(download_url, target, data=None, method="GET",
                          timeout=timeout, allow_redirects=True)
 
     if r.ok:
-        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
+        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size and not ignore_size:
             raise FileTooBigException("File too big to be scanned.")
 
         written = 0
@@ -99,7 +99,7 @@ def download_from_url(download_url, target, data=None, method="GET",
                         return None
 
                     written += 512 * 1024
-                    if written > config.submission.max_file_size:
+                    if written > config.submission.max_file_size and not ignore_size:
                         f.close()
                         os.unlink(target)
                         raise FileTooBigException("File too big to be scanned.")
