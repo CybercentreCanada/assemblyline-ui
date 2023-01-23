@@ -1,7 +1,9 @@
 import json
+import re
 import requests
 import os
 import socket
+
 from urllib.parse import urlparse
 
 from assemblyline.common.isotime import now_as_iso
@@ -30,9 +32,19 @@ class ForbiddenLocation(Exception):
     pass
 
 
+def refang_url(url):
+    '''
+    Refangs a url of text. Based on source of: https://pypi.org/project/defang/
+    '''
+    new_url = re.sub(r'[\(\[](\.|dot)[\)\]]', '.', url, flags=re.IGNORECASE)
+    new_url = re.sub(r'^h[x]{1,2}p([s]?)\[?:\]?//', r'http\1://', new_url, flags=re.IGNORECASE)
+    new_url = re.sub(r'^fxp(s?)\[?:\]?//', r'ftp\1://', new_url, flags=re.IGNORECASE)
+    return new_url
+
+
 def validate_url(url):
     try:
-        parsed = urlparse(url)
+        parsed = urlparse(refang_url(url))
     except Exception:
         raise InvalidUrlException('Url provided is invalid.')
 
