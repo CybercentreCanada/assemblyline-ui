@@ -377,7 +377,8 @@ def submit(**kwargs):
                             dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
                                                         headers=source.headers, proxies=source.proxies,
                                                         verify=source.verify, validate=False,
-                                                        failure_pattern=failure_pattern)
+                                                        failure_pattern=failure_pattern,
+                                                        ignore_size=s_params.get('ignore_size', False))
                             if dl_from is not None:
                                 # Apply minimum classification for the source
                                 s_params['classification'] = \
@@ -406,7 +407,7 @@ def submit(**kwargs):
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
                                                     proxies=config.ui.url_submission_proxies,
                                                     timeout=config.ui.url_submission_timeout,
-                                                    verify=False)
+                                                    verify=False, ignore_size=s_params.get('ignore_size', False))
                     if url_history is None:
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
