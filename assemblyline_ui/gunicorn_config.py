@@ -1,4 +1,4 @@
-from os import environ as env
+from os import environ as env, path
 import multiprocessing
 
 # Port to bind to
@@ -18,3 +18,7 @@ max_requests_jitter = int(env.get('MAX_REQUESTS_JITTER', '100'))
 # Connection timeouts
 graceful_timeout = int(env.get('GRACEFUL_TIMEOUT', '30'))
 timeout = int(env.get('TIMEOUT', '30'))
+
+# TLS/SSL Configuration
+certfile = env.get('CERTFILE')
+keyfile = env.get('KEYFILE')
