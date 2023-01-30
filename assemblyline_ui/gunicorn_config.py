@@ -1,4 +1,4 @@
-from os import environ as env, path
+from os import environ as env
 import multiprocessing
 
 # Port to bind to
