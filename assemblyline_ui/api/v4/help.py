@@ -89,10 +89,10 @@ def get_system_configuration(**_):
             stg_map[stg] = temp_stg
 
     shareable_config_items = [
+        "core.scaler.service_defaults.min_instances",
         "core.ingester.default_max_extracted",
         "core.ingester.default_max_supplementary",
         "services.categories",
-        "services.min_service_workers",
         "services.preferred_update_channel",
         "services.stages",
         "submission.default_max_extracted",
