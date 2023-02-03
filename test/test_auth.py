@@ -35,21 +35,21 @@ def test_api_keys(datastore, login_session):
     key_name = f'apikey_{get_random_hash(6)}'
 
     # Added a read apikey
-    resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_r/READ/")
+    resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_r/READ/", method="PUT")
     read_pass = resp.get('apikey', None)
     assert read_pass is not None
 
     # Cannot reuse apikey names
     with pytest.raises(APIError):
-        resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_r/READ_WRITE/")
+        resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_r/READ_WRITE/", method="PUT")
 
     # Added a read/write key
-    resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_rw/READ_WRITE/")
+    resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_rw/READ_WRITE/", method="PUT")
     read_write_pass = resp.get('apikey', None)
     assert read_write_pass is not None
 
     # Added a write key
-    resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_w/WRITE/")
+    resp = get_api_data(session, f"{host}/api/v4/auth/apikey/{key_name}_w/WRITE/", method="PUT")
     write_pass = resp.get('apikey', None)
     assert write_pass is not None
 
