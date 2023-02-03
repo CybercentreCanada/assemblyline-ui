@@ -1,3 +1,4 @@
+from assemblyline.odm.models.user import load_roles_form_acls
 import jwt
 import requests
 
@@ -12,11 +13,11 @@ def validate_oauth_id(username, oauth_token_id):
     # This function identifies the user via a saved oauth_token_id in redis
     if config.auth.oauth.enabled and oauth_token_id:
         if get_token_store(username).exist(oauth_token_id):
-            return username, ["R", "W", "E"]
+            return username
 
         raise AuthenticationException("Invalid token")
 
-    return None, None
+    return None
 
 
 def validate_oauth_token(oauth_token, oauth_provider):
@@ -63,7 +64,7 @@ def validate_oauth_token(oauth_token, oauth_provider):
                 # Get user from it's email
                 users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False)['items']
                 if users:
-                    return users[0]['uname'], ["R", "W"]
+                    return users[0]['uname'], load_roles_form_acls(["R", "W"])
 
         raise AuthenticationException("Invalid token")
 

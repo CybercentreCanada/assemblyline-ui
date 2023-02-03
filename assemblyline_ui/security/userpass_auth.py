@@ -10,8 +10,8 @@ def validate_userpass(username, password, storage):
         user = storage.user.get(username)
         if user:
             if verify_password(password, user.password):
-                return username, ["R", "W", "E"]
+                return username
 
         raise AuthenticationException("Wrong username or password")
 
-    return None, None
+    return None

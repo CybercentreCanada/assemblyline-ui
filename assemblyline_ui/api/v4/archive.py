@@ -13,7 +13,7 @@ archive_api._doc = "Perform operations on archived submissions"
 
 
 @archive_api.route("/<sid>/", methods=["PUT"])
-@api_login(required_priv=['W'], require_role=[ROLES.archive_trigger])
+@api_login(require_role=[ROLES.archive_trigger])
 def archive_submission(sid, **kwargs):
     """
     Send a submission to the permanent archive
