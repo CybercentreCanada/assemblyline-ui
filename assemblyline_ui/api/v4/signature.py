@@ -32,22 +32,6 @@ service_event_sender = EventSender('changes.services',
                                    port=config.core.redis.nonpersistent.port)
 
 
-def _reset_service_updates(signature_type):
-    service_updates = Hash('service-updates', get_client(
-        host=config.core.redis.persistent.host,
-        port=config.core.redis.persistent.port,
-        private=False,
-    ))
-
-    for svc in service_updates.items():
-        if svc.lower() == signature_type.lower():
-            update_data = service_updates.get(svc)
-            update_data['next_update'] = now_as_iso(120)
-            update_data['previous_update'] = now_as_iso(-10 ** 10)
-            service_updates.set(svc, update_data)
-            break
-
-
 def _get_signature_delimiters():
     signature_delimiters = {}
     for service in SERVICE_LIST:
@@ -294,8 +278,6 @@ def add_signature_source(service, **_):
     else:
         service_delta['update_config']['sources'] = current_sources
 
-    _reset_service_updates(service)
-
     # Save the signature
     success = STORAGE.service_delta.save(service, service_delta)
     if success:
@@ -370,8 +352,6 @@ def change_status(signature_id, status, **kwargs):
             ('SET', 'status', status)
         ]
 
-        _reset_service_updates(data['type'])
-
         success = STORAGE.signature.update(signature_id, operations)
         event_sender.send(data['type'], {
             'signature_id': signature_id,
@@ -411,7 +391,6 @@ def delete_signature(signature_id, **kwargs):
 
         ret_val = STORAGE.signature.delete(signature_id)
 
-        _reset_service_updates(data['type'])
         event_sender.send(data['type'], {
             'signature_id': signature_id,
             'signature_type': data['type'],
@@ -479,8 +458,6 @@ def delete_signature_source(service, name, **_):
     if success:
         # Remove old source signatures
         STORAGE.signature.delete_by_query(f'type:"{service.lower()}" AND source:"{name}"')
-
-    _reset_service_updates(service)
 
     service_event_sender.send(service, {
         'operation': Operation.Modified,
@@ -785,7 +762,6 @@ def update_signature_source(service, name, **_):
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm)])
 
-    _reset_service_updates(service)
     # Save the signature
     success = STORAGE.service_delta.save(service, service_delta)
     service_event_sender.send(service, {
