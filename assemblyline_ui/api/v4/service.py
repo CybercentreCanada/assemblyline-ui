@@ -19,7 +19,6 @@ from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.api.v4.signature import _reset_service_updates
 from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.signature import append_source_status
 
@@ -199,7 +198,17 @@ def synchronize_sources(service_name, current_sources, new_sources):
             if not check_for_source_change(new_sources, source):
                 removed_sources[source['name']] = STORAGE.signature.delete_by_query(
                     f'type:"{service_name.lower()}" AND source:"{source["name"]}"') != 0
-    _reset_service_updates(service_name)
+
+            # Notify of changes to updater
+            EventSender('changes.signatures',
+                        host=config.core.redis.nonpersistent.host,
+                        port=config.core.redis.nonpersistent.port).send(service_name.lower(), {
+                            'signature_id': '*',
+                            'signature_type': service_name.lower(),
+                            'source': source["name"],
+                            'operation': Operation.Removed
+                        })
+
     return removed_sources
 
 
