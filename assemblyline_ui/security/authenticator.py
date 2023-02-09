@@ -27,9 +27,7 @@ class InvalidRole(Exception):
 
 
 class BaseSecurityRenderer(object):
-    def __init__(self, require_role=None, audit=True, required_priv=None, allow_readonly=True):
-        if required_priv is None:
-            required_priv = ["E"]
+    def __init__(self, require_role=None, audit=True, allow_readonly=True):
         if require_role is None:
             require_role = []
 
@@ -39,7 +37,6 @@ class BaseSecurityRenderer(object):
 
         self.require_role = require_role
         self.audit = audit and AUDIT
-        self.required_priv = required_priv
         self.allow_readonly = allow_readonly
 
     def audit_if_required(self, args, kwargs, logged_in_uname, user, func, impersonator=None):
@@ -74,9 +71,9 @@ class BaseSecurityRenderer(object):
         pass
 
     def get_logged_in_user(self):
-        auto_auth_uname = self.auto_auth_check()
+        auto_auth_uname, roles_limit = self.auto_auth_check()
         if auto_auth_uname is not None:
-            return auto_auth_uname
+            return auto_auth_uname, roles_limit
 
         session_id = flsk_session.get("session_id", None)
 
@@ -152,14 +149,14 @@ class BaseSecurityRenderer(object):
 
         self.extra_session_checks(session)
 
-        return session.get("username", None)
+        return session.get("username", None), session.get('roles_limit', [])
 
     def test_require_role(self, user, r_type):
         if not self.require_role:
             return
 
-        for required_type in self.require_role:
-            if required_type in user['roles']:
+        for role in self.require_role:
+            if role in user['roles']:
                 return
 
         abort(403, f"{r_type} {request.path} requires one of the following roles: {', '.join(self.require_role)}")
@@ -205,23 +202,24 @@ def default_authenticator(auth, req, ses, storage):
                                                           ttl=config.auth.internal.failure_ttl))
 
     try:
+        roles_limit = None
         # These steps skips 2FA
-        validated_user, priv = validate_apikey(uname, apikey, storage)
+        validated_user, roles_limit = validate_apikey(uname, apikey, storage)
         if not validated_user:
-            validated_user, priv = validate_oauth_token(oauth_token, oauth_provider)
+            validated_user, roles_limit = validate_oauth_token(oauth_token, oauth_provider)
         if validated_user:
-            return validated_user, priv
+            return validated_user, roles_limit
 
         # Following steps will go through the 2FA process
-        validated_user, priv = validate_oauth_id(uname, oauth_token_id)
+        validated_user = validate_oauth_id(uname, oauth_token_id)
         if not validated_user:
-            validated_user, priv = validate_ldapuser(uname, password, storage)
+            validated_user = validate_ldapuser(uname, password, storage)
         if not validated_user:
-            validated_user, priv = validate_userpass(uname, password, storage)
+            validated_user = validate_userpass(uname, password, storage)
 
         if validated_user:
             validate_2fa(validated_user, otp, state, webauthn_auth_resp, storage)
-            return validated_user, priv
+            return validated_user, roles_limit
 
     except AuthenticationException:
         # Failure appended, push failure parameters

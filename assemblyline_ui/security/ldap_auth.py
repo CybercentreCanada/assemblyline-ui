@@ -291,7 +291,7 @@ def validate_ldapuser(username, password, storage):
                 storage.user.save(username, cur_user)
 
             if cur_user:
-                return username, ["R", "W", "E"]
+                return username
             else:
                 raise AuthenticationException("User auto-creation is disabled")
 
@@ -301,4 +301,4 @@ def validate_ldapuser(username, password, storage):
         else:
             raise AuthenticationException("Wrong username or password")
 
-    return None, None
+    return None

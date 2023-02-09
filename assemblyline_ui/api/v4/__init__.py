@@ -12,7 +12,7 @@ apiv4._doc = "Version 4 Api Documentation"
 # API DOCUMENTATION
 # noinspection PyProtectedMember,PyBroadException
 @apiv4.route("/")
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False)
 def get_api_documentation(**kwargs):
     """
     Full API doc.
@@ -101,8 +101,7 @@ def get_api_documentation(**kwargs):
                     "function": f"api.v4.{rule.endpoint}",
                     "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
                     "methods": methods, "description": description,
-                    "complete": "[INCOMPLETE]" not in description,
-                    "required_priv": func.__dict__.get('required_priv', "")
+                    "complete": "[INCOMPLETE]" not in description
                 })
 
     return make_api_response({"apis": api_list, "blueprints": api_blueprints})

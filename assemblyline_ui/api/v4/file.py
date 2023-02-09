@@ -90,7 +90,7 @@ def list_file_parents(sha256, access_control=None):
 
 
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.file_detail])
+@api_login(require_role=[ROLES.file_detail])
 def get_file_ascii(sha256, **kwargs):
     """
     Return the ascii values for a file where ascii chars are replaced by DOTs.
@@ -142,7 +142,7 @@ def get_file_ascii(sha256, **kwargs):
 
 
 @file_api.route("/download/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], check_xsrf_token=False, require_role=[ROLES.file_download])
+@api_login(check_xsrf_token=False, require_role=[ROLES.file_download])
 def download_file(sha256, **kwargs):
     """
     Download the file using the default encoding method. This api
@@ -268,7 +268,7 @@ def download_file(sha256, **kwargs):
 
 
 @file_api.route("/hex/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.file_detail])
+@api_login(require_role=[ROLES.file_detail])
 def get_file_hex(sha256, **kwargs):
     """
     Returns the file hex representation
@@ -329,7 +329,7 @@ def get_file_hex(sha256, **kwargs):
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_image_datastream(sha256, **kwargs):
     """
     Returns the image file as a datastream
@@ -383,7 +383,7 @@ def get_file_image_datastream(sha256, **kwargs):
 
 
 @file_api.route("/strings/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.file_detail])
+@api_login(require_role=[ROLES.file_detail])
 def get_file_strings(sha256, **kwargs):
     """
     Return all strings in a given file
@@ -442,7 +442,7 @@ def get_file_strings(sha256, **kwargs):
 
 
 @file_api.route("/children/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_children(sha256, **kwargs):
     """
     Get the list of children files for a given file
@@ -491,7 +491,7 @@ def get_file_children(sha256, **kwargs):
 
 
 @file_api.route("/info/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view, ROLES.file_detail])
+@api_login(require_role=[ROLES.submission_view, ROLES.file_detail])
 def get_file_information(sha256, **kwargs):
     """
     Get information about the file like:
@@ -541,7 +541,7 @@ def get_file_information(sha256, **kwargs):
 
 
 @file_api.route("/result/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_results(sha256, **kwargs):
     """
     Get the all the file results of a specific file.
@@ -671,7 +671,7 @@ def get_file_results(sha256, **kwargs):
 
 
 @file_api.route("/result/<sha256>/<service>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_results_for_service(sha256, service, **kwargs):
     """
     Get the all the file results of a specific file and a specific query.
@@ -716,7 +716,7 @@ def get_file_results_for_service(sha256, service, **kwargs):
 
 
 @file_api.route("/score/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_score(sha256, **kwargs):
     """
     Get the score of the latest service run for a given file.

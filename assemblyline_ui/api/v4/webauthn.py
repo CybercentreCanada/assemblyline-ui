@@ -8,6 +8,7 @@ from fido2.webauthn import PublicKeyCredentialRpEntity
 
 from flask import session, request
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config
 
@@ -51,7 +52,7 @@ def authenticate_begin(username, **_):
 
 
 @webauthn_api.route("/register/begin/", methods=["POST"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage])
 def register_begin(**kwargs):
     """
     Begin registration of a security token
@@ -94,7 +95,7 @@ def register_begin(**kwargs):
 
 # noinspection PyBroadException
 @webauthn_api.route("/register/complete/<name>/", methods=["POST"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage])
 def register_complete(name, **kwargs):
     """
     Complete registration of the new key and save it under a given name
@@ -133,7 +134,7 @@ def register_complete(name, **kwargs):
 
 
 @webauthn_api.route("/remove/<name>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, require_role=[ROLES.self_manage])
 def remove(name, **kwargs):
     """
     Remove a given security token
