@@ -23,9 +23,9 @@ signature_api._doc = "Perform operations on signatures"
 
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
 
-event_sender = EventSender('changes.signatures',
-                           host=config.core.redis.nonpersistent.host,
-                           port=config.core.redis.nonpersistent.port)
+signature_event_sender = EventSender('changes.signatures',
+                                     host=config.core.redis.nonpersistent.host,
+                                     port=config.core.redis.nonpersistent.port)
 service_event_sender = EventSender('changes.services',
                                    host=config.core.redis.nonpersistent.host,
                                    port=config.core.redis.nonpersistent.port)
@@ -120,7 +120,7 @@ def add_update_signature(**_):
     # Save the signature
     success = STORAGE.signature.save(key, data)
     if success:
-        event_sender.send(data['type'], {
+        signature_event_sender.send(data['type'], {
             'signature_id': data['signature_id'],
             'signature_type': data['type'],
             'source': data['source'],
@@ -203,7 +203,7 @@ def add_update_many_signature(**_):
     if not plan.empty:
         res = STORAGE.signature.bulk(plan)
 
-        event_sender.send(sig_type, {
+        signature_event_sender.send(sig_type, {
             'signature_id': '*',
             'signature_type': sig_type,
             'source': source,
@@ -352,7 +352,7 @@ def change_status(signature_id, status, **kwargs):
         ]
 
         success = STORAGE.signature.update(signature_id, operations)
-        event_sender.send(data['type'], {
+        signature_event_sender.send(data['type'], {
             'signature_id': signature_id,
             'signature_type': data['type'],
             'source': data['source'],
@@ -390,7 +390,7 @@ def delete_signature(signature_id, **kwargs):
 
         ret_val = STORAGE.signature.delete(signature_id)
 
-        event_sender.send(data['type'], {
+        signature_event_sender.send(data['type'], {
             'signature_id': signature_id,
             'signature_type': data['type'],
             'source': data['source'],
@@ -763,14 +763,25 @@ def update_signature_source(service, name, **_):
     if classification_changed:
         class_norm = Classification.normalize_classification(data['default_classification'])
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
-                                          operations=[("SET", "classification", class_norm)])
+                                          operations=[("SET", "classification", class_norm),
+                                                      ("SET", "last_modified", now_as_iso())])
 
     # Save the signature
     success = STORAGE.service_delta.save(service, service_delta)
-    service_event_sender.send(service, {
-        'operation': Operation.Modified,
-        'name': service
-    })
+    if classification_changed:
+        # Notify that signatures have changed (trigger local_update)
+        signature_event_sender.send(service, {
+            'signature_id': '*',
+            'signature_type': service.lower(),
+            'source': data['name'],
+            'operation': Operation.Modified
+        })
+    else:
+        # Notify that a source configuration has changes (trigger source_update)
+        service_event_sender.send(service, {
+            'operation': Operation.Modified,
+            'name': service
+        })
     return make_api_response({"success": success})
 
 
