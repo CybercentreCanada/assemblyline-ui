@@ -10,7 +10,6 @@ from assemblyline.odm.messages.changes import Operation
 from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.odm.models.service import SIGNATURE_DELIMITERS
 from assemblyline.odm.models.user import ROLES
-from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline.remote.datatypes.events import EventSender
@@ -428,10 +427,10 @@ def delete_signature_source(service, name, **_):
     service_data = STORAGE.get_service_with_delta(service, as_obj=False)
     current_sources = service_data.get('update_config', {}).get('sources', [])
 
-    if not service_data.get('update_config', {}).get('generates_signatures', False):
+    if not service_data.get('update_config', {}):
         return make_api_response({"success": False},
-                                 err="This service does not generate alerts therefor "
-                                     "you cannot delete one of its sources.",
+                                 err="This service is not configured to use external sources. "
+                                     "Therefore you cannot delete one of its sources.",
                                  status_code=400)
 
     new_sources = []
@@ -724,14 +723,15 @@ def update_signature_source(service, name, **_):
                                  err="You are not allowed to change the source name.",
                                  status_code=400)
 
-    if not service_data.get('update_config', {}).get('generates_signatures', False):
+    if not service_data.get('update_config', {}):
         return make_api_response({"success": False},
-                                 err="This service does not generate alerts therefor you cannot update its sources.",
+                                 err="This service is not configured to use external sources. "
+                                 "Therefore you cannot update its sources.",
                                  status_code=400)
 
     if len(current_sources) == 0:
         return make_api_response({"success": False},
-                                 err="This service does not have any sources therefor you cannot update any source.",
+                                 err="This service does not have any sources therefore you cannot update any source.",
                                  status_code=400)
 
     new_sources = []
