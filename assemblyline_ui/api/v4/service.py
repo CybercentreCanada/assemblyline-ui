@@ -61,18 +61,18 @@ def check_private_keys(source_list):
     return source_list
 
 
-def check_for_source_change(delta_list, source):
-    change_list = {}
+def source_exists(delta_list, source):
+    exists = False
     for delta in delta_list:
         if delta['name'] == source['name']:
-            # Classification update
+            exists = True
+            # Classification update, perform an update-by-query
             if delta['default_classification'] != source['default_classification']:
                 class_norm = Classification.normalize_classification(delta['default_classification'])
-                change_list['default_classification'] = STORAGE.signature.update_by_query(
-                    query=f'source:"{source["name"]}"',
-                    operations=[("SET", "classification", class_norm)])
+                STORAGE.signature.update_by_query(query=f'source:"{source["name"]}"',
+                                                  operations=[("SET", "classification", class_norm)])
 
-    return change_list
+    return exists
 
 
 def get_service_stats(service_name, version=None, max_docs=500):
@@ -194,10 +194,13 @@ def synchronize_sources(service_name, current_sources, new_sources):
     removed_sources = {}
     for source in current_sources:
         if source not in new_sources:
-            # If not a minor change, then assume change is drastically different (ie. removal)
-            if not check_for_source_change(new_sources, source):
+            # If the source doesn't exist in the set of new sources, assume deletion and cleanup
+            if not source_exists(new_sources, source):
                 removed_sources[source['name']] = STORAGE.signature.delete_by_query(
                     f'type:"{service_name.lower()}" AND source:"{source["name"]}"') != 0
+                service_updates = Hash(f'service-updates-{service_name}', config.core.redis.persistent.host,
+                                       config.core.redis.persistent.port)
+                [service_updates.delete(k) for k in service_updates.keys() if k.startswith(f'{source["name"]}.')]
 
             # Notify of changes to updater
             EventSender('changes.signatures',
