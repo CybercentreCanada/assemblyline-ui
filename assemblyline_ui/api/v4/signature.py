@@ -280,9 +280,9 @@ def add_signature_source(service, **_):
     # Save the signature
     success = STORAGE.service_delta.save(service, service_delta)
     if success:
-        service_event_sender.send(data['name'], {
+        service_event_sender.send(service, {
             'operation': Operation.Modified,
-            'name': data['name']
+            'name': service
         })
     return make_api_response({"success": success})
 
