@@ -111,14 +111,14 @@ def download_from_url(download_url, target, data=None, method="GET",
         written = 0
 
         with open(target, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=512 * 1024):
+            for chunk in r.iter_content(chunk_size=64 * 1024):
                 if chunk:  # filter out keep-alive new chunks
                     if failure_pattern and failure_pattern in chunk:
                         f.close()
                         os.unlink(target)
                         return None
 
-                    written += 512 * 1024
+                    written += len(chunk)
                     if written > config.submission.max_file_size and not ignore_size:
                         f.close()
                         os.unlink(target)
