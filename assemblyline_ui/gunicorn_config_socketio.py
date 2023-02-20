@@ -1,7 +1,7 @@
 from os import environ as env
 
 # Port to bind to
-bind = f":{int(env.get('PORT', 5000))}"
+bind = f":{int(env.get('PORT', 5002))}"
 
 # Number of processes to launch
 workers = int(env.get('WORKERS', 1))
