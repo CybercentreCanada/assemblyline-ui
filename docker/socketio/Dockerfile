@@ -35,4 +35,4 @@ COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.loc
 
 # Switch back to assemblyline and run the app
 USER assemblyline
-CMD ["gunicorn", "-b", ":5002", "-w", "1", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "assemblyline_ui.socketsrv:app"]
+CMD ["gunicorn", "-b", ":5002", "--config=python:assemblyline_ui.gunicorn_config_socketio", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "assemblyline_ui.socketsrv:app"]
