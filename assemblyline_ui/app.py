@@ -41,8 +41,8 @@ from assemblyline_ui import config
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 CERT_BUNDLE = (
-    os.environ.get('INTERNAL_UI_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/internal-ui/tls.crt'),
-    os.environ.get('INTERNAL_UI_CLIENT_KEY_PATH', '/etc/assemblyline/ssl/internal-ui/tls.key')
+    os.environ.get('UI_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/ui/tls.crt'),
+    os.environ.get('UI_CLIENT_KEY_PATH', '/etc/assemblyline/ssl/ui/tls.key')
 )
 ##########################
 # App settings
@@ -56,15 +56,15 @@ if AL_UNSECURED_UI:
         SECRET_KEY=config.SECRET_KEY,
         PREFERRED_URL_SCHEME='http'
     )
-    if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
-        # If all files required are present, start up encrypted comms
-        ssl_context = CERT_BUNDLE
 else:
     app.config.update(
         SESSION_COOKIE_SECURE=True,
         SECRET_KEY=config.SECRET_KEY,
         PREFERRED_URL_SCHEME='https'
     )
+if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
+    # If all files required are present, start up encrypted comms
+    ssl_context = CERT_BUNDLE
 
 app.register_blueprint(healthz)
 app.register_blueprint(api)
@@ -137,7 +137,7 @@ for ph in config.LOGGER.parent.handlers:
 # Setup APMs
 if config.config.core.metrics.apm_server.server_url is not None:
     app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
-    ElasticAPM(app, server_url=config.config.core.metrics.apm_server.server_url, service_name="al_ui")
+    ElasticAPM(app, client=config.forge.get_apm_client('al_ui'))
 
 
 def main():

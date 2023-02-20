@@ -17,6 +17,11 @@ from assemblyline_ui.sio.live_submission import LiveSubmissionNamespace
 from assemblyline_ui.sio.status import SystemStatusNamespace
 from assemblyline_ui.sio.submission import SubmissionMonitoringNamespace
 
+CERT_BUNDLE = (
+    os.environ.get('SIO_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/sio/tls.crt'),
+    os.environ.get('SIO_CLIENT_KEY_PATH', '/etc/assemblyline/ssl/sio/tls.key')
+)
+
 config = forge.get_config()
 
 # Prepare the logger
@@ -50,4 +55,8 @@ if __name__ == '__main__':
     wlog = logging.getLogger('werkzeug')
     wlog.setLevel(config.logging.log_level if config.ui.debug else 60)
     # Run debug mode
-    socketio.run(app, host="0.0.0.0", port=5002)
+    if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
+        # If all files required are present, start up encrypted comms
+        socketio.run(app, host="0.0.0.0", port=5002, keyfile=CERT_BUNDLE[1], certfile=CERT_BUNDLE[0])
+    else:
+        socketio.run(app, host="0.0.0.0", port=5002)
