@@ -1,5 +1,6 @@
 import time
 from assemblyline.datastore.collection import Index
+from assemblyline_core.dispatching.client import DispatchClient
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -48,6 +49,10 @@ def delete_submission(sid, **kwargs):
 
     if not submission:
         return make_api_response("", f"There are not submission with sid: {sid}", 404)
+
+    if submission['state'] != "completed":
+        # Tell dispatcher to cancel submission if it is ongoing
+        DispatchClient(datastore=STORAGE).cancel_submission(sid)
 
     if Classification.is_accessible(user['classification'], submission['classification']) \
             and (submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']):
