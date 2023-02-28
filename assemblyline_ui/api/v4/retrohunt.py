@@ -1,6 +1,7 @@
 import hauntedhouse
 from flask import request
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.retrohunt import Retrohunt
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, CLASSIFICATION
@@ -36,7 +37,7 @@ def prepare_search_result_detail(api_result: hauntedhouse.SearchStatus, datastor
 
 
 @retrohunt_api.route("/", methods=["POST"])
-@api_login(require_role=['retrohunt_run'])
+@api_login(require_role=[ROLES.retrohunt_run])
 def create(**kwargs):
     """
     Create a new search over file storage.
@@ -95,7 +96,7 @@ def create(**kwargs):
 
 
 @retrohunt_api.route("/<code>/", methods=["GET"])
-@api_login(require_role=['retrohunt_view'])
+@api_login(require_role=[ROLES.retrohunt_view])
 def detail(code, **kwargs):
     """
     Get details about a completed or in progress retrohunt search.
