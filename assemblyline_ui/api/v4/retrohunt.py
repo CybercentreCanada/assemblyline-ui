@@ -1,8 +1,10 @@
 import hauntedhouse
 from flask import request
 
+from assemblyline.common.chunk import chunk
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.retrohunt import Retrohunt
+from assemblyline.datastore.collection import Index
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config, CLASSIFICATION
 
@@ -21,15 +23,22 @@ if config.retrohunt:
     )
 
 
-def prepare_search_result_detail(api_result: hauntedhouse.SearchStatus, datastore_result: dict):
-    # TODO supplement file information
+def prepare_search_result_detail(api_result: hauntedhouse.SearchStatus, datastore_result: dict, user_access):
+    # supplement file information
+    hits = []
+    for batch in chunk(api_result.hits, 1000):
+        for doc in STORAGE.file.multiget(batch, as_obj=False, error_on_missing=False,
+                                         as_dictionary=False, index_type=Index.HOT_AND_ARCHIVE):
+            if CLASSIFICATION.is_accessible(user_access, doc['classification']):
+                hits.append(doc)
 
+    # Mix togeather the documents from the two information sources
     datastore_result.update({
         'total_indices': api_result.total_indices,
         'pending_indices': api_result.pending_indices,
         'pending_candidates': api_result.pending_candidates,
         'errors': api_result.errors,
-        'hits': [{'sha256': sha256} for sha256 in api_result.hits],
+        'hits': hits,
         'finished': api_result.finished,
         'truncated': api_result.truncated,
     })
@@ -67,7 +76,7 @@ def create(**kwargs):
 
     # Make sure the user has high enough access
     classification = CLASSIFICATION.normalize_classification(classification)
-    if not CLASSIFICATION.is_accessible(user['access_control'], classification):
+    if not CLASSIFICATION.is_accessible(user['classification'], classification):
         return make_api_response({}, err="Searches may not be above user access.", status_code=403)
 
     # Parse the signature and send it to the retrohunt api
@@ -84,15 +93,15 @@ def create(**kwargs):
         'description': description,
         'classification': classification,
         'yara_signature': signature,
-        'raw_query': hauntedhouse.query_from_yara(signature),
+        'raw_query': hauntedhouse.client.query_from_yara(signature),
         'code': status.code,
-        'finished': False,
-        'hits': [],
-        'error': [],
+        # 'finished': False,
+        # 'hits': [],
+        # 'error': [],
     }).as_primitives()
 
-    STORAGE.retrosearch.save(status.code, doc)
-    return prepare_search_result_detail(status, doc)
+    STORAGE.retrohunt.save(status.code, doc)
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
 
 
 @retrohunt_api.route("/<code>/", methods=["GET"])
@@ -139,4 +148,4 @@ def detail(code, **kwargs):
     user = kwargs['user']
     status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
-    return prepare_search_result_detail(status, doc)
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
