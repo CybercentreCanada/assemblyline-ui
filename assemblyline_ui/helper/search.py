@@ -48,7 +48,7 @@ BUCKET_ORDER_MAP = {
     'submission': "times.submitted desc",
     'safelist': "added desc",
     'workflow': "last_seen desc",
-    'retrohunt': 'created desc',
+    'retrohunt': "created desc",
 }
 
 
