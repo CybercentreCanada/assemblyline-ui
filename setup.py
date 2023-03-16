@@ -66,5 +66,10 @@ setup(
         'assemblyline_ui': [
             "VERSION"
         ]
-    }
+    },
+    entry_points={
+        'assemblyline_ui.federated_lookup': [
+            "virustotal = assemblyline_ui.helper.federated_lookup:VTLookup",
+        ],
+    },
 )
