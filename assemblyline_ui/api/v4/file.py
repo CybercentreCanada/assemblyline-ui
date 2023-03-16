@@ -430,7 +430,7 @@ def get_file_strings(sha256, **kwargs):
             return make_api_response({}, "This file was not found in the system.", 404)
 
         # Ascii strings (we use decode with replace on to create delimiters)
-        pattern = "[\x1f-\x7e]{%s,}" % hlen
+        pattern = "[\x20-\x7e]{%s,}" % hlen
         string_list = re.findall(pattern, data.decode("ascii", errors="replace"))
 
         # UTF-16 strings
