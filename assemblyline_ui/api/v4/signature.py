@@ -459,7 +459,7 @@ def delete_signature_source(service, name, **_):
         STORAGE.signature.delete_by_query(f'type:"{service.lower()}" AND source:"{name}"')
         service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
                                config.core.redis.persistent.port)
-        [service_updates.delete(k) for k in service_updates.keys() if k.startswith(f'{name}.')]
+        [service_updates.pop(k) for k in service_updates.keys() if k.startswith(f'{name}.')]
 
     service_event_sender.send(service, {
         'operation': Operation.Modified,
