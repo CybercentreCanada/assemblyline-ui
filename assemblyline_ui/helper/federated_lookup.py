@@ -3,7 +3,7 @@
 Defines the class structure and methods required to be implemented in order for
 federated lookups to be performed against external systems.
 
-Also defines common implementations usable for all installs of Assemblyline.
+Also defines common concrete implementations usable for all installs of Assemblyline.
 """
 import requests
 from base64 import b64encode
