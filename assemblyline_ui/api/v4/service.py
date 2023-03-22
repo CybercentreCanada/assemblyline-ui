@@ -200,7 +200,7 @@ def synchronize_sources(service_name, current_sources, new_sources):
                     f'type:"{service_name.lower()}" AND source:"{source["name"]}"') != 0
                 service_updates = Hash(f'service-updates-{service_name}', config.core.redis.persistent.host,
                                        config.core.redis.persistent.port)
-                [service_updates.delete(k) for k in service_updates.keys() if k.startswith(f'{source["name"]}.')]
+                [service_updates.pop(k) for k in service_updates.keys() if k.startswith(f'{source["name"]}.')]
 
             # Notify of changes to updater
             EventSender('changes.signatures',
