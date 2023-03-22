@@ -3,16 +3,43 @@
 Defines the require API required to be implemented in order for federated
 lookups to be performed against external systems in Assemblyline.
 
+TODO: Should this be turned into a Blueprint in the main assemblyline-ui code base
+and then implmented here? Implementing services would then need to install assemblyline-ui
+but they would get access to the various helper functions too which would be nice.
 """
-from flask import Flask
+from flask import Flask, Response, jsonify, make_response
+
 app = Flask(__name__)
 
 
+# supported IOC names
+VALID_IOC = []
+
+
+def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
+    """Create a standard response for this API.
+    """
+    return make_response(
+        jsonify({
+            "api_response": data,
+            "api_error_message": err,
+            "api_status_code": status_code,
+        }),
+        status_code,
+    )
+
+
+@app.route("/ioc/", methods=["GET"])
+def get_valid_ioc_names() -> Response:
+    """Return valid IOC names supported by this service."""
+    return make_api_response(VALID_IOC)
+
+
 @app.route("/ioc/<indicator_name>/<ioc>/", methods=["GET"])
-def lookup_ioc(indicator_name: str, ioc: str) -> dict[str, dict[str, str]]:
+def lookup_ioc(indicator_name: str, ioc: str) -> Response:
     """Define how to lookup an indicator in the external system.
 
-    This method should return a dictionary containing:
+    This method should return an api_response containing:
 
         {
             <identifer/name of object found>:  {

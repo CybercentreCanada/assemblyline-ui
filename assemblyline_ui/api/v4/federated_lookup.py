@@ -11,7 +11,7 @@ import requests
 from flask import request
 
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.api.base import api_login, make_subapi_blueprint
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import config, CLASSIFICATION as Classification
 
 
@@ -22,7 +22,7 @@ federated_lookup_api._doc = "Lookup related data through configured external dat
 
 @federated_lookup_api.route("/ioc/<indicator_name>/<ioc>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
-def search_ioc(indicator_name: str, ioc: str, **kwargs) -> dict[str, list[dict[str, str]]]:
+def search_ioc(indicator_name: str, ioc: str, **kwargs):
     """
     Search for an Indicator of Compromise across all configured external sources/systems.
 
@@ -92,4 +92,4 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs) -> dict[str, list[dict[s
             for name, details in res.items():
                 if user and Classification.is_accessible(user['classification'], details['classification']):
                     links.setdefault(source.name, []).append({name: details["link"]})
-    return links
+    return make_api_response(links)
