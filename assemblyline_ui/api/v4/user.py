@@ -43,7 +43,7 @@ def who_am_i(**kwargs):
      "agrees_with_tos": None,                   # Date the user agreed with TOS
      "avatar": "data:image/jpg...",             # Avatar data block
      "c12nDef": {},                             # Classification definition block
-     "classification": "TLP:W",                 # Classification of the user
+     "classification": "TLP:C",                 # Classification of the user
      "configuration": {                         # Configuration block
        "auth": {                                  # Authentication Configuration
          "allow_2fa": True,                         # Is 2fa Allowed for the user
