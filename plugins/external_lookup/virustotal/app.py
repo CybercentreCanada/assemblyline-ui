@@ -95,17 +95,19 @@ def lookup_ioc(indicator_name: str, ioc: str) -> Response:
         "domain": f"https://www.virustotal.com/api/v3/domains/{ioc}",
         "hash": f"https://www.virustotal.com/api/v3/files/{ioc}",
         "ip-address": f"https://www.virustotal.com/api/v3/ip_addresses/{ioc}",
-        "url": f"https://www.virustotal.com/api/v3/urls/{base64.b64encode(ioc)}",
+        "url": f"https://www.virustotal.com/api/v3/urls/{base64.b64encode(ioc.encode('ascii')).decode('utf8')}",
     }[indicator_name]
 
     rsp = session.get(check_url, headers=headers, verify=VERIFY, timeout=max_timeout)
-    if rsp.status_code != 200:
+    if rsp.status_code == 404:
+        return make_api_response(None, "No results.", rsp.status_code)
+    elif rsp.status_code != 200:
         return make_api_response(rsp.text, "Error submitting data to upstream.", rsp.status_code)
 
     # return view links to the gui once we know it's found
     view_url = {
         "domain": f"https://www.virustotal.com/gui/domain/{ioc}/summary",
-        "hash": f"https://www.virustotal.com/gui/search/{ioc}",
+        "hash": f"https://www.virustotal.com/gui/search/{ioc}/summary",
         "ip-address": f"https://www.virustotal.com/gui/ip-address/{ioc}/summary",
         "url": f"https://www.virustotal.com/gui/url/{hashlib.sha256(ioc.encode()).hexdigest()}/summary",
     }[indicator_name]
