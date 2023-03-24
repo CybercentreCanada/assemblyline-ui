@@ -5,8 +5,6 @@ import base64
 import hashlib
 import os
 
-from urllib import parse as ul
-
 import requests
 
 from flask import Flask, Response, jsonify, make_response, request
@@ -42,7 +40,7 @@ def get_valid_ioc_names() -> Response:
     return make_api_response(VALID_IOC)
 
 
-@app.route("/ioc/<indicator_name>/<ioc>/", methods=["GET"])
+@app.route("/ioc/<indicator_name>/<path:ioc>/", methods=["GET"])
 def lookup_ioc(indicator_name: str, ioc: str) -> Response:
     """Search for an indicator of compromise on VirusTotal.
 
@@ -71,7 +69,6 @@ def lookup_ioc(indicator_name: str, ioc: str) -> Response:
             400,
         )
 
-    ioc = ul.unquote_plus(ioc)
     if indicator_name == "hash" and len(ioc) not in (32, 40, 64):
         return make_api_response(None, "Invalid hash provided. Require md5, sha1 or sha256", 400)
 
@@ -100,6 +97,7 @@ def lookup_ioc(indicator_name: str, ioc: str) -> Response:
 
     rsp = session.get(check_url, headers=headers, verify=VERIFY, timeout=max_timeout)
     if rsp.status_code == 404:
+        print(rsp.text)
         return make_api_response(None, "No results.", rsp.status_code)
     elif rsp.status_code != 200:
         return make_api_response(rsp.text, "Error submitting data to upstream.", rsp.status_code)
