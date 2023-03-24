@@ -54,7 +54,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl --silent --fail localhost:9200/_cluster/health || exit 1",
+          "curl -u elastic:devpass --silent --fail localhost:9200/_cluster/health || exit 1"
         ]
       interval: 30s
       timeout: 30s
@@ -66,7 +66,7 @@ services:
       - "6380:6379"
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -92,3 +92,9 @@ services:
     ports:
       - "9000:9000"
     command: server /data
+
+  lookup_mb:
+    build:
+      context: ../plugins/external_lookup/malware_bazaar
+    ports:
+      - "8000:8000"

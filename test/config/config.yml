@@ -35,3 +35,8 @@ logging:
 
 ui:
   enforce_quota: false
+  external_sources:
+    [
+      { "name": "VirusTotal", "url": "lookup_vt" },
+      { "name": "Malware Bazaar", "url": "http://lookup_mb:8000" },
+    ]

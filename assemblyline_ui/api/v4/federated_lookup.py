@@ -20,6 +20,15 @@ federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
 federated_lookup_api._doc = "Lookup related data through configured external data sources/systems."
 
 
+@federated_lookup_api.route("/ioc/", methods=["GET"])
+@api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
+def get_valid_indicator_names(**kwargs):
+    """Return all valid IOC names for all configured sources."""
+    print("CALLED")
+
+    return make_api_response(["TODO"])
+
+
 @federated_lookup_api.route("/ioc/<indicator_name>/<ioc>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
 def search_ioc(indicator_name: str, ioc: str, **kwargs):
@@ -54,7 +63,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
         ...,
     }
     """
-
+    print(f"GOT: {indicator_name=}, {ioc=}")
     user = kwargs['user']
     sources = request.args.get("sources", "all")
 
@@ -70,6 +79,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
         x for x in config.ui.external_sources
         if Classification.is_accessible(user['classification'], x.classification)
     ]
+    print(f"*** {available_sources=}")
 
     session = requests.Session()
     headers = {
@@ -85,6 +95,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
         if sources == "all" or source.name in sources:
             # perform the lookup, ensuring access controls are applied
             url = f"{source.url}/ioc/{indicator_name}/{ioc}"
+            print(f"{url=}")
             res = session.get(url, params=params, headers=headers)
             if res.status_code != 200:
                 # as we query across multiple sources, just skip both errors and not found?
