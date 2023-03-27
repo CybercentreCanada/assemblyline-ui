@@ -7,12 +7,12 @@ Lookup related data from external systems. Data could include:
 * Others?
 
 """
-import requests
 from flask import request
+from requests import Session
 
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import config, CLASSIFICATION as Classification
+from assemblyline_ui.config import config, CLASSIFICATION as Classification, LOGGER
 
 
 SUB_API = "federated_lookup"
@@ -24,7 +24,7 @@ federated_lookup_api._doc = "Lookup related data through configured external dat
 @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
 def get_valid_indicator_names(**kwargs):
     """Return all valid IOC names for all configured sources."""
-    print("CALLED")
+    LOGGER.info("Called get indicators")
 
     return make_api_response(["TODO"])
 
@@ -41,7 +41,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
 
     Arguments:(optional)
     max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
-    sources     => | separated list of data sources [Default: all]
+    sources     => | separated list of data sources. If empty, all configured sources are used.
     limit       => limit the amount of returned results per source [Default: 5]
 
     Data Block:
@@ -63,12 +63,13 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
         ...,
     }
     """
-    print(f"GOT: {indicator_name=}, {ioc=}")
-    user = kwargs['user']
-    sources = request.args.get("sources", "all")
+    user = kwargs["user"]
+    query_sources = request.args.get("sources")
+    if query_sources:
+        query_sources = query_sources.split("|")
 
-    max_timeout = request.args.get('max_timeout', "3")
-    limit = request.args.get('limit', "3")
+    max_timeout = request.args.get("max_timeout", "3")
+    limit = request.args.get("limit", "3")
     # noinspection PyBroadException
     try:
         max_timeout = float(max_timeout)
@@ -77,11 +78,11 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
 
     available_sources = [
         x for x in config.ui.external_sources
-        if Classification.is_accessible(user['classification'], x.classification)
+        if Classification.is_accessible(user["classification"], x.classification)
     ]
-    print(f"*** {available_sources=}")
 
-    session = requests.Session()
+    session = Session()
+    LOGGER.info(f"{session=}")
     headers = {
         "accept": "application/json",
     }
@@ -91,16 +92,28 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
     }
 
     links = {}
-    for source, in available_sources:
-        if sources == "all" or source.name in sources:
+    for source in available_sources:
+        if not query_sources or source.name in query_sources:
             # perform the lookup, ensuring access controls are applied
             url = f"{source.url}/ioc/{indicator_name}/{ioc}"
-            print(f"{url=}")
-            res = session.get(url, params=params, headers=headers)
-            if res.status_code != 200:
-                # as we query across multiple sources, just skip both errors and not found?
+            rsp = session.get(url, params=params, headers=headers)
+            status_code = rsp.status_code
+            if status_code == 404:
+                # continue searching configured sources if not found.
                 continue
-            for name, details in res.items():
-                if user and Classification.is_accessible(user['classification'], details['classification']):
-                    links.setdefault(source.name, []).append({name: details["link"]})
+            if status_code != 200:
+                # as we query across multiple sources, just log errors.
+                err = rsp.json()["api_error"]
+                LOGGER.error(f"Error from upstream server: {status_code=}, {err=}")
+                continue
+            try:
+                data = rsp.json()["api_response"]
+                for name, details in data.items():
+                    if user and Classification.is_accessible(user["classification"], details["classification"]):
+                        links.setdefault(source.name, []).append({name: details["link"]})
+            # noinspection PyBroadException
+            except Exception as err:
+                LOGGER.error(f"External API did not return expected format: {err}")
+                continue
+
     return make_api_response(links)

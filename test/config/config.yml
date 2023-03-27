@@ -37,6 +37,6 @@ ui:
   enforce_quota: false
   external_sources:
     [
-      { "name": "VirusTotal", "url": "lookup_vt" },
-      { "name": "Malware Bazaar", "url": "http://lookup_mb:8000" },
+      { "name": "malware_bazaar", "url": "http://lookup_mb:8000" },
+      { "name": "virustotal", "url": "http://lookup_vt:8001" },
     ]
