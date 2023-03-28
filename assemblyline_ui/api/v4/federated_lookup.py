@@ -63,6 +63,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
         ...,
     }
     """
+    print("CALLED LOOKUP")
     user = kwargs["user"]
     query_sources = request.args.get("sources")
     if query_sources:
@@ -83,6 +84,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
 
     session = Session()
     LOGGER.info(f"{session=}")
+    print(f"{session=}")
     headers = {
         "accept": "application/json",
     }

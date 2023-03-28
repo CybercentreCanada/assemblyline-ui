@@ -1,6 +1,5 @@
 import pytest
 
-from conftest import get_api_data
 from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline_ui.api.v4 import federated_lookup
 from assemblyline_ui.app import app
@@ -11,13 +10,21 @@ def test_client():
     """generate a test client."""
     with app.test_client() as client:
         with app.app_context():
+            app.testing = True
             yield client
 
 
 @pytest.fixture()
 def local_login_session(test_client):
-    data = get_api_data(test_client, "/api/v4/auth/login/", params={'user': 'admin', 'password': 'admin'})
-    return data, test_client
+    # r = test_client.get("/api/v4/auth/login/", query_string={'user': 'admin', 'password': 'admin'})
+    r = test_client.post("/api/v4/auth/login/", data={'user': 'admin', 'password': 'admin'})
+    for name, value in r.headers:
+        if name == "Set-Cookie" and "XSRF-TOKEN" in value:
+            # in form: ('Set-Cookie', 'XSRF-TOKEN=<token>; Path=/')
+            token = value.split(";")[0].split("=")[1]
+            test_client.environ_base["HTTP_X_XSRF_TOKEN"] = token
+    data = r.json["api_response"]
+    yield data, test_client
 
 
 @pytest.fixture(scope="module")
@@ -29,15 +36,15 @@ def datastore(datastore_connection):
         wipe_users(datastore_connection)
 
 
-def test_lookup_valid(datastore, login_session):
-    _, session, host = login_session
+# def test_lookup_valid(datastore, login_session):
+#    _, session, host = login_session
+#
+#    resp = get_api_data(session, f"{host}/api/v4/federated_lookup/ioc/")
+#    assert resp == ["TODO"]
 
-    resp = get_api_data(session, f"{host}/api/v4/federated_lookup/ioc/")
-    assert resp == ["TODO"]
 
-
-# def test_lookup_hash_mb(datastore, login_session, mocker):
 def test_lookup_hash_mb(datastore, local_login_session, mocker):
+    _, client = local_login_session
     digest = "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16755"
     # digest = "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16754"
 
@@ -56,24 +63,11 @@ def test_lookup_hash_mb(datastore, local_login_session, mocker):
     mock_get = mock_session_obj.get
     mock_get.return_value = mock_response
 
-    # _, session, host = login_session
-    # rsp = get_api_data(
-    #    session,
-    #    f"{host}/api/v4/federated_lookup/ioc/hash/{digest}/",
-    #    params={"sources": "malware_bazaar"}
-    # )
-
-    _, client = local_login_session
-    rsp = get_api_data(
-        client,
-        f"/api/v4/federated_lookup/ioc/hash/{digest}/",
-        params={"sources": "malware_bazaar"}
-    )
-
-    print(f"{rsp=}")
+    rsp = client.get(f"/api/v4/federated_lookup/ioc/hash/{digest}/", query_string={"sources": "malware_bazaar"})
+    data = rsp.json["api_response"]
 
     mock_response.assert_called_once()
-    assert rsp['sha256'] == 'asdf'
+    assert data == 'asdf'
 # {
 #        "api_error_message": "",
 #        "api_response": {
