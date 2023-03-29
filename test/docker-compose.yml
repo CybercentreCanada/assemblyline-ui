@@ -92,9 +92,3 @@ services:
     ports:
       - "9000:9000"
     command: server /data
-
-  lookup_mb:
-    build:
-      context: ../plugins/external_lookup/malware_bazaar
-    ports:
-      - "8000:8000"
