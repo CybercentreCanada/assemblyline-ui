@@ -66,5 +66,5 @@ setup(
         'assemblyline_ui': [
             "VERSION"
         ]
-    },
+    }
 )
