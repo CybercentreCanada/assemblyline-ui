@@ -1,11 +1,11 @@
 """Federated Lookup
 
-Lookup related data from external systems. Data could include:
+Lookup related data from external systems.
 
-* IOCs
-* Hashes
-* Others?
+To start with, provide endpoints to query systems and return links to those results.
 
+Future:
+Provide endpoints to query other systems to enable enrichment of AL data.
 """
 from flask import request
 from requests import Session
@@ -20,26 +20,17 @@ federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
 federated_lookup_api._doc = "Lookup related data through configured external data sources/systems."
 
 
-@federated_lookup_api.route("/ioc/", methods=["GET"])
+@federated_lookup_api.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
-def get_valid_indicator_names(**kwargs):
-    """Return all valid IOC names for all configured sources."""
-    LOGGER.info("Called get indicators")
-
-    return make_api_response(["TODO"])
-
-
-@federated_lookup_api.route("/ioc/<indicator_name>/<ioc>/", methods=["GET"])
-@api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
-def search_ioc(indicator_name: str, ioc: str, **kwargs):
+def search_tags(tag_name: str, tag: str, **kwargs):
     """
-    Search for an Indicator of Compromise across all configured external sources/systems.
+    Search AL tags across all configured external sources/systems.
 
     Variables:
-    indicator_name => specify the name of the indicator being looked up in the external system.
-    ioc => IOC to lookup. Must be URL encoded.
+    tag_name => Tag to look up in the external system.
+    tag => Tag value to lookup. Must be URL encoded.
 
-    Arguments:(optional)
+    Arguments: (optional)
     max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
     sources     => | separated list of data sources. If empty, all configured sources are used.
     limit       => limit the amount of returned results per source [Default: 5]
@@ -58,6 +49,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
     {                           # Dictionary of:
         <source_name>: [
             {<name>: <https link to results>},
+            add count, and only a few links?
             ...,
         ],
         ...,
@@ -94,7 +86,7 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
     for source in available_sources:
         if not query_sources or source.name in query_sources:
             # perform the lookup, ensuring access controls are applied
-            url = f"{source.url}/ioc/{indicator_name}/{ioc}"
+            url = f"{source.url}/ioc/{tag_name}/{tag}"
             rsp = session.get(url, params=params, headers=headers)
             status_code = rsp.status_code
             if status_code == 404:
@@ -116,3 +108,10 @@ def search_ioc(indicator_name: str, ioc: str, **kwargs):
                 continue
 
     return make_api_response(links)
+
+
+# @federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
+# @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
+# def enrich_tags(tag_name: str, tag: str, **kwargs):
+#    """Search other services for additional information to enrich AL"""
+#    pass

@@ -2,8 +2,10 @@
 
 """
 import base64
-import hashlib
+import json
 import os
+
+from urllib import parse as ul
 
 import requests
 
@@ -15,15 +17,26 @@ app = Flask(__name__)
 
 API_KEY = os.environ.get("VT_API_KEY", "")
 VERIFY = os.environ.get("VT_VERIFY", False)
-MAX_LIMIT = os.environ.get("VT_MAX_LIMIT", 50)
+MAX_LIMIT = os.environ.get("VT_MAX_LIMIT", 500)
 
-# supported IOC names
-VALID_IOC = ["domain", "hash", "ip-address", "url"]
+# Mapping of AL tag names to external systems "tag" names
+TAG_MAPPING = os.environ.get("TAG_MAPPING", {
+    "md5": "files",
+    "sha1": "files",
+    "sha256": "files",
+    "network.dynamic.domain": "domains",
+    "network.static.domain": "domains",
+    "network.dynamic.ip": "ip_addresses",
+    "network.static.ip": "ip_addresses",
+    "network.dynamic.uri": "urls",
+    "network.static.uri": "urls",
+})
+if not isinstance(TAG_MAPPING, dict):
+    TAG_MAPPING = json.loads(TAG_MAPPING)
 
 
 def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
-    """Create a standard response for this API.
-    """
+    """Create a standard response for this API."""
     return make_response(
         jsonify({
             "api_response": data,
@@ -34,45 +47,43 @@ def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
     )
 
 
-@app.route("/ioc/", methods=["GET"])
-def get_valid_ioc_names() -> Response:
+@app.route("/tags/", methods=["GET"])
+def get_tag_mappings() -> Response:
     """Return valid IOC names supported by this service."""
-    return make_api_response(VALID_IOC)
+    return make_api_response(TAG_MAPPING)
 
 
-@app.route("/ioc/<indicator_name>/<path:ioc>/", methods=["GET"])
-def lookup_ioc(indicator_name: str, ioc: str) -> Response:
-    """Search for an indicator of compromise on VirusTotal.
+@app.route("/serach/<tag_name>/<path:tag>/", methods=["GET"])
+def search_tag(tag_name: str, tag: str) -> Response:
+    """Search for tags on VirusTotal.
 
-    If the IOC is found, a link to view the IOC on VirusTotal is returned.
-
-    IOCs submitted must be URL encoded.
+    Tags submitted must be URL encoded.
 
     Arguments:(optional)
     max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
-    limit       => limit the amount of returned results per source [Default: 5]
+    limit       => limit the amount of returned results per source [Default: 1000]
 
 
     This method should return an api_response containing:
 
         {
-            "vt-<indicator name>":  {
-                "link": <url to object>,
-                "classification": UNRESTRICTED,
-            },
+            "link": <url to search results in external system>,
+            "count": <count of results from the external system>,
+            "classification": "UNRESTRICTED",
         }
     """
-    if indicator_name not in VALID_IOC:
+    tn = TAG_MAPPING.get(tag_name)
+    if tn is None:
         return make_api_response(
             None,
-            f"Invalid indicator name: {indicator_name}. [{', '.join(VALID_IOC)}]",
+            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
             400,
         )
 
-    if indicator_name == "hash" and len(ioc) not in (32, 40, 64):
+    if tn == "files" and len(tag) not in (32, 40, 64):
         return make_api_response(None, "Invalid hash provided. Require md5, sha1 or sha256", 400)
 
-    limit = int(request.args.get("limit", "3"))
+    limit = int(request.args.get("limit", "500"))
     if limit > int(MAX_LIMIT):
         limit = int(MAX_LIMIT)
 
@@ -88,13 +99,14 @@ def lookup_ioc(indicator_name: str, ioc: str) -> Response:
         "accept": "application/json",
         "x-apikey": API_KEY,
     }
-    check_url = {
-        "domain": f"https://www.virustotal.com/api/v3/domains/{ioc}",
-        "hash": f"https://www.virustotal.com/api/v3/files/{ioc}",
-        "ip-address": f"https://www.virustotal.com/api/v3/ip_addresses/{ioc}",
-        "url": f"https://www.virustotal.com/api/v3/urls/{base64.b64encode(ioc.encode('ascii')).decode('utf8')}",
-    }[indicator_name]
+    # URLs must be converted into VT "URL identifiers"
+    encoded_tag = tag
+    if tn == "urls":
+        encoded_tag = base64.urlsafe_b64encode(tag.encode()).decode().strip("=")
+    check_url = f"https://www.virustotal.com/api/v3/{tn}/{encoded_tag}"
 
+    # ensure there is a result before returning the link, as if you submit a url search
+    # to vt that it hasn't seen before, it will start a new scan of that url
     rsp = session.get(check_url, headers=headers, verify=VERIFY, timeout=max_timeout)
     if rsp.status_code == 404:
         print(rsp.text)
@@ -103,15 +115,10 @@ def lookup_ioc(indicator_name: str, ioc: str) -> Response:
         return make_api_response(rsp.text, "Error submitting data to upstream.", rsp.status_code)
 
     # return view links to the gui once we know it's found
-    view_url = {
-        "domain": f"https://www.virustotal.com/gui/domain/{ioc}/summary",
-        "hash": f"https://www.virustotal.com/gui/search/{ioc}/summary",
-        "ip-address": f"https://www.virustotal.com/gui/ip-address/{ioc}/summary",
-        "url": f"https://www.virustotal.com/gui/url/{hashlib.sha256(ioc.encode()).hexdigest()}/summary",
-    }[indicator_name]
-
     return make_api_response({
-        f"vt-{indicator_name}": {"link": view_url, "classification": "UNRESTRICTED"}
+        "link": f"https://www.virustotal.com/gui/search?query={ul.quote(tag)}",
+        "count": 1,  # url/domain/file/ip searches only return a single result/report
+        "classification": "UNRESTRICTED",
     })
 
 
