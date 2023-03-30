@@ -54,6 +54,7 @@ setup(
         'test': [
             'pytest',
             'pytest-cov',
+            'pytest-mock',
             'cart'
         ],
         'socketio': [
