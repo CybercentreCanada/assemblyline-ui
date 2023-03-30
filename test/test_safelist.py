@@ -17,7 +17,7 @@ update_hash = "12" + get_random_hash(62)
 update_conflict_hash = "13" + get_random_hash(62)
 
 NSRL_SOURCE = {
-    "classification": 'TLP:W',
+    "classification": 'TLP:C',
     "name": "NSRL",
     "reason": [
         "Found as test.txt on default windows 10 CD",
@@ -26,7 +26,7 @@ NSRL_SOURCE = {
     "type": "external"}
 
 NSRL2_SOURCE = {
-    "classification": 'TLP:W',
+    "classification": 'TLP:C',
     "name": "NSRL2",
     "reason": [
         "File contains only AAAAs..."
@@ -34,7 +34,7 @@ NSRL2_SOURCE = {
     "type": "external"}
 
 ADMIN_SOURCE = {
-    "classification": 'TLP:W',
+    "classification": 'TLP:C',
     "name": "admin",
     "reason": [
         "Generates a lot of FPs",
@@ -42,7 +42,7 @@ ADMIN_SOURCE = {
     "type": "user"}
 
 USER_SOURCE = {
-    "classification": 'TLP:W',
+    "classification": 'TLP:C',
     "name": "user",
     "reason": [
         "I just feel like it!",
