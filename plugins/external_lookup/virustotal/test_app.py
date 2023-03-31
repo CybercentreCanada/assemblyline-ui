@@ -1,11 +1,9 @@
-import hashlib
-
 from urllib import parse as ul
 
 import pytest
 import requests
 
-from .app import app, VALID_IOC
+from .app import app, TAG_MAPPING
 
 
 @pytest.fixture()
@@ -13,36 +11,35 @@ def test_client():
     """generate a test client."""
     with app.test_client() as client:
         with app.app_context():
+            app.config["TESTING"] = True
             yield client
 
 
-def test_get_valid_iocs(test_client):
-    """Ensure iocs are returned."""
-    rsp = test_client.get("/ioc/")
-
+def test_get_tags(test_client):
+    """Ensure tag mappings are returned."""
+    rsp = test_client.get("/tags/")
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
-    assert data == VALID_IOC
+    assert data == TAG_MAPPING
 
 
-def test_ioc_found(test_client, mocker):
-    """Validate respone for various iocs that exists."""
+def test_tag_found(test_client, mocker):
+    """Validate respone for various tags that exists."""
     mock_response = mocker.MagicMock()
     mock_response.status_code = 200
 
     mock_session = mocker.patch.object(requests, "Session", autospec=True)
     mock_session.return_value.get.return_value = mock_response
 
-    # hash ioc
-    digest = "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16754"
-    rsp = test_client.get(f"/ioc/hash/{digest}/")
+    # hash
+    digest = "a" * 64
+    rsp = test_client.get(f"/search/sha1/{digest}/")
     expected = {
         "api_error_message": "",
         "api_response": {
-            "vt-hash": {
-                "classification": "UNRESTRICTED",
-                "link": f"https://www.virustotal.com/gui/search/{digest}/summary",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={digest}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -52,14 +49,13 @@ def test_ioc_found(test_client, mocker):
 
     # ip ioc
     ip_address = "127.0.0.1"
-    rsp = test_client.get(f"/ioc/ip-address/{ip_address}/")
+    rsp = test_client.get(f"/search/network.dynamic.ip/{ip_address}/")
     expected = {
         "api_error_message": "",
         "api_response": {
-            "vt-ip-address": {
-                "classification": "UNRESTRICTED",
-                "link": f"https://www.virustotal.com/gui/ip-address/{ip_address}/summary",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={ip_address}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -68,34 +64,15 @@ def test_ioc_found(test_client, mocker):
     assert rsp.json == expected
 
     # url ioc - quoted
-    url = "https://a.bad.url/contains/a+space/path"
+    url = "https://a.bad.url/contains+and/a space/in-path"
     quoted = ul.quote(url)
-    rsp = test_client.get(f"/ioc/url/{quoted}/")
+    rsp = test_client.get(f"/search/network.dynamic.uri/{quoted}/")
     expected = {
         "api_error_message": "",
         "api_response": {
-            "vt-url": {
-                "classification": "UNRESTRICTED",
-                "link": f"https://www.virustotal.com/gui/url/{hashlib.sha256(url.encode()).hexdigest()}/summary",
-            },
-        },
-        "api_status_code": 200,
-    }
-
-    assert rsp.status_code == 200
-    assert rsp.json == expected
-
-    # url ioc - quoted_plus
-    url = "https://a.bad.url/contains/a+space/path"
-    quoted = ul.quote_plus(url)
-    rsp = test_client.get(f"/ioc/url/{quoted}/")
-    expected = {
-        "api_error_message": "",
-        "api_response": {
-            "vt-url": {
-                "classification": "UNRESTRICTED",
-                "link": f"https://www.virustotal.com/gui/url/{hashlib.sha256(url.encode()).hexdigest()}/summary",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={quoted}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -105,14 +82,13 @@ def test_ioc_found(test_client, mocker):
 
     # domain ioc
     domain = "bad.domain"
-    rsp = test_client.get(f"/ioc/domain/{domain}/")
+    rsp = test_client.get(f"/search/network.static.domain/{domain}/")
     expected = {
         "api_error_message": "",
         "api_response": {
-            "vt-domain": {
-                "classification": "UNRESTRICTED",
-                "link": f"https://www.virustotal.com/gui/domain/{domain}/summary",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={domain}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -121,9 +97,9 @@ def test_ioc_found(test_client, mocker):
     assert rsp.json == expected
 
 
-def test_ioc_dne(test_client, mocker):
-    """Validate respone for various iocs that do not exists."""
-    digest = "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16754"
+def test_tag_dne(test_client, mocker):
+    """Validate respone for various tags that do not exists."""
+    digest = "a" * 32
     mock_response = mocker.MagicMock()
     mock_response.status_code = 404
 
@@ -131,7 +107,7 @@ def test_ioc_dne(test_client, mocker):
     mock_session = mocker.patch.object(requests, "Session", autospec=True)
     mock_session.return_value.get.return_value = mock_response
 
-    rsp = test_client.get(f"/ioc/hash/{digest}/")
+    rsp = test_client.get(f"/search/md5/{digest}/")
     expected = {
         "api_error_message": "No results.",
         "api_response": None,
@@ -151,7 +127,7 @@ def test_error_conditions(test_client, mocker):
     mock_session = mocker.patch.object(requests, "Session", autospec=True)
     mock_session.return_value.get.return_value = mock_response
 
-    rsp = test_client.get(f"/ioc/hash/{'a' * 32}/")
+    rsp = test_client.get(f"/search/md5/{'a' * 32}/")
     expected = {
         "api_error_message": "Error submitting data to upstream.",
         "api_response": "Some bad response",
@@ -161,7 +137,7 @@ def test_error_conditions(test_client, mocker):
     assert rsp.json == expected
 
     # invalid hash
-    rsp = test_client.get("/ioc/hash/abc/")
+    rsp = test_client.get("/search/sha1/abc/")
     expected = {
         "api_error_message": "Invalid hash provided. Require md5, sha1 or sha256",
         "api_response": None,
@@ -171,6 +147,6 @@ def test_error_conditions(test_client, mocker):
     assert rsp.json == expected
 
     # invalid indicator name
-    rsp = test_client.get("/ioc/abc/abc/")
+    rsp = test_client.get("/search/abc/abc/")
     assert rsp.status_code == 400
-    assert rsp.json["api_error_message"].startswith("Invalid indicator name: ")
+    assert rsp.json["api_error_message"].startswith("Invalid tag name: ")

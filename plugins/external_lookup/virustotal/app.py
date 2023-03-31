@@ -53,11 +53,11 @@ def get_tag_mappings() -> Response:
     return make_api_response(TAG_MAPPING)
 
 
-@app.route("/serach/<tag_name>/<path:tag>/", methods=["GET"])
+@app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
 def search_tag(tag_name: str, tag: str) -> Response:
     """Search for tags on VirusTotal.
 
-    Tags submitted must be URL encoded.
+    Tags submitted must be URL encoded (not url_plus quoted).
 
     Arguments:(optional)
     max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
@@ -109,7 +109,6 @@ def search_tag(tag_name: str, tag: str) -> Response:
     # to vt that it hasn't seen before, it will start a new scan of that url
     rsp = session.get(check_url, headers=headers, verify=VERIFY, timeout=max_timeout)
     if rsp.status_code == 404:
-        print(rsp.text)
         return make_api_response(None, "No results.", rsp.status_code)
     elif rsp.status_code != 200:
         return make_api_response(rsp.text, "Error submitting data to upstream.", rsp.status_code)
