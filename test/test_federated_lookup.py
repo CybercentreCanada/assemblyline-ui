@@ -46,15 +46,15 @@ def datastore(datastore_connection):
 
 
 @pytest.fixture(scope="module")
-def digest():
+def digest_sha256():
     """Fake sha256 digest for use across tests"""
     return "a" * 64
 
 
 @pytest.fixture(scope="module")
-def digest2():
+def imphash():
     """Fake sha256 digest for use across tests"""
-    return "b" * 64
+    return "b" * 32
 
 
 @pytest.fixture()
@@ -84,7 +84,7 @@ def mock_400_response(mocker):
 
 
 @pytest.fixture()
-def mock_mb_hash_response(mocker, digest):
+def mock_mb_hash_response(mocker, digest_sha256):
     """Hash found in Malware Bazaar."""
     # digest = "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16754"
     mock_mb_response = mocker.MagicMock(spec=Response)
@@ -92,10 +92,9 @@ def mock_mb_hash_response(mocker, digest):
     mock_mb_response.json.return_value = {
         "api_error_message": "",
         "api_response": {
-            digest: {
-                "classification": "UNRESTRICTED",
-                "link": f"https://bazaar.abuse.ch/sample/{digest}/",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -103,21 +102,16 @@ def mock_mb_hash_response(mocker, digest):
 
 
 @pytest.fixture()
-def mock_mb_imphash_response(mocker, digest, digest2):
+def mock_mb_imphash_response(mocker, imphash):
     """Imphash found in Malware Bazaar."""
     mock_mb_response = mocker.MagicMock(spec=Response)
     mock_mb_response.status_code = 200
     mock_mb_response.json.return_value = {
         "api_error_message": "",
         "api_response": {
-            digest: {
-                "classification": "UNRESTRICTED",
-                "link": f"https://bazaar.abuse.ch/sample/{digest}/",
-            },
-            digest2: {
-                "classification": "UNRESTRICTED",
-                "link": f"https://bazaar.abuse.ch/sample/{digest2}/",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=imphash%3A{imphash}",
+            "count": 2,
         },
         "api_status_code": 200,
     }
@@ -125,17 +119,16 @@ def mock_mb_imphash_response(mocker, digest, digest2):
 
 
 @pytest.fixture()
-def mock_vt_hash_response(mocker, digest):
+def mock_vt_hash_response(mocker, digest_sha256):
     """Hash found in Virustotal."""
     mock_vt_response = mocker.MagicMock(spec=Response)
     mock_vt_response.status_code = 200
     mock_vt_response.json.return_value = {
         "api_error_message": "",
         "api_response": {
-            "vt-hash": {
-                "classification": "UNRESTRICTED",
-                "link": f"https://www.virustotal.com/gui/search/{digest}/summary",
-            },
+            "classification": "UNRESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -150,16 +143,9 @@ def mock_get(mocker):
     return mock_get
 
 
-# def test_lookup_valid(datastore, login_session):
-#    _, session, host = login_session
-#
-#    resp = get_api_data(session, f"{host}/api/v4/federated_lookup/ioc/")
-#    assert resp == ["TODO"]
-
-
-def test_lookup_ioc_multi_hit(
-        datastore, local_login_session, mock_get, mock_vt_hash_response, mock_mb_hash_response, digest):
-    """Lookup a valid ioc type with multiple configured sources.
+def test_lookup_tag_multi_hit(
+        datastore, local_login_session, mock_get, mock_vt_hash_response, mock_mb_hash_response, digest_sha256):
+    """Lookup a valid tag type with multiple configured sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
         And a given hash exists in both sources
@@ -167,7 +153,7 @@ def test_lookup_ioc_multi_hit(
     When a user requests a lookup of a given hash
         And no filter is applied
 
-    Then the user should receive multiple links to the sample
+    Then the user should receive a result from each source
     """
     _, client = local_login_session
 
@@ -177,7 +163,7 @@ def test_lookup_ioc_multi_hit(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/ioc/hash/{digest}/")
+    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -186,19 +172,23 @@ def test_lookup_ioc_multi_hit(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": [
-            {digest: f"https://bazaar.abuse.ch/sample/{digest}/"},
-        ],
-        "virustotal": [
-            {"vt-hash": f"https://www.virustotal.com/gui/search/{digest}/summary"},
-        ],
+        "malware_bazaar": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+            "count": 1,
+        },
+        "virustotal": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
+            "count": 1,
+        },
     }
     assert data == expected
 
 
 def test_lookup_ioc_multi_hit_filter(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest):
-    """Lookup a valid ioc type with multiple configured sources but place a filter.
+        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256):
+    """Lookup a valid tag type with multiple configured sources but place a filter.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
         And a given hash exists in both sources
@@ -213,7 +203,10 @@ def test_lookup_ioc_multi_hit_filter(
     mock_get.return_value = mock_mb_hash_response
 
     # User requests a lookup with filter
-    rsp = client.get(f"/api/v4/federated_lookup/ioc/hash/{digest}/", query_string={"sources": "malware_bazaar"})
+    rsp = client.get(
+        f"/api/v4/federated_lookup/search/sah256/{digest_sha256}/",
+        query_string={"sources": "malware_bazaar"}
+    )
 
     # A query for each source should be sent
     assert mock_get.call_count == 1
@@ -222,16 +215,18 @@ def test_lookup_ioc_multi_hit_filter(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": [
-            {digest: f"https://bazaar.abuse.ch/sample/{digest}/"},
-        ],
+        "malware_bazaar": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+            "count": 1,
+        },
     }
     assert data == expected
 
 
 def test_lookup_ioc_multi_source_single_hit(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest, mock_404_response):
-    """Lookup a valid ioc type with multiple configured sources but found in only one source.
+        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256, mock_404_response):
+    """Lookup a valid tag type with multiple configured sources but found in only one source.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
         And a given hash exists only in Malware Bazaar
@@ -249,7 +244,7 @@ def test_lookup_ioc_multi_source_single_hit(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/ioc/hash/{digest}/")
+    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -258,26 +253,28 @@ def test_lookup_ioc_multi_source_single_hit(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": [
-            {digest: f"https://bazaar.abuse.ch/sample/{digest}/"},
-        ],
+        "malware_bazaar": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+            "count": 1,
+        },
     }
     assert data == expected
 
 
 def test_lookup_ioc_multi_source_invalid_single(
-        datastore, local_login_session, mock_get, mock_mb_imphash_response, digest, digest2, mock_400_response):
-    """With multiple configured sources look up an ioc that is valid in only one of those sources.
+        datastore, local_login_session, mock_get, mock_mb_imphash_response, imphash, mock_400_response):
+    """With multiple configured sources look up a tag that is valid in only one of those sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
-        And `imphash` ioc type is only valid for Malware Bazaar
-        And 2 entities in Malware Bazaar have the given `imphash`
+        And `imphash` tag type is only valid for Malware Bazaar
+        And two entities in Malware Bazaar have the given `imphash`
 
     When a user requests a lookup of an `imphash`
         And no filter is applied
 
-    Then the user should receive two results from only Malware Bazaar
-        AND invalid IOC error message logged to error
+    Then the user should receive a result from only Malware Bazaar with a count of 2
+        AND invalid tag error message logged to error
     """
     _, client = local_login_session
 
@@ -287,8 +284,7 @@ def test_lookup_ioc_multi_source_invalid_single(
     ]
 
     # User requests a lookup with no filter
-    imphash = "a" * 32
-    rsp = client.get(f"/api/v4/federated_lookup/ioc/imphash/{imphash}/")
+    rsp = client.get(f"/api/v4/federated_lookup/search/file.pe.imports.imphash/{imphash}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -297,22 +293,23 @@ def test_lookup_ioc_multi_source_invalid_single(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": [
-            {digest: f"https://bazaar.abuse.ch/sample/{digest}/"},
-            {digest2: f"https://bazaar.abuse.ch/sample/{digest2}/"},
-        ],
+        "malware_bazaar": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=imphash%3A{imphash}",
+            "count": 2,
+        },
     }
     assert data == expected
 
 
 def test_lookup_ioc_multi_source_invalid_all(
         datastore, local_login_session, mock_get, mock_400_response):
-    """With multiple configured sources look up an ioc that is not valid in any of the sources.
+    """With multiple configured sources look up a tag that is not valid in any of the sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
-        And `notanioc` ioc type is not valid for Malware Bazaar or Virustotal
+        And `not_a_tag` tag type is not valid for Malware Bazaar or Virustotal
 
-    When a user requests a lookup of an `notanioc`
+    When a user requests a lookup of an `not_a_tag`
         And no filter is applied
 
     Then the user should receive an empty list with no error
@@ -325,7 +322,7 @@ def test_lookup_ioc_multi_source_invalid_all(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get("/api/v4/federated_lookup/ioc/not_an_ioc_name/notanioc/")
+    rsp = client.get("/api/v4/federated_lookup/search/not_a_tag/invalid/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -338,7 +335,7 @@ def test_lookup_ioc_multi_source_invalid_all(
 
 
 def test_access_control_source_filtering(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest):
+        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256):
     """With multiple configured sources ensure access control filtering is applied at the source level.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -360,7 +357,7 @@ def test_access_control_source_filtering(
     mock_get.return_value = mock_mb_hash_response
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/ioc/hash/{digest}/")
+    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
 
     # Only queries to access allowed sources should go through
     assert mock_get.call_count == 1
@@ -369,21 +366,23 @@ def test_access_control_source_filtering(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": [
-            {digest: f"https://bazaar.abuse.ch/sample/{digest}/"},
-        ],
+        "malware_bazaar": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+            "count": 1,
+        },
     }
     assert data == expected
 
 
-def test_access_control_ioc_filtering(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest, mocker):
-    """With multiple configured sources ensure access control filtering is applied at the ioc level.
+def test_access_control_tag_filtering(
+        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256, mocker):
+    """With multiple configured sources ensure access control filtering is applied at the tag level.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
         And the given hash exists in both sources
         And both sources are UNRESTRICTED
-        And the ioc return from VirusTotal is RESTRICTED
+        And the tag returned from VirusTotal is RESTRICTED
 
     When a user requests a lookup of a hash
         And no filter is applied
@@ -398,10 +397,9 @@ def test_access_control_ioc_filtering(
     mock_vt_response.json.return_value = {
         "api_error_message": "",
         "api_response": {
-            "vt-hash": {
-                "classification": "RESTRICTED",
-                "link": f"https://www.virustotal.com/gui/search/{digest}/summary",
-            },
+            "classification": "RESTRICTED",
+            "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
+            "count": 1,
         },
         "api_status_code": 200,
     }
@@ -411,7 +409,7 @@ def test_access_control_ioc_filtering(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/ioc/hash/{digest}/")
+    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
 
     # All queries sohuld be made
     assert mock_get.call_count == 2
@@ -420,8 +418,10 @@ def test_access_control_ioc_filtering(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": [
-            {digest: f"https://bazaar.abuse.ch/sample/{digest}/"},
-        ],
+        "malware_bazaar": {
+            "classification": "UNRESTRICTED",
+            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+            "count": 1,
+        },
     }
     assert data == expected

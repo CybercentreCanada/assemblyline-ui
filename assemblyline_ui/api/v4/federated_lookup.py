@@ -2,10 +2,12 @@
 
 Lookup related data from external systems.
 
-To start with, provide endpoints to query systems and return links to those results.
+* Provide endpoints to query systems and return links to those results.
+
 
 Future:
-Provide endpoints to query other systems to enable enrichment of AL data.
+
+* Provide endpoints to query other systems to enable enrichment of AL data.
 """
 from flask import request
 from requests import Session
@@ -23,8 +25,7 @@ federated_lookup_api._doc = "Lookup related data through configured external dat
 @federated_lookup_api.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
 def search_tags(tag_name: str, tag: str, **kwargs):
-    """
-    Search AL tags across all configured external sources/systems.
+    """Search AL tags across all configured external sources/systems.
 
     Variables:
     tag_name => Tag to look up in the external system.
@@ -33,7 +34,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     Arguments: (optional)
     max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
     sources     => | separated list of data sources. If empty, all configured sources are used.
-    limit       => limit the amount of returned results per source [Default: 5]
+    limit       => limit the amount of returned results counted per source [Default: 500]
 
     Data Block:
     None
@@ -47,11 +48,11 @@ def search_tags(tag_name: str, tag: str, **kwargs):
 
     Result example:
     {                           # Dictionary of:
-        <source_name>: [
-            {<name>: <https link to results>},
-            add count, and only a few links?
-            ...,
-        ],
+        <source_name>: {
+            "link": <https link to results>,
+            "count": <number of hits from search>,
+            "classification": <classification of search>,
+        },
         ...,
     }
     """
@@ -61,7 +62,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
         query_sources = query_sources.split("|")
 
     max_timeout = request.args.get("max_timeout", "3")
-    limit = request.args.get("limit", "3")
+    limit = request.args.get("limit", "500")
     # noinspection PyBroadException
     try:
         max_timeout = float(max_timeout)
@@ -86,7 +87,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     for source in available_sources:
         if not query_sources or source.name in query_sources:
             # perform the lookup, ensuring access controls are applied
-            url = f"{source.url}/ioc/{tag_name}/{tag}"
+            url = f"{source.url}/search/{tag_name}/{tag}"
             rsp = session.get(url, params=params, headers=headers)
             status_code = rsp.status_code
             if status_code == 404:
@@ -99,9 +100,8 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                 continue
             try:
                 data = rsp.json()["api_response"]
-                for name, details in data.items():
-                    if user and Classification.is_accessible(user["classification"], details["classification"]):
-                        links.setdefault(source.name, []).append({name: details["link"]})
+                if user and Classification.is_accessible(user["classification"], data["classification"]):
+                    links[source.name] = data
             # noinspection PyBroadException
             except Exception as err:
                 LOGGER.error(f"External API did not return expected format: {err}")
