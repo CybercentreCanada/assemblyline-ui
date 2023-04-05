@@ -1,4 +1,4 @@
-"""Lookup through Malware Bazaar.
+"""Lookup through Assemblyline.
 
 """
 import json
@@ -8,20 +8,24 @@ import requests
 
 from flask import Flask, Response, jsonify, make_response, request
 
+from assemblyline.odm.models import tagging
+
 
 app = Flask(__name__)
 
 
 VERIFY = os.environ.get("MB_VERIFY", False)
-MAX_LIMIT = os.environ.get("MB_MAX_LIMIT", 500)  # Maximum number to return
-
+# We don't need to apply a limit in this query as we already get a count of total results
+# and we are not parsing individual results.
+MAX_LIMIT = 1
+MAX_TMEOUT = os.environ.get("MAX_TIMEOUT", "3")
 API_KEY = os.environ.get("API_KEY", "")
 # Ensure upstream/downstream system classification is set correctly
 CLASSIFICATION = os.environ.get("CLASSIFICATION", "UNRESTRICTED")
-QUERY_URL = os.environ.get("QUERY_URL", "https://assemblyline-ui")
+URL_BASE = os.environ.get("QUERY_URL", "https://assemblyline-ui")
 
 # Mapping of AL tag names to external systems "tag" names
-TAG_MAPPING = os.environ.get("TAG_MAPPING", {})
+TAG_MAPPING = os.environ.get("TAG_MAPPING", {tname: tname for tname in tagging.Tagging().flat_fields().keys()})
 if not isinstance(TAG_MAPPING, dict):
     TAG_MAPPING = json.loads(TAG_MAPPING)
 
@@ -40,7 +44,7 @@ def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
 
 @app.route("/tags/", methods=["GET"])
 def get_tag_mappings() -> Response:
-    """Return tag mappings upported by this service."""
+    """Return tag mappings supported by this service."""
     return make_api_response(TAG_MAPPING)
 
 
@@ -52,7 +56,6 @@ def search_tag(tag_name: str, tag: str):
 
     Arguments: (optional)
     max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
-    limit       => limit the amount of returned results per source [Default: 500]
 
 
     This method should return an api_response containing:
@@ -63,23 +66,15 @@ def search_tag(tag_name: str, tag: str):
             "classification": <classification of search>,  # Should this be the max
         }
     """
-    # since this is AL to AL mappings, if no TAG_MAPPINGS are given, assume tags are
-    # already in the correct format
-    tn = tag_name
-    if TAG_MAPPING:
-        tn = TAG_MAPPING.get(tag_name)
-        if tn is None:
-            return make_api_response(
-                None,
-                f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
-                400,
-            )
+    tn = TAG_MAPPING.get(tag_name)
+    if tn is None:
+        return make_api_response(
+            None,
+            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
+            400,
+        )
 
-    limit = int(request.args.get("limit", "1000"))
-    if limit > int(MAX_LIMIT):
-        limit = int(MAX_LIMIT)
-
-    max_timeout = request.args.get('max_timeout', "3")
+    max_timeout = request.args.get("max_timeout", MAX_TMEOUT)
     # noinspection PyBroadException
     try:
         max_timeout = float(max_timeout)
@@ -91,18 +86,37 @@ def search_tag(tag_name: str, tag: str):
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
-    url = f"{QUERY_URL}/api/v4/"
-    rsp = session.get(url, headers=headers, verify=VERIFY, timeout=max_timeout)
+    search_base = f"{URL_BASE}/api/v4/search"
+    url = f"{search_base}/result/"
+    qry = f'result.sections.tags.{tn}:"{tag}"'
+    result_link = f"{URL_BASE}/search/result?query={qry}"
+    # Return default classification of the upstream instance for tags
+    # or should we retrieve multiple and parse the returned data and find a more accurate the minimum?
+    classification = CLASSIFICATION
 
+    # digests are not tags and have their own dedicate lookup
+    if tn in ("md5", "sha1", "sha256"):
+        url = f"{search_base}/file/{tag}/"
+        qry = tag
+        result_link = f"{URL_BASE}/search/file?query={qry}"
+
+    params = {"query": qry, "rows": MAX_LIMIT}
+    rsp = session.get(url, params=params, headers=headers, verify=VERIFY, timeout=max_timeout)
     rsp_json = rsp.json()
+    if rsp.status_code != 200:
+        return make_api_response("", rsp_json["api_error_message"], rsp_json.status_code)
+    data = rsp_json["api_response"]
 
-    # return view links to the gui once we know it's found
-    data = rsp_json.get("data", [])
+    # we can get a more accurate classification for file search
+    if tn in ("md5", "sha1", "sha256"):
+        items = data["items"]
+        if items:
+            classification = items[0]["classification"]
 
     return make_api_response({
-        "link": f"",
-        "count": len(data),
-        "classification": "",
+        "link": result_link,
+        "count": data["total"],
+        "classification": classification,
     })
 
 
