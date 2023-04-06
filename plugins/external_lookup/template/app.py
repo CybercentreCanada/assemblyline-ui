@@ -42,7 +42,7 @@ def get_tag_mappings() -> Response:
 
 
 @app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
-def lookup_ioc(tag_name: str, tag: str) -> Response:
+def search_tag(tag_name: str, tag: str) -> Response:
     """Define how to lookup a tag in the external system.
 
     This method should return an api_response containing:

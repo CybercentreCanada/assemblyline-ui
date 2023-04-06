@@ -96,7 +96,7 @@ def search_tag(tag_name: str, tag: str):
     qry = f'result.sections.tags.{tn}:"{tag}"'
     result_link = f"{URL_BASE}/search/result?query={qry}"
     # Return default classification of the upstream instance for tags
-    # or should we retrieve multiple and parse the returned data and find a more accurate the minimum?
+    # or should we retrieve multiple and parse the returned data and find one more accurate than the minimum?
     classification = CLASSIFICATION
 
     # digests are not tags and have their own dedicate lookup
