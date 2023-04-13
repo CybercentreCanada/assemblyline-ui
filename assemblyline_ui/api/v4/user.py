@@ -157,6 +157,11 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "external_sources": [
+                x.name for x in config.ui.external_sources
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ],
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
             "services_feed": config.ui.services_feed,
