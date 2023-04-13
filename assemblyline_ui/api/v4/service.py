@@ -1,12 +1,14 @@
 
-import yaml
 import json
+import re
+import yaml
 
 from flask import request
 from math import floor
 from packaging.version import parse
 
 from assemblyline.common.dict_utils import get_recursive_delta
+from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.odm.models.error import ERROR_TYPES
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
@@ -17,7 +19,6 @@ from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline_core.updater.helper import get_latest_tag_for_service
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.api.v4.signature import _reset_service_updates
 from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.signature import append_source_status
 
@@ -26,6 +27,12 @@ service_api = make_subapi_blueprint(SUB_API, api_version=4)
 service_api._doc = "Manage the different services"
 
 latest_service_tags = Hash('service-tags', get_client(
+    host=config.core.redis.persistent.host,
+    port=config.core.redis.persistent.port,
+    private=False,
+))
+
+service_install = Hash('container-install', get_client(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port,
     private=False,
@@ -54,18 +61,18 @@ def check_private_keys(source_list):
     return source_list
 
 
-def check_for_source_change(delta_list, source):
-    change_list = {}
+def source_exists(delta_list, source):
+    exists = False
     for delta in delta_list:
         if delta['name'] == source['name']:
-            # Classification update
+            exists = True
+            # Classification update, perform an update-by-query
             if delta['default_classification'] != source['default_classification']:
                 class_norm = Classification.normalize_classification(delta['default_classification'])
-                change_list['default_classification'] = STORAGE.signature.update_by_query(
-                    query=f'source:"{source["name"]}"',
-                    operations=[("SET", "classification", class_norm)])
+                STORAGE.signature.update_by_query(query=f'source:"{source["name"]}"',
+                                                  operations=[("SET", "classification", class_norm)])
 
-    return change_list
+    return exists
 
 
 def get_service_stats(service_name, version=None, max_docs=500):
@@ -187,11 +194,23 @@ def synchronize_sources(service_name, current_sources, new_sources):
     removed_sources = {}
     for source in current_sources:
         if source not in new_sources:
-            # If not a minor change, then assume change is drastically different (ie. removal)
-            if not check_for_source_change(new_sources, source):
+            # If the source doesn't exist in the set of new sources, assume deletion and cleanup
+            if not source_exists(new_sources, source):
                 removed_sources[source['name']] = STORAGE.signature.delete_by_query(
                     f'type:"{service_name.lower()}" AND source:"{source["name"]}"') != 0
-    _reset_service_updates(service_name)
+                service_updates = Hash(f'service-updates-{service_name}', config.core.redis.persistent.host,
+                                       config.core.redis.persistent.port)
+                [service_updates.pop(k) for k in service_updates.keys() if k.startswith(f'{source["name"]}.')]
+            # Notify of changes to updater
+            EventSender('changes.signatures',
+                        host=config.core.redis.nonpersistent.host,
+                        port=config.core.redis.nonpersistent.port).send(service_name.lower(), {
+                            'signature_id': '*',
+                            'signature_type': service_name.lower(),
+                            'source': source["name"],
+                            'operation': Operation.Removed
+                        })
+
     return removed_sources
 
 
@@ -473,7 +492,7 @@ def check_for_service_updates(**_):
 
 
 @service_api.route("/constants/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False)
+@api_login(audit=False, allow_readonly=False)
 def get_service_constants(**_):
     """
     Get global service constants.
@@ -527,11 +546,20 @@ def get_potential_versions(servicename, **_):
     Result example:
     ['3.1.0', '3.2.0', '3.3.0', '4.0.0', ...]     # List of service versions
     """
-    service = STORAGE.service_delta.get(servicename)
+    service = STORAGE.get_service_with_delta(servicename)
     if service:
-        return make_api_response(
-            sorted([item.version for item in STORAGE.service.stream_search(f"id:{servicename}*", fl="version")],
-                   key=lambda x: parse(x), reverse=True))
+        if service.update_channel != 'stable':
+            version_re = f"{FRAMEWORK_VERSION}\\.{SYSTEM_VERSION}\\.\\d+\\.{service.update_channel}\\d+"
+        else:
+            version_re = f"{FRAMEWORK_VERSION}\\.{SYSTEM_VERSION}\\.\\d+\\.\\w+"
+
+        versions = [
+            item.version
+            for item in STORAGE.service.stream_search(f"id:{servicename}*", fl="version")
+            if re.match(version_re, item.version)
+        ]
+
+        return make_api_response(sorted(versions, key=lambda x: parse(x), reverse=True))
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
 
@@ -635,7 +663,7 @@ def get_service_defaults(servicename, version, **_):
 
 
 @service_api.route("/all/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], allow_readonly=False)
+@api_login(audit=False, allow_readonly=False)
 def list_all_services(**_):
     """
     List all service configurations of the system.
@@ -814,6 +842,128 @@ def set_service(servicename, **_):
                               "removed_sources": removed_sources})
 
 
+@service_api.route("/installing/", methods=["GET"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def get_services_installing(**_):
+    """
+        Get the list of services currently being installed.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        None
+
+        Result example:
+
+        # List of services being installed
+        ["ResultSample"]
+    """
+    try:
+        services = set(STORAGE.service_delta.keys())
+        output = [name for name in service_install.items() if name not in services]
+
+        return make_api_response(output)
+    except ValueError as e:
+        return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/installing/", methods=["POST"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def post_services_installing(**_):
+    """
+        Get the list of services currently being installed.
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        [
+            <LIST OF SERVICE NAMES>
+        ]
+
+        Result example:
+        {
+          "installed":      [ "ResultSample" ],     # List of services that were installed
+          "installing":     [ "ExtraFeature" ],     # List of services being installed
+          "not_installed":  ["rejectedFeature"]     # List of services that are not installed
+        }
+    """
+
+    try:
+        names = request.json
+        output = {'installing': [], 'installed': [], 'not_installed': []}
+
+        if isinstance(names, (list, tuple)):
+            services = set(STORAGE.service_delta.keys())
+            installing = service_install.items()
+
+            for name in names:
+                if name in services:
+                    output['installed'].append(name)
+
+                elif name in installing:
+                    output['installing'].append(name)
+
+                else:
+                    output['not_installed'].append(name)
+
+        return make_api_response(output)
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
+
+
+@service_api.route("/install/", methods=["PUT"])
+@api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
+def install_services(**_):
+    """
+        Install multiple services from a list provided as data
+
+        Variables:
+        None
+
+        Arguments:
+        None
+
+        Data Block:
+        [{
+            "name": "ResultSample"
+            "image": "cccs/assemblyline-service-resultsample"
+        }]
+
+        Result example:
+        [ "ExtraFeature" ]     # List of services being installed
+    """
+
+    try:
+        services = request.json
+        output = []
+
+        if not isinstance(services, list):
+            return make_api_response("", err="Invalid data sent to install API", status_code=400)
+
+        installed_services = set(STORAGE.service_delta.keys())
+
+        for service in services:
+            if service["name"] not in installed_services:
+                image = service['image']
+                install_data = {
+                    'image': f"${{REGISTRY}}{image}" if not image.startswith("$") else image
+                }
+                service_install.set(service["name"], install_data)
+                output.append(service["name"])
+
+        return make_api_response(output)
+    except ValueError as e:  # Catch errors when building Service or Heuristic model(s)
+        return make_api_response("", err=str(e), status_code=400)
+
+
 @service_api.route("/update/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False)
 def update_service(**_):
@@ -908,7 +1058,7 @@ def update_all_services(**_):
 
 
 @service_api.route("/stats/<service_name>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], require_role=[ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.administration])
 def service_statistics(service_name, **_):
     """
         Get statistics for a service

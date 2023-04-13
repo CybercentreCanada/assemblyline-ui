@@ -22,11 +22,6 @@ API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
 
 XSRF_ENABLED = True
-SCOPES = {
-    'r': ["R"],
-    'w': ["W"],
-    'rw': ["R", "W"],
-}
 
 
 def make_subapi_blueprint(name, api_version=4):
@@ -38,9 +33,9 @@ def make_subapi_blueprint(name, api_version=4):
 # API Helper func and decorators
 # noinspection PyPep8Naming
 class api_login(BaseSecurityRenderer):
-    def __init__(self, require_role=None, username_key='username', audit=True, required_priv=None,
+    def __init__(self, require_role=None, username_key='username', audit=True,
                  check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
-        super().__init__(require_role, audit, required_priv, allow_readonly)
+        super().__init__(require_role, audit, allow_readonly)
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
@@ -57,33 +52,27 @@ class api_login(BaseSecurityRenderer):
                     #       We could fix this by saving the hash of the combinaison of the
                     #       APIkey and the username in an ExpiringSet and looking it up for
                     #       sub-sequent calls...
-                    validated_user, priv = validate_apikey(uname, apikey, STORAGE)
-                except AuthenticationException:
-                    msg = "Invalid user or APIKey"
-                    LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{msg}]")
-                    abort(401, msg)
+                    validated_user, roles_limit = validate_apikey(uname, apikey, STORAGE)
+                except AuthenticationException as ae:
+                    LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{str(ae)}]")
+                    abort(401, str(ae))
                     return
 
                 if validated_user:
                     LOGGER.info(f"Login successful. (U:{uname} - IP:{ip})")
-                    if not set(self.required_priv).intersection(set(priv)):
-                        abort(403, "The method you've used to login does not give you access to this API")
-                        return
 
-                    return validated_user
+                    return validated_user, roles_limit
 
-        return None
+        return None, None
 
     def extra_session_checks(self, session):
-        if not set(self.required_priv).intersection(set(session.get("privileges", []))):
-            abort(403, "The method you've used to login does not give you access to this API")
-            return
+        if "roles_limit" not in session:
+            abort(401, "Invalid session")
 
-        if "E" in session.get("privileges", []) and self.check_xsrf_token and \
+        if session.get("roles_limit", []) is None and self.check_xsrf_token and \
                 session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN',
                                                                      request.args.get("XSRF_TOKEN", "")):
             abort(403, "Invalid XSRF token")
-            return
 
     def __call__(self, func):
         @functools.wraps(func)
@@ -96,7 +85,7 @@ class api_login(BaseSecurityRenderer):
                     return
 
             self.test_readonly("API")
-            logged_in_uname = self.get_logged_in_user()
+            logged_in_uname, roles_limit = self.get_logged_in_user()
             impersonator = None
 
             # Impersonate
@@ -121,9 +110,11 @@ class api_login(BaseSecurityRenderer):
                         logged_in_uname = headers['user']
                         LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
 
-                        if not set(self.required_priv).intersection(set(SCOPES[decoded["scope"]])):
-                            abort(403, "The method you've used to login does not give you access to this API")
-                            return
+                        if roles_limit:
+                            roles_limit = [r for r in decoded['roles'] if r in roles_limit]
+                        else:
+                            roles_limit = decoded["roles"]
+
                     else:
                         abort(403, "Invalid bearer token")
                         return
@@ -131,7 +122,7 @@ class api_login(BaseSecurityRenderer):
                     abort(404, "User not found")
                     return
 
-            user = login(logged_in_uname)
+            user = login(logged_in_uname, roles_limit)
 
             # Terms of Service
             if request.path not in ["/api/v4/help/tos/", "/api/v4/user/whoami/",
@@ -190,7 +181,6 @@ class api_login(BaseSecurityRenderer):
         base.protected = True
         base.require_role = self.require_role
         base.audit = self.audit
-        base.required_priv = self.required_priv
         base.check_xsrf_token = self.check_xsrf_token
         base.allow_readonly = self.allow_readonly
         return base
@@ -291,7 +281,7 @@ def stream_binary_response(reader, status_code=200):
 #####################################
 # API list API (API inception)
 @api.route("/")
-@api_login(audit=False, required_priv=['R', 'W'])
+@api_login(audit=False)
 def api_version_list(**_):
     """
     List all available API versions.
@@ -357,7 +347,6 @@ def site_map(**_):
         protected = func.__dict__.get('protected', False)
         required_type = func.__dict__.get('require_role', [])
         audit = func.__dict__.get('audit', False)
-        priv = func.__dict__.get('required_priv', '')
         allow_readonly = func.__dict__.get('allow_readonly', True)
         if "/api/v4/" in rule.rule:
             prefix = "api.v4."
@@ -375,7 +364,6 @@ def site_map(**_):
                       "methods": methods,
                       "protected": protected,
                       "required_type": required_type,
-                      "audit": audit,
-                      "req_priv": priv})
+                      "audit": audit})
 
     return make_api_response(sorted(pages, key=lambda i: i['url']))

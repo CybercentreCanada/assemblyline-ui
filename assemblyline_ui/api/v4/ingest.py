@@ -1,10 +1,11 @@
 import json
 import os
 import shutil
-from assemblyline.common.classification import InvalidClassification
 
 from flask import request
+from requests.exceptions import ConnectTimeout
 
+from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import now_as_iso
@@ -17,7 +18,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, \
     InvalidUrlException, ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import load_user_settings
 
@@ -35,7 +36,7 @@ MAX_SIZE = config.submission.max_file_size
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def get_message(notification_queue, **kwargs):
     """
     Get one message on the specified notification queue
@@ -63,7 +64,7 @@ def get_message(notification_queue, **kwargs):
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message_list/<notification_queue>/", methods=["GET"])
-@api_login(required_priv=['R'], allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def get_all_messages(notification_queue, **kwargs):
     """
     Get all messages on the specified notification queue
@@ -98,7 +99,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system
@@ -289,8 +290,9 @@ def ingest_single_file(**kwargs):
                             dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
                                                         headers=source.headers, proxies=source.proxies,
                                                         verify=source.verify, validate=False,
-                                                        failure_pattern=failure_pattern)
-                            if dl_from:
+                                                        failure_pattern=failure_pattern,
+                                                        ignore_size=s_params.get('ignore_size', False))
+                            if dl_from is not None:
                                 # Apply minimum classification for the source
                                 s_params['classification'] = \
                                     Classification.max_classification(s_params['classification'],
@@ -315,13 +317,16 @@ def ingest_single_file(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
-                    if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                             proxies=config.ui.url_submission_proxies,
-                                             timeout=config.ui.url_submission_timeout):
-
+                    url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
+                                                    proxies=config.ui.url_submission_proxies,
+                                                    timeout=config.ui.url_submission_timeout, verify=False,
+                                                    ignore_size=s_params.get('ignore_size', False))
+                    if url_history is None:
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
                     extra_meta['submitted_url'] = url
+                    for h_id, h_url in enumerate(url_history):
+                        extra_meta[f'url_redirect_{h_id}'] = h_url
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)
                 except InvalidUrlException:

@@ -79,7 +79,7 @@ def parse_profile(profile, provider):
         for auto_prop in provider.auto_properties:
             if auto_prop.type == "access":
                 # Set default access value for access pattern
-                access = auto_prop.value != "True"
+                access = auto_prop.value.lower() != "true"
 
             # Get values for field
             field_data = profile.get(auto_prop.field, None)
@@ -95,7 +95,7 @@ def parse_profile(profile, provider):
                 # Check access
                 if auto_prop.type == "access":
                     if re.match(auto_prop.pattern, value) is not None:
-                        access = auto_prop.value == "True"
+                        access = auto_prop.value.lower() == "true"
                         break
 
                 # Append user type from matching patterns

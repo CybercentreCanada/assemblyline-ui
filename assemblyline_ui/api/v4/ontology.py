@@ -17,6 +17,13 @@ ontology_api._doc = "Download ontology results from the system"
 def generate_ontology_file(results, user, updates={}, fnames={}):
     # Load ontology files
     sio = StringIO()
+
+    # Compute files' score based on results
+    file_scores = {}
+    for r in results:
+        file_scores.setdefault(r['sha256'], 0)
+        file_scores[r['sha256']] += r["result"]["score"]
+
     for r in results:
         for supp in r.get('response', {}).get('supplementary', {}):
             if supp['name'].endswith('.ontology'):
@@ -55,6 +62,10 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
                         # Ensure SHA256 is set in final output
                         ontology['file']['sha256'] = sha256
 
+                        # Aggregated file score related to the results
+                        ontology.setdefault('results', {})
+                        ontology['results']['score'] = file_scores[sha256]
+
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
                     LOGGER.warning(f"An error occured while fetching ontology files: {str(e)}")
@@ -66,7 +77,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
 
 @ontology_api.route("/alert/<alert_id>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.alert_view])
+@api_login(require_role=[ROLES.alert_view])
 def get_ontology_for_alert(alert_id, **kwargs):
     """
     WARNING:
@@ -97,9 +108,9 @@ def get_ontology_for_alert(alert_id, **kwargs):
     # Get alert from ID
     alert = STORAGE.alert.get(alert_id, as_obj=False)
     if not alert:
-        return make_api_response("", f"There are not alert with this ID: {alert_id}", 404)
+        return make_api_response("", f"There is no alert with this ID: {alert_id}", 404)
     if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", f"Your are not allowed get ontology files for this alert: {alert_id}", 403)
+        return make_api_response("", f"You are not allowed get ontology files for this alert: {alert_id}", 403)
 
     # Get related submission
     submission = STORAGE.submission.get(alert['sid'], as_obj=False)
@@ -145,6 +156,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
             'classification': submission['classification'],
             'submitter': submission['params']['submitter'],
             'groups': submission['params']['groups'],
+            'max_score': submission['max_score']
         }
 
     }
@@ -159,7 +171,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
 
 
 @ontology_api.route("/submission/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_ontology_for_submission(sid, **kwargs):
     """
     WARNING:
@@ -190,7 +202,7 @@ def get_ontology_for_submission(sid, **kwargs):
     # Get submission for sid
     submission = STORAGE.submission.get(sid, as_obj=False)
     if not submission:
-        return make_api_response("", f"There are not submission with sid: {sid}", 404)
+        return make_api_response("", f"There is no submission with sid: {sid}", 404)
     if not Classification.is_accessible(user['classification'], submission['classification']):
         return make_api_response("", f"Your are not allowed get ontology files for this submission: {sid}", 403)
 
@@ -230,6 +242,7 @@ def get_ontology_for_submission(sid, **kwargs):
             'classification': submission['classification'],
             'submitter': submission['params']['submitter'],
             'groups': submission['params']['groups'],
+            'max_score': submission['max_score']
         }
 
     }
@@ -244,7 +257,7 @@ def get_ontology_for_submission(sid, **kwargs):
 
 
 @ontology_api.route("/file/<sha256>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_ontology_for_file(sha256, **kwargs):
     """
     WARNING:
@@ -275,7 +288,7 @@ def get_ontology_for_file(sha256, **kwargs):
     # Get file data for hash
     file_data = STORAGE.file.get(sha256, as_obj=False)
     if not file_data:
-        return make_api_response("", f"There are not file with this hash: {sha256}", 404)
+        return make_api_response("", f"There is no file with this hash: {sha256}", 404)
     if not Classification.is_accessible(user['classification'], file_data['classification']):
         return make_api_response("", f"Your are not allowed get ontology files for this hash: {sha256}", 403)
 

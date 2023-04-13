@@ -4,6 +4,7 @@ import shutil
 import tempfile
 
 from flask import request
+from requests.exceptions import ConnectTimeout
 
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
@@ -15,7 +16,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
     CLASSIFICATION as Classification, IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, ConnectTimeout, FileTooBigException, \
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, \
     InvalidUrlException, ForbiddenLocation, submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
@@ -31,7 +32,7 @@ submission_client = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, con
 
 # noinspection PyUnusedLocal
 @submit_api.route("/dynamic/<sha256>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     Resubmit a file for dynamic analysis
@@ -63,6 +64,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         return make_api_response("", "You are not allowed to re-submit a file that you don't have access to", 403)
 
     submit_result = None
+    metadata = {}
     try:
         copy_sid = request.args.get('copy_sid', None)
         name = safe_str(request.args.get('name', sha256))
@@ -81,11 +83,15 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_params = submission['params']
             submission_params['classification'] = submission['classification']
             expiry = submission['expiry_ts']
+            metadata = submission['metadata']
 
         else:
             submission_params = ui_to_submission_params(load_user_settings(user))
             submission_params['classification'] = file_info['classification']
             expiry = file_info['expiry_ts']
+
+            # Ignore external sources
+            submission_params.pop('default_external_sources', None)
 
         if not FILESTORE.exists(sha256):
             if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
@@ -114,6 +120,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
             submission_obj = Submission({
                 "files": files,
                 "params": submission_params,
+                "metadata": metadata,
             })
         except (ValueError, KeyError) as e:
             return make_api_response("", err=str(e), status_code=400)
@@ -131,7 +138,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
 # noinspection PyUnusedLocal
 @submit_api.route("/resubmit/<sid>/", methods=["GET"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def resubmit_submission_for_analysis(sid, *args, **kwargs):
     """
     Resubmit a submission for analysis with the exact same parameters as before
@@ -195,7 +202,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
-@api_login(audit=False, required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create])
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis
@@ -370,8 +377,9 @@ def submit(**kwargs):
                             dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
                                                         headers=source.headers, proxies=source.proxies,
                                                         verify=source.verify, validate=False,
-                                                        failure_pattern=failure_pattern)
-                            if dl_from:
+                                                        failure_pattern=failure_pattern,
+                                                        ignore_size=s_params.get('ignore_size', False))
+                            if dl_from is not None:
                                 # Apply minimum classification for the source
                                 s_params['classification'] = \
                                     Classification.max_classification(s_params['classification'],
@@ -396,18 +404,22 @@ def submit(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
-                    if not download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                             proxies=config.ui.url_submission_proxies,
-                                             timeout=config.ui.url_submission_timeout):
+                    url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
+                                                    proxies=config.ui.url_submission_proxies,
+                                                    timeout=config.ui.url_submission_timeout,
+                                                    verify=False, ignore_size=s_params.get('ignore_size', False))
+                    if url_history is None:
                         return make_api_response({}, "Submitted URL cannot be found.", 400)
 
                     extra_meta['submitted_url'] = url
+                    for h_id, h_url in enumerate(url_history):
+                        extra_meta[f'url_redirect_{h_id}'] = h_url
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)
                 except InvalidUrlException:
                     return make_api_response({}, "Url provided is invalid.", 400)
-                except ForbiddenLocation:
-                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
+                except ForbiddenLocation as fl:
+                    return make_api_response({}, str(fl), 400)
                 except ConnectTimeout:
                     return make_api_response({}, 'Connection timeout has occurred while fetching data.', 400)
             else:

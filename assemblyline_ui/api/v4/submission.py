@@ -1,5 +1,6 @@
 import time
 from assemblyline.datastore.collection import Index
+from assemblyline_core.dispatching.client import DispatchClient
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -25,7 +26,7 @@ HEUR_RANK_MAP = {
 
 
 @submission_api.route("/<sid>/", methods=["DELETE"])
-@api_login(required_priv=['W'], allow_readonly=False, require_role=[ROLES.submission_delete])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_delete])
 def delete_submission(sid, **kwargs):
     """
     Delete a submission as well as all related
@@ -49,6 +50,10 @@ def delete_submission(sid, **kwargs):
     if not submission:
         return make_api_response("", f"There are not submission with sid: {sid}", 404)
 
+    if submission['state'] != "completed":
+        # Tell dispatcher to cancel submission if it is ongoing
+        DispatchClient(datastore=STORAGE).cancel_submission(sid)
+
     if Classification.is_accessible(user['classification'], submission['classification']) \
             and (submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']):
         STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
@@ -60,7 +65,7 @@ def delete_submission(sid, **kwargs):
 
 # noinspection PyBroadException
 @submission_api.route("/<sid>/file/<sha256>/", methods=["GET", "POST"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_submission_results(sid, sha256, **kwargs):
     """
     Get the all the results and errors of a specific file
@@ -217,7 +222,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
 
 @submission_api.route("/tree/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_file_tree(sid, **kwargs):
     """
     Get the file hierarchy of a given Submission ID. This is
@@ -260,7 +265,7 @@ def get_file_tree(sid, **kwargs):
 
 
 @submission_api.route("/full/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_full_results(sid, **kwargs):
     """
     Get the full results for a given Submission ID. The difference
@@ -423,7 +428,7 @@ def get_full_results(sid, **kwargs):
 
 
 @submission_api.route("/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_submission(sid, **kwargs):
     """
     Get the submission details for a given Submission ID
@@ -478,7 +483,7 @@ def get_submission(sid, **kwargs):
 
 # noinspection PyTypeChecker,PyUnresolvedReferences
 @submission_api.route("/summary/<sid>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def get_summary(sid, **kwargs):
     """
     Retrieve the executive summary of a given submission ID. This
@@ -655,7 +660,7 @@ def get_summary(sid, **kwargs):
 
 # noinspection PyUnusedLocal
 @submission_api.route("/is_completed/<sid>/", methods=["GET"])
-@api_login(audit=False, required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(audit=False, require_role=[ROLES.submission_view])
 def is_submission_completed(sid, **kwargs):
     """
     Check if a submission is completed
@@ -680,7 +685,7 @@ def is_submission_completed(sid, **kwargs):
 
 
 @submission_api.route("/list/group/<group>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def list_submissions_for_group(group, **kwargs):
     """
     List all submissions of a given group.
@@ -746,7 +751,7 @@ def list_submissions_for_group(group, **kwargs):
 
 
 @submission_api.route("/list/user/<username>/", methods=["GET"])
-@api_login(required_priv=['R'], require_role=[ROLES.submission_view])
+@api_login(require_role=[ROLES.submission_view])
 def list_submissions_for_user(username, **kwargs):
     """
     List all submissions of a given user.

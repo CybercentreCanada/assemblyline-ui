@@ -1,7 +1,9 @@
 import json
+import re
 import requests
 import os
 import socket
+
 from urllib.parse import urlparse
 
 from assemblyline.common.isotime import now_as_iso
@@ -9,7 +11,6 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config
-from requests.exceptions import ConnectTimeout
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
@@ -31,39 +32,62 @@ class ForbiddenLocation(Exception):
     pass
 
 
-def validate_url(url):
+def refang_url(url):
+    '''
+    Refangs a url of text. Based on source of: https://pypi.org/project/defang/
+    '''
+    new_url = re.sub(r'[\(\[](\.|dot)[\)\]]', '.', url, flags=re.IGNORECASE)
+    new_url = re.sub(r'^h[x]{1,2}p([s]?)\[?:\]?//', r'http\1://', new_url, flags=re.IGNORECASE)
+    new_url = re.sub(r'^fxp(s?)\[?:\]?//', r'ftp\1://', new_url, flags=re.IGNORECASE)
+    return new_url
+
+
+def validate_url(url, refang=True):
     try:
-        parsed = urlparse(url)
+        if refang:
+            valid_url = refang_url(url)
+        else:
+            valid_url = url
+        parsed = urlparse(valid_url)
     except Exception:
         raise InvalidUrlException('Url provided is invalid.')
 
     host = parsed.hostname or parsed.netloc
 
-    try:
-        cur_ip = socket.gethostbyname(host)
-    except socket.gaierror:
-        cur_ip = '127.0.0.1'
+    if host:
+        try:
+            cur_ip = socket.gethostbyname(host)
+        except socket.gaierror:
+            cur_ip = None
 
-    if is_ip_reserved(cur_ip) or cur_ip == MYIP:
-        raise ForbiddenLocation("Location '%s' cannot be resolved." % host)
+        if cur_ip is None:
+            raise ForbiddenLocation(f"Host '{host}' cannot be resolved.")
+
+        if is_ip_reserved(cur_ip):
+            raise ForbiddenLocation(
+                f"Host '{host}' resolves to a reserved IP address: '{cur_ip}'. The URL will not be downloaded.")
+
+    return valid_url
 
 
 def validate_redirect(r, **_):
     if r.is_redirect:
         location = safe_str(r.headers['location'])
         try:
-            validate_url(location)
+            validate_url(location, refang=False)
         except Exception:
             raise InvalidUrlException('Url provided is invalid.')
 
 
 def download_from_url(download_url, target, data=None, method="GET",
                       headers={}, proxies={}, verify=True, validate=True, failure_pattern=None,
-                      timeout=None):
+                      timeout=None, ignore_size=False):
     hooks = None
     if validate:
-        validate_url(download_url)
+        url = validate_url(download_url)
         hooks = {'response': validate_redirect}
+    else:
+        url = download_url
 
     # Create a requests sessions
     session = requests.Session()
@@ -77,34 +101,34 @@ def download_from_url(download_url, target, data=None, method="GET",
     except Exception:
         raise InvalidUrlException(f"Unsupported method used: {method}")
 
-    r = session_function(download_url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True,
+    r = session_function(url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True,
                          timeout=timeout, allow_redirects=True)
 
     if r.ok:
-        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size:
+        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size and not ignore_size:
             raise FileTooBigException("File too big to be scanned.")
 
         written = 0
 
         with open(target, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=512 * 1024):
+            for chunk in r.iter_content(chunk_size=64 * 1024):
                 if chunk:  # filter out keep-alive new chunks
                     if failure_pattern and failure_pattern in chunk:
                         f.close()
                         os.unlink(target)
-                        return False
+                        return None
 
-                    written += 512 * 1024
-                    if written > config.submission.max_file_size:
+                    written += len(chunk)
+                    if written > config.submission.max_file_size and not ignore_size:
                         f.close()
                         os.unlink(target)
                         raise FileTooBigException("File too big to be scanned.")
                     f.write(chunk)
 
             if written > 0:
-                return True
+                return [r.url for r in r.history if r.url != url]
 
-    return False
+    return None
 
 
 def get_or_create_summary(sid, results, user_classification, completed):
