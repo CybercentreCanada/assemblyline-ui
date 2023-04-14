@@ -1,12 +1,23 @@
-import pytest
+from assemblyline.common import forge  # noqa
+
+gc = forge.get_classification  # noqa
+
+
+def get_classification(yml_config=None):  # noqa
+    """Monkeypatch the forge generation of classifications to always enforce for this test suite."""
+    c = gc(yml_config)
+    c.enforce = True
+    return c
+
+
+forge.get_classification = get_classification  # noqa
+
 
 from requests import Response
-
 from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline_ui.app import app
 from assemblyline_ui.config import config, CLASSIFICATION
-
-CLASSIFICATION.enforce = True
+import pytest
 
 
 @pytest.fixture()
@@ -23,9 +34,22 @@ def test_client():
 
 
 @pytest.fixture()
-def local_login_session(test_client):
+def user_login_session(test_client):
     """Setup a login session for the test_client."""
     r = test_client.post("/api/v4/auth/login/", data={"user": "user", "password": "user"})
+    for name, value in r.headers:
+        if name == "Set-Cookie" and "XSRF-TOKEN" in value:
+            # in form: ("Set-Cookie", "XSRF-TOKEN=<token>; Path=/")
+            token = value.split(";")[0].split("=")[1]
+            test_client.environ_base["HTTP_X_XSRF_TOKEN"] = token
+    data = r.json["api_response"]
+    yield data, test_client
+
+
+@pytest.fixture()
+def admin_login_session(test_client):
+    """Setup a login session for the test_client."""
+    r = test_client.post("/api/v4/auth/login/", data={"user": "admin", "password": "admin"})
     for name, value in r.headers:
         if name == "Set-Cookie" and "XSRF-TOKEN" in value:
             # in form: ("Set-Cookie", "XSRF-TOKEN=<token>; Path=/")
@@ -144,7 +168,7 @@ def mock_get(mocker):
 
 
 def test_lookup_tag_multi_hit(
-        datastore, local_login_session, mock_get, mock_vt_hash_response, mock_mb_hash_response, digest_sha256):
+        datastore, user_login_session, mock_get, mock_vt_hash_response, mock_mb_hash_response, digest_sha256):
     """Lookup a valid tag type with multiple configured sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -155,7 +179,7 @@ def test_lookup_tag_multi_hit(
 
     Then the user should receive a result from each source
     """
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_get.side_effect = [
         mock_mb_hash_response,
@@ -186,8 +210,8 @@ def test_lookup_tag_multi_hit(
     assert data == expected
 
 
-def test_lookup_ioc_multi_hit_filter(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256):
+def test_lookup_tag_multi_hit_filter(
+        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256):
     """Lookup a valid tag type with multiple configured sources but place a filter.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -198,7 +222,7 @@ def test_lookup_ioc_multi_hit_filter(
 
     Then the user should receive results from only the filtered source
     """
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_get.return_value = mock_mb_hash_response
 
@@ -224,8 +248,8 @@ def test_lookup_ioc_multi_hit_filter(
     assert data == expected
 
 
-def test_lookup_ioc_multi_source_single_hit(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256, mock_404_response):
+def test_lookup_tag_multi_source_single_hit(
+        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256, mock_404_response):
     """Lookup a valid tag type with multiple configured sources but found in only one source.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -236,7 +260,7 @@ def test_lookup_ioc_multi_source_single_hit(
 
     Then the user should receive results from only Malware Bazaar with no error
     """
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_get.side_effect = [
         mock_mb_hash_response,
@@ -262,8 +286,8 @@ def test_lookup_ioc_multi_source_single_hit(
     assert data == expected
 
 
-def test_lookup_ioc_multi_source_invalid_single(
-        datastore, local_login_session, mock_get, mock_mb_imphash_response, imphash, mock_400_response):
+def test_lookup_tag_multi_source_invalid_single(
+        datastore, user_login_session, mock_get, mock_mb_imphash_response, imphash, mock_400_response):
     """With multiple configured sources look up a tag that is valid in only one of those sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -276,7 +300,7 @@ def test_lookup_ioc_multi_source_invalid_single(
     Then the user should receive a result from only Malware Bazaar with a count of 2
         AND invalid tag error message logged to error
     """
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_get.side_effect = [
         mock_mb_imphash_response,
@@ -302,8 +326,8 @@ def test_lookup_ioc_multi_source_invalid_single(
     assert data == expected
 
 
-def test_lookup_ioc_multi_source_invalid_all(
-        datastore, local_login_session, mock_get, mock_400_response):
+def test_lookup_tag_multi_source_invalid_all(
+        datastore, user_login_session, mock_get, mock_400_response):
     """With multiple configured sources look up a tag that is not valid in any of the sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -314,7 +338,7 @@ def test_lookup_ioc_multi_source_invalid_all(
 
     Then the user should receive an empty list with no error
     """
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_get.side_effect = [
         mock_400_response,
@@ -335,7 +359,7 @@ def test_lookup_ioc_multi_source_invalid_all(
 
 
 def test_access_control_source_filtering(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256):
+        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256):
     """With multiple configured sources ensure access control filtering is applied at the source level.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -352,7 +376,7 @@ def test_access_control_source_filtering(
         {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
         {"name": "virustotal", "url": "http://lookup_vt:8001", "classification": "RESTRICTED"},
     ]
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_get.return_value = mock_mb_hash_response
 
@@ -376,7 +400,7 @@ def test_access_control_source_filtering(
 
 
 def test_access_control_tag_filtering(
-        datastore, local_login_session, mock_get, mock_mb_hash_response, digest_sha256, mocker):
+        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256, mocker):
     """With multiple configured sources ensure access control filtering is applied at the tag level.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -390,7 +414,7 @@ def test_access_control_tag_filtering(
 
     Then the user should receive only results from malware bazaar
     """
-    _, client = local_login_session
+    _, client = user_login_session
 
     mock_vt_response = mocker.MagicMock(spec=Response)
     mock_vt_response.status_code = 200
@@ -411,7 +435,7 @@ def test_access_control_tag_filtering(
     # User requests a lookup with no filter
     rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
 
-    # All queries sohuld be made
+    # All queries should be made
     assert mock_get.call_count == 2
 
     # Expect correctly formatted mocked reponse
@@ -423,5 +447,56 @@ def test_access_control_tag_filtering(
             "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
             "count": 1,
         },
+    }
+    assert data == expected
+
+
+def test_access_control_tag_max_classification(
+        datastore, admin_login_session, mock_get, imphash, mocker):
+    """With multiple configured sources ensure access controls are applied to tags before searching.
+
+    Given an external lookup for both Malware Bazaar and Assemblyline is configured
+        And the given `imphash` value exists in both sources
+        And the given `imphash` value is classified RESTRICTED
+        And Assemblyline's maximum classification is RESTRICTED
+        And Malware Bazaar's maximum classification is UNRESTRICTED
+
+    When a user requests a lookup of the `imphash` value
+        And no filter is applied
+        And the user has access to RESTRICTED results
+
+    Then the user should receive only results from Assemblyline
+    """
+    config.ui.external_sources = [
+        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
+        {"name": "assemblyline", "url": "http://lookup_al:8001", "max_classification": "RESTRICTED"},
+    ]
+    data, client = admin_login_session
+
+    mock_al_response = mocker.MagicMock(spec=Response)
+    mock_al_response.status_code = 200
+    al_lookup = {
+        "classification": "RESTRICTED",
+        "link": f'https://assemblyline-ui/search/result?query=result.sections.tags.file.pe.imports.imphash:"{imphash}"',
+        "count": 2,
+    }
+    mock_al_response.json.return_value = {
+        "api_error_message": "",
+        "api_response": al_lookup,
+        "api_status_code": 200,
+    }
+    mock_get.return_value = mock_al_response
+
+    # User requests a lookup with no filter
+    rsp = client.get(f"/api/v4/federated_lookup/search/file.pe.imports.imphash/{imphash}/?classification=RESTRICTED")
+
+    # Only the query to AL should be made
+    assert mock_get.call_count == 1
+
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "assemblyline": al_lookup,
     }
     assert data == expected

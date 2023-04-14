@@ -32,9 +32,10 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     tag => Tag value to lookup. Must be URL encoded.
 
     Arguments: (optional)
-    max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
-    sources     => | separated list of data sources. If empty, all configured sources are used.
-    limit       => limit the amount of returned results counted per source [Default: 500]
+    classification  => Classification of the tag [Default: minimum configured classification]
+    sources         => | separated list of data sources. If empty, all configured sources are used.
+    max_timeout     => Maximum execution time for the call in seconds [Default: 3 seconds]
+    limit           => limit the amount of returned results counted per source [Default: 500]
 
     Data Block:
     None
@@ -69,10 +70,17 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     except Exception:
         max_timeout = 3.0
 
+    tag_classification = request.args.get("classification", Classification.UNRESTRICTED)
+
+    # validate what sources the user is allowed to submit requests to.
+    # this must be checked against what systems the user is allowed to see
+    # as well as the the max supported classification of the external system
     available_sources = [
         x for x in config.ui.external_sources
         if Classification.is_accessible(user["classification"], x.classification)
+        and Classification.is_accessible(x.max_classification or Classification.UNRESTRICTED, tag_classification)
     ]
+    print(f"{available_sources=}")
 
     session = Session()
     headers = {
@@ -90,6 +98,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
             url = f"{source.url}/search/{tag_name}/{tag}"
             rsp = session.get(url, params=params, headers=headers)
             status_code = rsp.status_code
+            print(f"GET: {source.name}")
             if status_code == 404:
                 # continue searching configured sources if not found.
                 continue
