@@ -18,7 +18,7 @@ def test_get_mappings(test_client, mocker):
     rsp = test_client.get("/tags/")
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
-    assert data == TAG_MAPPING
+    assert data == sorted(TAG_MAPPING)
 
 
 def test_hash_found(test_client, mocker):
@@ -30,7 +30,7 @@ def test_hash_found(test_client, mocker):
         "api_error_message": "",
         "api_response": {
             "items": [{
-                "classification": "UNRESTRICTED",
+                "classification": "TLP:CLEAR",
                 "id": digest,
             }],
             "offset": 0,
@@ -49,7 +49,7 @@ def test_hash_found(test_client, mocker):
     expected = {
         "api_error_message": "",
         "api_response": {
-            "classification": "UNRESTRICTED",
+            "classification": "TLP:CLEAR",
             "link": f"{URL_BASE}/search/file?query={digest}",
             "count": 1,
         },

@@ -16,6 +16,8 @@ from flask import Flask, Response, jsonify, make_response
 app = Flask(__name__)
 
 
+# Classification of this service
+CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")
 # Mapping of AL tag names to external systems "tag" names
 # eg: {"network.dynamic.ip": "ip-address", "network.static.ip": "ip-address"}
 TAG_MAPPING = os.environ.get("TAG_MAPPING", {})
@@ -36,9 +38,9 @@ def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
 
 
 @app.route("/tags/", methods=["GET"])
-def get_tag_mappings() -> Response:
-    """Return tag mappings upported by this service."""
-    return make_api_response(TAG_MAPPING)
+def get_tag_names() -> Response:
+    """Return supported tag names."""
+    return make_api_response(sorted(TAG_MAPPING))
 
 
 @app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])

@@ -80,7 +80,6 @@ def search_tags(tag_name: str, tag: str, **kwargs):
         if Classification.is_accessible(user["classification"], x.classification)
         and Classification.is_accessible(x.max_classification or Classification.UNRESTRICTED, tag_classification)
     ]
-    print(f"{available_sources=}")
 
     session = Session()
     headers = {
@@ -98,7 +97,6 @@ def search_tags(tag_name: str, tag: str, **kwargs):
             url = f"{source.url}/search/{tag_name}/{tag}"
             rsp = session.get(url, params=params, headers=headers)
             status_code = rsp.status_code
-            print(f"GET: {source.name}")
             if status_code == 404:
                 # continue searching configured sources if not found.
                 continue

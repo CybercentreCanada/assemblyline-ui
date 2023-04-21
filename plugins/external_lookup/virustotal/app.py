@@ -18,6 +18,7 @@ app = Flask(__name__)
 API_KEY = os.environ.get("VT_API_KEY", "")
 VERIFY = os.environ.get("VT_VERIFY", False)
 MAX_LIMIT = os.environ.get("VT_MAX_LIMIT", 500)
+CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")  # Classification of this service
 
 # Mapping of AL tag names to external systems "tag" names
 TAG_MAPPING = os.environ.get("TAG_MAPPING", {
@@ -48,9 +49,9 @@ def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
 
 
 @app.route("/tags/", methods=["GET"])
-def get_tag_mappings() -> Response:
-    """Return valid IOC names supported by this service."""
-    return make_api_response(TAG_MAPPING)
+def get_tag_names() -> Response:
+    """Return supported tag names."""
+    return make_api_response(sorted(TAG_MAPPING))
 
 
 @app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
@@ -69,7 +70,7 @@ def search_tag(tag_name: str, tag: str) -> Response:
         {
             "link": <url to search results in external system>,
             "count": <count of results from the external system>,
-            "classification": "UNRESTRICTED",
+            "classification": $CLASSIFICATION",
         }
     """
     tn = TAG_MAPPING.get(tag_name)
@@ -117,7 +118,7 @@ def search_tag(tag_name: str, tag: str) -> Response:
     return make_api_response({
         "link": f"https://www.virustotal.com/gui/search?query={ul.quote(tag)}",
         "count": 1,  # url/domain/file/ip searches only return a single result/report
-        "classification": "UNRESTRICTED",
+        "classification": CLASSIFICATION,
     })
 
 

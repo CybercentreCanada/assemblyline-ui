@@ -21,7 +21,7 @@ MAX_LIMIT = 1
 MAX_TMEOUT = os.environ.get("MAX_TIMEOUT", "3")
 API_KEY = os.environ.get("API_KEY", "")
 # Ensure upstream/downstream system classification is set correctly
-CLASSIFICATION = os.environ.get("CLASSIFICATION", "UNRESTRICTED")
+CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")
 URL_BASE = os.environ.get("QUERY_URL", "https://assemblyline-ui")
 
 # Mapping of AL tag names to external systems "tag" names
@@ -46,9 +46,9 @@ def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
 
 
 @app.route("/tags/", methods=["GET"])
-def get_tag_mappings() -> Response:
-    """Return tag mappings supported by this service."""
-    return make_api_response(TAG_MAPPING)
+def get_tag_names() -> Response:
+    """Return supported tag names."""
+    return make_api_response(sorted(TAG_MAPPING))
 
 
 @app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])

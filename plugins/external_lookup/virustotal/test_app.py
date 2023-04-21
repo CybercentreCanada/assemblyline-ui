@@ -16,11 +16,11 @@ def test_client():
 
 
 def test_get_tags(test_client):
-    """Ensure tag mappings are returned."""
+    """Ensure valid tag names are returned."""
     rsp = test_client.get("/tags/")
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
-    assert data == TAG_MAPPING
+    assert data == sorted(TAG_MAPPING)
 
 
 def test_tag_found(test_client, mocker):
@@ -37,7 +37,7 @@ def test_tag_found(test_client, mocker):
     expected = {
         "api_error_message": "",
         "api_response": {
-            "classification": "UNRESTRICTED",
+            "classification": "TLP:CLEAR",
             "link": f"https://www.virustotal.com/gui/search?query={digest}",
             "count": 1,
         },
@@ -53,7 +53,7 @@ def test_tag_found(test_client, mocker):
     expected = {
         "api_error_message": "",
         "api_response": {
-            "classification": "UNRESTRICTED",
+            "classification": "TLP:CLEAR",
             "link": f"https://www.virustotal.com/gui/search?query={ip_address}",
             "count": 1,
         },
@@ -70,7 +70,7 @@ def test_tag_found(test_client, mocker):
     expected = {
         "api_error_message": "",
         "api_response": {
-            "classification": "UNRESTRICTED",
+            "classification": "TLP:CLEAR",
             "link": f"https://www.virustotal.com/gui/search?query={quoted}",
             "count": 1,
         },
@@ -86,7 +86,7 @@ def test_tag_found(test_client, mocker):
     expected = {
         "api_error_message": "",
         "api_response": {
-            "classification": "UNRESTRICTED",
+            "classification": "TLP:CLEAR",
             "link": f"https://www.virustotal.com/gui/search?query={domain}",
             "count": 1,
         },
