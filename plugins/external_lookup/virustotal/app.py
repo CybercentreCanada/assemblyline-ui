@@ -51,7 +51,7 @@ def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
 @app.route("/tags/", methods=["GET"])
 def get_tag_names() -> Response:
     """Return supported tag names."""
-    return make_api_response(sorted(TAG_MAPPING))
+    return make_api_response({tname: CLASSIFICATION for tname in sorted(TAG_MAPPING)})
 
 
 @app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])

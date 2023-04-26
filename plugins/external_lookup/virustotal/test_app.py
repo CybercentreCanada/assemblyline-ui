@@ -3,7 +3,7 @@ from urllib import parse as ul
 import pytest
 import requests
 
-from .app import app, TAG_MAPPING
+from .app import app, CLASSIFICATION, TAG_MAPPING
 
 
 @pytest.fixture()
@@ -20,7 +20,7 @@ def test_get_tags(test_client):
     rsp = test_client.get("/tags/")
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
-    assert data == sorted(TAG_MAPPING)
+    assert data == {tname: CLASSIFICATION for tname in sorted(TAG_MAPPING)}
 
 
 def test_tag_found(test_client, mocker):

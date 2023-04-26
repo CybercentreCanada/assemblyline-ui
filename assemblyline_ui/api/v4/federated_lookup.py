@@ -22,6 +22,82 @@ federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
 federated_lookup_api._doc = "Lookup related data through configured external data sources/systems."
 
 
+def _get_tag_names(user, max_timeout=3.0):
+    """Get the supported tag names of each external service.
+
+    This function is for internal use without the login and routing wrappers.
+    """
+    # validate what sources the user is allowed to know about
+    available_sources = [
+        x for x in config.ui.external_sources
+        if Classification.is_accessible(user["classification"], x.classification)
+    ]
+
+    session = Session()
+    headers = {
+        "accept": "application/json",
+    }
+
+    results = {}
+    for source in available_sources:
+        url = f"{source.url}/tags/"
+        rsp = session.get(url, headers=headers, timeout=max_timeout)
+        status_code = rsp.status_code
+        if status_code != 200:
+            # assume service unavailable, look for others
+            err = rsp.json()["api_error_message"]
+            LOGGER.error(f"Error from upstream server: {status_code=}, {err=}")
+            continue
+        try:
+            data = rsp.json()["api_response"]
+            results[source.name] = [
+                tname for tname, classification in data.items()
+                if user and Classification.is_accessible(user["classification"], classification)
+            ]
+        # noinspection PyBroadException
+        except Exception as err:
+            LOGGER.error(f"External API did not return expected format: {err}")
+            continue
+    return results
+
+
+@federated_lookup_api.route("/tags/", methods=["GET"])
+@api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
+def get_tag_names(**kwargs):
+    """Return the supported tags of each external service.
+
+    Arguments: (optional)
+    max_timeout     => Maximum execution time for the call in seconds [Default: 3 seconds]
+
+    Data Block:
+    None
+
+    API call examples:
+    /api/v4/federated_lookup/tags/
+
+    Returns:
+    A dictionary of sources with their supported tags.
+
+    Result example:
+    {                           # Dictionary of:
+        <source_name>: [
+            <tag name>,
+            <tag name>,
+            ...,
+        ],
+        ...,
+    }
+    """
+    user = kwargs["user"]
+    max_timeout = request.args.get("max_timeout", "3")
+    # noinspection PyBroadException
+    try:
+        max_timeout = float(max_timeout)
+    except Exception:
+        max_timeout = 3.0
+    return make_api_response(_get_tag_names(user, max_timeout))
+
+
 @federated_lookup_api.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view, ROLES.submission_view])
 def search_tags(tag_name: str, tag: str, **kwargs):
@@ -41,8 +117,8 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     None
 
     API call examples:
-    /api/v4/federated_lookup/url/http%3A%2F%2Fmalicious.domain%2Fbad/
-    /api/v4/federated_lookup/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=virustotal|malware_bazar
+    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/
+    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=virustotal|malware_bazar
 
     Returns:
     A dictionary of sources with links to found samples.

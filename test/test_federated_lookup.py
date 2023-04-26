@@ -96,6 +96,47 @@ def mock_400_response(mocker):
 
 
 @pytest.fixture()
+def mock_mb_tags_response(mocker):
+    """Tags supported by Malware Bazaar."""
+    mock_mb_rsp = mocker.MagicMock(spec=Response)
+    mock_mb_rsp.status_code = 200
+    mock_mb_rsp.json.return_value = {
+        "api_error_message": "",
+        "api_response": {
+            "md5": CLASSIFICATION.UNRESTRICTED,
+            "sha1": CLASSIFICATION.UNRESTRICTED,
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+            "file.pe.imports.imphash": CLASSIFICATION.UNRESTRICTED,
+        },
+        "api_status_code": 200,
+    }
+    return mock_mb_rsp
+
+
+@pytest.fixture()
+def mock_vt_tags_response(mocker):
+    """Tags supported by Virustotal."""
+    mock_vt_rsp = mocker.MagicMock(spec=Response)
+    mock_vt_rsp.status_code = 200
+    mock_vt_rsp.json.return_value = {
+        "api_error_message": "",
+        "api_response": {
+            "md5": CLASSIFICATION.UNRESTRICTED,
+            "sha1": CLASSIFICATION.UNRESTRICTED,
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+            "network.dynamic.domain": CLASSIFICATION.UNRESTRICTED,
+            "network.static.domain": CLASSIFICATION.UNRESTRICTED,
+            "network.dynamic.ip": CLASSIFICATION.UNRESTRICTED,
+            "network.static.ip": CLASSIFICATION.UNRESTRICTED,
+            "network.dynamic.uri": CLASSIFICATION.UNRESTRICTED,
+            "network.static.uri": CLASSIFICATION.UNRESTRICTED,
+        },
+        "api_status_code": 200,
+    }
+    return mock_vt_rsp
+
+
+@pytest.fixture()
 def mock_mb_hash_response(mocker, digest_sha256):
     """Hash found in Malware Bazaar."""
     # digest = "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16754"
@@ -489,3 +530,78 @@ def test_access_control_tag_max_classification(
         "assemblyline": al_lookup,
     }
     assert data == expected
+
+
+def test_get_tag_names(
+        datastore, user_login_session, mock_get, mock_mb_tags_response, mock_vt_tags_response):
+    """Lookup the valid tag names from all sources.
+
+    Given external lookups for both Malware Bazaar and Virustoal are configured
+        AND both sources are UNRESTRICTED
+
+    When a user requests all valid tag names
+        AND the user has access to UNRESTRICTED data
+
+    Then the user should receive all tag names supported by both sources
+    """
+    _, client = user_login_session
+
+    mock_get.side_effect = [
+        mock_mb_tags_response,
+        mock_vt_tags_response,
+    ]
+
+    # User requests a tag lookup
+    rsp = client.get("/api/v4/federated_lookup/tags/")
+
+    # A query for each source should be sent
+    assert mock_get.call_count == 2
+
+    data = rsp.json["api_response"]
+    expected_data = {
+        "malware_bazaar": ["md5", "sha1", "sha256", "file.pe.imports.imphash"],
+        "virustotal": [
+            "md5",
+            "sha1",
+            "sha256",
+            "network.dynamic.domain",
+            "network.static.domain",
+            "network.dynamic.ip",
+            "network.static.ip",
+            "network.dynamic.uri",
+            "network.static.uri",
+        ]
+    }
+    assert data == expected_data
+
+
+def test_get_tag_names_access_control(
+        datastore, user_login_session, mock_get, mock_mb_tags_response):
+    """Lookup the valid tag names with some sources restricted.
+
+    Given external lookups for both Malware Bazaar and Virustoal are configured
+        AND the malware_bazaar source is UNRESTRICTED
+        AND the virutotal source is RESTRICTED
+
+    When a user requests all valid tag names
+        AND the user has access to UNRESTRICTED data
+
+    Then the user should receive only tag names supported by malware_bazaar
+    """
+    config.ui.external_sources = [
+        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
+        {"name": "assemblyline", "url": "http://lookup_al:8001", "classification": CLASSIFICATION.RESTRICTED},
+    ]
+    _, client = user_login_session
+
+    mock_get.return_value = mock_mb_tags_response
+
+    # User requests a tag lookup
+    rsp = client.get("/api/v4/federated_lookup/tags/")
+
+    # A query for each source should be sent
+    assert mock_get.call_count == 1
+
+    data = rsp.json["api_response"]
+    expected_data = {"malware_bazaar": ["md5", "sha1", "sha256", "file.pe.imports.imphash"]}
+    assert data == expected_data

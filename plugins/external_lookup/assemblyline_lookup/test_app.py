@@ -1,7 +1,7 @@
 import pytest
 import requests
 
-from .app import app, TAG_MAPPING, URL_BASE
+from .app import app, CLASSIFICATION, TAG_MAPPING, URL_BASE
 
 
 @pytest.fixture()
@@ -18,7 +18,7 @@ def test_get_mappings(test_client, mocker):
     rsp = test_client.get("/tags/")
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
-    assert data == sorted(TAG_MAPPING)
+    assert data == {tname: CLASSIFICATION for tname in sorted(TAG_MAPPING)}
 
 
 def test_hash_found(test_client, mocker):
