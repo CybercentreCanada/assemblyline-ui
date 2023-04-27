@@ -19,7 +19,11 @@ def reorder_name(name):
 
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
-    email_adr = profile.get('email', profile.get('emails', profile.get('preferred_username', profile.get('upn', None))))
+    email_adr = None
+    for email_key in ['email', 'emails', 'extension_selectedEmailAddress', 'otherMails', 'preferred_username', 'upn']:
+        email_adr = profile.get(email_key, None)
+        if email_adr:
+            break
 
     if isinstance(email_adr, list):
         email_adr = email_adr[0]
