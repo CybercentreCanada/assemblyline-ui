@@ -39,7 +39,7 @@ setup(
     install_requires=[
         'assemblyline',
         'assemblyline-core',
-        'werkzeug',
+        'werkzeug==2.2.3',
         'flask==2.2.3',
         'pyqrcode',
         'markdown',
