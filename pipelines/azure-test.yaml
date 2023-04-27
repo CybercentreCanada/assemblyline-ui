@@ -98,10 +98,15 @@ jobs:
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
           python -m assemblyline_ui.app &
+          wget https://localhost:5000/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
+
           python -m assemblyline_ui.socketsrv &
+          wget https://localhost:5002/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
+
           sudo docker run -d --name frontend --network host --restart on-failure cccs/assemblyline-ui-frontend &
           sudo docker run -d --name nginx --network host --restart on-failure -e "FRONTEND_HOST=localhost" -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
           wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
+
           pytest -rsx -vv
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
         displayName: Test
