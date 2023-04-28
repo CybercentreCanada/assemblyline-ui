@@ -662,8 +662,8 @@ def get_summary(sid, **kwargs):
 
 
 # noinspection PyUnusedLocal
-@ submission_api.route("/is_completed/<sid>/", methods=["GET"])
-@ api_login(audit=False, require_role=[ROLES.submission_view])
+@submission_api.route("/is_completed/<sid>/", methods=["GET"])
+@api_login(audit=False, require_role=[ROLES.submission_view])
 def is_submission_completed(sid, **kwargs):
     """
     Check if a submission is completed
@@ -687,8 +687,8 @@ def is_submission_completed(sid, **kwargs):
     return make_api_response(data["state"] == "completed")
 
 
-@ submission_api.route("/list/group/<group>/", methods=["GET"])
-@ api_login(require_role=[ROLES.submission_view])
+@submission_api.route("/list/group/<group>/", methods=["GET"])
+@api_login(require_role=[ROLES.submission_view])
 def list_submissions_for_group(group, **kwargs):
     """
     List all submissions of a given group.
@@ -753,8 +753,8 @@ def list_submissions_for_group(group, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@ submission_api.route("/list/user/<username>/", methods=["GET"])
-@ api_login(require_role=[ROLES.submission_view])
+@submission_api.route("/list/user/<username>/", methods=["GET"])
+@api_login(require_role=[ROLES.submission_view])
 def list_submissions_for_user(username, **kwargs):
     """
     List all submissions of a given user.
@@ -819,8 +819,8 @@ def list_submissions_for_user(username, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@ submission_api.route("/report/<submission_id>/", methods=["GET"])
-@ api_login(audit=False, check_xsrf_token=False, require_role=[ROLES.submission_view])
+@submission_api.route("/report/<submission_id>/", methods=["GET"])
+@api_login(audit=False, check_xsrf_token=False, require_role=[ROLES.submission_view])
 def get_report(submission_id, **kwargs):
     """
     Create a report for a submission based on its ID.
