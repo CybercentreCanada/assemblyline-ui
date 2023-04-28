@@ -345,7 +345,7 @@ def ingest_single_file(**kwargs):
 
         # Apply group params if not specified
         if 'groups' not in s_params:
-            s_params['groups'] = user['groups']
+            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']] or ['USERS']
 
         # Get generate alert parameter
         generate_alert = data.get('generate_alert', s_params.get('generate_alert', False))

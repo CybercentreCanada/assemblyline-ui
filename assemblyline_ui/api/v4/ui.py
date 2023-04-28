@@ -204,7 +204,7 @@ def start_ui_submission(ui_sid, **kwargs):
     user = kwargs['user']
 
     ui_params = request.json
-    ui_params['groups'] = kwargs['user']['groups']
+    ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']] or ["USERS"]
     ui_params['quota_item'] = True
     ui_params['submitter'] = user['uname']
 
