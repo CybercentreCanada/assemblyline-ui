@@ -143,7 +143,7 @@ class BasicLDAPWrapper(object):
                 access = True
                 user_type = []
                 roles = []
-                groups = []
+                groups = ["USERS"]
                 remove_roles = set()
                 classification = self.get_user_classification(details['groups'])
                 for auto_prop in config.auth.ldap.auto_properties:
