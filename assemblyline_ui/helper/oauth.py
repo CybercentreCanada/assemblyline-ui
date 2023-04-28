@@ -77,6 +77,7 @@ def parse_profile(profile, provider):
     access = True
     user_type = []
     roles = []
+    groups = []
     remove_roles = set()
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
@@ -120,7 +121,7 @@ def parse_profile(profile, provider):
                             roles.append(auto_prop.value)
                         break
 
-                # Append roles from matching patterns
+                # Remove roles from matching patterns
                 elif auto_prop.type == "remove_role":
                     if re.match(auto_prop.pattern, value):
                         remove_roles.add(auto_prop.value)
@@ -130,6 +131,12 @@ def parse_profile(profile, provider):
                 elif auto_prop.type == "classification":
                     if re.match(auto_prop.pattern, value):
                         classification = cl_engine.build_user_classification(classification, auto_prop.value)
+                        break
+
+                # Append groups from matching patterns
+                elif auto_prop.type == "group":
+                    if re.match(auto_prop.pattern, value):
+                        groups.append(auto_prop.value)
                         break
 
     # if not user type was assigned
@@ -152,6 +159,7 @@ def parse_profile(profile, provider):
         access=access,
         type=user_type,
         roles=roles,
+        groups=groups,
         classification=classification,
         uname=uname,
         name=name,
