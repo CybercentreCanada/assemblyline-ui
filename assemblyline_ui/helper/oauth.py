@@ -75,6 +75,7 @@ def parse_profile(profile, provider):
 
     # Compute access, user_type, roles and classification using auto_properties
     access = True
+    access_set = False
     user_type = []
     roles = []
     groups = []
@@ -82,9 +83,10 @@ def parse_profile(profile, provider):
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
-            if auto_prop.type == "access":
+            if auto_prop.type == "access" and not access_set:
                 # Set default access value for access pattern
                 access = auto_prop.value.lower() != "true"
+                access_set = True
 
             # Get values for field
             field_data = profile.get(auto_prop.field, None)
