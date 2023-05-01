@@ -233,7 +233,7 @@ def add_user_account(username, **_):
             data['name'] = data['uname']
 
         # Add add dynamic classification group
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
@@ -398,7 +398,7 @@ def set_user_account(username, **kwargs):
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         # Apply dynamic classification
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
