@@ -842,7 +842,7 @@ def signup(**_):
             "uname": uname,
             "password": password,
             "email": email,
-            "groups": ['USERS'],
+            "groups": [],
             "name": uname
         })
     except Exception as e:

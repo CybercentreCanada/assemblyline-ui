@@ -313,7 +313,7 @@ def submit(**kwargs):
 
         s_params.update(data.get("params", {}))
         if 'groups' not in s_params:
-            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']] or ['USERS']
+            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
 
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']

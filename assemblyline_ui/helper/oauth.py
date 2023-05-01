@@ -77,7 +77,7 @@ def parse_profile(profile, provider):
     access = True
     user_type = []
     roles = []
-    groups = ["USERS"]
+    groups = []
     remove_roles = set()
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
