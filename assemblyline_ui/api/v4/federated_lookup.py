@@ -10,7 +10,7 @@ Future:
 * Provide endpoints to query other systems to enable enrichment of AL data.
 """
 from flask import request
-from requests import Session
+from requests import Session, exceptions
 
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -41,7 +41,12 @@ def _get_tag_names(user, max_timeout=3.0):
     results = {}
     for source in available_sources:
         url = f"{source.url}/tags/"
-        rsp = session.get(url, headers=headers, timeout=max_timeout)
+        try:
+            rsp = session.get(url, headers=headers, timeout=max_timeout)
+        except exceptions.ConnectionError:
+            # since this get's called from /whoami, we don't want a service going down to prevent user logins
+            LOGGER.error(f"Unable to connect: {url}")
+            continue
         status_code = rsp.status_code
         if status_code != 200:
             # assume service unavailable, look for others

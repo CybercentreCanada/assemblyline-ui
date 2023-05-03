@@ -648,7 +648,7 @@ def get_summary(sid, **kwargs):
             elif HEUR_RANK_MAP[current_htype[0]] < HEUR_RANK_MAP[t['h_type']]:
                 # When returning tag classification without context, the least restrictive should be used
                 current_clsf = current_htype[2]
-                min_clsf = Classification.min_classification(current_clsf, t['classificaton'])
+                min_clsf = Classification.min_classification(current_clsf, t['classification'])
                 stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], min_clsf)
 
         for summary_type in output['tags']:
