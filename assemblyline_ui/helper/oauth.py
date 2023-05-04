@@ -143,7 +143,6 @@ def parse_profile(profile, provider):
                         for index, gm_value in enumerate(group_match.groups()):
                             group_value = group_value.replace(f"${index+1}", gm_value)
                         groups.append(group_value)
-                        break
 
     # if not user type was assigned
     if not user_type:
