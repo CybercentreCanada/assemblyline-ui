@@ -29,7 +29,7 @@ def _get_tag_names(user, max_timeout=3.0):
     """
     # validate what sources the user is allowed to know about
     available_sources = [
-        x for x in config.ui.external_sources
+        x for x in getattr(config.ui, "external_sources", [])
         if Classification.is_accessible(user["classification"], x.classification)
     ]
 
@@ -157,7 +157,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     # this must be checked against what systems the user is allowed to see
     # as well as the the max supported classification of the external system
     available_sources = [
-        x for x in config.ui.external_sources
+        x for x in getattr(config.ui, "external_sources", [])
         if Classification.is_accessible(user["classification"], x.classification)
         and Classification.is_accessible(x.max_classification or Classification.UNRESTRICTED, tag_classification)
     ]

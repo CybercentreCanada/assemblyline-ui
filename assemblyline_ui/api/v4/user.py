@@ -167,7 +167,7 @@ def who_am_i(**kwargs):
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
             "external_sources": [
-                x.name for x in config.ui.external_sources
+                x.name for x in getattr(config.ui, "external_sources", [])
                 if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
                                                 x.classification or CLASSIFICATION.UNRESTRICTED)
             ],
