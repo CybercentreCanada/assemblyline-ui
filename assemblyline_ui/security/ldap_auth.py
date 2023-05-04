@@ -197,9 +197,12 @@ class BasicLDAPWrapper(object):
 
                         # Append groups from matching patterns
                         elif auto_prop.type == "group":
-                            if re.match(auto_prop.pattern, value):
-                                groups.append(auto_prop.value)
-                                break
+                            group_match = re.match(auto_prop.pattern, value)
+                            if group_match:
+                                group_value = auto_prop.value
+                                for index, gm_value in enumerate(group_match.groups()):
+                                    group_value = group_value.replace(f"${index+1}", gm_value)
+                                groups.append(group_value)
 
                 # if not user type was assigned
                 if not user_type:
