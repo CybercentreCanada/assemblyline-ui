@@ -328,6 +328,51 @@ def get_file_hex(sha256, **kwargs):
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
 
+@file_api.route("/label/<sha256>/", methods=["POST"])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
+def add_labels(alert_id, **kwargs):
+    """
+    Add one or multiple labels to a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+
+    API call example:
+    /api/v4/file/labels/123456...654321/
+
+    Result example:
+    {"success": true}
+    """
+    user = kwargs['user']
+    try:
+        labels = set(request.json)
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+
+    alert = STORAGE.alert.get(alert_id, as_obj=False)
+
+    if not alert:
+        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
+
+    if not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response("", "You are not allowed to see this alert...", 403)
+
+    cur_label = set(alert.get('label', []))
+    label_diff = labels.difference(labels.intersection(cur_label))
+    if label_diff:
+        return make_api_response({
+            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
+                                                       for lbl in label_diff])})
+    else:
+        return make_api_response({"success": True})
+
+
 @file_api.route("/image/<sha256>/", methods=["GET"])
 @api_login(require_role=[ROLES.submission_view])
 def get_file_image_datastream(sha256, **kwargs):
