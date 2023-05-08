@@ -599,8 +599,8 @@ def test_get_tag_names_access_control(
     # User requests a tag lookup
     rsp = client.get("/api/v4/federated_lookup/tags/")
 
-    # A query for each source should be sent
-    assert mock_get.call_count == 1
+    # A query for both sources should be sent, then results filtered
+    assert mock_get.call_count == 2
 
     data = rsp.json["api_response"]
     expected_data = {"malware_bazaar": ["md5", "sha1", "sha256", "file.pe.imports.imphash"]}

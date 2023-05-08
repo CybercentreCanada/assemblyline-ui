@@ -114,7 +114,6 @@ def who_am_i(**kwargs):
     # System configuration
     user_data['c12nDef'] = classification_definition
     # create tag-to-source lookup mapping
-    # TODO: Should this be cached?
     external_source_tags = {}
     for source_name, tag_names in _get_tag_names(kwargs['user']).items():
         for tname in tag_names:
