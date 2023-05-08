@@ -15,6 +15,9 @@ from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_s
                                          save_user_settings, API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
+from .federated_lookup import _get_tag_names
+
+
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
 user_api._doc = "Manage the different users of the system"
@@ -110,6 +113,11 @@ def who_am_i(**kwargs):
 
     # System configuration
     user_data['c12nDef'] = classification_definition
+    # create tag-to-source lookup mapping
+    external_source_tags = {}
+    for source_name, tag_names in _get_tag_names(kwargs['user']).items():
+        for tname in tag_names:
+            external_source_tags.setdefault(tname, []).append(source_name)
     user_data['configuration'] = {
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
@@ -157,6 +165,12 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "external_sources": [
+                x.name for x in getattr(config.ui, "external_sources", [])
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ],
+            "external_source_tags": external_source_tags,
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
             "services_feed": config.ui.services_feed,

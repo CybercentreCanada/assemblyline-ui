@@ -200,18 +200,18 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], {})
                     current_htype = output["tags"][t['type']].get(t['value'], None)
-                    if not current_htype:
-                        output["tags"][t['type']][t['value']] = (h_type, t['safelisted'])
-                    else:
-                        if current_htype == 'malicious' or h_type == 'malicious':
-                            output["tags"][t['type']][t['value']] = ('malicious', t['safelisted'])
-                        elif current_htype == 'suspicious' or h_type == 'suspicious':
-                            output["tags"][t['type']][t['value']] = ('suspicious', t['safelisted'])
+                    tag_htype = h_type
+                    if current_htype:
+                        if 'malicous' in (current_htype, h_type):
+                            tag_htype = 'malicious'
+                        elif 'suspicious' in (current_htype, h_type):
+                            tag_htype = 'suspicious'
                         else:
-                            output["tags"][t['type']][t['value']] = ('info', t['safelisted'])
+                            tag_htype = 'info'
+                    output["tags"][t['type']][t['value']] = (tag_htype, t['safelisted'], sec['classification'])
 
         for t_type in output["tags"]:
-            output["tags"][t_type] = [(k, v[0], v[1]) for k, v in output['tags'][t_type].items()]
+            output["tags"][t_type] = [(k, v[0], v[1], v[2]) for k, v in output['tags'][t_type].items()]
 
         output['signatures'] = list(output['signatures'])
 
@@ -641,16 +641,19 @@ def get_summary(sid, **kwargs):
                 output['map'][sha256].append(tag_key)
 
             # Tags
-            output['tags'][summary_type].setdefault(t['type'], {})
-            current_htype = output['tags'][summary_type][t['type']].get(t['value'], None)
+            stype = output['tags'][summary_type]
+            current_htype = stype.setdefault(t['type'], {}).get(t['value'], None)
             if not current_htype:
-                output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
+                stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], t['classification'])
             elif HEUR_RANK_MAP[current_htype[0]] < HEUR_RANK_MAP[t['h_type']]:
-                output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
+                # When returning tag classification without context, the least restrictive should be used
+                current_clsf = current_htype[2]
+                min_clsf = Classification.min_classification(current_clsf, t['classification'])
+                stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], min_clsf)
 
         for summary_type in output['tags']:
             for t_type in output['tags'][summary_type]:
-                output['tags'][summary_type][t_type] = [(k, v[0], v[1])
+                output['tags'][summary_type][t_type] = [(k, v[0], v[1], v[2])
                                                         for k, v in output['tags'][summary_type][t_type].items()]
 
         return make_api_response(output)

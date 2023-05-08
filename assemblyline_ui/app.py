@@ -14,6 +14,7 @@ from assemblyline_ui.api.v4.archive import archive_api
 from assemblyline_ui.api.v4.authentication import auth_api
 from assemblyline_ui.api.v4.bundle import bundle_api
 from assemblyline_ui.api.v4.error import error_api
+from assemblyline_ui.api.v4.federated_lookup import federated_lookup_api
 from assemblyline_ui.api.v4.file import file_api
 from assemblyline_ui.api.v4.hash_search import hash_search_api
 from assemblyline_ui.api.v4.help import help_api
@@ -76,6 +77,7 @@ app.register_blueprint(auth_api)
 app.register_blueprint(bundle_api)
 app.register_blueprint(errors)
 app.register_blueprint(error_api)
+app.register_blueprint(federated_lookup_api)
 app.register_blueprint(file_api)
 app.register_blueprint(hash_search_api)
 app.register_blueprint(help_api)
