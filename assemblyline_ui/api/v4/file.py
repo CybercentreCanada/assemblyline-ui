@@ -330,7 +330,7 @@ def get_file_hex(sha256, **kwargs):
 
 @file_api.route("/label/<sha256>/", methods=["POST"])
 @api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
-def add_labels(alert_id, **kwargs):
+def set_labels(sha256, **kwargs):
     """
     Add one or multiple labels to a given file
 
@@ -340,37 +340,83 @@ def add_labels(alert_id, **kwargs):
     Arguments:
     None
 
-    Data Block:
-    ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+    Data Block:     => Dict of list of unique labels to update as comma separated string
+    {
+        "info": ["their", "from"],
+        "malicious": ["feedback"],
+        "safe": ["innovations"],
+        "suspicious": ["learn"]
+    }
 
     API call example:
     /api/v4/file/labels/123456...654321/
 
     Result example:
-    {"success": true}
+    {
+        "success": true
+        "labels": ["their", "learn", "from", "innovations"],
+        "label_categories": {
+            "info": ["their", "from"],
+            "malicious": ["feedback"],
+            "safe": ["innovations"],
+            "suspicious": ["learn"]
+        }
+    }
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        json = request.json
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    alert = STORAGE.alert.get(alert_id, as_obj=False)
+    file = STORAGE.file.get(sha256, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
+    if not file:
+        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
 
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not Classification.is_accessible(user['classification'], file['classification']):
+        return make_api_response("", "You are not allowed to see this file...", 403)
 
-    cur_label = set(alert.get('label', []))
-    label_diff = labels.difference(labels.intersection(cur_label))
-    if label_diff:
-        return make_api_response({
-            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
-                                                       for lbl in label_diff])})
-    else:
-        return make_api_response({"success": True})
+    categories = ['info', 'safe', 'suspicious', 'malicious']
+    all_new_labels = set()
+    all_current_labels = set()
+    update_data = list()
+
+    for category in categories:
+        all_new_labels.update(json[category] if category in json else [])
+        all_current_labels.update(file['label_categories'][category])
+
+    current_file_labels = set(file['labels'])
+    labels_to_add = all_new_labels.difference(all_new_labels.intersection(current_file_labels))
+    labels_to_remove = current_file_labels.difference(current_file_labels.intersection(all_new_labels))
+
+    update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, 'labels', label) for label in labels_to_add]
+    update_data += [(STORAGE.file.UPDATE_REMOVE, 'labels', label)for label in labels_to_remove]
+
+    for category in categories:
+        if category in json:
+            new_labels = all_new_labels.intersection(json[category])
+            current_labels = all_current_labels.intersection(file['label_categories'][category])
+
+            labels_to_add = new_labels.difference(new_labels.intersection(current_labels))
+            labels_to_remove = current_labels.difference(current_labels.intersection(new_labels))
+
+            update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING,
+                            f'label_categories.{category}', label) for label in labels_to_add]
+            update_data += [(STORAGE.file.UPDATE_REMOVE,
+                             f'label_categories.{category}', label)for label in labels_to_remove]
+
+            all_new_labels.difference_update(new_labels)
+            all_current_labels.difference_update(current_labels)
+
+    if update_data:
+        STORAGE.file.update(sha256, update_data)
+
+    file = STORAGE.file.get(sha256, as_obj=False)
+
+    return make_api_response(
+        {"success": True, "response": dict(labels=file["labels"],
+                                           label_categories=file["label_categories"])})
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
