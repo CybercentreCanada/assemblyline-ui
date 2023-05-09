@@ -233,7 +233,10 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                 errors.append(f"{err_msg}. ID: {err_id}")
                 continue
 
-    return make_api_response(links)
+    status_code = 200
+    if not links and errors:
+        status_code = 500
+    return make_api_response(links, err='\n'.join(errors), status_code=status_code)
 
 
 # @federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
