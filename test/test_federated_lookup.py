@@ -6,6 +6,7 @@ from requests import Response
 from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline_ui.app import app
 from assemblyline_ui.config import config, CLASSIFICATION
+from assemblyline_ui.api.v4 import federated_lookup
 
 
 @pytest.fixture()
@@ -15,6 +16,8 @@ def test_client():
         {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
         {"name": "virustotal", "url": "http://lookup_vt:8001"},
     ]
+    # ensure local cache is always fresh for tests
+    federated_lookup.all_supported_tags = {}
     app.config["TESTING"] = True
     with app.test_client() as client:
         with app.app_context():
@@ -592,6 +595,7 @@ def test_get_tag_names_access_control(
         {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
         {"name": "assemblyline", "url": "http://lookup_al:8001", "classification": CLASSIFICATION.RESTRICTED},
     ]
+
     _, client = user_login_session
 
     mock_get.return_value = mock_mb_tags_response
