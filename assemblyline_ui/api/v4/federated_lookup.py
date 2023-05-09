@@ -9,6 +9,8 @@ Future:
 
 * Provide endpoints to query other systems to enable enrichment of AL data.
 """
+import uuid
+
 from flask import request
 from requests import Session, exceptions
 
@@ -75,6 +77,19 @@ def _get_tag_names(user, max_timeout=3.0):
         ]
 
     return available_tags
+
+
+def log_error(msg, err=None, status_code=None):
+    """Log a standard error string, with a unique id reference for logging."""
+    err_id = str(uuid.uuid4())
+    error = [msg]
+    if status_code:
+        error.append(f"{status_code=}")
+    if err:
+        error.append(f"{err=}")
+    error.append(f"{err_id}")
+    LOGGER.error(" :: ".join(error))
+    return err_id
 
 
 @federated_lookup_api.route("/tags/", methods=["GET"])
@@ -165,12 +180,11 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     tag_classification = request.args.get("classification", Classification.UNRESTRICTED)
 
     # validate what sources the user is allowed to submit requests to.
-    # this must be checked against what systems the user is allowed to see
-    # as well as the the max supported classification of the external system
+    # this must first be checked against what systems the user is allowed to see
+    # additional tag level checking is then done later to provide feedback to user
     available_sources = [
         x for x in getattr(config.ui, "external_sources", [])
         if Classification.is_accessible(user["classification"], x.classification)
-        and Classification.is_accessible(x.max_classification or Classification.UNRESTRICTED, tag_classification)
     ]
 
     session = Session()
@@ -183,8 +197,18 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     }
 
     links = {}
+    errors = []
     for source in available_sources:
         if not query_sources or source.name in query_sources:
+            # check query against the max supported classification of the external system
+            # if this is not supported, we should let the user know.
+            if not Classification.is_accessible(
+                source.max_classification or Classification.UNRESTRICTED,
+                tag_classification
+            ):
+                errors.append(f"Tag classification exceeds max classification of source: {source.name}.")
+                continue
+
             # perform the lookup, ensuring access controls are applied
             url = f"{source.url}/search/{tag_name}/{tag}"
             rsp = session.get(url, params=params, headers=headers)
@@ -194,8 +218,9 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                 continue
             if status_code != 200:
                 # as we query across multiple sources, just log errors.
-                err = rsp.json()["api_error_message"]
-                LOGGER.error(f"Error from upstream server: {status_code=}, {err=}")
+                err_msg = f"Error from source: {source.name}"
+                err_id = log_error(err_msg, rsp.json()["api_error_message"], status_code)
+                errors.append(f"{err_msg}. ID: {err_id}")
                 continue
             try:
                 data = rsp.json()["api_response"]
@@ -203,7 +228,9 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                     links[source.name] = data
             # noinspection PyBroadException
             except Exception as err:
-                LOGGER.error(f"External API did not return expected format: {err}")
+                err_msg = f"{source.name}-proxy did not return a response in the expected format"
+                err_id = log_error(err_msg, err)
+                errors.append(f"{err_msg}. ID: {err_id}")
                 continue
 
     return make_api_response(links)
