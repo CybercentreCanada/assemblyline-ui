@@ -32,14 +32,17 @@ def prepare_search_result_detail(api_result: hauntedhouse.SearchStatus, datastor
             if CLASSIFICATION.is_accessible(user_access, doc['classification']):
                 hits.append(doc)
 
+    finished = False
+    if hasattr(api_result, 'finished'):
+        finished = api_result.finished
+    elif hasattr(api_result, 'stage'):
+        finished = api_result.stage == 'finished'
+
     # Mix togeather the documents from the two information sources
     datastore_result.update({
-        'total_indices': api_result.total_indices,
-        'pending_indices': api_result.pending_indices,
-        'pending_candidates': api_result.pending_candidates,
         'errors': api_result.errors,
         'hits': hits,
-        'finished': api_result.finished,
+        'finished': finished,
         'truncated': api_result.truncated,
     })
     return datastore_result
@@ -123,9 +126,6 @@ def detail(code, **kwargs):
         yara_signature      => text of original yara signature run
         raw_query           => text of filter query derived from yara signature
 
-        total_indices       => number of filter or index blocks selected when the search started
-        pending_indices     => number of filter or index blocks remaining to process
-        pending_candidates  => number of files identified for yara runs
         errors              => a list of error messages accumulated
         hits                => list of dicts with information about what the search hit on
         finished            => boolean indicating if the search is finished
