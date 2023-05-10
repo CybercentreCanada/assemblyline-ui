@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import tempfile
+from assemblyline.datastore.exceptions import VersionConflictException
 
 from flask import request
 
@@ -12,10 +13,11 @@ from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
+from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
+from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, LOGGER, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
@@ -342,10 +344,9 @@ def set_labels(sha256, **kwargs):
 
     Data Block:     => Dict of list of unique labels to update as comma separated string
     {
-        "info": ["their", "from"],
-        "malicious": ["feedback"],
-        "safe": ["innovations"],
-        "suspicious": ["learn"]
+        "attribution": ["Qakbot"],
+        "type": ["Downloader"],
+        "info": ["ARM"]
     }
 
     API call example:
@@ -354,69 +355,45 @@ def set_labels(sha256, **kwargs):
     Result example:
     {
         "success": true
-        "labels": ["their", "learn", "from", "innovations"],
+        "labels": ["Qakbot", "Downloader", "ARM"],
         "label_categories": {
-            "info": ["their", "from"],
-            "malicious": ["feedback"],
-            "safe": ["innovations"],
-            "suspicious": ["learn"]
+            "attribution": ["Qakbot"],
+            "type": ["Downloader"],
+            "info": ["ARM"]
         }
     }
     """
+    # TODO: this is not concurrency safe, while multiple people are editing the file at the same time
     user = kwargs['user']
+    categories = ['attribution', 'type', 'info']
+
     try:
-        json = request.json
+        json = {k: v for k, v in request.json.items() if k in categories}
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    file = STORAGE.file.get(sha256, as_obj=False)
+    while True:
+        file, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.HOT_AND_ARCHIVE)
 
-    if not file:
-        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
+        if not file:
+            return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
 
-    if not Classification.is_accessible(user['classification'], file['classification']):
-        return make_api_response("", "You are not allowed to see this file...", 403)
+        if not Classification.is_accessible(user['classification'], file['classification']):
+            return make_api_response("", "You are not allowed to see this file...", 403)
 
-    categories = ['info', 'safe', 'suspicious', 'malicious']
-    all_new_labels = set()
-    all_current_labels = set()
-    update_data = list()
+        file['label_categories'] = json
+        file['labels'] = []
+        for category in file['label_categories']:
+            file['labels'].extend(file['label_categories'][category])
+        file['labels'] = list(set(file['labels']))
 
-    for category in categories:
-        all_new_labels.update(json[category] if category in json else [])
-        all_current_labels.update(file['label_categories'][category])
-
-    current_file_labels = set(file['labels'])
-    labels_to_add = all_new_labels.difference(all_new_labels.intersection(current_file_labels))
-    labels_to_remove = current_file_labels.difference(current_file_labels.intersection(all_new_labels))
-
-    update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, 'labels', label) for label in labels_to_add]
-    update_data += [(STORAGE.file.UPDATE_REMOVE, 'labels', label)for label in labels_to_remove]
-
-    for category in categories:
-        if category in json:
-            new_labels = all_new_labels.intersection(json[category])
-            current_labels = all_current_labels.intersection(file['label_categories'][category])
-
-            labels_to_add = new_labels.difference(new_labels.intersection(current_labels))
-            labels_to_remove = current_labels.difference(current_labels.intersection(new_labels))
-
-            update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING,
-                            f'label_categories.{category}', label) for label in labels_to_add]
-            update_data += [(STORAGE.file.UPDATE_REMOVE,
-                             f'label_categories.{category}', label)for label in labels_to_remove]
-
-            all_new_labels.difference_update(new_labels)
-            all_current_labels.difference_update(current_labels)
-
-    if update_data:
-        STORAGE.file.update(sha256, update_data)
-
-    file = STORAGE.file.get(sha256, as_obj=False)
-
-    return make_api_response(
-        {"success": True, "response": dict(labels=file["labels"],
-                                           label_categories=file["label_categories"])})
+        try:
+            STORAGE.file.save(sha256, file, version=version, index_type=Index.HOT_AND_ARCHIVE)
+            return make_api_response(
+                {"success": True, "response": dict(labels=file["labels"],
+                                                   label_categories=file["label_categories"])})
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying label editing due to version conflict: {str(vce)}")
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
