@@ -116,7 +116,7 @@ def create(**kwargs):
         'code': status.code,
         'finished': False,
         'hits': [],
-        'error': [],
+        'errors': [],
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
@@ -177,7 +177,7 @@ def detail(code, **kwargs):
         if is_finished(status):
             doc['truncated'] = status.truncated
             doc['hits'] = status.hits
-            doc['hits'] = status.errors
+            doc['errors'] = status.errors
             doc['total_hits'] = len(status.hits)
             doc['finished'] = True
             STORAGE.retrohunt.save(code, doc)
