@@ -1,4 +1,5 @@
 import hauntedhouse
+import typing
 from flask import request
 
 from assemblyline.common.chunk import chunk
@@ -23,27 +24,42 @@ if config.retrohunt:
     )
 
 
-def prepare_search_result_detail(api_result: hauntedhouse.SearchStatus, datastore_result: dict, user_access):
+def is_finished(result):
+    if hasattr(result, 'finished'):
+        return result.finished
+    elif hasattr(result, 'stage'):
+        return result.stage.lower() == 'finished'
+    return False
+
+
+def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.SearchStatus], datastore_result: dict,
+                                 user_access, offset=0, rows=50):
+    if api_result:
+        selected_hashes = api_result.hits[offset:offset+rows]
+        errors = api_result.errors
+        truncated = api_result.truncated
+        total_hits = len(api_result.hits)
+    else:
+        selected_hashes = datastore_result['hits'][offset:offset+rows]
+        errors = datastore_result['errors']
+        truncated = datastore_result['truncated']
+        total_hits = datastore_result['total_hits']
+
     # supplement file information
     hits = []
-    for batch in chunk(api_result.hits, 1000):
+    for batch in chunk(selected_hashes, 1000):
         for doc in STORAGE.file.multiget(batch, as_obj=False, error_on_missing=False,
                                          as_dictionary=False, index_type=Index.HOT_AND_ARCHIVE):
             if CLASSIFICATION.is_accessible(user_access, doc['classification']):
                 hits.append(doc)
 
-    finished = False
-    if hasattr(api_result, 'finished'):
-        finished = api_result.finished
-    elif hasattr(api_result, 'stage'):
-        finished = api_result.stage.lower() == 'finished'
-
     # Mix togeather the documents from the two information sources
     datastore_result.update({
-        'errors': api_result.errors,
+        'errors': errors,
         'hits': hits,
-        'finished': finished,
-        'truncated': api_result.truncated,
+        'total_hits': total_hits,
+        'finished': True if api_result is None else is_finished(api_result),
+        'truncated': truncated,
     })
     return datastore_result
 
@@ -98,13 +114,13 @@ def create(**kwargs):
         'yara_signature': signature,
         'raw_query': hauntedhouse.client.query_from_yara(signature),
         'code': status.code,
-        # 'finished': False,
-        # 'hits': [],
-        # 'error': [],
+        'finished': False,
+        'hits': [],
+        'error': [],
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification'], offset=0, limit=100))
 
 
 @retrohunt_api.route("/<code>/", methods=["GET"])
@@ -115,6 +131,10 @@ def detail(code, **kwargs):
 
     Variables:
         code                => Search code to be retrieved
+
+    Parameters:
+        offset              => how far into the hit set to return details for
+        rows                => how many rows to return details for
 
     Response Fields:
         code                => unique code identifying this search request
@@ -128,10 +148,14 @@ def detail(code, **kwargs):
 
         errors              => a list of error messages accumulated
         hits                => list of dicts with information about what the search hit on
+        total_hits
+        offset
         finished            => boolean indicating if the search is finished
         truncated           => boolean has the list of hits been truncated at some limit
     """
     user = kwargs['user']
+    offset = int(request.args.get('offset', '0'))
+    rows = int(request.args.get('rows', '50'))
 
     # Make sure retrohunt is configured
     if haunted_house_client is None:
@@ -145,7 +169,18 @@ def detail(code, **kwargs):
         return make_api_response({}, err="Access denied.", status_code=403)
 
     # Get status information from retrohunt server
-    user = kwargs['user']
-    status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
+    status = None
+    if not doc.get('finished'):
+        user = kwargs['user']
+        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
+        if is_finished(status):
+            doc['truncated'] = status.truncated
+            doc['hits'] = status.hits
+            doc['hits'] = status.errors
+            doc['total_hits'] = len(status.hits)
+            doc['finished'] = True
+            STORAGE.retrohunt.save(code, doc)
+
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification'],
+                                                          offset=offset, rows=rows))
