@@ -13,6 +13,7 @@ from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
+from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
@@ -372,7 +373,7 @@ def set_labels(sha256, **kwargs):
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
     while True:
-        file, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True)
+        file, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.HOT_AND_ARCHIVE)
 
         if not file:
             return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
@@ -387,7 +388,7 @@ def set_labels(sha256, **kwargs):
         file['labels'] = list(set(file['labels']))
 
         try:
-            STORAGE.file.save(sha256, file, version=version)
+            STORAGE.file.save(sha256, file, version=version, index_type=Index.HOT_AND_ARCHIVE)
             return make_api_response(
                 {"success": True, "response": dict(labels=file["labels"],
                                                    label_categories=file["label_categories"])})
