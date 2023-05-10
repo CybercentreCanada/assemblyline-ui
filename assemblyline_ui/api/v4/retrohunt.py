@@ -36,7 +36,7 @@ def prepare_search_result_detail(api_result: hauntedhouse.SearchStatus, datastor
     if hasattr(api_result, 'finished'):
         finished = api_result.finished
     elif hasattr(api_result, 'stage'):
-        finished = api_result.stage == 'finished'
+        finished = api_result.stage.lower() == 'finished'
 
     # Mix togeather the documents from the two information sources
     datastore_result.update({
