@@ -4,7 +4,6 @@ import os
 import re
 import subprocess
 import tempfile
-from assemblyline.datastore.exceptions import VersionConflictException
 
 from flask import request
 
@@ -17,7 +16,7 @@ from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, LOGGER, STORAGE, config, \
+from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
@@ -363,37 +362,34 @@ def set_labels(sha256, **kwargs):
         }
     }
     """
-    # TODO: this is not concurrency safe, while multiple people are editing the file at the same time
     user = kwargs['user']
     categories = ['attribution', 'type', 'info']
-
     try:
-        json = {k: v for k, v in request.json.items() if k in categories}
+        data = {k: v for k, v in request.json.items() if k in categories}
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    while True:
-        file, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.HOT_AND_ARCHIVE)
+    file = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
 
-        if not file:
-            return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
+    if not file:
+        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
 
-        if not Classification.is_accessible(user['classification'], file['classification']):
-            return make_api_response("", "You are not allowed to see this file...", 403)
+    if not Classification.is_accessible(user['classification'], file['classification']):
+        return make_api_response("", "You are not allowed to see this file...", 403)
 
-        file['label_categories'] = json
-        file['labels'] = []
-        for category in file['label_categories']:
-            file['labels'].extend(file['label_categories'][category])
-        file['labels'] = list(set(file['labels']))
+    labels = [label for category in data.values() for label in category]
+    update_data = [(STORAGE.file.UPDATE_SET, 'labels', labels)]
+    for category in categories:
+        data.setdefault(category, [])
+        update_data += [(STORAGE.file.UPDATE_SET, f'label_categories.{category}', data[category])]
 
-        try:
-            STORAGE.file.save(sha256, file, version=version, index_type=Index.HOT_AND_ARCHIVE)
-            return make_api_response(
-                {"success": True, "response": dict(labels=file["labels"],
-                                                   label_categories=file["label_categories"])})
-        except VersionConflictException as vce:
-            LOGGER.info(f"Retrying label editing due to version conflict: {str(vce)}")
+    if update_data:
+        STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
+        STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
+
+    return make_api_response(
+        {"success": True, "response": dict(labels=labels,
+                                           label_categories=data)})
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
