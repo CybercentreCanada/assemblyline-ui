@@ -344,7 +344,7 @@ def set_labels(sha256, **kwargs):
     Data Block:     => Dict of list of unique labels to update as comma separated string
     {
         "attribution": ["Qakbot"],
-        "type": ["Downloader"],
+        "technique": ["Downloader"],
         "info": ["ARM"]
     }
 
@@ -357,7 +357,7 @@ def set_labels(sha256, **kwargs):
         "labels": ["Qakbot", "Downloader", "ARM"],
         "label_categories": {
             "attribution": ["Qakbot"],
-            "type": ["Downloader"],
+            "technique": ["Downloader"],
             "info": ["ARM"]
         }
     }
