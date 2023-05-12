@@ -120,6 +120,9 @@ def who_am_i(**kwargs):
         "datastore": {
             "archive": {
                 "enabled": config.datastore.archive.enabled
+            },
+            "retrohunt": {
+                "enabled": config.datastore.retrohunt.enabled
             }
         },
         "submission": {
