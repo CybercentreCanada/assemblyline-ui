@@ -363,7 +363,7 @@ def set_labels(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    categories = ['attribution', 'type', 'info']
+    categories = ['attribution', 'technique', 'info']
     try:
         data = {k: v for k, v in request.json.items() if k in categories}
     except ValueError:
