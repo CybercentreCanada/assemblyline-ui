@@ -384,10 +384,12 @@ def test_lookup_tag_multi_source_invalid_all(
     assert mock_get.call_count == 2
 
     # Expect correctly formatted mocked reponse
-    assert rsp.status_code == 200
-    data = rsp.json["api_response"]
-    expected = {}
-    assert data == expected
+    assert rsp.status_code == 500
+    success = rsp.json["api_response"]
+    assert success == {}
+    error = rsp.json["api_error_message"]
+    assert "Error from source: malware_bazaar" in error
+    assert "Error from source: virustotal" in error
 
 
 def test_access_control_source_filtering(
