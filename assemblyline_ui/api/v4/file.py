@@ -12,6 +12,7 @@ from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
+from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
@@ -326,6 +327,69 @@ def get_file_hex(sha256, **kwargs):
             return make_api_response(hexdump(data, length=length))
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
+
+
+@file_api.route("/label/<sha256>/", methods=["POST"])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
+def set_labels(sha256, **kwargs):
+    """
+    Add one or multiple labels to a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:     => Dict of list of unique labels to update as comma separated string
+    {
+        "attribution": ["Qakbot"],
+        "technique": ["Downloader"],
+        "info": ["ARM"]
+    }
+
+    API call example:
+    /api/v4/file/labels/123456...654321/
+
+    Result example:
+    {
+        "success": true
+        "labels": ["Qakbot", "Downloader", "ARM"],
+        "label_categories": {
+            "attribution": ["Qakbot"],
+            "technique": ["Downloader"],
+            "info": ["ARM"]
+        }
+    }
+    """
+    user = kwargs['user']
+    categories = ['attribution', 'technique', 'info']
+    try:
+        data = {k: v for k, v in request.json.items() if k in categories}
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+
+    file = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+
+    if not file:
+        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
+
+    if not Classification.is_accessible(user['classification'], file['classification']):
+        return make_api_response("", "You are not allowed to see this file...", 403)
+
+    labels = [label for category in data.values() for label in category]
+    update_data = [(STORAGE.file.UPDATE_SET, 'labels', labels)]
+    for category in categories:
+        data.setdefault(category, [])
+        update_data += [(STORAGE.file.UPDATE_SET, f'label_categories.{category}', data[category])]
+
+    if update_data:
+        STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
+        STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
+
+    return make_api_response(
+        {"success": True, "response": dict(labels=labels,
+                                           label_categories=data)})
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
@@ -658,7 +722,7 @@ def get_file_results(sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
-                    t_item = (t['value'], h_type, t['safelisted'])
+                    t_item = (t['value'], h_type, t['safelisted'], sec['classification'])
                     if t_item not in output["tags"][t['type']]:
                         output["tags"][t['type']].append(t_item)
 

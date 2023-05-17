@@ -49,10 +49,12 @@ setup(
         'PyJWT',
         'gunicorn',
         'gevent',
+        'hauntedhouse',
     ],
     extras_require={
         'test': [
             'pytest',
+            'pytest-mock',
             'cart'
         ],
         'socketio': [
