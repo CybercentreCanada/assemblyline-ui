@@ -7,7 +7,7 @@ import tempfile
 
 from flask import request
 
-from assemblyline.odm.models.file import Comment, ExtendedComment
+from assemblyline.odm.models.file import Comment
 from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
@@ -207,7 +207,7 @@ def get_comments(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    comments = file_obj.get('comments', [])
+    comments = file_obj.get("comments", [])
     comments = parse_comments(comments)
     return make_api_response(comments)
 
@@ -261,8 +261,8 @@ def add_comment(sha256, **kwargs):
     user = kwargs['user']
 
     comments = list()
-    if 'comments' in file_obj:
-        comments = list(file_obj['comments'])
+    if "comments" in file_obj:
+        comments = list(file_obj["comments"])
 
     new_comment = Comment({
         'uname': user['uname'],
@@ -270,24 +270,94 @@ def add_comment(sha256, **kwargs):
     })
 
     comments.append(new_comment)
-    file_obj['comments'] = comments
+    file_obj["comments"] = comments
 
     try:
         STORAGE.file.save(sha256, file_obj)
     except DataStoreException as e:
-        return make_api_response({'success': False}, err=str(e), status_code=400)
+        return make_api_response({"success": False}, err=str(e), status_code=400)
 
     file_obj = STORAGE.file.get(sha256, as_obj=False)
-    comments = file_obj.get('comments', [])
+    comments = file_obj.get("comments", [])
     comments = parse_comments(comments)
     return make_api_response(comments)
 
 
-@file_api.route("/comment/<sha256>/<cid>", methods=["POST"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
-def update_comment(sha256, cid, **kwargs):
+# @file_api.route("/comment/<sha256>/<cid>", methods=["POST"])
+# @api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+# def update_comment(sha256, cid, **kwargs):
+#     """
+#     Add a comment to a given file
+
+#     Variables:
+#     sha256       => A resource locator for the file (sha256)
+#     cid          => ID of the comment
+
+#     Arguments:
+#     None
+
+#     Data Block:     => Text of the new comment being made
+#     {
+#         "text": "This is a new comment"
+#     }
+
+#     API call example:
+#     /api/v4/file/comment/123456...654321/
+
+#     Result example:
+#     [{
+#         "cid": "12345",
+#         "author": {
+#             "name": "Administrator",
+#             "avatar": ",
+#             "email": "admin@assemblyline.cyber.gc.ca"
+#         },
+#         "content": {
+#             "date": "2023-01-01T12:00:00.000000",
+#             "text": "This is a new comment"
+#         }
+#     }, {
+#         ...
+#     }]
+#     """
+
+#     data = request.json
+#     text = data.get('text', None)
+#     if not text:
+#         return make_api_response({"success": False}, err="Text field is required", status_code=400)
+
+#     file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
+#     if not file_obj:
+#         return make_api_response({}, "The file was not found in the system.", 404)
+
+#     user = kwargs['user']
+
+#     comments = list()
+#     if "comments" in file_obj:
+#         comments = list(file_obj["comments"])
+
+#     new_comment = Comment({
+#         'uname': user['uname'],
+#         'text': text
+#     })
+
+#     comments.append(new_comment)
+#     file_obj["comments"] = comments
+
+#     try:
+#         STORAGE.file.save(sha256, file_obj)
+#     except DataStoreException as e:
+#         return make_api_response({"success": False}, err=str(e), status_code=400)
+
+#     comments = file_obj.get("comments", [])
+#     comments = parse_comments(comments)
+#     return make_api_response(comments)
+
+@file_api.route("/comment/<sha256>/<cid>/", methods=["DELETE"])
+@api_login(require_role=[ROLES.file_detail])
+def delete_comment(sha256, cid, **kwargs):
     """
-    Add a comment to a given file
+    Delete the comment <cid> in a given file
 
     Variables:
     sha256       => A resource locator for the file (sha256)
@@ -296,62 +366,39 @@ def update_comment(sha256, cid, **kwargs):
     Arguments:
     None
 
-    Data Block:     => Text of the new comment being made
-    {
-        "text": "This is a new comment"
-    }
+    Data Block:
+    None
 
     API call example:
-    /api/v4/file/comment/123456...654321/
+    /api/v4/file/comment/123456...654321/123...321/
 
     Result example:
-    [{
-        "cid": "12345",
-        "author": {
-            "name": "Administrator",
-            "avatar": ",
-            "email": "admin@assemblyline.cyber.gc.ca"
-        },
-        "content": {
-            "date": "2023-01-01T12:00:00.000000",
-            "text": "This is a new comment"
-        }
-    }, {
-        ...
-    }]
+    {"success": True}   # Has the comment been successfully deleted
     """
-
-    data = request.json
-    text = data.get('text', None)
-    if not text:
-        return make_api_response({"success": False}, err="Text field is required", status_code=400)
 
     file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
     if not file_obj:
-        return make_api_response({}, "The file was not found in the system.", 404)
-
-    user = kwargs['user']
+        return make_api_response({"success": False}, "The file was not found in the system.", 404)
 
     comments = list()
-    if 'comments' in file_obj:
-        comments = list(file_obj['comments'])
+    if "comments" in file_obj:
+        comments = list(file_obj["comments"])
 
-    new_comment = Comment({
-        'uname': user['uname'],
-        'text': text
-    })
+    comment_to_be_deleted = next(filter(lambda x: x['cid'] == cid, comments), None)
+    if (comment_to_be_deleted is None):
+        return make_api_response({"success": False}, "The comment was not found within the file.", 404)
 
-    comments.append(new_comment)
-    file_obj['comments'] = comments
+    user = kwargs['user']
+    if (comment_to_be_deleted['uname'] != user['uname']):
+        return make_api_response({"success": False}, "Another user's comment cannot be deleted.", 401)
 
+    file_obj["comments"] = filter(lambda x: x['cid'] != cid, comments)
     try:
         STORAGE.file.save(sha256, file_obj)
     except DataStoreException as e:
-        return make_api_response({'success': False}, err=str(e), status_code=400)
+        return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    comments = file_obj.get('comments', [])
-    comments = parse_comments(comments)
-    return make_api_response(comments)
+    return make_api_response({"success": True})
 
 
 @file_api.route("/download/<sha256>/", methods=["GET"])
