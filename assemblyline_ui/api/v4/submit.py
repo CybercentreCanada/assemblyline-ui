@@ -202,7 +202,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
-@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis
