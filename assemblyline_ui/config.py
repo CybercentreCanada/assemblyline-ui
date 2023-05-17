@@ -107,7 +107,7 @@ AUDIT_KW_TARGET = ["sid",
                    "servicename",
                    "service_name",
                    "qhash",
-                   "name"]
+                   "enabled"]
 
 AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 LOGGER = logging.getLogger('assemblyline.ui')
