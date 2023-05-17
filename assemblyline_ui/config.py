@@ -108,7 +108,8 @@ AUDIT_KW_TARGET = ["sid",
                    "qhash",
                    "enabled",
                    "is_active",
-                   "submission_id"]
+                   "submission_id",
+                   "doc_id"]
 
 AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 LOGGER = logging.getLogger('assemblyline.ui')
