@@ -78,11 +78,11 @@ def search_tag(tag_name: str, tag: str) -> Response:
         return make_api_response(
             None,
             f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
-            400,
+            422,
         )
 
     if tn == "files" and len(tag) not in (32, 40, 64):
-        return make_api_response(None, "Invalid hash provided. Require md5, sha1 or sha256", 400)
+        return make_api_response(None, "Invalid hash provided. Require md5, sha1 or sha256", 422)
 
     limit = int(request.args.get("limit", "500"))
     if limit > int(MAX_LIMIT):

@@ -213,8 +213,8 @@ def search_tags(tag_name: str, tag: str, **kwargs):
             url = f"{source.url}/search/{tag_name}/{tag}"
             rsp = session.get(url, params=params, headers=headers)
             status_code = rsp.status_code
-            if status_code == 404:
-                # continue searching configured sources if not found.
+            if status_code == 404 or status_code == 422:
+                # continue searching configured sources if not found or invliad tag.
                 continue
             if status_code != 200:
                 # as we query across multiple sources, just log errors.

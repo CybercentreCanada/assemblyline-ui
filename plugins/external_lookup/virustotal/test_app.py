@@ -141,12 +141,12 @@ def test_error_conditions(test_client, mocker):
     expected = {
         "api_error_message": "Invalid hash provided. Require md5, sha1 or sha256",
         "api_response": None,
-        "api_status_code": 400,
+        "api_status_code": 422,
     }
-    assert rsp.status_code == 400
+    assert rsp.status_code == 422
     assert rsp.json == expected
 
     # invalid indicator name
     rsp = test_client.get("/search/abc/abc/")
-    assert rsp.status_code == 400
+    assert rsp.status_code == 422
     assert rsp.json["api_error_message"].startswith("Invalid tag name: ")

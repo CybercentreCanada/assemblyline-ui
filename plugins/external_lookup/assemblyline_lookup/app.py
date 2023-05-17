@@ -75,10 +75,10 @@ def search_tag(tag_name: str, tag: str):
         return make_api_response(
             None,
             f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
-            400,
+            422,
         )
     if tn in ("md5", "sha1", "sha256") and len(tag) not in (32, 40, 64):
-        return make_api_response("", "Invalid hash provided. Require md5, sha1 or sha256", 400)
+        return make_api_response("", "Invalid hash provided. Require md5, sha1 or sha256", 422)
 
     max_timeout = request.args.get("max_timeout", MAX_TMEOUT)
     # noinspection PyBroadException
