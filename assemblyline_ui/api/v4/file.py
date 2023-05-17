@@ -92,7 +92,7 @@ def list_file_parents(sha256, access_control=None):
     return output
 
 
-def parse_comments(comments: list(Comment)) -> list(ExtendedComment):
+def parse_comments(comments):
     user_data = dict([[comment['uname'], {}] for comment in comments])
     for p in user_data:
         user_data[p]['user'] = STORAGE.user.get(p)
@@ -101,6 +101,7 @@ def parse_comments(comments: list(Comment)) -> list(ExtendedComment):
     for i in range(len(comments)):
         user = user_data[comments[i]['uname']]
         comments[i] = {
+            'cid': comments[i]['cid'],
             'author': {
                 'name': user['user']['name'],
                 'avatar': user['avatar'],
@@ -233,6 +234,79 @@ def add_comment(sha256, **kwargs):
 
     Result example:
     [{
+        "cid": "12345",
+        "author": {
+            "name": "Administrator",
+            "avatar": ",
+            "email": "admin@assemblyline.cyber.gc.ca"
+        },
+        "content": {
+            "date": "2023-01-01T12:00:00.000000",
+            "text": "This is a new comment"
+        }
+    }, {
+        ...
+    }]
+    """
+
+    data = request.json
+    text = data.get('text', None)
+    if not text:
+        return make_api_response({"success": False}, err="Text field is required", status_code=400)
+
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    user = kwargs['user']
+
+    comments = list()
+    if 'comments' in file_obj:
+        comments = list(file_obj['comments'])
+
+    new_comment = Comment({
+        'uname': user['uname'],
+        'text': text
+    })
+
+    comments.append(new_comment)
+    file_obj['comments'] = comments
+
+    try:
+        STORAGE.file.save(sha256, file_obj)
+    except DataStoreException as e:
+        return make_api_response({'success': False}, err=str(e), status_code=400)
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    comments = file_obj.get('comments', [])
+    comments = parse_comments(comments)
+    return make_api_response(comments)
+
+
+@file_api.route("/comment/<sha256>/<cid>", methods=["POST"])
+@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+def update_comment(sha256, cid, **kwargs):
+    """
+    Add a comment to a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+    cid          => ID of the comment
+
+    Arguments:
+    None
+
+    Data Block:     => Text of the new comment being made
+    {
+        "text": "This is a new comment"
+    }
+
+    API call example:
+    /api/v4/file/comment/123456...654321/
+
+    Result example:
+    [{
+        "cid": "12345",
         "author": {
             "name": "Administrator",
             "avatar": ",
