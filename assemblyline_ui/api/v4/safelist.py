@@ -74,7 +74,7 @@ def _merge_safe_hashes(new, old):
 
 
 @safelist_api.route("/", methods=["PUT", "POST"])
-@api_login(require_role=[ROLES.safelist_manage], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.safelist_manage], allow_readonly=False)
 def add_or_update_hash(**kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
@@ -205,7 +205,7 @@ def add_or_update_hash(**kwargs):
 
 
 @safelist_api.route("/add_update_many/", methods=["POST", "PUT"])
-@api_login(audit=False,            allow_readonly=False, require_role=[ROLES.safelist_manage])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.safelist_manage])
 def add_update_many_hashes(**_):
     """
     Add or Update a list of the safe hashes
