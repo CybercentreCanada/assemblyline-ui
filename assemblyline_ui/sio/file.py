@@ -22,7 +22,7 @@ class FileCommentNamespace(SecureNamespace):
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} left the room: {data['sha256']}")
 
     @authenticated_only
-    def on_comment(self, data, user_info):
+    def on_comments_change(self, data, user_info):
         emit('refresh_comments', None, namespace=self.namespace,
              room=f"file_comments_{data['sha256']}", include_self=False)
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} made a new comment in room: {data['sha256']}")
