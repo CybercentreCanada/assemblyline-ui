@@ -197,7 +197,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     }
 
     links = {}
-    errors = []
+    errors = {}
     for source in available_sources:
         if not query_sources or source.name in query_sources:
             # check query against the max supported classification of the external system
@@ -206,7 +206,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                 source.max_classification or Classification.UNRESTRICTED,
                 tag_classification
             ):
-                errors.append(f"Tag classification exceeds max classification of source: {source.name}.")
+                errors[source.name] = f"Tag classification exceeds max classification of source: {source.name}."
                 continue
 
             # perform the lookup, ensuring access controls are applied
@@ -220,7 +220,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                 # as we query across multiple sources, just log errors.
                 err_msg = f"Error from source: {source.name}"
                 err_id = log_error(err_msg, rsp.json()["api_error_message"], status_code)
-                errors.append(f"{err_msg}. ID: {err_id}")
+                errors[source.name] = f"{err_msg}. Error ID: {err_id}"
                 continue
             try:
                 data = rsp.json()["api_response"]
@@ -230,13 +230,13 @@ def search_tags(tag_name: str, tag: str, **kwargs):
             except Exception as err:
                 err_msg = f"{source.name}-proxy did not return a response in the expected format"
                 err_id = log_error(err_msg, err)
-                errors.append(f"{err_msg}. ID: {err_id}")
+                errors[source.name] = f"{err_msg}. Error ID: {err_id}"
                 continue
 
     status_code = 200
     if not links and errors:
         status_code = 500
-    return make_api_response(links, err='\n'.join(errors), status_code=status_code)
+    return make_api_response(links, err=errors, status_code=status_code)
 
 
 # @federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
