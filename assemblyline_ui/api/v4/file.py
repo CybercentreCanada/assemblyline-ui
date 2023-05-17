@@ -7,12 +7,14 @@ import tempfile
 
 from flask import request
 
+from assemblyline.odm.models.file import Comment, ExtendedComment
 from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
 from assemblyline.datastore.collection import Index
+from assemblyline.datastore.exceptions import DataStoreException
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
@@ -90,6 +92,30 @@ def list_file_parents(sha256, access_control=None):
     return output
 
 
+def parse_comments(comments: list(Comment)) -> list(ExtendedComment):
+    user_data = dict([[comment['uname'], {}] for comment in comments])
+    for p in user_data:
+        user_data[p]['user'] = STORAGE.user.get(p)
+        user_data[p]['avatar'] = STORAGE.user_avatar.get(p)
+
+    for i in range(len(comments)):
+        user = user_data[comments[i]['uname']]
+        comments[i] = {
+            'author': {
+                'name': user['user']['name'],
+                'avatar': user['avatar'],
+                'email': user['user']['email'],
+            },
+            'content': {
+                'date': comments[i]['date'],
+                'text': comments[i]['text'],
+            }
+        }
+
+    comments.sort(reverse=True, key=lambda c: c['content']['date'])
+    return comments
+
+
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
 @api_login(require_role=[ROLES.file_detail])
 def get_file_ascii(sha256, **kwargs):
@@ -140,6 +166,118 @@ def get_file_ascii(sha256, **kwargs):
         return make_api_response(data.translate(FILTER_ASCII).decode())
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
+
+
+@file_api.route("/comment/<sha256>/", methods=["GET"])
+@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+def get_comments(sha256, **kwargs):
+    """
+    Get all comments made on a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/comment/123456...654321/
+
+    Result example:
+    [{
+        "author": {
+            "name": "Administrator",
+            "avatar": ",
+            "email": "admin@assemblyline.cyber.gc.ca"
+        },
+        "content": {
+            "date": "2023-01-01T12:00:00.000000",
+            "text": "This is a new comment"
+        }
+    }, {
+        ...
+    }]
+    """
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    comments = file_obj.get('comments', [])
+    comments = parse_comments(comments)
+    return make_api_response(comments)
+
+
+@file_api.route("/comment/<sha256>/", methods=["PUT"])
+@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+def add_comment(sha256, **kwargs):
+    """
+    Add a comment to a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:     => Text of the new comment being made
+    {
+        "text": "This is a new comment"
+    }
+
+    API call example:
+    /api/v4/file/comment/123456...654321/
+
+    Result example:
+    [{
+        "author": {
+            "name": "Administrator",
+            "avatar": ",
+            "email": "admin@assemblyline.cyber.gc.ca"
+        },
+        "content": {
+            "date": "2023-01-01T12:00:00.000000",
+            "text": "This is a new comment"
+        }
+    }, {
+        ...
+    }]
+    """
+
+    data = request.json
+    text = data.get('text', None)
+    if not text:
+        return make_api_response({"success": False}, err="Text field is required", status_code=400)
+
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    user = kwargs['user']
+
+    comments = list()
+    if 'comments' in file_obj:
+        comments = list(file_obj['comments'])
+
+    new_comment = Comment({
+        'uname': user['uname'],
+        'text': text
+    })
+
+    comments.append(new_comment)
+    file_obj['comments'] = comments
+
+    try:
+        STORAGE.file.save(sha256, file_obj)
+    except DataStoreException as e:
+        return make_api_response({'success': False}, err=str(e), status_code=400)
+
+    comments = file_obj.get('comments', [])
+    comments = parse_comments(comments)
+    return make_api_response(comments)
 
 
 @file_api.route("/download/<sha256>/", methods=["GET"])
