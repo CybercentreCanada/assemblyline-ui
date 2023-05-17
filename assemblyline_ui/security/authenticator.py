@@ -50,9 +50,12 @@ class BaseSecurityRenderer(object):
                 json_blob = {}
 
             params_list = list(args) + \
-                ["%s=%s" % (k, v) for k, v in kwargs.items() if k in AUDIT_KW_TARGET] + \
-                ["%s=%s" % (k, v) for k, v in request.args.items() if k in AUDIT_KW_TARGET] + \
-                ["%s=%s" % (k, v) for k, v in json_blob.items() if k in AUDIT_KW_TARGET]
+                ["%s=%s" % (k, v) for k, v in kwargs.items()
+                 if k in AUDIT_KW_TARGET and v != "*" and not str(v).endswith(":*")] + \
+                ["%s=%s" % (k, v) for k, v in request.args.items()
+                 if k in AUDIT_KW_TARGET and v != "*" and not str(v).endswith(":*")] + \
+                ["%s=%s" % (k, v) for k, v in json_blob.items()
+                 if k in AUDIT_KW_TARGET and v != "*" and not str(v).endswith(":*")]
 
             if len(params_list) != 0:
                 if impersonator:

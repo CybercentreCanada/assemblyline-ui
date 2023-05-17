@@ -40,7 +40,7 @@ def search(index, **kwargs):
     Uses lucene search syntax for query.
 
     Variables:
-    index  =>   Bucket to search in (alert, submission,...)
+    index  =>   Index to search in (alert, submission,...)
 
     Arguments:
     query   =>   Query to search for
@@ -131,7 +131,7 @@ def group_search(index, group_field, **kwargs):
     Uses lucene search syntax for query.
 
     Variables:
-    index       =>   Bucket to search in (alert, submission,...)
+    index       =>   Index to search in (alert, submission,...)
     group_field  =>   Field to group on
 
     Optional Arguments:
@@ -214,8 +214,8 @@ def group_search(index, group_field, **kwargs):
 
 # noinspection PyUnusedLocal
 @search_api.route("/fields/<index>/", methods=["GET"])
-@api_login(require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
-                         "workflow_view", "retrohunt_view"])
+@api_login(audit=False, require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view",
+                                      "submission_view", "workflow_view", "retrohunt_view"])
 def list_index_fields(index, **kwargs):
     """
     List all available fields for a given index
@@ -262,7 +262,7 @@ def facet(index, field, **kwargs):
     where the documents matches the specified queries.
 
     Variables:
-    index       =>   Bucket to search in (alert, submission,...)
+    index       =>   Index to search in (alert, submission,...)
     field        =>   Field to analyse
 
     Optional Arguments:
@@ -338,7 +338,7 @@ def histogram(index, field, **kwargs):
     Generate an histogram based on a time or and int field using a specific gap size
 
     Variables:
-    index       =>   Bucket to search in (alert, submission,...)
+    index       =>   Index to search in (alert, submission,...)
     field        =>   Field to generate the histogram from
 
     Optional Arguments:
@@ -442,7 +442,7 @@ def stats(index, int_field, **kwargs):
     Perform statistical analysis of an integer field to get its min, max, average and count values
 
     Variables:
-    index       =>   Bucket to search in (alert, submission,...)
+    index       =>   Index to search in (alert, submission,...)
     int_field    =>   Integer field to analyse
 
     Optional Arguments:

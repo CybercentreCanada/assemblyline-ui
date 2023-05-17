@@ -820,7 +820,7 @@ def list_submissions_for_user(username, **kwargs):
 
 
 @submission_api.route("/report/<submission_id>/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False, require_role=[ROLES.submission_view])
+@api_login(check_xsrf_token=False, require_role=[ROLES.submission_view])
 def get_report(submission_id, **kwargs):
     """
     Create a report for a submission based on its ID.

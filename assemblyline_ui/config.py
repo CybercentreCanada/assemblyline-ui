@@ -92,8 +92,7 @@ AUDIT_KW_TARGET = ["sid",
                    "username",
                    "group",
                    "rev",
-                   "wq_id",
-                   "bucket",
+                   "index",
                    "cache_key",
                    "alert_key",
                    "alert_id",
@@ -103,12 +102,14 @@ AUDIT_KW_TARGET = ["sid",
                    "file_hash",
                    "heuristic_id",
                    "error_key",
-                   "mac",
-                   "vm_type",
-                   "vm_name",
                    "config_name",
                    "servicename",
-                   "vm"]
+                   "service_name",
+                   "qhash",
+                   "enabled",
+                   "is_active",
+                   "submission_id",
+                   "doc_id"]
 
 AUDIT_LOG = logging.getLogger('assemblyline.ui.audit')
 LOGGER = logging.getLogger('assemblyline.ui')
