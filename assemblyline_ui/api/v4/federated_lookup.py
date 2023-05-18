@@ -234,8 +234,10 @@ def search_tags(tag_name: str, tag: str, **kwargs):
                 continue
 
     status_code = 200
-    if not links and errors:
-        status_code = 500
+    if not links:
+        status_code = 404
+        if errors:
+            status_code = 500
     return make_api_response(links, err=errors, status_code=status_code)
 
 
