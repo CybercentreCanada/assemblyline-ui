@@ -106,9 +106,13 @@ def add_update_signature(**_):
         if old['data'] == data['data']:
             return make_api_response({"success": True, "id": key})
 
-        # If rule has been deprecated/disabled after initial deployment, then disable it
-        if not (data['status'] != old['status'] and data['status'] == "DISABLED"):
-            data['status'] = old['status']
+        # Ensure that the last state change, if any, was made by a user and not a system account.
+        user_modified_last_state = old[key]['state_change_user'] not in ['update_service_account', None]
+
+        # If rule state is moving to an active state but was disabled by a user before:
+        # Keep original inactive state, a user changed the state for a reason
+        if user_modified_last_state and data['status'] == 'DEPLOYED' and data['status'] != old[key]['status']:
+            data['status'] = old[key]['status']
 
         # Preserve last state change
         data['state_change_date'] = old['state_change_date']
@@ -188,7 +192,7 @@ def add_update_many_signature(**_):
         key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
         if key in old_data:
             # Ensure that the last state change, if any, was made by a user and not a system account.
-            user_modified_last_state = old_data[key]['state_change_date'] not in ['update_service_account', None]
+            user_modified_last_state = old_data[key]['state_change_user'] not in ['update_service_account', None]
 
             # If rule state is moving to an active state but was disabled by a user before:
             # Keep original inactive state, a user changed the state for a reason
