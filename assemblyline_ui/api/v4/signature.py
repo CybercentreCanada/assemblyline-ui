@@ -187,8 +187,12 @@ def add_update_many_signature(**_):
     for rule in data:
         key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
         if key in old_data:
-            # If rule has been deprecated/disabled after initial deployment, then disable it
-            if not (rule['status'] != old_data[key]['status'] and rule['status'] == "DISABLED"):
+            # Ensure that the last state change, if any, was made by a user and not a system account.
+            user_modified_last_state = old_data[key]['state_change_date'] not in ['update_service_account', None]
+
+            # If rule state is moving to an active state but was disabled by a user before:
+            # Keep original inactive state, a user changed the state for a reason
+            if user_modified_last_state and rule['status'] == 'DEPLOYED' and rule['status'] != old_data[key]['status']:
                 rule['status'] = old_data[key]['status']
 
             # Preserve last state change
@@ -751,7 +755,7 @@ def update_signature_source(service, name, **_):
 
     if not found:
         return make_api_response({"success": False},
-                                 err=f"Could not found source '{data.name}' in service {service}.",
+                                 err=f"Could not found source '{data['name']}' in service {service}.",
                                  status_code=404)
 
     service_delta = STORAGE.service_delta.get(service, as_obj=False)
