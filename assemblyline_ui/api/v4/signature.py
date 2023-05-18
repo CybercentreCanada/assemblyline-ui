@@ -107,12 +107,12 @@ def add_update_signature(**_):
             return make_api_response({"success": True, "id": key})
 
         # Ensure that the last state change, if any, was made by a user and not a system account.
-        user_modified_last_state = old[key]['state_change_user'] not in ['update_service_account', None]
+        user_modified_last_state = old['state_change_user'] not in ['update_service_account', None]
 
         # If rule state is moving to an active state but was disabled by a user before:
         # Keep original inactive state, a user changed the state for a reason
-        if user_modified_last_state and data['status'] == 'DEPLOYED' and data['status'] != old[key]['status']:
-            data['status'] = old[key]['status']
+        if user_modified_last_state and data['status'] == 'DEPLOYED' and data['status'] != old['status']:
+            data['status'] = old['status']
 
         # Preserve last state change
         data['state_change_date'] = old['state_change_date']
