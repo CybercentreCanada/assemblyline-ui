@@ -91,11 +91,24 @@ def mock_400_response(mocker):
     mock_400 = mocker.MagicMock(spec=Response)
     mock_400.status_code = 400
     mock_400.json.return_value = {
-        "api_error_message": "Invalid indicator name: not_an_ioc_name",
+        "api_error_message": "Client error",
         "api_response": "",
         "api_status_code": 400,
     }
     return mock_400
+
+
+@pytest.fixture()
+def mock_422_response(mocker):
+    """Unprocessable content response."""
+    mock_422 = mocker.MagicMock(spec=Response)
+    mock_422.status_code = 422
+    mock_422.json.return_value = {
+        "api_error_message": "Invalid indicator name: not_an_ioc_name",
+        "api_response": "",
+        "api_status_code": 422,
+    }
+    return mock_422
 
 
 @pytest.fixture()
@@ -359,22 +372,22 @@ def test_lookup_tag_multi_source_invalid_single(
 
 
 def test_lookup_tag_multi_source_invalid_all(
-        datastore, user_login_session, mock_get, mock_400_response):
+        datastore, user_login_session, mock_get, mock_422_response):
     """With multiple configured sources look up a tag that is not valid in any of the sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
         And `not_a_tag` tag type is not valid for Malware Bazaar or Virustotal
 
-    When a user requests a lookup of an `not_a_tag`
+    When a user requests a lookup of `not_a_tag`
         And no filter is applied
 
-    Then the user should receive an empty list with no error
+    Then the user should receive a not found response
     """
     _, client = user_login_session
 
     mock_get.side_effect = [
-        mock_400_response,
-        mock_400_response,
+        mock_422_response,
+        mock_422_response,
     ]
 
     # User requests a lookup with no filter
@@ -384,10 +397,11 @@ def test_lookup_tag_multi_source_invalid_all(
     assert mock_get.call_count == 2
 
     # Expect correctly formatted mocked reponse
-    assert rsp.status_code == 200
-    data = rsp.json["api_response"]
-    expected = {}
-    assert data == expected
+    assert rsp.status_code == 404
+    success = rsp.json["api_response"]
+    assert success == {}
+    error = rsp.json["api_error_message"]
+    assert error == {}
 
 
 def test_access_control_source_filtering(

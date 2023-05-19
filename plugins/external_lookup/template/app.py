@@ -55,6 +55,14 @@ def search_tag(tag_name: str, tag: str) -> Response:
             "classification": <access control of the document linked to>,  # Optional
         }
     """
+    # Invalid tags must either be ignored, or return a 422
+    tn = TAG_MAPPING.get(tag_name)
+    if tn is None:
+        return make_api_response(
+            None,
+            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
+            422,
+        )
     raise NotImplementedError("Not Implemented.")
 
 
