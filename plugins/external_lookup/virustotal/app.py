@@ -116,7 +116,7 @@ def search_tag(tag_name: str, tag: str) -> Response:
 
     # return view links to the gui once we know it's found
     return make_api_response({
-        "link": f"https://www.virustotal.com/gui/search?query={ul.quote(tag)}",
+        "link": f"https://www.virustotal.com/gui/search/{ul.quote(tag)}",
         "count": 1,  # url/domain/file/ip searches only return a single result/report
         "classification": CLASSIFICATION,
     })
