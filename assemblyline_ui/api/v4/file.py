@@ -93,27 +93,44 @@ def list_file_parents(sha256, access_control=None):
 
 
 def parse_comments(comments):
-    user_data = dict([[comment['uname'], {}] for comment in comments])
-    for p in user_data:
-        user_data[p]['user'] = STORAGE.user.get(p)
-        user_data[p]['avatar'] = STORAGE.user_avatar.get(p)
+    """
+    Converts the datastore comment into the Frontend comment
 
-    for i in range(len(comments)):
-        user = user_data[comments[i]['uname']]
-        comments[i] = {
-            'cid': comments[i]['cid'],
-            'author': {
-                'name': user['user']['name'],
-                'avatar': user['avatar'],
-                'email': user['user']['email'],
-            },
-            'content': {
-                'date': comments[i]['date'],
-                'text': comments[i]['text'],
-            }
+    Input:  => List of comments
+    [{
+        "cid":      <cid>,
+        "uname":    "admin",
+        "date":     "2023-01-01T12:00:00.000000",
+        "text":     "This is a new comment"
+    }, {
+        ...
+    }]
+
+    Return: => List of comments
+    [{
+        "cid":      <cid>
+        "name":     "Administrator",
+        "avatar":   "byte",
+        "email":    "admin@assemblyline.cyber.gc.ca"
+        "date":     "2023-01-01T12:00:00.000000",
+        "text":     "This is a new comment"
+     }, {
+        ...
+    }]
+    """
+    users = dict([comment['uname'], {}] for comment in comments)
+    users = dict([user, {'user': STORAGE.user.get(user), 'avatar': STORAGE.user_avatar.get(user)}] for user in users)
+    comments = list([
+        {
+            "cid": comment['cid'],
+            "name": users[comment['uname']]['user']['name'],
+            "avatar": users[comment['uname']]['avatar'],
+            "email": users[comment['uname']]['user']['email'],
+            "date": comment['date'],
+            "text": comment['text'],
         }
-
-    comments.sort(reverse=True, key=lambda c: c['content']['date'])
+        for comment in comments])
+    comments.sort(reverse=True, key=lambda c: c['date'])
     return comments
 
 
@@ -189,27 +206,20 @@ def get_comments(sha256, **kwargs):
 
     Result example:
     [{
-        "author": {
-            "name": "Administrator",
-            "avatar": ",
-            "email": "admin@assemblyline.cyber.gc.ca"
-        },
-        "content": {
-            "date": "2023-01-01T12:00:00.000000",
-            "text": "This is a new comment"
-        }
-    }, {
-        ...
+        "cid":      "123...321"
+        "name":     "Administrator",
+        "avatar":   "byte",
+        "email":    "admin@assemblyline.cyber.gc.ca"
+        "date":     "2023-01-01T12:00:00.000000",
+        "text":     "This is a new comment"
     }]
     """
 
     file_obj = STORAGE.file.get(sha256, as_obj=False)
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
-
     comments = file_obj.get("comments", [])
-    comments = parse_comments(comments)
-    return make_api_response(comments)
+    return make_api_response(parse_comments(comments))
 
 
 @file_api.route("/comment/<sha256>/", methods=["PUT"])
@@ -234,18 +244,12 @@ def add_comment(sha256, **kwargs):
 
     Result example:
     [{
-        "cid": "12345",
-        "author": {
-            "name": "Administrator",
-            "avatar": ",
-            "email": "admin@assemblyline.cyber.gc.ca"
-        },
-        "content": {
-            "date": "2023-01-01T12:00:00.000000",
-            "text": "This is a new comment"
-        }
-    }, {
-        ...
+        "cid":      "123...321"
+        "name":     "Administrator",
+        "avatar":   "byte",
+        "email":    "admin@assemblyline.cyber.gc.ca"
+        "date":     "2023-01-01T12:00:00.000000",
+        "text":     "This is a new comment"
     }]
     """
 
@@ -260,27 +264,18 @@ def add_comment(sha256, **kwargs):
 
     user = kwargs['user']
 
-    comments = list()
-    if "comments" in file_obj:
-        comments = list(file_obj["comments"])
-
-    new_comment = Comment({
-        'uname': user['uname'],
-        'text': text
-    })
-
-    comments.append(new_comment)
-    file_obj["comments"] = comments
-
     try:
+        file_obj["comments"].append(Comment({
+            'uname': user['uname'],
+            'text': text
+        }))
         STORAGE.file.save(sha256, file_obj)
     except DataStoreException as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
 
     file_obj = STORAGE.file.get(sha256, as_obj=False)
     comments = file_obj.get("comments", [])
-    comments = parse_comments(comments)
-    return make_api_response(comments)
+    return make_api_response(parse_comments(comments))
 
 
 @file_api.route("/comment/<sha256>/<cid>/", methods=["POST"])
@@ -305,7 +300,7 @@ def update_comment(sha256, cid, **kwargs):
     /api/v4/file/comment/123456...654321/123...321/
 
     Result example:
-    {"success": True}   # Has the comment been successfully updated
+    { "success": True } # Has the comment been successfully updated
     """
 
     data = request.json
@@ -317,11 +312,7 @@ def update_comment(sha256, cid, **kwargs):
     if not file_obj:
         return make_api_response({"success": False}, "The file was not found in the system.", 404)
 
-    comments = list()
-    if "comments" in file_obj:
-        comments = list(file_obj["comments"])
-
-    comment_to_be_updated = next(filter(lambda x: x['cid'] == cid, comments), None)
+    comment_to_be_updated = next(filter(lambda x: x['cid'] == cid, file_obj.get('comments', [])), None)
     if (comment_to_be_updated is None):
         return make_api_response({"success": False}, "The comment was not found within the file.", 404)
 
@@ -329,14 +320,13 @@ def update_comment(sha256, cid, **kwargs):
     if (comment_to_be_updated['uname'] != user['uname']):
         return make_api_response({"success": False}, "Another user's comment cannot be updated.", 401)
 
-    for i in range(len(comments)):
-        if comments[i]['cid'] == cid:
-            comments[i]['text'] = text
-            break
-
-    file_obj["comments"] = comments
-
     try:
+        def change_text(c, t):
+            c['text'] = t
+            return c
+        file_obj['comments'] = list(change_text(comment, text) if comment['cid'] ==
+                                    cid else comment for comment in file_obj['comments'])
+
         STORAGE.file.save(sha256, file_obj)
     except DataStoreException as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
@@ -371,11 +361,7 @@ def delete_comment(sha256, cid, **kwargs):
     if not file_obj:
         return make_api_response({"success": False}, "The file was not found in the system.", 404)
 
-    comments = list()
-    if "comments" in file_obj:
-        comments = list(file_obj["comments"])
-
-    comment_to_be_deleted = next(filter(lambda x: x['cid'] == cid, comments), None)
+    comment_to_be_deleted = next(filter(lambda x: x['cid'] == cid, file_obj.get('comments', [])), None)
     if (comment_to_be_deleted is None):
         return make_api_response({"success": False}, "The comment was not found within the file.", 404)
 
@@ -383,8 +369,8 @@ def delete_comment(sha256, cid, **kwargs):
     if (comment_to_be_deleted['uname'] != user['uname']):
         return make_api_response({"success": False}, "Another user's comment cannot be deleted.", 401)
 
-    file_obj["comments"] = filter(lambda x: x['cid'] != cid, comments)
     try:
+        file_obj["comments"] = filter(lambda x: x['cid'] != cid, file_obj.get('comments', []))
         STORAGE.file.save(sha256, file_obj)
     except DataStoreException as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
