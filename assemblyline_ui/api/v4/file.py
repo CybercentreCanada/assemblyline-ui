@@ -92,46 +92,17 @@ def list_file_parents(sha256, access_control=None):
     return output
 
 
-def parse_comments(comments):
-    """
-    Converts the datastore comment into the Frontend comment
+def parse_authors(comments):
+    authors = dict([comment['uname'], {}] for comment in comments)
 
-    Input:  => List of comments
-    [{
-        "cid":      <cid>,
-        "uname":    "admin",
-        "date":     "2023-01-01T12:00:00.000000",
-        "text":     "This is a new comment"
-    }, {
-        ...
-    }]
-
-    Return: => List of comments
-    [{
-        "cid":      <cid>
-        "name":     "Administrator",
-        "avatar":   "byte",
-        "email":    "admin@assemblyline.cyber.gc.ca"
-        "date":     "2023-01-01T12:00:00.000000",
-        "text":     "This is a new comment"
-     }, {
-        ...
-    }]
-    """
-    users = dict([comment['uname'], {}] for comment in comments)
-    users = dict([user, {'user': STORAGE.user.get(user), 'avatar': STORAGE.user_avatar.get(user)}] for user in users)
-    comments = list([
-        {
-            "cid": comment['cid'],
-            "name": users[comment['uname']]['user']['name'],
-            "avatar": users[comment['uname']]['avatar'],
-            "email": users[comment['uname']]['user']['email'],
-            "date": comment['date'],
-            "text": comment['text'],
+    def parse_author(user, avatar):
+        return {
+            "name": user['name'],
+            "avatar": avatar,
+            "email": user['email'],
         }
-        for comment in comments])
-    comments.sort(reverse=True, key=lambda c: c['date'])
-    return comments
+
+    return dict([author, parse_author(STORAGE.user.get(author), STORAGE.user_avatar.get(author))] for author in authors)
 
 
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
@@ -190,7 +161,7 @@ def get_file_ascii(sha256, **kwargs):
 @api_login(require_role=[ROLES.file_detail], allow_readonly=False)
 def get_comments(sha256, **kwargs):
     """
-    Get all comments made on a given file
+    Get all comments with their author made on a given file
 
     Variables:
     sha256          => A resource locator for the file (sha256)
@@ -205,21 +176,29 @@ def get_comments(sha256, **kwargs):
     /api/v4/file/comment/123456...654321/
 
     Result example:
-    [{
-        "cid":      "123...321"
-        "name":     "Administrator",
-        "avatar":   "byte",
-        "email":    "admin@assemblyline.cyber.gc.ca"
-        "date":     "2023-01-01T12:00:00.000000",
-        "text":     "This is a new comment"
-    }]
+    {
+        authors: {
+            <uname>: {
+                "name":     "Administrator",
+                "avatar":   "data:image/png;base64,123...321",
+                "email":    "admin@assemblyline.cyber.gc.ca"
+            }
+        },
+        comments: [{
+            "cid":      "123...321",
+            "uname"     "admin",
+            "date":     "2023-01-01T12:00:00.000000",
+            "text":     "This is a new comment"
+        }]
+    }
     """
 
     file_obj = STORAGE.file.get(sha256, as_obj=False)
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
     comments = file_obj.get("comments", [])
-    return make_api_response(parse_comments(comments))
+    authors = parse_authors(comments)
+    return make_api_response({"authors": authors, "comments": comments})
 
 
 @file_api.route("/comment/<sha256>/", methods=["PUT"])
@@ -243,14 +222,12 @@ def add_comment(sha256, **kwargs):
     /api/v4/file/comment/123456...654321/
 
     Result example:
-    [{
+    {
         "cid":      "123...321"
-        "name":     "Administrator",
-        "avatar":   "byte",
-        "email":    "admin@assemblyline.cyber.gc.ca"
+        "uname":    "admin",
         "date":     "2023-01-01T12:00:00.000000",
         "text":     "This is a new comment"
-    }]
+    }
     """
 
     data = request.json
@@ -265,7 +242,7 @@ def add_comment(sha256, **kwargs):
     user = kwargs['user']
 
     try:
-        file_obj["comments"].append(Comment({
+        file_obj["comments"].insert(0, Comment({
             'uname': user['uname'],
             'text': text
         }))
@@ -273,9 +250,13 @@ def add_comment(sha256, **kwargs):
     except DataStoreException as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
-    comments = file_obj.get("comments", [])
-    return make_api_response(parse_comments(comments))
+    try:
+
+        file_obj = STORAGE.file.get(sha256, as_obj=False)
+        comment = file_obj.get("comments", [])[-1]
+        return make_api_response(comment)
+    except IndexError as e:
+        return make_api_response({"success": False}, err=str(e), status_code=400)
 
 
 @file_api.route("/comment/<sha256>/<cid>/", methods=["POST"])
@@ -299,8 +280,8 @@ def update_comment(sha256, cid, **kwargs):
     API call example:
     /api/v4/file/comment/123456...654321/123...321/
 
-    Result example:
-    { "success": True } # Has the comment been successfully updated
+    Result example: => Comment has been successfully updated
+    { "success": True }
     """
 
     data = request.json
