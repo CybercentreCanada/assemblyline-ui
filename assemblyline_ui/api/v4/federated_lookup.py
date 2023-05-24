@@ -24,47 +24,65 @@ federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
 federated_lookup_api._doc = "Lookup related data through configured external data sources/systems."
 
 
-# locally cache supported tags
-all_supported_tags = {}
+class _Tags():
+    """Locally cache supported tags."""
 
+    def __init__(self) -> None:
+        self._all_supported_tags = {}
+        self.session = Session()
 
-def _get_tag_names(user, max_timeout=3.0):
-    """Get the supported tag names of each external service.
+    @property
+    def all_supported_tags(self) -> dict[str, dict[str, str]]:
+        """Locally cached map of tags each service supports.
 
-    This function is for internal use without the login and routing wrappers.
-    """
-    configured_sources = getattr(config.ui, "external_sources", [])
-    if len(all_supported_tags) != len(configured_sources):
-        session = Session()
-        headers = {
-            "accept": "application/json",
+        Returns:
+        {
+            <source name>: {
+                <tag name>: <tag classification>,
+                ...,
+            },
+            ...,
         }
-        for source in configured_sources:
-            # only send requests for sources we haven't cached yet
-            if source.name in all_supported_tags:
-                continue
+        """
+        configured_sources = getattr(config.ui, "external_sources", [])
+        if len(self._all_supported_tags) != len(configured_sources):
+            headers = {
+                "accept": "application/json",
+            }
+            for source in configured_sources:
+                # only send requests for sources we haven't cached yet
+                if source.name in self._all_supported_tags:
+                    continue
 
-            url = f"{source.url}/tags/"
-            try:
-                rsp = session.get(url, headers=headers, timeout=max_timeout)
-            except exceptions.ConnectionError:
-                # any errors are logged and no result is saved to local cache to enable retry on next query
-                LOGGER.error(f"Unable to connect: {url}")
-                continue
-            status_code = rsp.status_code
-            if status_code != 200:
-                err = rsp.json()["api_error_message"]
-                LOGGER.error(f"Error from upstream server: {status_code=}, {err=}")
-                continue
-            try:
-                data = rsp.json()["api_response"]
-                all_supported_tags[source.name] = data
-            # noinspection PyBroadException
-            except Exception as err:
-                LOGGER.error(f"External API did not return expected format: {err}")
-                continue
+                url = f"{source.url}/tags/"
+                try:
+                    rsp = self.session.get(url, headers=headers, timeout=3.0)
+                except exceptions.ConnectionError:
+                    # any errors are logged and no result is saved to local cache to enable retry on next query
+                    LOGGER.error(f"Unable to connect: {url}")
+                    continue
+                status_code = rsp.status_code
+                if status_code != 200:
+                    err = rsp.json()["api_error_message"]
+                    LOGGER.error(f"Error from upstream server: {status_code=}, {err=}")
+                    continue
+                try:
+                    data = rsp.json()["api_response"]
+                    self._all_supported_tags[source.name] = data
+                # noinspection PyBroadException
+                except Exception as err:
+                    LOGGER.error(f"External API did not return expected format: {err}")
+                    continue
+        return self._all_supported_tags
 
-    # filter what sources and tags the user is allowed to know about
+
+# Set global local cache for supported tags
+all_supported_tags = _Tags().all_supported_tags
+
+
+def filtered_tag_names(user):
+    """Return the supported tag names of each external service, filtered to what the user has access to."""
+    configured_sources = getattr(config.ui, "external_sources", [])
     available_tags = {}
     for source in configured_sources:
         # user cannot know about source
@@ -75,7 +93,6 @@ def _get_tag_names(user, max_timeout=3.0):
             tname for tname, classification in all_supported_tags.get(source.name, {}).items()
             if user and Classification.is_accessible(user["classification"], classification)
         ]
-
     return available_tags
 
 
@@ -126,7 +143,7 @@ def get_tag_names(**kwargs):
         max_timeout = float(max_timeout)
     except Exception:
         max_timeout = 3.0
-    return make_api_response(_get_tag_names(user, max_timeout))
+    return make_api_response(filtered_tag_names(user))
 
 
 @federated_lookup_api.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
@@ -199,6 +216,8 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     links = {}
     errors = {}
     for source in available_sources:
+        if tag_name not in all_supported_tags.get(source.name, {}):
+            continue
         if not query_sources or source.name in query_sources:
             # check query against the max supported classification of the external system
             # if this is not supported, we should let the user know.
