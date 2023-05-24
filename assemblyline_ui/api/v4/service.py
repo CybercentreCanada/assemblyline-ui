@@ -298,6 +298,9 @@ def add_service(**_):
         # Load service info
         service = Service(service)
 
+        # Ensure service classification is at a minimum the default_result_classification
+        service.classification = Classification.max_classification(service.classification, service.default_result_classification)
+
         # Fix service version, we don't want to see stable if it's a stable container
         service.version = service.version.replace("stable", "")
 
@@ -681,7 +684,7 @@ def list_all_services(**_):
      [
         {'accepts': ".*"
          'category': 'Extraction',
-         'classpath': 'al_services.alsvc_extract.Extract',
+         'classification': 'TLP:C',
          'description': "Extracts some stuff",
          'enabled': True,
          'name': 'Extract',
@@ -691,8 +694,10 @@ def list_all_services(**_):
          ...
      ]
     """
+    user = _['user']
     resp = [{'accepts': x.get('accepts', None),
              'category': x.get('category', None),
+             'classification': x.get('classification', Classification.UNRESTRICTED),
              'description': x.get('description', None),
              'enabled': x.get('enabled', False),
              'name': x.get('name', None),
@@ -700,7 +705,9 @@ def list_all_services(**_):
              'rejects': x.get('rejects', None),
              'stage': x.get('stage', None),
              'version': x.get('version', None)}
-            for x in STORAGE.list_all_services(full=True, as_obj=False)]
+            for x in STORAGE.list_all_services(full=True, as_obj=False)
+            if Classification.is_accessible(user['classification'],
+                                            x.get('classification', Classification.UNRESTRICTED))]
 
     return make_api_response(resp)
 
