@@ -591,7 +591,7 @@ def oauth_validate(**_):
                         email_adr = data['email']
 
                         # Add add dynamic classification group
-                        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+                        data['classification'] = get_dynamic_classification(data['classification'], data)
 
                         # Make sure the user exists in AL and is in sync
                         if (not cur_user and oauth_provider_config.auto_create) or \
@@ -842,7 +842,7 @@ def signup(**_):
             "uname": uname,
             "password": password,
             "email": email,
-            "groups": ['USERS'],
+            "groups": [],
             "name": uname
         })
     except Exception as e:
@@ -894,7 +894,7 @@ def signup_validate(**_):
 
                 # Add dynamic classification group
                 user_info['classification'] = get_dynamic_classification(
-                    user_info.get('classification', Classification.UNRESTRICTED), user_info['email'])
+                    user_info.get('classification', Classification.UNRESTRICTED), user_info)
 
                 user = User(user_info)
                 username = user.uname

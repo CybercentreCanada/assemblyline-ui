@@ -1,16 +1,30 @@
 import os
-from json import JSONDecodeError
-from assemblyline_core.dispatching.schedules import Scheduler
-
+import redis
 import requests
 import warnings
-import redis
 
 import pytest
 
+from json import JSONDecodeError
+
 from assemblyline.common import forge
-from assemblyline.datastore.helper import AssemblylineDatastore
 from assemblyline.datastore.store import ESStore
+
+original_classification = forge.get_classification
+
+
+def test_classification(yml_config=None):
+    """Patch the forge generation of classifications to use local test config."""
+    path = os.path.join(os.path.dirname(__file__), 'config', 'classification.yml')
+    return original_classification(path)
+
+
+forge.get_classification = test_classification
+
+# Must be imported AFTER the forge patch otherwise the correct classification yaml will not be picked up
+from assemblyline_core.dispatching.schedules import Scheduler  # noqa
+from assemblyline.datastore.helper import AssemblylineDatastore  # noqa
+
 
 original_skip = pytest.skip
 

@@ -201,6 +201,7 @@ def synchronize_sources(service_name, current_sources, new_sources):
                 service_updates = Hash(f'service-updates-{service_name}', config.core.redis.persistent.host,
                                        config.core.redis.persistent.port)
                 [service_updates.pop(k) for k in service_updates.keys() if k.startswith(f'{source["name"]}.')]
+
             # Notify of changes to updater
             EventSender('changes.signatures',
                         host=config.core.redis.nonpersistent.host,
@@ -410,7 +411,6 @@ def restore(**_):
     None
 
     Data Block:
-    <SERVICE BACKUP>
 
     Result example:
     {'success': true}
@@ -700,6 +700,7 @@ def list_all_services(**_):
              'classification': x.get('classification', Classification.UNRESTRICTED),
              'description': x.get('description', None),
              'enabled': x.get('enabled', False),
+             'is_external': x.get('is_external', False),
              'name': x.get('name', None),
              'privileged': x.get('privileged', False),
              'rejects': x.get('rejects', None),

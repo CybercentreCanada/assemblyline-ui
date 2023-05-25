@@ -15,6 +15,9 @@ from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_s
                                          save_user_settings, API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
+from .federated_lookup import filtered_tag_names
+
+
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
 user_api._doc = "Manage the different users of the system"
@@ -110,6 +113,11 @@ def who_am_i(**kwargs):
 
     # System configuration
     user_data['c12nDef'] = classification_definition
+    # create tag-to-source lookup mapping
+    external_source_tags = {}
+    for source_name, tag_names in filtered_tag_names(kwargs['user']).items():
+        for tname in tag_names:
+            external_source_tags.setdefault(tname, []).append(source_name)
     user_data['configuration'] = {
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
@@ -120,6 +128,9 @@ def who_am_i(**kwargs):
         "datastore": {
             "archive": {
                 "enabled": config.datastore.archive.enabled
+            },
+            "retrohunt": {
+                "enabled": config.datastore.retrohunt.enabled
             }
         },
         "submission": {
@@ -157,6 +168,12 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "external_sources": [
+                x.name for x in getattr(config.ui, "external_sources", [])
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ],
+            "external_source_tags": external_source_tags,
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
             "services_feed": config.ui.services_feed,
@@ -233,7 +250,7 @@ def add_user_account(username, **_):
             data['name'] = data['uname']
 
         # Add add dynamic classification group
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
@@ -398,7 +415,7 @@ def set_user_account(username, **kwargs):
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         # Apply dynamic classification
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
@@ -703,7 +720,7 @@ def list_users(**_):
     None
 
     Arguments:
-    offset        =>  Offset in the user bucket
+    offset        =>  Offset in the user index
     query         =>  Filter to apply to the user list
     rows          =>  Max number of user returned
     sort          =>  Sort order
@@ -724,7 +741,7 @@ def list_users(**_):
        "groups": ["TEST"]          # Groups the user is member of
        }, ...],
      "total": 10,                # Total number of users
-     "offset": 0                 # Offset in the user bucket
+     "offset": 0                 # Offset in the user index
     }
     """
     offset = int(request.args.get('offset', 0))
