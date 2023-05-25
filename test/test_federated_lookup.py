@@ -38,9 +38,9 @@ def ext_config():
         }
     }
     # ensure local cache is always fresh for tests
-    federated_lookup.all_supported_tags = original_tags
-    yield
     federated_lookup.all_supported_tags = t.all_supported_tags
+    yield
+    federated_lookup.all_supported_tags = original_tags
 
 
 @pytest.fixture()
