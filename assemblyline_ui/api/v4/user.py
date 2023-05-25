@@ -15,7 +15,7 @@ from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_s
                                          save_user_settings, API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
-from .federated_lookup import _get_tag_names
+from .federated_lookup import filtered_tag_names
 
 
 SUB_API = 'user'
@@ -115,7 +115,7 @@ def who_am_i(**kwargs):
     user_data['c12nDef'] = classification_definition
     # create tag-to-source lookup mapping
     external_source_tags = {}
-    for source_name, tag_names in _get_tag_names(kwargs['user']).items():
+    for source_name, tag_names in filtered_tag_names(kwargs['user']).items():
         for tname in tag_names:
             external_source_tags.setdefault(tname, []).append(source_name)
     user_data['configuration'] = {

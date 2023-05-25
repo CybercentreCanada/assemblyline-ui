@@ -114,9 +114,11 @@ def search_tag(tag_name: str, tag: str) -> Response:
     elif rsp.status_code != 200:
         return make_api_response(rsp.text, "Error submitting data to upstream.", rsp.status_code)
 
-    # return view links to the gui once we know it's found
+    # return view links to the gui search once we know it's found
+    # note: tag must be double url encoded, and include encoding of `/` for URLs to search correctly.
+    search_encoded_tag = ul.quote(ul.quote(tag, safe=''), safe='')
     return make_api_response({
-        "link": f"https://www.virustotal.com/gui/search?query={ul.quote(tag)}",
+        "link": f"https://www.virustotal.com/gui/search/{search_encoded_tag}",
         "count": 1,  # url/domain/file/ip searches only return a single result/report
         "classification": CLASSIFICATION,
     })

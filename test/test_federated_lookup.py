@@ -10,14 +10,42 @@ from assemblyline_ui.api.v4 import federated_lookup
 
 
 @pytest.fixture()
-def test_client():
-    """generate a test client with test configuration."""
+def ext_config():
+    """generate test configuration."""
     config.ui.external_sources = [
         {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
         {"name": "virustotal", "url": "http://lookup_vt:8001"},
     ]
+    original_tags = federated_lookup.all_supported_tags
+    t = federated_lookup._Tags()
+    t._all_supported_tags = {
+        "malware_bazaar": {
+            "md5": CLASSIFICATION.UNRESTRICTED,
+            "sha1": CLASSIFICATION.UNRESTRICTED,
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+            "file.pe.imports.imphash": CLASSIFICATION.UNRESTRICTED,
+        },
+        "virustotal": {
+            "md5": CLASSIFICATION.UNRESTRICTED,
+            "sha1": CLASSIFICATION.UNRESTRICTED,
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+            "network.dynamic.domain": CLASSIFICATION.UNRESTRICTED,
+            "network.static.domain": CLASSIFICATION.UNRESTRICTED,
+            "network.dynamic.ip": CLASSIFICATION.UNRESTRICTED,
+            "network.static.ip": CLASSIFICATION.UNRESTRICTED,
+            "network.dynamic.uri": CLASSIFICATION.UNRESTRICTED,
+            "network.static.uri": CLASSIFICATION.UNRESTRICTED,
+        }
+    }
     # ensure local cache is always fresh for tests
-    federated_lookup.all_supported_tags = {}
+    federated_lookup.all_supported_tags = original_tags
+    yield
+    federated_lookup.all_supported_tags = t.all_supported_tags
+
+
+@pytest.fixture()
+def test_client(ext_config):
+    """generate a test client with test configuration."""
     app.config["TESTING"] = True
     with app.test_client() as client:
         with app.app_context():
@@ -273,7 +301,7 @@ def test_lookup_tag_multi_hit_filter(
 
     # User requests a lookup with filter
     rsp = client.get(
-        f"/api/v4/federated_lookup/search/sah256/{digest_sha256}/",
+        f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/",
         query_string={"sources": "malware_bazaar"}
     )
 
@@ -355,8 +383,8 @@ def test_lookup_tag_multi_source_invalid_single(
     # User requests a lookup with no filter
     rsp = client.get(f"/api/v4/federated_lookup/search/file.pe.imports.imphash/{imphash}/")
 
-    # A query for each source should be sent
-    assert mock_get.call_count == 2
+    # Only a query to malware bazaar should be sent as the tag is not valid for vt
+    assert mock_get.call_count == 1
 
     # Expect correctly formatted mocked reponse
     assert rsp.status_code == 200
@@ -393,8 +421,8 @@ def test_lookup_tag_multi_source_invalid_all(
     # User requests a lookup with no filter
     rsp = client.get("/api/v4/federated_lookup/search/not_a_tag/invalid/")
 
-    # A query for each source should be sent
-    assert mock_get.call_count == 2
+    # no queries should be sent to external sources
+    assert mock_get.call_count == 0
 
     # Expect correctly formatted mocked reponse
     assert rsp.status_code == 404
@@ -517,6 +545,18 @@ def test_access_control_tag_max_classification(
         {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
         {"name": "assemblyline", "url": "http://lookup_al:8001", "max_classification": CLASSIFICATION.RESTRICTED},
     ]
+
+    t = federated_lookup._Tags()
+    t._all_supported_tags = {
+        "malware_bazaar": {
+            "file.pe.imports.imphash": CLASSIFICATION.UNRESTRICTED,
+        },
+        "assemblyline": {
+            "file.pe.imports.imphash": CLASSIFICATION.UNRESTRICTED,
+        }
+    }
+    federated_lookup.all_supported_tags = t.all_supported_tags
+
     data, client = admin_login_session
 
     mock_al_response = mocker.MagicMock(spec=Response)
@@ -550,7 +590,7 @@ def test_access_control_tag_max_classification(
 
 
 def test_get_tag_names(
-        datastore, user_login_session, mock_get, mock_mb_tags_response, mock_vt_tags_response):
+        datastore, ext_config, user_login_session, mock_get):
     """Lookup the valid tag names from all sources.
 
     Given external lookups for both Malware Bazaar and Virustoal are configured
@@ -563,16 +603,11 @@ def test_get_tag_names(
     """
     _, client = user_login_session
 
-    mock_get.side_effect = [
-        mock_mb_tags_response,
-        mock_vt_tags_response,
-    ]
-
     # User requests a tag lookup
     rsp = client.get("/api/v4/federated_lookup/tags/")
 
-    # A query for each source should be sent
-    assert mock_get.call_count == 2
+    # No queries should be sent as the cached data is mocked
+    assert mock_get.call_count == 0
 
     data = rsp.json["api_response"]
     expected_data = {
@@ -593,7 +628,7 @@ def test_get_tag_names(
 
 
 def test_get_tag_names_access_control(
-        datastore, user_login_session, mock_get, mock_mb_tags_response):
+        datastore, ext_config, user_login_session, mock_get):
     """Lookup the valid tag names with some sources restricted.
 
     Given external lookups for both Malware Bazaar and Virustoal are configured
@@ -612,14 +647,40 @@ def test_get_tag_names_access_control(
 
     _, client = user_login_session
 
-    mock_get.return_value = mock_mb_tags_response
-
     # User requests a tag lookup
     rsp = client.get("/api/v4/federated_lookup/tags/")
 
-    # A query for both sources should be sent, then results filtered
-    assert mock_get.call_count == 2
+    # No queries should be sent as the cached data is mocked
+    assert mock_get.call_count == 0
 
     data = rsp.json["api_response"]
     expected_data = {"malware_bazaar": ["md5", "sha1", "sha256", "file.pe.imports.imphash"]}
     assert data == expected_data
+
+
+def test_get_all_tag_names(ext_config, mocker, mock_mb_tags_response, mock_vt_tags_response):
+    """Generate the cache for valid tag names from all sources.
+
+    Given external lookups for both Malware Bazaar and Virustoal are configured
+        AND both sources are UNRESTRICTED
+
+    When a request for all valid tag names is submitted
+
+    Then the the local cache should receive all tag names supported by both sources
+    """
+
+    mock_session = mocker.MagicMock(autospec=True)
+    mock_get = mock_session.get
+    mock_get.side_effect = [
+        mock_mb_tags_response,
+        mock_vt_tags_response,
+    ]
+    t = federated_lookup._Tags()
+    t.session = mock_session
+
+    assert "malware_bazaar" in t.all_supported_tags
+    assert mock_get.call_count == 2
+    assert "virustotal" in t.all_supported_tags
+    # no new calls should have been made as results are cached
+    assert mock_get.call_count == 2
+    assert len(t.all_supported_tags) == 2
