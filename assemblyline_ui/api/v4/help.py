@@ -75,6 +75,9 @@ def get_system_configuration(**_):
     stg_map = {}
 
     for srv in STORAGE.list_all_services(as_obj=False):
+        if not CLASSIFICATION.is_accessible(_['user']['classification'], srv.get('classification', None)):
+            continue
+
         name = srv.get('name', None)
         cat = srv.get('category', None)
         if cat and name:
