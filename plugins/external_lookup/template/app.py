@@ -66,6 +66,27 @@ def search_tag(tag_name: str, tag: str) -> Response:
     raise NotImplementedError("Not Implemented.")
 
 
+@app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
+def lookup_details(tag_name: str, tag: str) -> Response:
+    """Define how to search for detailed tag results.
+
+    Result output should conform to the following:
+    # Dictionary of:
+    {
+        "error": null,                              # Error message returned
+        "items": [                                  # List of items found related to the queried tag
+            {"classification": <access control>,    # [Optional] Classification of the returned data
+             "confirmed": <bool>,                   # Is the maliciousness attribution confirmed or not
+             "data": {...}                          # Additional Raw data
+             "description": "",                     # Description of the findings
+             "malicious": <bool>},                  # Is the file found malicious or not
+        ...
+        ]
+    }
+    """
+    raise NotImplementedError("Not Implemented.")
+
+
 def main():
     app.run(host="0.0.0.0", port=8000, debug=False)
 
