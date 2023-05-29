@@ -585,7 +585,7 @@ def get_service(servicename, **_):
     Result example:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
-     'classpath': 'al_services.alsvc_extract.Extract',
+     'classification': 'TLP:C',
      'config': {'DEFAULT_PW_LIST': ['password', 'infected']},
      'cpu_cores': 0.1,
      'description': "Extracts some stuff"
@@ -611,8 +611,9 @@ def get_service(servicename, **_):
     version = request.args.get('version', None)
 
     service = STORAGE.get_service_with_delta(servicename, version=version, as_obj=False)
-    append_source_status(service)
     if service:
+        # Ensure service classification is set in response
+        service['classification'] = service.get('classfication', Classification.UNRESTRICTED)
         return make_api_response(service)
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
@@ -634,7 +635,7 @@ def get_service_defaults(servicename, version, **_):
     Result example:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
-     'classpath': 'al_services.alsvc_extract.Extract',
+     'classfication': 'TLP:C',
      'config': {'DEFAULT_PW_LIST': ['password', 'infected']},
      'cpu_cores': 0.1,
      'description': "Extracts some stuff"
@@ -660,6 +661,8 @@ def get_service_defaults(servicename, version, **_):
     service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
     append_source_status(service)
     if service:
+        # Ensure service classification is set in response
+        service['classification'] = service.get('classfication', Classification.UNRESTRICTED)
         return make_api_response(service)
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
