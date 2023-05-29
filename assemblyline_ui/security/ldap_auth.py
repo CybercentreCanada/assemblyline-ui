@@ -143,6 +143,7 @@ class BasicLDAPWrapper(object):
                 access = True
                 user_type = []
                 roles = []
+                groups = []
                 remove_roles = set()
                 classification = self.get_user_classification(details['groups'])
                 for auto_prop in config.auth.ldap.auto_properties:
@@ -194,6 +195,15 @@ class BasicLDAPWrapper(object):
                                     classification, auto_prop.value)
                                 break
 
+                        # Append groups from matching patterns
+                        elif auto_prop.type == "group":
+                            group_match = re.match(auto_prop.pattern, value)
+                            if group_match:
+                                group_value = auto_prop.value
+                                for index, gm_value in enumerate(group_match.groups()):
+                                    group_value = group_value.replace(f"${index+1}", gm_value)
+                                groups.append(group_value)
+
                 # if not user type was assigned
                 if not user_type:
                     # if also no roles were assigned
@@ -213,7 +223,7 @@ class BasicLDAPWrapper(object):
                 cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
                                "connection": ldap_server, "details": details, "cached": False,
                                "classification": classification, "type": user_type, 'roles': roles, 'dn': dn,
-                               'access': access}
+                               'access': access, 'groups': groups}
                 self.cache[user] = cache_entry
                 return cache_entry
         except Exception as e:
@@ -265,7 +275,6 @@ def validate_ldapuser(username, password, storage):
                 email = get_attribute(ldap_info, config.auth.ldap.email_field)
                 if email is not None:
                     email = email.lower()
-                    u_classification = get_dynamic_classification(u_classification, email)
 
                 # Generate user data from ldap
                 data = dict(
@@ -278,6 +287,9 @@ def validate_ldapuser(username, password, storage):
                     roles=ldap_info['roles'],
                     dn=ldap_info['dn']
                 )
+
+                # Get the dynamic classification info
+                data['classification'] = get_dynamic_classification(u_classification, data)
 
                 # Save the user avatar avatar from ldap
                 img_data = get_attribute(ldap_info, config.auth.ldap.image_field, safe=False)
