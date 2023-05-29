@@ -19,7 +19,7 @@ QUEUE_MAP = {
 
 
 @replay_api.route("/queue/<message_type>/", methods=["GET"])
-@api_login(require_role=[ROLES.replay_system])
+@api_login(audit=False, require_role=[ROLES.replay_system])
 def get_message(message_type, **_):
     """
     Read a message from the queue
@@ -45,7 +45,7 @@ def get_message(message_type, **_):
 
 
 @replay_api.route("/queue/<message_type>/", methods=["PUT"])
-@api_login(require_role=[ROLES.replay_system])
+@api_login(audit=False, require_role=[ROLES.replay_system])
 def put_message(message_type, **_):
     """
     Put a message in a queue for processing in a worker
@@ -81,7 +81,7 @@ def put_message(message_type, **_):
 
 
 @replay_api.route("/<index>/<doc_id>/", methods=["GET"])
-@api_login(audit=True, require_role=[ROLES.replay_trigger])
+@api_login(require_role=[ROLES.replay_trigger])
 def request_replay(index, doc_id, **kwargs):
     """
     Request an alert or a submission to be transfered to another system
@@ -116,7 +116,7 @@ def request_replay(index, doc_id, **kwargs):
 
 
 @replay_api.route("/<index>/<doc_id>/", methods=["POST"])
-@api_login(audit=True, require_role=[ROLES.replay_system])
+@api_login(require_role=[ROLES.replay_system])
 def set_replay_complete(index, doc_id, **kwargs):
     """
     Mark an alert or submission successfully transfered to another system

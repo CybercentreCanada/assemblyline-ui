@@ -703,7 +703,7 @@ def list_users(**_):
     None
 
     Arguments:
-    offset        =>  Offset in the user bucket
+    offset        =>  Offset in the user index
     query         =>  Filter to apply to the user list
     rows          =>  Max number of user returned
     sort          =>  Sort order
@@ -724,7 +724,7 @@ def list_users(**_):
        "groups": ["TEST"]          # Groups the user is member of
        }, ...],
      "total": 10,                # Total number of users
-     "offset": 0                 # Offset in the user bucket
+     "offset": 0                 # Offset in the user index
     }
     """
     offset = int(request.args.get('offset', 0))
