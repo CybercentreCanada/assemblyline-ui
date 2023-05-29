@@ -695,6 +695,7 @@ def list_all_services(**_):
              'category': x.get('category', None),
              'description': x.get('description', None),
              'enabled': x.get('enabled', False),
+             'is_external': x.get('is_external', False),
              'name': x.get('name', None),
              'privileged': x.get('privileged', False),
              'rejects': x.get('rejects', None),
