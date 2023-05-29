@@ -8,6 +8,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.odm import base
 from assemblyline.datasource.common import hash_type
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.api.v4.federated_lookup import all_supported_tags, log_error
 from assemblyline_ui.config import LOGGER, config, CLASSIFICATION as Classification
 
 SUB_API = 'hash_search'
@@ -60,9 +61,74 @@ except Exception:
     LOGGER.exception("No datasources")
 
 
+def get_external_details(
+    user,
+    source,
+    file_hash: str,
+    hash_type: str,
+    hash_classification: str,
+    limit: int,
+    timeout: float,
+):
+    """Return the details from the external source.
+
+    {
+        "confirmed": true,        # Is the maliciousness attribution confirmed or not
+        "data": {...}             # Raw data from the data source
+        "description": "",        # Description of the findings
+        "malicious": false,       # Is the file found malicious or not
+    }
+    """
+    result = {}
+    if hash_type not in all_supported_tags.get(source.name, {}):
+        return result
+
+    session = Session()
+    headers = {
+        "accept": "application/json",
+    }
+    params = {
+        "limit": limit,
+        "max_timeout": timeout,
+    }
+
+    result = {"error": None, "items": []}
+
+    # check query against the max supported classification of the external system
+    # if this is not supported, we should let the user know.
+    if not Classification.is_accessible(source.max_classification or Classification.UNRESTRICTED, hash_classification):
+        result["error"] = "File hash classification exceeds max classification."
+        return result
+
+    # perform the lookup, ensuring access controls are applied
+    url = f"{source.url}/details/{hash_type}/{file_hash}"
+    rsp = session.get(url, params=params, headers=headers)
+
+    status_code = rsp.status_code
+    if status_code == 404 or status_code == 422:
+        # continue searching configured sources if not found or invliad tag.
+        result["error"] = "File hash not found."
+    elif status_code != 200:
+        # as we query across multiple sources, just log errors.
+        err_msg = rsp.json()["api_error_message"]
+        err_id = log_error(f"Error from {source.name}", err_msg, status_code)
+        result["error"] = f"{err_msg}. Error ID: {err_id}"
+    else:
+        try:
+            data = rsp.json()["api_response"]
+            if user and Classification.is_accessible(user["classification"], data["classification"]):
+                result["items"] = data
+        # noinspection PyBroadException
+        except Exception as err:
+            err_msg = f"{source.name}-proxy did not return a response in the expected format"
+            err_id = log_error(err_msg, err)
+            result["error"] = f"{err_msg}. Error ID: {err_id}"
+    return result
+
+
 # noinspection PyUnusedLocal
 @hash_search_api.route("/external/<path:file_hash>/", methods=["GET"])
-@api_login(require_role=[ROLES.alert_view, ROLES.submission_view, ROLES.external_query])
+@api_login(require_role=[ROLES.external_query])
 def search_external(file_hash: str, *args, **kwargs):
     """
     Search for a hash in multiple data sources as configured in the seed.
@@ -73,7 +139,8 @@ def search_external(file_hash: str, *args, **kwargs):
     Arguments:(optional)
     sources          => | separated list of data sources
     classification   => Classification of the tag [Default: minimum configured classification]
-    max_timeout => Maximum execution time for the call in seconds
+    max_timeout     => Maximum execution time for the call in seconds [Default: 3 seconds]
+    limit           => limit the amount of returned results counted per source [Default: 500]
 
     Data Block:
     None
@@ -101,6 +168,14 @@ def search_external(file_hash: str, *args, **kwargs):
     query_sources = request.args.get("sources")
     if query_sources:
         query_sources = query_sources.split("|")
+    max_timeout = request.args.get("max_timeout", "3")
+    limit = request.args.get("limit", "500")
+    # noinspection PyBroadException
+    try:
+        max_timeout = float(max_timeout)
+    except Exception:
+        max_timeout = 3.0
+
     hash_map = {
         "sha256": base.SHA256_REGEX,
         "md5": base.MD5_REGEX,
@@ -113,64 +188,90 @@ def search_external(file_hash: str, *args, **kwargs):
     if not hash_type:
         return make_api_response("", f"Invalid hash. This API only supports {', '.join(hash_map.keys())}.", 400)
 
-    tag_classification = request.args.get("classification", Classification.UNRESTRICTED)
+    hash_classification = request.args.get("classification", Classification.UNRESTRICTED)
 
     # validate what sources the user is allowed to submit requests to.
     # this must first be checked against what systems the user is allowed to see
-    # additional tag level checking is then done later to provide feedback to user
+    # additional file hash level checking is then done later to provide feedback to user
     available_sources = [
         x for x in getattr(config.ui, "external_sources", [])
         if Classification.is_accessible(user["classification"], x.classification)
     ]
 
-    session = Session()
-    headers = {
-        "accept": "application/json",
-    }
-    errors = {}
+    with concurrent.futures.ThreadPoolExecutor(len(available_sources)) as executor:
+        res = {
+            source.name: executor.submit(
+                get_external_details,
+                user=user,
+                source=source,
+                query_sources=query_sources,
+                hash_type=hash_type,
+                file_hash=file_hash,
+                hash_classification=hash_classification,
+                timeout=max(0, max_timeout - 0.5),
+                limi=limit,
+            )
+            for source in available_sources
+        }
+    results = {sname: v.result(timeout=max_timeout) for sname, v in res.items()}
+
+    status_code = 200
+    error = ""
+    if not results or all("File hash not found." in {s["error"] for _, s in results.items()}):
+        status_code = 404
+        error = "No results found."
+    else:
+        if any({s["error"] for _, s in results.items()}):
+            status_code = 500
+            error = "One or more errors occured. See individual source results for more details."
+
+    return make_api_response(results, err=error, status_code=status_code)
+
+    """
+    result = {}
     for source in available_sources:
-        if hash_type not in all_supported_hashes.get(source.name, {}):
+        if hash_type not in all_supported_tags.get(source.name, {}):
             continue
+
         if not query_sources or source.name in query_sources:
+            # request will now be sent, so initialise the default return
+            r = {"error": None, "items": []}
+            result.setdefault(source.name, r)
+
             # check query against the max supported classification of the external system
             # if this is not supported, we should let the user know.
             if not Classification.is_accessible(
                 source.max_classification or Classification.UNRESTRICTED,
-                tag_classification
+                hash_classification
             ):
-                errors[source.name] = f"Tag classification exceeds max classification of source: {source.name}."
+                r["error"] = "File hash classification exceeds max classification."
                 continue
 
             # perform the lookup, ensuring access controls are applied
-            url = f"{source.url}/search/{tag_name}/{tag}"
+            url = f"{source.url}/details/{hash_type}/{file_hash}"
             rsp = session.get(url, params=params, headers=headers)
             status_code = rsp.status_code
             if status_code == 404 or status_code == 422:
                 # continue searching configured sources if not found or invliad tag.
+                r["error"] = "File hash not found."
                 continue
             if status_code != 200:
                 # as we query across multiple sources, just log errors.
-                err_msg = f"Error from source: {source.name}"
-                err_id = log_error(err_msg, rsp.json()["api_error_message"], status_code)
-                errors[source.name] = f"{err_msg}. Error ID: {err_id}"
+                err_msg = rsp.json()["api_error_message"]
+                err_id = log_error(f"Error from {source.name}", err_msg, status_code)
+                r["error"] = f"{err_msg}. Error ID: {err_id}"
                 continue
             try:
                 data = rsp.json()["api_response"]
                 if user and Classification.is_accessible(user["classification"], data["classification"]):
-                    links[source.name] = data
+                    r["items"] = data
             # noinspection PyBroadException
             except Exception as err:
                 err_msg = f"{source.name}-proxy did not return a response in the expected format"
                 err_id = log_error(err_msg, err)
-                errors[source.name] = f"{err_msg}. Error ID: {err_id}"
+                r["error"] = f"{err_msg}. Error ID: {err_id}"
                 continue
-
-    status_code = 200
-    if not links:
-        status_code = 404
-        if errors:
-            status_code = 500
-    return make_api_response(res, err=errors, status_code=status_code)
+    """
 
 
 # noinspection PyUnusedLocal
