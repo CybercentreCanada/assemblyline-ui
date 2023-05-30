@@ -154,6 +154,7 @@ def get_default_user_settings(user):
 
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
+    user_classfication = user.get('classification', Classification.UNRESTRICTED)
 
     settings = STORAGE.user_settings.get_if_exists(user['uname'], as_obj=False)
     srv_list = [x for x in SERVICE_LIST if x['enabled']]
@@ -173,8 +174,9 @@ def load_user_settings(user):
 
         def_srv_list = settings.get('services', {}).get('selected', None)
 
-    settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}))
-    settings['services'] = get_default_service_list(srv_list, def_srv_list)
+    # Only display services that a user is allowed to see
+    settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}), user_classfication)
+    settings['services'] = get_default_service_list(srv_list, def_srv_list, user_classfication)
     settings['default_zip_password'] = settings.get('default_zip_password', None)
 
     # Normalize the user's classification

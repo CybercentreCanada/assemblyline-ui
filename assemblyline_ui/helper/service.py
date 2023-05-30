@@ -1,15 +1,15 @@
 from copy import copy
-from assemblyline_ui.config import config, SERVICE_LIST
+from assemblyline_ui.config import CLASSIFICATION, config, SERVICE_LIST
 from assemblyline.odm.models.submission import DEFAULT_SRV_SEL
 
 
-def get_default_service_spec(srv_list=None, user_default_values={}):
+def get_default_service_spec(srv_list=None, user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     if not srv_list:
         srv_list = SERVICE_LIST
 
     out = []
     for x in srv_list:
-        if x["submission_params"]:
+        if x["submission_params"] and CLASSIFICATION.is_accessible(classification, x['classification']):
             param_object = {'name': x['name'], "params": []}
             for param in x.get('submission_params'):
                 new_param = copy(param)
@@ -21,7 +21,7 @@ def get_default_service_spec(srv_list=None, user_default_values={}):
     return out
 
 
-def get_default_service_list(srv_list=None, default_selection=None):
+def get_default_service_list(srv_list=None, default_selection=None, classification=CLASSIFICATION.UNRESTRICTED):
     if not default_selection:
         default_selection = DEFAULT_SRV_SEL
     if not srv_list:
@@ -29,6 +29,8 @@ def get_default_service_list(srv_list=None, default_selection=None):
 
     services = {}
     for item in srv_list:
+        if not CLASSIFICATION.is_accessible(classification, item['classification']):
+            continue
         grp = item['category']
 
         if grp not in services:

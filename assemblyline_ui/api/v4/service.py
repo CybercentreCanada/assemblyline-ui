@@ -298,6 +298,9 @@ def add_service(**_):
         # Load service info
         service = Service(service)
 
+        # Ensure service classification is at a minimum the default_result_classification
+        service.classification = Classification.max_classification(service.classification, service.default_result_classification)
+
         # Fix service version, we don't want to see stable if it's a stable container
         service.version = service.version.replace("stable", "")
 
@@ -582,7 +585,7 @@ def get_service(servicename, **_):
     Result example:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
-     'classpath': 'al_services.alsvc_extract.Extract',
+     'classification': 'TLP:C',
      'config': {'DEFAULT_PW_LIST': ['password', 'infected']},
      'cpu_cores': 0.1,
      'description': "Extracts some stuff"
@@ -608,8 +611,9 @@ def get_service(servicename, **_):
     version = request.args.get('version', None)
 
     service = STORAGE.get_service_with_delta(servicename, version=version, as_obj=False)
-    append_source_status(service)
     if service:
+        # Ensure service classification is set in response
+        service['classification'] = service.get('classification', Classification.UNRESTRICTED)
         return make_api_response(service)
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
@@ -631,7 +635,7 @@ def get_service_defaults(servicename, version, **_):
     Result example:
     {'accepts': '(archive|executable|java|android)/.*',
      'category': 'Extraction',
-     'classpath': 'al_services.alsvc_extract.Extract',
+     'classification': 'TLP:C',
      'config': {'DEFAULT_PW_LIST': ['password', 'infected']},
      'cpu_cores': 0.1,
      'description': "Extracts some stuff"
@@ -657,6 +661,8 @@ def get_service_defaults(servicename, version, **_):
     service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
     append_source_status(service)
     if service:
+        # Ensure service classification is set in response
+        service['classification'] = service.get('classification', Classification.UNRESTRICTED)
         return make_api_response(service)
     else:
         return make_api_response("", err=f"{servicename} service does not exist", status_code=404)
@@ -681,7 +687,7 @@ def list_all_services(**_):
      [
         {'accepts': ".*"
          'category': 'Extraction',
-         'classpath': 'al_services.alsvc_extract.Extract',
+         'classification': 'TLP:C',
          'description': "Extracts some stuff",
          'enabled': True,
          'name': 'Extract',
@@ -691,8 +697,10 @@ def list_all_services(**_):
          ...
      ]
     """
+    user = _['user']
     resp = [{'accepts': x.get('accepts', None),
              'category': x.get('category', None),
+             'classification': x.get('classification', Classification.UNRESTRICTED),
              'description': x.get('description', None),
              'enabled': x.get('enabled', False),
              'is_external': x.get('is_external', False),
@@ -701,7 +709,9 @@ def list_all_services(**_):
              'rejects': x.get('rejects', None),
              'stage': x.get('stage', None),
              'version': x.get('version', None)}
-            for x in STORAGE.list_all_services(full=True, as_obj=False)]
+            for x in STORAGE.list_all_services(full=True, as_obj=False)
+            if Classification.is_accessible(user['classification'],
+                                            x.get('classification', Classification.UNRESTRICTED))]
 
     return make_api_response(resp)
 
