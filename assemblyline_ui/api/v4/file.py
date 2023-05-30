@@ -153,9 +153,8 @@ def get_comments(sha256, **kwargs):
     Variables:
     sha256          => A resource locator for the file (sha256)
 
-    Optional Arguments:
-    use_archive    =>   Allow access to the Malware Archive (Default: False)
-    archive_only   =>   Only access the Malware Archive (Default: False)
+    Arguments:
+    None
 
     Data Block:
     None
@@ -214,9 +213,8 @@ def add_comment(sha256, **kwargs):
     Variables:
     sha256          => A resource locator for the file (sha256)
 
-    Optional Arguments:
-    use_archive    =>   Allow access to the Malware Archive (Default: False)
-    archive_only   =>   Only access the Malware Archive (Default: False)
+    Arguments:
+    None
 
     Data Block:     => Text of the new comment being made
     {
@@ -275,9 +273,8 @@ def update_comment(sha256, cid, **kwargs):
     sha256          => A resource locator for the file (sha256)
     cid             => ID of the comment
 
-    Optional Arguments:
-    use_archive    =>   Allow access to the Malware Archive (Default: False)
-    archive_only   =>   Only access the Malware Archive (Default: False)
+    Arguments:
+    None
 
     Data Block:     => Text of the comment to update
     {
@@ -330,9 +327,8 @@ def delete_comment(sha256, cid, **kwargs):
     sha256       => A resource locator for the file (sha256)
     cid          => ID of the comment
 
-    Optional Arguments:
-    use_archive    =>   Allow access to the Malware Archive (Default: False)
-    archive_only   =>   Only access the Malware Archive (Default: False)
+    Arguments:
+    None
 
     Data Block:
     None
