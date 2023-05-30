@@ -247,7 +247,7 @@ def add_user_account(username, **_):
             data['name'] = data['uname']
 
         # Add add dynamic classification group
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
@@ -412,7 +412,7 @@ def set_user_account(username, **kwargs):
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         # Apply dynamic classification
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
@@ -717,7 +717,7 @@ def list_users(**_):
     None
 
     Arguments:
-    offset        =>  Offset in the user bucket
+    offset        =>  Offset in the user index
     query         =>  Filter to apply to the user list
     rows          =>  Max number of user returned
     sort          =>  Sort order
@@ -738,7 +738,7 @@ def list_users(**_):
        "groups": ["TEST"]          # Groups the user is member of
        }, ...],
      "total": 10,                # Total number of users
-     "offset": 0                 # Offset in the user bucket
+     "offset": 0                 # Offset in the user index
     }
     """
     offset = int(request.args.get('offset', 0))

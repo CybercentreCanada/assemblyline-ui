@@ -19,7 +19,11 @@ def reorder_name(name):
 
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
-    email_adr = profile.get('email', profile.get('emails', profile.get('preferred_username', profile.get('upn', None))))
+    email_adr = None
+    for email_key in ['email', 'emails', 'extension_selectedEmailAddress', 'otherMails', 'preferred_username', 'upn']:
+        email_adr = profile.get(email_key, None)
+        if email_adr:
+            break
 
     if isinstance(email_adr, list):
         email_adr = email_adr[0]
@@ -71,15 +75,18 @@ def parse_profile(profile, provider):
 
     # Compute access, user_type, roles and classification using auto_properties
     access = True
+    access_set = False
     user_type = []
     roles = []
+    groups = []
     remove_roles = set()
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
-            if auto_prop.type == "access":
+            if auto_prop.type == "access" and not access_set:
                 # Set default access value for access pattern
                 access = auto_prop.value.lower() != "true"
+                access_set = True
 
             # Get values for field
             field_data = profile.get(auto_prop.field, None)
@@ -116,7 +123,7 @@ def parse_profile(profile, provider):
                             roles.append(auto_prop.value)
                         break
 
-                # Append roles from matching patterns
+                # Remove roles from matching patterns
                 elif auto_prop.type == "remove_role":
                     if re.match(auto_prop.pattern, value):
                         remove_roles.add(auto_prop.value)
@@ -127,6 +134,15 @@ def parse_profile(profile, provider):
                     if re.match(auto_prop.pattern, value):
                         classification = cl_engine.build_user_classification(classification, auto_prop.value)
                         break
+
+                # Append groups from matching patterns
+                elif auto_prop.type == "group":
+                    group_match = re.match(auto_prop.pattern, value)
+                    if group_match:
+                        group_value = auto_prop.value
+                        for index, gm_value in enumerate(group_match.groups()):
+                            group_value = group_value.replace(f"${index+1}", gm_value)
+                        groups.append(group_value)
 
     # if not user type was assigned
     if not user_type:
@@ -148,6 +164,7 @@ def parse_profile(profile, provider):
         access=access,
         type=user_type,
         roles=roles,
+        groups=groups,
         classification=classification,
         uname=uname,
         name=name,

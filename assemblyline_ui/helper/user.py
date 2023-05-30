@@ -8,7 +8,7 @@ from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, 
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
-ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "groups", "password"]
+ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "password"]
 
 API_PRIV_MAP = {
     "READ": ["R"],
@@ -128,11 +128,23 @@ def save_user_account(username, data, user):
     return STORAGE.user.save(username, data)
 
 
-def get_dynamic_classification(current_c12n, email):
-    if Classification.dynamic_groups and email:
-        dyn_group = email.upper().split('@')[1]
-        return Classification.build_user_classification(current_c12n, f"{Classification.UNRESTRICTED}//{dyn_group}")
-    return current_c12n
+def get_dynamic_classification(current_c12n, user_info):
+    new_c12n = Classification.normalize_classification(current_c12n, get_dynamic_groups=False)
+
+    if Classification.dynamic_groups:
+        email = user_info.get('email', None)
+        groups = user_info.get('groups', [])
+
+        if Classification.dynamic_groups_type in ['email', 'all'] and email:
+            dyn_group = email.upper().split('@')[1]
+            new_c12n = Classification.build_user_classification(
+                new_c12n, f"{Classification.UNRESTRICTED}//{dyn_group}")
+
+        if Classification.dynamic_groups_type in ['group', 'all'] and groups:
+            new_c12n = Classification.build_user_classification(
+                new_c12n, f"{Classification.UNRESTRICTED}//{', '.join(groups)}")
+
+    return new_c12n
 
 
 def get_default_user_settings(user):
@@ -142,6 +154,7 @@ def get_default_user_settings(user):
 
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
+    user_classfication = user.get('classification', Classification.UNRESTRICTED)
 
     settings = STORAGE.user_settings.get_if_exists(user['uname'], as_obj=False)
     srv_list = [x for x in SERVICE_LIST if x['enabled']]
@@ -161,8 +174,9 @@ def load_user_settings(user):
 
         def_srv_list = settings.get('services', {}).get('selected', None)
 
-    settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}))
-    settings['services'] = get_default_service_list(srv_list, def_srv_list)
+    # Only display services that a user is allowed to see
+    settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}), user_classfication)
+    settings['services'] = get_default_service_list(srv_list, def_srv_list, user_classfication)
     settings['default_zip_password'] = settings.get('default_zip_password', None)
 
     # Normalize the user's classification
