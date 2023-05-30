@@ -1,0 +1,4 @@
+flask
+gevent
+gunicorn
+requests

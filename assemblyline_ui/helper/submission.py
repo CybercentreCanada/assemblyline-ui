@@ -135,7 +135,7 @@ def get_or_create_summary(sid, results, user_classification, completed):
     user_classification = CLASSIFICATION.normalize_classification(user_classification, long_format=False)
     cache_key = f"{sid}_{user_classification}_m{config.submission.verdicts.malicious}" \
         f"_hs{config.submission.verdicts.highly_suspicious}_s{config.submission.verdicts.suspicious}" \
-        f"_i{config.submission.verdicts.info}"
+        f"_i{config.submission.verdicts.info}_"
     for illegal_char in [" ", ":", "/"]:
         cache_key = cache_key.replace(illegal_char, "")
 
