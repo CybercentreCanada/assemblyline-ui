@@ -191,9 +191,8 @@ def tag_details(tag_name: str, tag: str) -> Response:
             "confirmed": False,  # virustotal does not offer a confirmed property
         }
         malicious = False
-        for cat, n in entry.get("attributes", {}).get("last_analysis_stats", {}):
-            pass
-
+        if entry.get("attributes", {}).get("last_analysis_stats", {}).get("malicious", 0) > 0:
+            malicious = True
         r["malicous"] = malicious
         results.append(r)
 
