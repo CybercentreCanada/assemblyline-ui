@@ -24,6 +24,7 @@ from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.ontology import ontology_api
 from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.replay import replay_api
+from assemblyline_ui.api.v4.retrohunt import retrohunt_api
 from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.search import search_api
 from assemblyline_ui.api.v4.service import service_api
@@ -86,6 +87,7 @@ app.register_blueprint(live_api)
 app.register_blueprint(ontology_api)
 app.register_blueprint(result_api)
 app.register_blueprint(replay_api)
+app.register_blueprint(retrohunt_api)
 app.register_blueprint(search_api)
 app.register_blueprint(service_api)
 app.register_blueprint(signature_api)
