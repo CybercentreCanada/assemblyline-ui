@@ -321,6 +321,10 @@ def submit(**kwargs):
         if not s_params['description']:
             s_params['description'] = default_description
 
+        # Set max extracted/supplementary if missing from request
+        s_params['max_extracted'] = s_params.get('max_extracted', config.submission.default_max_extracted)
+        s_params['max_supplementary'] = s_params.get('max_supplementary', config.submission.default_max_supplementary)
+
         # Check if external submit is allowed
         default_external_sources = s_params.pop('default_external_sources', [])
 
