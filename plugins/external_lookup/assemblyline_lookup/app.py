@@ -208,7 +208,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
         # de-dupe any possible results
         sha256s = {item["sha256"] for item in items}
         with concurrent.futures.ThreadPoolExecutor(min(32, os.cpu_count() + 4)) as executor:
-            future_lookups = [executor.submit(lookup_tag, tag_name="sha256", tag=item["sha256"]) for item in sha256s]
+            future_lookups = [executor.submit(lookup_tag, tag_name="sha256", tag=sha256) for sha256 in sha256s]
             # replace the `file index` result items with the new `result index` items
             items = []
             for future in concurrent.futures.as_completed(future_lookups):
