@@ -1,4 +1,6 @@
 import concurrent.futures
+import os
+import re
 
 from flask import request
 from requests import Session, exceptions
@@ -14,6 +16,14 @@ from assemblyline_ui.config import LOGGER, config, CLASSIFICATION as Classificat
 SUB_API = 'hash_search'
 hash_search_api = make_subapi_blueprint(SUB_API, api_version=4)
 hash_search_api._doc = "Search hashes through multiple data sources"
+
+HASH_MAP = {
+    "sha256": re.compile(base.SHA256_REGEX),
+    "md5": re.compile(base.MD5_REGEX),
+    "sha1": re.compile(base.SHA1_REGEX),
+    "ssdeep": re.compile(base.SSDEEP_REGEX),
+    "tlsh": re.compile(base.TLSH_REGEX),
+}
 
 
 class SkipDatasource(Exception):
@@ -73,10 +83,16 @@ def get_external_details(
     """Return the details from the external source.
 
     {
-        "confirmed": true,        # Is the maliciousness attribution confirmed or not
-        "data": {...}             # Raw data from the data source
-        "description": "",        # Description of the findings
-        "malicious": false,       # Is the file found malicious or not
+        "error": "",
+        "items:
+            [
+                {
+                    "confirmed": true,        # Is the maliciousness attribution confirmed or not
+                    "data": {...}             # Raw data from the data source
+                    "description": "",        # Description of the findings
+                    "malicious": false,       # Is the file found malicious or not
+                }
+            ]
     }
     """
     result = {}
@@ -92,7 +108,7 @@ def get_external_details(
         "max_timeout": timeout,
     }
 
-    result = {"error": None, "items": []}
+    result = {"error": "", "items": []}
 
     # check query against the max supported classification of the external system
     # if this is not supported, we should let the user know.
@@ -115,9 +131,9 @@ def get_external_details(
         result["error"] = f"{err_msg}. Error ID: {err_id}"
     else:
         try:
-            data = rsp.json()["api_response"]
-            if user and Classification.is_accessible(user["classification"], data["classification"]):
-                result["items"] = data
+            for data in rsp.json()["api_response"]:
+                if user and Classification.is_accessible(user["classification"], data["classification"]):
+                    result["items"].append(data)
         # noinspection PyBroadException
         except Exception as err:
             err_msg = f"{source.name}-proxy did not return a response in the expected format"
@@ -176,17 +192,10 @@ def search_external(file_hash: str, *args, **kwargs):
     except Exception:
         max_timeout = 3.0
 
-    hash_map = {
-        "sha256": base.SHA256_REGEX,
-        "md5": base.MD5_REGEX,
-        "sha1": base.SHA1_REGEX,
-        "ssdeep": base.SSDEEP_REGEX,
-        "tlsh": base.TLSH_REGEX,
-    }
-    hash_type = next((x for x, y in hash_map.items() if y(file_hash)), None)
+    hash_type = next((x for x, y in HASH_MAP.items() if y.match(file_hash)), None)
 
     if not hash_type:
-        return make_api_response("", f"Invalid hash. This API only supports {', '.join(hash_map.keys())}.", 400)
+        return make_api_response("", f"Invalid hash. This API only supports {', '.join(HASH_MAP.keys())}.", 400)
 
     hash_classification = request.args.get("classification", Classification.UNRESTRICTED)
 
@@ -198,80 +207,36 @@ def search_external(file_hash: str, *args, **kwargs):
         if Classification.is_accessible(user["classification"], x.classification)
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(len(available_sources)) as executor:
-        res = {
-            source.name: executor.submit(
+    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources), os.cpu_count() + 4)) as executor:
+        future_searches = {
+            executor.submit(
                 get_external_details,
                 user=user,
                 source=source,
-                query_sources=query_sources,
                 hash_type=hash_type,
                 file_hash=file_hash,
                 hash_classification=hash_classification,
                 timeout=max(0, max_timeout - 0.5),
-                limi=limit,
-            )
+                limit=limit,
+            ): source.name
             for source in available_sources
         }
-    results = {sname: v.result(timeout=max_timeout) for sname, v in res.items()}
+        results = {
+            future_searches[future]: future.result()
+            for future in concurrent.futures.as_completed(future_searches, timeout=max_timeout)
+        }
 
     status_code = 200
     error = ""
-    if not results or all("File hash not found." in {s["error"] for _, s in results.items()}):
+    if not results or all({"File hash not found." in s["error"] for s in results.values()}):
         status_code = 404
         error = "No results found."
     else:
-        if any({s["error"] for _, s in results.items()}):
+        if any({s["error"] for s in results.values()}):
             status_code = 500
             error = "One or more errors occured. See individual source results for more details."
 
     return make_api_response(results, err=error, status_code=status_code)
-
-    """
-    result = {}
-    for source in available_sources:
-        if hash_type not in all_supported_tags.get(source.name, {}):
-            continue
-
-        if not query_sources or source.name in query_sources:
-            # request will now be sent, so initialise the default return
-            r = {"error": None, "items": []}
-            result.setdefault(source.name, r)
-
-            # check query against the max supported classification of the external system
-            # if this is not supported, we should let the user know.
-            if not Classification.is_accessible(
-                source.max_classification or Classification.UNRESTRICTED,
-                hash_classification
-            ):
-                r["error"] = "File hash classification exceeds max classification."
-                continue
-
-            # perform the lookup, ensuring access controls are applied
-            url = f"{source.url}/details/{hash_type}/{file_hash}"
-            rsp = session.get(url, params=params, headers=headers)
-            status_code = rsp.status_code
-            if status_code == 404 or status_code == 422:
-                # continue searching configured sources if not found or invliad tag.
-                r["error"] = "File hash not found."
-                continue
-            if status_code != 200:
-                # as we query across multiple sources, just log errors.
-                err_msg = rsp.json()["api_error_message"]
-                err_id = log_error(f"Error from {source.name}", err_msg, status_code)
-                r["error"] = f"{err_msg}. Error ID: {err_id}"
-                continue
-            try:
-                data = rsp.json()["api_response"]
-                if user and Classification.is_accessible(user["classification"], data["classification"]):
-                    r["items"] = data
-            # noinspection PyBroadException
-            except Exception as err:
-                err_msg = f"{source.name}-proxy did not return a response in the expected format"
-                err_id = log_error(err_msg, err)
-                r["error"] = f"{err_msg}. Error ID: {err_id}"
-                continue
-    """
 
 
 # noinspection PyUnusedLocal
