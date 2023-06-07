@@ -178,25 +178,22 @@ def tag_details(tag_name: str, tag: str) -> Response:
     except Exception:
         max_timeout = 3.0
 
-    data = lookup_tag(tag_name=tag_name, tag=tag, limit=limit, timeout=max_timeout)
+    data = lookup_tag(tag_name=tag_name, tag=tag, timeout=max_timeout)
     if isinstance(data, Response):
         return data
 
-    results = []
-    for entry in data:
-        r = {
-            "data": entry,
-            "classification": CLASSIFICATION,
-            "description": "VirusTotal submission result.",
-            "confirmed": False,  # virustotal does not offer a confirmed property
-        }
-        malicious = False
-        if entry.get("attributes", {}).get("last_analysis_stats", {}).get("malicious", 0) > 0:
-            malicious = True
-        r["malicous"] = malicious
-        results.append(r)
+    r = {
+        "data": data,
+        "classification": CLASSIFICATION,
+        "description": "VirusTotal submission result.",
+        "confirmed": False,  # virustotal does not offer a confirmed property
+    }
+    malicious = False
+    if data.get("attributes", {}).get("last_analysis_stats", {}).get("malicious", 0) > 0:
+        malicious = True
+    r["malicious"] = malicious
 
-    return make_api_response(results)
+    return make_api_response([r])
 
 
 def main():
