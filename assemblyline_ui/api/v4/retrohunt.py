@@ -120,7 +120,7 @@ def create(**kwargs):
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification'], offset=0, limit=100))
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification'], offset=0, rows=100))
 
 
 @retrohunt_api.route("/<code>/", methods=["GET"])
