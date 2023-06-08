@@ -107,6 +107,26 @@ def user_login_session(test_client):
 
 
 @pytest.fixture()
+def mock_lookup_error_response(mocker):
+    """Mock response for a generic error."""
+    def _mock_lookup_error(
+        *,
+        error_message="No results.",
+        status_code=404,
+        response="",
+    ):
+        mock_response = mocker.MagicMock(spec=requests.Response)
+        mock_response.status_code = status_code
+        mock_response.json.return_value = {
+            "api_response": response,
+            "api_error_message": error_message,
+            "api_status_code": status_code,
+        }
+        return mock_response
+    return _mock_lookup_error
+
+
+@pytest.fixture()
 def mock_lookup_success_response(mocker):
     """Mock response for a generic lookup to that exists.
 
@@ -130,6 +150,7 @@ def mock_lookup_success_response(mocker):
         data=None,
         classification=CLASSIFICATION.UNRESTRICTED,
         source="mb",
+        additional_items=None,
     ):
         # default to a single file
         if data is None:
@@ -167,6 +188,8 @@ def mock_lookup_success_response(mocker):
             }],
             "api_status_code": 200,
         }
+        if additional_items:
+            r["api_response"].extend(additional_items)
         mock_response = mocker.MagicMock(spec=requests.Response)
         mock_response.status_code = 200
         mock_response.json.return_value = r
@@ -198,12 +221,20 @@ def test_hash_search(datastore, login_session):
         resp = get_api_data(session, f"{host}/api/v4/hash_search/{f_hash_list[x]}/")
         assert len(resp['alert']['items']) > 0 and len(resp['al']['items']) > 0
 
+    # "3072:pFZywkr4l1qDvatIVFcWwblWrj6/ns5JoDXn0Pns:xy8DqDvatIVifQJorKs",
 
-def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_lookup_success_response):
+
+@pytest.mark.parametrize("digest", [
+    "218d37ae955599538c3b36a160a122a0800bc64a552bce549a4a5ec24ec82dbe",
+    "c5fd789462a4797944fb3d6712772a2be0758ad3",
+    "9f2b90b4f0b5184a47187587afc1e321",
+])
+def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_lookup_success_response, digest):
     """Lookup a valid hash with multiple configured sources.
 
     Given external lookups for both Malware Bazaar and Virustoal are configured
-        And a given hash exists in both sources
+        And the given hash type is valid for both sources
+        And the given hash exists in both sources
 
     When a user requests an external hash search of the given hash
         And no filter is applied
@@ -212,39 +243,225 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
     """
     _, client = user_login_session
     mock_get.side_effect = [
-        mock_lookup_success_response(source="mb"),
-        mock_lookup_success_response(source="vt"),
+        mock_lookup_success_response(source=None),
+        mock_lookup_success_response(source=None),
     ]
 
-    digest_sha256 = "a" * 64
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/external/{digest_sha256}/")
+    rsp = client.get(f"/api/v4/hash_search/external/{digest}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
     # Expect correctly formatted mocked reponse
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
-    data["malware_bazaar"]["items"][0].pop("data")
-    data["virustotal"]["items"][0].pop("data")
     expected = {
         "malware_bazaar": {
-            "error": None,
+            "error": "",
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
                 "malicious": True,
                 "confirmed": False,
+                "data": {},
             }],
         },
         "virustotal": {
-            "error": None,
+            "error": "",
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
                 "malicious": True,
                 "confirmed": False,
+                "data": {},
             }],
+        },
+    }
+    assert data == expected
+
+
+def test_external_hash_multi_hit_filter(
+        datastore, user_login_session, mock_get, mock_lookup_success_response):
+    """Lookup a valid hash with multiple configured sources but place a filter.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And a given hash exists in both sources
+
+    When a user requests a lookup of a given hash
+        And a filter for a single source of malware_bazaar is applied
+
+    Then the user should receive results from only the filtered source, malware_bazaar
+    """
+    _, client = user_login_session
+
+    mock_get.return_value = mock_lookup_success_response(source=None)
+
+    # User requests a lookup with a filter
+    rsp = client.get(
+        f"/api/v4/hash_search/external/{'a' * 32}/",
+        query_string={"sources": "malware_bazaar"}
+    )
+
+    # only a single query to mb should be sent
+    assert mock_get.call_count == 1
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "malware_bazaar": {
+            "error": "",
+            "items": [{
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "description": "Malware",
+                "malicious": True,
+                "confirmed": False,
+                "data": {},
+            }],
+        },
+    }
+    assert data == expected
+
+
+def test_external_hash_filter_all(
+        datastore, user_login_session, mock_get):
+    """Lookup a valid hash with multiple configured sources but place a filter for a non-configured source.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And a given hash exists in both sources
+
+    When a user requests a lookup of a given hash
+        And a filter for a source that is not configured, Assemblyline is applied
+
+    Then the user should receive 0 results
+    """
+    _, client = user_login_session
+
+    # User requests a lookup with a filter
+    rsp = client.get(
+        f"/api/v4/hash_search/external/{'a' * 32}/",
+        query_string={"sources": "assemblyline"}
+    )
+    # no external calls should be made
+    assert mock_get.call_count == 0
+
+    assert rsp.status_code == 404
+    assert rsp.json["api_response"] == {}
+    assert rsp.json["api_error_message"] == "No results found."
+
+
+def test_external_hash_multi_source_single_hit(
+        datastore, user_login_session, mock_get, mock_lookup_success_response, mock_lookup_error_response):
+    """Lookup a valid hash type in multiple configured sources but found in only one source.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And the given hash exists only in Malware Bazaar
+
+    When a user requests a lookup of a given hash
+        And no filter is applied
+
+    Then the user should receive results from both Malware Bazaar and Virustotal with no error
+    But the Virustotal items should be empty
+    """
+    _, client = user_login_session
+
+    mock_get.side_effect = [
+        mock_lookup_success_response(source=None),
+        mock_lookup_error_response(),
+    ]
+
+    # User requests a lookup with no filter
+    rsp = client.get(f"/api/v4/hash_search/external/{'a' * 32}/")
+
+    # A query for each source should be sent
+    assert mock_get.call_count == 2
+
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "malware_bazaar": {
+            "error": "",
+            "items": [{
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "description": "Malware",
+                "malicious": True,
+                "confirmed": False,
+                "data": {},
+            }],
+        },
+        "virustotal": {
+            "error": "",
+            "items": [],
+        },
+    }
+    assert data == expected
+
+
+def test_external_hash_multi_source_invalid_single(
+        datastore, user_login_session, mock_get, mock_lookup_success_response, mock_lookup_error_response):
+    """With multiple configured sources look up a hash type that is valid in only one of those sources.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And the `tlsh` hash type is only valid for Malware Bazaar
+        And two entities in Malware Bazaar have the given `tlsh`
+
+    When a user requests a lookup of the `tlsh` hash
+        And no filter is applied
+
+    Then the user should receive a result from only Malware Bazaar with two items
+        AND invalid tag error message logged to error
+    """
+    _, client = user_login_session
+
+    mock_get.side_effect = [
+        mock_lookup_success_response(
+            source=None,
+            additional_items=[{
+                "description": "Malware 2",
+                "malicious": True,
+                "confirmed": False,
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "data": {},
+            }],
+        ),
+        mock_lookup_error_response(
+            error_message="Invalid tag name",
+            status_code=422,
+            response=None,
+        ),
+    ]
+
+    # User requests a lookup with no filter
+    tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
+    rsp = client.get(f"/api/v4/hash_search/external/{tlsh}/")
+
+    # A query for only sources where hash type is valid should be called
+    assert mock_get.call_count == 1
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "malware_bazaar": {
+            "error": "",
+            "items": [
+                {
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "description": "Malware",
+                    "malicious": True,
+                    "confirmed": False,
+                    "data": {},
+                },
+                {
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "description": "Malware 2",
+                    "malicious": True,
+                    "confirmed": False,
+                    "data": {},
+                },
+            ],
+        },
+        "virustotal": {
+            "error": "Unsupported hash type.",
+            "items": [],
         },
     }
     assert data == expected

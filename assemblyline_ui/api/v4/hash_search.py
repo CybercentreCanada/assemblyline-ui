@@ -25,6 +25,9 @@ HASH_MAP = {
     "tlsh": re.compile(base.TLSH_REGEX),
 }
 
+HNF = "File hash not found."
+NOT_SUPPORTED = "Unsupported hash type."
+
 
 class SkipDatasource(Exception):
     pass
@@ -84,19 +87,20 @@ def get_external_details(
 
     {
         "error": "",
-        "items:
+        "items":
             [
                 {
                     "confirmed": true,        # Is the maliciousness attribution confirmed or not
-                    "data": {...}             # Raw data from the data source
+                    "data": {...},            # Raw data from the data source
                     "description": "",        # Description of the findings
                     "malicious": false,       # Is the file found malicious or not
                 }
             ]
     }
     """
-    result = {}
+    result = {"error": "", "items": []}
     if hash_type not in all_supported_tags.get(source.name, {}):
+        result["error"] = NOT_SUPPORTED
         return result
 
     session = Session()
@@ -107,8 +111,6 @@ def get_external_details(
         "limit": limit,
         "max_timeout": timeout,
     }
-
-    result = {"error": "", "items": []}
 
     # check query against the max supported classification of the external system
     # if this is not supported, we should let the user know.
@@ -123,7 +125,7 @@ def get_external_details(
     status_code = rsp.status_code
     if status_code == 404 or status_code == 422:
         # continue searching configured sources if not found or invliad tag.
-        result["error"] = "File hash not found."
+        result["error"] = HNF
     elif status_code != 200:
         # as we query across multiple sources, just log errors.
         err_msg = rsp.json()["api_error_message"]
@@ -142,10 +144,9 @@ def get_external_details(
     return result
 
 
-# noinspection PyUnusedLocal
 @hash_search_api.route("/external/<path:file_hash>/", methods=["GET"])
 @api_login(require_role=[ROLES.external_query])
-def search_external(file_hash: str, *args, **kwargs):
+def search_external(file_hash: str, **kwargs):
     """
     Search for a hash in multiple data sources as configured in the seed.
 
@@ -205,9 +206,10 @@ def search_external(file_hash: str, *args, **kwargs):
     available_sources = [
         x for x in getattr(config.ui, "external_sources", [])
         if Classification.is_accessible(user["classification"], x.classification)
+        and (not query_sources or x.name in query_sources)
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources), os.cpu_count() + 4)) as executor:
+    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:
         future_searches = {
             executor.submit(
                 get_external_details,
@@ -228,11 +230,23 @@ def search_external(file_hash: str, *args, **kwargs):
 
     status_code = 200
     error = ""
-    if not results or all({"File hash not found." in s["error"] for s in results.values()}):
+    # if any successful results at all are given we should return a success 200.
+    # otherwise, if ALL results are 404s we should return a 404,
+    # else fallback to return a generic server error
+    res = results.values()
+    if results and any({len(s.get("items", [])) for s in res}):
+        # remove error message for Hash Not Found
+        for r in res:
+            if r["error"] == HNF:
+                r["error"] = ""
+    elif not results or all({s["error"] == HNF for s in res}):
         status_code = 404
-        error = "No results found."
+        error = HNF
+    elif not results or all({s["error"] == NOT_SUPPORTED for s in res}):
+        status_code = 422
+        error = NOT_SUPPORTED
     else:
-        if any({s["error"] for s in results.values()}):
+        if any({s["error"] for s in res}):
             status_code = 500
             error = "One or more errors occured. See individual source results for more details."
 
