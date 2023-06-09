@@ -102,6 +102,11 @@ def get_external_details(
     if hash_type not in all_supported_tags.get(source.name, {}):
         result["error"] = NOT_SUPPORTED
         return result
+    # check the query against the max supported classification of the hash type in the external system
+    hash_type_classif = all_supported_tags[source.name][hash_type]
+    if not Classification.is_accessible(user["classification"], hash_type_classif):
+        result["error"] = NOT_SUPPORTED
+        return result
 
     session = Session()
     headers = {

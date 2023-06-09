@@ -76,7 +76,19 @@ def ext_config():
             "network.static.ip": CLASSIFICATION.UNRESTRICTED,
             "network.dynamic.uri": CLASSIFICATION.UNRESTRICTED,
             "network.static.uri": CLASSIFICATION.UNRESTRICTED,
-        }
+        },
+        "assemblyline": {
+            "md5": CLASSIFICATION.UNRESTRICTED,
+            "sha1": CLASSIFICATION.UNRESTRICTED,
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+            "tlsh": CLASSIFICATION.UNRESTRICTED,
+        },
+        "internal_source": {
+            "md5": CLASSIFICATION.UNRESTRICTED,
+            "sha1": CLASSIFICATION.RESTRICTED,
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+            "tlsh": CLASSIFICATION.UNRESTRICTED,
+        },
     }
     # ensure local cache is always fresh for tests
     hash_search.all_supported_tags = t.all_supported_tags
@@ -97,6 +109,19 @@ def test_client(ext_config):
 def user_login_session(test_client):
     """Setup a login session for the test_client."""
     r = test_client.post("/api/v4/auth/login/", data={"user": "user", "password": "user"})
+    for name, value in r.headers:
+        if name == "Set-Cookie" and "XSRF-TOKEN" in value:
+            # in form: ("Set-Cookie", "XSRF-TOKEN=<token>; Path=/")
+            token = value.split(";")[0].split("=")[1]
+            test_client.environ_base["HTTP_X_XSRF_TOKEN"] = token
+    data = r.json["api_response"]
+    yield data, test_client
+
+
+@pytest.fixture()
+def admin_login_session(test_client):
+    """Setup a login session for the test_client."""
+    r = test_client.post("/api/v4/auth/login/", data={"user": "admin", "password": "admin"})
     for name, value in r.headers:
         if name == "Set-Cookie" and "XSRF-TOKEN" in value:
             # in form: ("Set-Cookie", "XSRF-TOKEN=<token>; Path=/")
@@ -157,7 +182,6 @@ def mock_lookup_success_response(mocker):
             data = {}
             if source == "mb":
                 data = {
-                    "classification": CLASSIFICATION.UNRESTRICTED,
                     "sha256_hash": "7de2c1bf58bce09eecc70476747d88a26163c3d6bb1d85235c24a558d1f16754",
                     "reporter": "abuse_ch",
                     "signature": "AZORult" if malicious else "",
@@ -220,8 +244,6 @@ def test_hash_search(datastore, login_session):
     for x in range(NUM_ITEMS):
         resp = get_api_data(session, f"{host}/api/v4/hash_search/{f_hash_list[x]}/")
         assert len(resp['alert']['items']) > 0 and len(resp['al']['items']) > 0
-
-    # "3072:pFZywkr4l1qDvatIVFcWwblWrj6/ns5JoDXn0Pns:xy8DqDvatIVifQJorKs",
 
 
 @pytest.mark.parametrize("digest", [
@@ -345,7 +367,7 @@ def test_external_hash_filter_all(
 
     assert rsp.status_code == 404
     assert rsp.json["api_response"] == {}
-    assert rsp.json["api_error_message"] == "No results found."
+    assert rsp.json["api_error_message"] == "File hash not found."
 
 
 def test_external_hash_multi_source_single_hit(
@@ -462,6 +484,278 @@ def test_external_hash_multi_source_invalid_single(
         "virustotal": {
             "error": "Unsupported hash type.",
             "items": [],
+        },
+    }
+    assert data == expected
+
+
+def test_external_hash_multi_source_invalid_all(
+        datastore, user_login_session, mock_get, mock_lookup_error_response):
+    """With multiple configured sources look up hash type that is not valid in any of the sources.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And `customhash` hash type is not valid for Malware Bazaar or Virustotal
+
+    When a user requests a lookup of `customhash`
+        And no filter is applied
+
+    Then the user should receive a not supported response
+    """
+    _, client = user_login_session
+
+    mock_get.return_value = mock_lookup_error_response(
+        error_message="Invalid tag name",
+        status_code=422,
+        response=None,
+    )
+
+    # User requests a lookup with no filter
+    customhash = "QWERTY:ABCDABCD"
+    rsp = client.get(f"/api/v4/hash_search/external/{customhash}/")
+
+    # A query for only sources where hash type is valid should be called
+    assert mock_get.call_count == 0
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 400
+    assert rsp.json["api_response"] == ""
+    assert rsp.json["api_error_message"].startswith("Invalid hash")
+
+
+def test_external_hash_multi_source_invalid_filtered(
+        datastore, user_login_session, mock_get, mock_lookup_error_response):
+    """With multiple configured sources look up hash type that is valid for a source, but that source is filtered.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And the `tlsh` hash type is only valid for Malware Bazaar
+
+    When a user requests a lookup of the `tlsh` hash
+        And a filter for only virustotal is applied
+
+    Then the user should receive a not supported response
+    """
+    _, client = user_login_session
+
+    mock_get.return_value = mock_lookup_error_response(
+        error_message="Invalid tag name",
+        status_code=422,
+        response=None,
+    )
+
+    # User requests a lookup with no filter
+    tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
+    rsp = client.get(
+        f"/api/v4/hash_search/external/{tlsh}/",
+        query_string={"sources": "virustotal"}
+    )
+
+    # A query for only sources where hash type is valid should be called
+    assert mock_get.call_count == 0
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 422
+    data = rsp.json["api_response"]
+    expected = {
+        "virustotal": {
+            "error": "Unsupported hash type.",
+            "items": [],
+        },
+    }
+    assert data == expected
+
+
+def test_access_control_source_filtering(
+        datastore, user_login_session, mock_get, mock_lookup_success_response):
+    """With multiple configured sources ensure access control filtering is applied at the source level.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And the given hash exists in both sources
+        And Assemblyline is a restricted classification
+
+    When a user requests a lookup of a hash
+        And no filter is applied
+        And the user only has access to UNRESTRICTED results
+
+    Then the user should receive only results from malware bazaar
+    """
+    config.ui.external_sources = [
+        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
+        {"name": "assemblyline", "url": "http://lookup_al:8001", "classification": CLASSIFICATION.RESTRICTED},
+    ]
+    _, client = user_login_session
+
+    mock_get.return_value = mock_lookup_success_response(source=None)
+
+    # User requests a lookup with no filter
+    rsp = client.get(f"/api/v4/hash_search/external/{'a' * 32}/")
+
+    # Only queries to access allowed sources should go through
+    assert mock_get.call_count == 1
+
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "malware_bazaar": {
+            "error": "",
+            "items": [{
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "description": "Malware",
+                "malicious": True,
+                "confirmed": False,
+                "data": {},
+            }],
+        },
+    }
+    assert data == expected
+
+
+def test_access_control_result_filtering(
+        datastore, user_login_session, mock_get, mock_lookup_success_response):
+    """With multiple configured sources ensure access control filtering is applied at the result level.
+
+    Given an external lookup for both "InternalSource" and Assembline is configured
+        And the given hash exists in both sources
+        And both sources are UNRESTRICTED
+        And one result returned from Assemblyline is RESTRICTED
+        And one result returned from Assemblyline is UNRESTRICTED
+        And one result returned from InternalSource is RESTRICTED
+
+    When a user requests a lookup of a hash
+        And no filter is applied
+        And the user only has access to UNRESTRICTED results
+
+    Then the user should receive only ONE result from Assemblyline
+    """
+    config.ui.external_sources = [
+        {"name": "assemblyline", "url": "http://lookup_al:8001", "max_classification": CLASSIFICATION.RESTRICTED},
+        {"name": "internal_source", "url": "http://lookup_is:8000", "max_classification": CLASSIFICATION.RESTRICTED},
+    ]
+    _, client = user_login_session
+
+    mock_get.side_effect = [
+        mock_lookup_success_response(
+            source=None,
+            classification=CLASSIFICATION.RESTRICTED,
+            additional_items=[{
+                "description": "Malware 2",
+                "malicious": True,
+                "confirmed": False,
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "data": {},
+            }],
+        ),
+        mock_lookup_success_response(source=None, classification=CLASSIFICATION.RESTRICTED),
+    ]
+
+    # User requests a lookup with no filter
+    tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
+    rsp = client.get(f"/api/v4/hash_search/external/{tlsh}/")
+
+    # All queries should be made
+    assert mock_get.call_count == 2
+
+    # Expect correctly formatted mocked reponse
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "assemblyline": {
+            "error": "",
+            "items": [{
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "description": "Malware 2",
+                "malicious": True,
+                "confirmed": False,
+                "data": {},
+            }],
+        },
+        "internal_source": {
+            "error": "",
+            "items": [],
+        },
+    }
+    assert data == expected
+
+
+def test_access_control_hash_type_max_classification(datastore, user_login_session, mock_get):
+    """With multiple configured sources ensure access controls are applied to hash types before searching.
+
+    Given an external lookup for InternalSource is configured
+        And the given `sha1` value exists in InternalSource
+        And InsternalSource's maximum classification is RESTRICTED
+        And InternalSource's classification is UNRESTRICTED
+        And the `sha1` has type has a classification of RESTRICTED
+
+    When a user requests a lookup of the `sha1`
+        And no filter is applied
+        And the user does not have access to RESTRICTED results
+
+    Then the user should not receive any results
+    """
+    config.ui.external_sources = [
+        {"name": "internal_source", "url": "http://lookup_is:8001", "max_classification": CLASSIFICATION.RESTRICTED},
+    ]
+    _, client = user_login_session
+
+    # User requests a lookup with no filter
+    rsp = client.get(f"/api/v4/hash_search/external/{'a' * 40}/")
+
+    assert mock_get.call_count == 0
+    assert rsp.status_code == 422
+    data = rsp.json["api_response"]
+    expected = {
+        "internal_source": {
+            "error": "Unsupported hash type.",
+            "items": [],
+        },
+    }
+    assert data == expected
+
+
+def test_access_control_submit_hash_classification(
+        datastore, admin_login_session, mock_get, mock_lookup_success_response):
+    """With multiple configured sources ensure access controls are applied to hashes before searching.
+
+    Given an external lookups for Malware Bazaar and Assemblyline are configured
+        And the given `md5` value exists in both sources
+        And the given `md5`'s classification is RESTRICTED
+        And Malware Bazaar's max classification is UNRESTRICTED
+        And Assemblyline's max classification is RESTRICTED
+        And the given user has access to RESTRICTED classification data
+
+    When a user requests a lookup of the `md5`
+        And no filter is applied
+
+    Then the user should not receive any results
+    """
+    config.ui.external_sources = [
+        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
+        {"name": "assemblyline", "url": "http://lookup_al:8001", "max_classification": CLASSIFICATION.RESTRICTED},
+    ]
+    mock_get.return_value = mock_lookup_success_response(source=None)
+    _, client = admin_login_session
+
+    # User requests a lookup with no filter
+    rsp = client.get(
+        f"/api/v4/hash_search/external/{'a' * 32}/",
+        query_string={"classification": CLASSIFICATION.RESTRICTED},
+    )
+
+    assert mock_get.call_count == 1
+    assert rsp.status_code == 200
+    data = rsp.json["api_response"]
+    expected = {
+        "assemblyline": {
+            "error": "",
+            "items": [{
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "description": "Malware",
+                "malicious": True,
+                "confirmed": False,
+                "data": {},
+            }],
+        },
+        "malware_bazaar": {
+            "error": "File hash classification exceeds max classification.",
+            "items": []
         },
     }
     assert data == expected
