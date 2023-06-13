@@ -5,7 +5,7 @@ import random
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
-from assemblyline_ui.helper.user import load_user_settings
+from assemblyline_ui.helper.user import load_user_settings, get_dynamic_classification
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
 from assemblyline.odm.randomizer import random_model_obj
@@ -75,7 +75,8 @@ def test_add_favorite(datastore, login_session):
     # Normalize classification
     if data.get('classification'):
         data['classification'] = CLASSIFICATION.normalize_classification(data['classification'])
-        favs[fav_type][-1]['classification'] = CLASSIFICATION.normalize_classification(favs[fav_type][-1]['classification'])
+        favs[fav_type][-1]['classification'] = CLASSIFICATION.normalize_classification(
+            favs[fav_type][-1]['classification'])
 
     assert favs[fav_type][-1] == data
 
@@ -83,15 +84,19 @@ def test_add_favorite(datastore, login_session):
 # noinspection PyUnusedLocal
 def test_add_user(datastore, login_session):
     _, session, host = login_session
+    username = 'TEST_ADD'
 
-    u = random_model_obj(User)
-    u.uname = "TEST_ADD"
+    u = random_model_obj(User).as_primitives()
+    u['uname'] = username
 
-    resp = get_api_data(session, f"{host}/api/v4/user/{u.uname}/", method="PUT", data=json.dumps(u.as_primitives()))
+    resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="PUT", data=json.dumps(u))
     assert resp['success']
 
     datastore.user.commit()
-    new_user = datastore.user.get(u.uname)
+    new_user = datastore.user.get(username, as_obj=False)
+
+    # submission through api applies `get_dynamic_classification`s which can modify the groups
+    u['classification'] = get_dynamic_classification(u['classification'], u)
     assert new_user == u
 
 
@@ -199,7 +204,7 @@ def test_remove_user_favorite(datastore, login_session):
     _, session, host = login_session
     username = random.choice(user_list)
     fav_type = random.choice(FAV_TYPES)
-    to_be_removed = f"test_{random.randint(1, 10)}"
+    to_be_removed = f"test_{random.randint(1, NUM_FAVS)}"
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                         method="DELETE", data=json.dumps(to_be_removed))
@@ -231,6 +236,8 @@ def test_set_user(datastore, login_session):
 
     # Normalize classification
     new_user['classification'] = CLASSIFICATION.normalize_classification(new_user['classification'])
+    # submission through api applies `get_dynamic_classification`s which can modify the groups
+    u['classification'] = get_dynamic_classification(u['classification'], u)
     u['classification'] = CLASSIFICATION.normalize_classification(u['classification'])
 
     for k in u.keys():
