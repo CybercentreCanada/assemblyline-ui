@@ -5,7 +5,7 @@ import random
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
-from assemblyline_ui.helper.user import load_user_settings, get_dynamic_classification
+from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
 from assemblyline.odm.randomizer import random_model_obj
