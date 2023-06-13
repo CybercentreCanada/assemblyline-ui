@@ -95,8 +95,10 @@ def test_add_user(datastore, login_session):
     datastore.user.commit()
     new_user = datastore.user.get(username, as_obj=False)
 
-    # submission through api applies `get_dynamic_classification`s which can modify the groups
-    u['classification'] = get_dynamic_classification(u['classification'], u)
+    # submission through api applies `get_dynamic_classification`s which normalizes with `get_dynamic_groups=False`
+    new_user['classification'] = CLASSIFICATION.normalize_classification(
+        new_user['classification'], get_dynamic_groups=False)
+    u['classification'] = CLASSIFICATION.normalize_classification(u['classification'], get_dynamic_groups=False)
     assert new_user == u
 
 
@@ -234,11 +236,10 @@ def test_set_user(datastore, login_session):
         u.pop(k)
         new_user.pop(k)
 
-    # Normalize classification
-    new_user['classification'] = CLASSIFICATION.normalize_classification(new_user['classification'])
-    # submission through api applies `get_dynamic_classification`s which can modify the groups
-    u['classification'] = get_dynamic_classification(u['classification'], u)
-    u['classification'] = CLASSIFICATION.normalize_classification(u['classification'])
+    # submission through api applies `get_dynamic_classification`s which normalizes with `get_dynamic_groups=False`
+    new_user['classification'] = CLASSIFICATION.normalize_classification(
+        new_user['classification'], get_dynamic_groups=False)
+    u['classification'] = CLASSIFICATION.normalize_classification(u['classification'], get_dynamic_groups=False)
 
     for k in u.keys():
         assert u[k] == new_user[k]
