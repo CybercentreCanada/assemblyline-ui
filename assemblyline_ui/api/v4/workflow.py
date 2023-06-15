@@ -143,9 +143,10 @@ def edit_workflow(workflow_id, **kwargs):
     success = STORAGE.workflow.save(workflow_id, wf)
 
     run_workflow = request.args.get('run_workflow', 'false').lower() == 'true'
-    if success and run_workflow:
-        # Process workflow against all alerts in the system
-        process_workflow(workflow=Workflow(wf), start_ts="*", end_ts="now/m", datastore=STORAGE, logger=LOGGER)
+    if success:
+        if run_workflow:
+            # Process workflow against all alerts in the system
+            process_workflow(workflow=Workflow(wf), start_ts="*", end_ts="now/m", datastore=STORAGE, logger=LOGGER)
 
         return make_api_response({"success": success})
 
