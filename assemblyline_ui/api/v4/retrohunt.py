@@ -39,11 +39,15 @@ def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.Search
         errors = api_result.errors
         truncated = api_result.truncated
         total_hits = len(api_result.hits)
+        phase = api_result.phase
+        progress = api_result.progress
     else:
         selected_hashes = datastore_result['hits'][offset:offset+rows]
         errors = datastore_result['errors']
         truncated = datastore_result['truncated']
         total_hits = datastore_result['total_hits']
+        phase = 'finished'
+        progress = (1, 1)
 
     # supplement file information
     hits = []
@@ -60,6 +64,8 @@ def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.Search
         'total_hits': total_hits,
         'finished': True if api_result is None else is_finished(api_result),
         'truncated': truncated,
+        'phase': phase,
+        'progress': progress,
     })
     return datastore_result
 
