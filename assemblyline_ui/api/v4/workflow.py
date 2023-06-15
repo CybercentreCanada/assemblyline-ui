@@ -5,8 +5,9 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, config, LOGGER
 from assemblyline.odm.models.workflow import Workflow
+from assemblyline_core.workflow.run_workflow import run_workflow as process_workflow
 
 SUB_API = 'workflow'
 workflow_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -33,7 +34,7 @@ def add_workflow(**kwargs):
     None
 
     Arguments:
-    None
+    run_workflow      => Run workflow immediately on past alerts
 
     Data Block:
     {
@@ -70,14 +71,22 @@ def add_workflow(**kwargs):
         "creator": kwargs['user']['uname'],
         "edited_by": kwargs['user']['uname'],
         "priority": data['priority'] or None,
-        "status": data['status'] or None
+        "status": data['status'] or None,
+        "origin": data.get('origin') or config.ui.fqdn
     })
     try:
         workflow_data = Workflow(data)
     except ValueError as e:
         return make_api_response({'success': False}, err=str(e), status_code=400)
 
-    return make_api_response({"success": STORAGE.workflow.save(workflow_data.workflow_id, workflow_data),
+    success = STORAGE.workflow.save(workflow_data.workflow_id, workflow_data)
+
+    run_workflow = request.args.get('run_workflow', 'false').lower() == 'true'
+    if success and run_workflow:
+        # Process workflow against all alerts in the system
+        process_workflow(workflow=workflow_data, start_ts="*", end_ts="now/m", datastore=STORAGE, logger=LOGGER)
+
+    return make_api_response({"success": success,
                               "workflow_id": workflow_data.workflow_id})
 
 
@@ -88,10 +97,10 @@ def edit_workflow(workflow_id, **kwargs):
     Edit a workflow.
 
     Variables:
-    workflow_id    => ID of the workflow to edit
+    workflow_id         => ID of the workflow to edit
 
     Arguments:
-    None
+    run_workflow        => Run workflow immediately on past alerts
 
     Data Block:
     {
@@ -131,7 +140,15 @@ def edit_workflow(workflow_id, **kwargs):
             "workflow_id": workflow_id
         })
 
-        return make_api_response({"success": STORAGE.workflow.save(workflow_id, wf)})
+    success = STORAGE.workflow.save(workflow_id, wf)
+
+    run_workflow = request.args.get('run_workflow', 'false').lower() == 'true'
+    if success and run_workflow:
+        # Process workflow against all alerts in the system
+        process_workflow(workflow=Workflow(wf), start_ts="*", end_ts="now/m", datastore=STORAGE, logger=LOGGER)
+
+        return make_api_response({"success": success})
+
     else:
         return make_api_response({"success": False},
                                  err="Workflow ID %s does not exist" % workflow_id,
@@ -165,6 +182,7 @@ def get_workflow(workflow_id, **kwargs):
     """
     wf = STORAGE.workflow.get(workflow_id, as_obj=False)
     if wf:
+        wf['origin'] = wf.get('origin', config.ui.fqdn)
         if CLASSIFICATION.is_accessible(kwargs['user']['classification'], wf['classification']):
             return make_api_response(wf)
         else:
