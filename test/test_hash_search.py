@@ -4,12 +4,13 @@ import requests
 from conftest import get_api_data
 
 from assemblyline.odm.models.alert import Alert
+from assemblyline.odm.models.config import ExternalSource
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.file import File
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline_ui.app import app
-from assemblyline_ui.config import config, CLASSIFICATION
+from assemblyline_ui.config import CLASSIFICATION
 from assemblyline_ui.api.v4 import hash_search, federated_lookup
 
 NUM_ITEMS = 10
@@ -52,9 +53,9 @@ def datastore(datastore_connection):
 @pytest.fixture()
 def ext_config():
     """generate test configuration."""
-    config.ui.external_sources = [
-        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
-        {"name": "virustotal", "url": "http://lookup_vt:8001"},
+    hash_search.external_sources = [
+        ExternalSource({"name": "malware_bazaar", "url": "http://lookup_mb"}),
+        ExternalSource({"name": "virustotal", "url": "http://lookup_vt"}),
     ]
     original_tags = hash_search.all_supported_tags
     t = federated_lookup._Tags()
@@ -202,7 +203,7 @@ def mock_lookup_success_response(mocker):
 
         # create the default result
         r = {
-            "api_error_message": "",
+            "api_error_message": None,
             "api_response": [{
                 "description": description,
                 "malicious": malicious,
@@ -234,7 +235,7 @@ def test_list_data_sources(datastore, login_session):
     _, session, host = login_session
 
     resp = get_api_data(session, f"{host}/api/v4/hash_search/list_data_sources/")
-    assert resp == ['al', 'alert']
+    assert resp == sorted(['al', 'alert', 'x.malware_bazaar', 'x.virustotal'])
 
 
 # noinspection PyUnusedLocal
@@ -255,6 +256,7 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
     """Lookup a valid hash with multiple configured sources.
 
     Given external lookups for both Malware Bazaar and Virustoal are configured
+        And local lookups for `al` and `alert` are configured
         And the given hash type is valid for both sources
         And the given hash exists in both sources
 
@@ -270,7 +272,7 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/external/{digest}/")
+    rsp = client.get(f"/api/v4/hash_search/{digest}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -278,8 +280,10 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": {
-            "error": "",
+        "al": {"error": None, "items": []},
+        "alert": {"error": None, "items": []},
+        "x.malware_bazaar": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
@@ -288,8 +292,8 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
                 "data": {},
             }],
         },
-        "virustotal": {
-            "error": "",
+        "x.virustotal": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
@@ -307,6 +311,7 @@ def test_external_hash_multi_hit_filter(
     """Lookup a valid hash with multiple configured sources but place a filter.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And local lookups for `al` and `alert` are configured
         And a given hash exists in both sources
 
     When a user requests a lookup of a given hash
@@ -320,8 +325,8 @@ def test_external_hash_multi_hit_filter(
 
     # User requests a lookup with a filter
     rsp = client.get(
-        f"/api/v4/hash_search/external/{'a' * 32}/",
-        query_string={"sources": "malware_bazaar"}
+        f"/api/v4/hash_search/{'a' * 32}/",
+        query_string={"db": "x.malware_bazaar"}
     )
 
     # only a single query to mb should be sent
@@ -329,8 +334,8 @@ def test_external_hash_multi_hit_filter(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": {
-            "error": "",
+        "x.malware_bazaar": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
@@ -348,7 +353,8 @@ def test_external_hash_filter_all(
     """Lookup a valid hash with multiple configured sources but place a filter for a non-configured source.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
-        And a given hash exists in both sources
+        And local lookups for `al` and `alert` are configured
+        And a given hash exists in both external sources
 
     When a user requests a lookup of a given hash
         And a filter for a source that is not configured, Assemblyline is applied
@@ -359,8 +365,8 @@ def test_external_hash_filter_all(
 
     # User requests a lookup with a filter
     rsp = client.get(
-        f"/api/v4/hash_search/external/{'a' * 32}/",
-        query_string={"sources": "assemblyline"}
+        f"/api/v4/hash_search/{'a' * 32}/",
+        query_string={"db": "x.assemblyline"}
     )
     # no external calls should be made
     assert mock_get.call_count == 0
@@ -375,6 +381,7 @@ def test_external_hash_multi_source_single_hit(
     """Lookup a valid hash type in multiple configured sources but found in only one source.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And local lookups for `al` and `alert` are configured
         And the given hash exists only in Malware Bazaar
 
     When a user requests a lookup of a given hash
@@ -385,13 +392,16 @@ def test_external_hash_multi_source_single_hit(
     """
     _, client = user_login_session
 
-    mock_get.side_effect = [
-        mock_lookup_success_response(source=None),
-        mock_lookup_error_response(),
-    ]
+    # futures will resolve non-deterministically, so make sure to set the correct response
+    def mock_return(*args, **kwargs):
+        if args[0].startswith("http://lookup_mb"):
+            return mock_lookup_success_response(source=None)
+        return mock_lookup_error_response()
+
+    mock_get.side_effect = mock_return
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/external/{'a' * 32}/")
+    rsp = client.get(f"/api/v4/hash_search/{'a' * 32}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -400,8 +410,11 @@ def test_external_hash_multi_source_single_hit(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": {
-            "error": "",
+        "al": {"error": None, "items": []},
+        "alert": {"error": None, "items": []},
+        "x.virustotal": {"error": None, "items": []},
+        "x.malware_bazaar": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
@@ -410,11 +423,8 @@ def test_external_hash_multi_source_single_hit(
                 "data": {},
             }],
         },
-        "virustotal": {
-            "error": "",
-            "items": [],
-        },
     }
+    print(data)
     assert data == expected
 
 
@@ -423,6 +433,7 @@ def test_external_hash_multi_source_invalid_single(
     """With multiple configured sources look up a hash type that is valid in only one of those sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And local lookups for `al` and `alert` are configured
         And the `tlsh` hash type is only valid for Malware Bazaar
         And two entities in Malware Bazaar have the given `tlsh`
 
@@ -434,27 +445,30 @@ def test_external_hash_multi_source_invalid_single(
     """
     _, client = user_login_session
 
-    mock_get.side_effect = [
-        mock_lookup_success_response(
-            source=None,
-            additional_items=[{
-                "description": "Malware 2",
-                "malicious": True,
-                "confirmed": False,
-                "classification": CLASSIFICATION.UNRESTRICTED,
-                "data": {},
-            }],
-        ),
-        mock_lookup_error_response(
+    # futures will resolve non-deterministically, so make sure to set the correct response
+    def mock_return(*args, **kwargs):
+        if args[0].startswith("http://lookup_mb"):
+            return mock_lookup_success_response(
+                source=None,
+                additional_items=[{
+                    "description": "Malware 2",
+                    "malicious": True,
+                    "confirmed": False,
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "data": {},
+                }]
+            )
+        return mock_lookup_error_response(
             error_message="Invalid tag name",
             status_code=422,
             response=None,
-        ),
-    ]
+        )
+
+    mock_get.side_effect = mock_return
 
     # User requests a lookup with no filter
     tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
-    rsp = client.get(f"/api/v4/hash_search/external/{tlsh}/")
+    rsp = client.get(f"/api/v4/hash_search/{tlsh}/")
 
     # A query for only sources where hash type is valid should be called
     assert mock_get.call_count == 1
@@ -462,8 +476,11 @@ def test_external_hash_multi_source_invalid_single(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": {
-            "error": "",
+        "al": {"error": None, "items": []},
+        "alert": {"error": None, "items": []},
+        "x.virustotal": {"error": "Unsupported hash type.", "items": []},
+        "x.malware_bazaar": {
+            "error": None,
             "items": [
                 {
                     "classification": CLASSIFICATION.UNRESTRICTED,
@@ -481,10 +498,6 @@ def test_external_hash_multi_source_invalid_single(
                 },
             ],
         },
-        "virustotal": {
-            "error": "Unsupported hash type.",
-            "items": [],
-        },
     }
     assert data == expected
 
@@ -494,6 +507,7 @@ def test_external_hash_multi_source_invalid_all(
     """With multiple configured sources look up hash type that is not valid in any of the sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And local lookups for `al` and `alert` are configured
         And `customhash` hash type is not valid for Malware Bazaar or Virustotal
 
     When a user requests a lookup of `customhash`
@@ -511,7 +525,7 @@ def test_external_hash_multi_source_invalid_all(
 
     # User requests a lookup with no filter
     customhash = "QWERTY:ABCDABCD"
-    rsp = client.get(f"/api/v4/hash_search/external/{customhash}/")
+    rsp = client.get(f"/api/v4/hash_search/{customhash}/")
 
     # A query for only sources where hash type is valid should be called
     assert mock_get.call_count == 0
@@ -526,6 +540,7 @@ def test_external_hash_multi_source_invalid_filtered(
     """With multiple configured sources look up hash type that is valid for a source, but that source is filtered.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
+        And local lookups for `al` and `alert` are configured
         And the `tlsh` hash type is only valid for Malware Bazaar
 
     When a user requests a lookup of the `tlsh` hash
@@ -544,8 +559,8 @@ def test_external_hash_multi_source_invalid_filtered(
     # User requests a lookup with no filter
     tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
     rsp = client.get(
-        f"/api/v4/hash_search/external/{tlsh}/",
-        query_string={"sources": "virustotal"}
+        f"/api/v4/hash_search/{tlsh}/",
+        query_string={"db": "x.virustotal"}
     )
 
     # A query for only sources where hash type is valid should be called
@@ -554,7 +569,7 @@ def test_external_hash_multi_source_invalid_filtered(
     assert rsp.status_code == 422
     data = rsp.json["api_response"]
     expected = {
-        "virustotal": {
+        "x.virustotal": {
             "error": "Unsupported hash type.",
             "items": [],
         },
@@ -566,7 +581,8 @@ def test_access_control_source_filtering(
         datastore, user_login_session, mock_get, mock_lookup_success_response):
     """With multiple configured sources ensure access control filtering is applied at the source level.
 
-    Given an external lookup for both Malware Bazaar and Virustoal is configured
+    Given an external lookup for both Malware Bazaar and Assemblyline is configured
+        And local lookups for `al` and `alert` are configured
         And the given hash exists in both sources
         And Assemblyline is a restricted classification
 
@@ -576,16 +592,18 @@ def test_access_control_source_filtering(
 
     Then the user should receive only results from malware bazaar
     """
-    config.ui.external_sources = [
-        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
-        {"name": "assemblyline", "url": "http://lookup_al:8001", "classification": CLASSIFICATION.RESTRICTED},
+    hash_search.external_sources = [
+        ExternalSource({"name": "malware_bazaar", "url": "http://lookup_mb"}),
+        ExternalSource({
+            "name": "assemblyline", "url": "http://lookup_al", "classification": CLASSIFICATION.RESTRICTED
+        }),
     ]
     _, client = user_login_session
 
     mock_get.return_value = mock_lookup_success_response(source=None)
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/external/{'a' * 32}/")
+    rsp = client.get(f"/api/v4/hash_search/{'a' * 32}/")
 
     # Only queries to access allowed sources should go through
     assert mock_get.call_count == 1
@@ -594,8 +612,10 @@ def test_access_control_source_filtering(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "malware_bazaar": {
-            "error": "",
+        "al": {"error": None, "items": []},
+        "alert": {"error": None, "items": []},
+        "x.malware_bazaar": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
@@ -613,6 +633,7 @@ def test_access_control_result_filtering(
     """With multiple configured sources ensure access control filtering is applied at the result level.
 
     Given an external lookup for both "InternalSource" and Assembline is configured
+        And local lookups for `al` and `alert` are configured
         And the given hash exists in both sources
         And both sources are UNRESTRICTED
         And one result returned from Assemblyline is RESTRICTED
@@ -625,30 +646,38 @@ def test_access_control_result_filtering(
 
     Then the user should receive only ONE result from Assemblyline
     """
-    config.ui.external_sources = [
-        {"name": "assemblyline", "url": "http://lookup_al:8001", "max_classification": CLASSIFICATION.RESTRICTED},
-        {"name": "internal_source", "url": "http://lookup_is:8000", "max_classification": CLASSIFICATION.RESTRICTED},
+    hash_search.external_sources = [
+        ExternalSource({
+            "name": "assemblyline", "url": "http://lookup_al", "max_classification": CLASSIFICATION.RESTRICTED
+        }),
+        ExternalSource({
+            "name": "internal_source", "url": "http://lookup_is", "max_classification": CLASSIFICATION.RESTRICTED
+        }),
     ]
     _, client = user_login_session
 
-    mock_get.side_effect = [
-        mock_lookup_success_response(
-            source=None,
-            classification=CLASSIFICATION.RESTRICTED,
-            additional_items=[{
-                "description": "Malware 2",
-                "malicious": True,
-                "confirmed": False,
-                "classification": CLASSIFICATION.UNRESTRICTED,
-                "data": {},
-            }],
-        ),
-        mock_lookup_success_response(source=None, classification=CLASSIFICATION.RESTRICTED),
-    ]
+    # futures will resolve non-deterministically, so make sure to set the correct response
+    def mock_return(*args, **kwargs):
+        if args[0].startswith("http://lookup_al"):
+            return mock_lookup_success_response(
+                source=None,
+                classification=CLASSIFICATION.RESTRICTED,
+                additional_items=[{
+                    "description": "Malware 2",
+                    "malicious": True,
+                    "confirmed": False,
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "data": {},
+                }],
+            )
+        if args[0].startswith("http://lookup_is"):
+            return mock_lookup_success_response(source=None, classification=CLASSIFICATION.RESTRICTED)
+
+    mock_get.side_effect = mock_return
 
     # User requests a lookup with no filter
     tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
-    rsp = client.get(f"/api/v4/hash_search/external/{tlsh}/")
+    rsp = client.get(f"/api/v4/hash_search/{tlsh}/")
 
     # All queries should be made
     assert mock_get.call_count == 2
@@ -657,8 +686,11 @@ def test_access_control_result_filtering(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "assemblyline": {
-            "error": "",
+        "al": {"error": None, "items": []},
+        "alert": {"error": None, "items": []},
+        "x.internal_source": {"error": None, "items": []},
+        "x.assemblyline": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware 2",
@@ -666,10 +698,6 @@ def test_access_control_result_filtering(
                 "confirmed": False,
                 "data": {},
             }],
-        },
-        "internal_source": {
-            "error": "",
-            "items": [],
         },
     }
     assert data == expected
@@ -679,30 +707,36 @@ def test_access_control_hash_type_max_classification(datastore, user_login_sessi
     """With multiple configured sources ensure access controls are applied to hash types before searching.
 
     Given an external lookup for InternalSource is configured
+        And local lookups for `al` and `alert` are configured
         And the given `sha1` value exists in InternalSource
         And InsternalSource's maximum classification is RESTRICTED
         And InternalSource's classification is UNRESTRICTED
         And the `sha1` has type has a classification of RESTRICTED
 
     When a user requests a lookup of the `sha1`
-        And no filter is applied
+        And a filter for only `InternalSource` is applied
         And the user does not have access to RESTRICTED results
 
     Then the user should not receive any results
     """
-    config.ui.external_sources = [
-        {"name": "internal_source", "url": "http://lookup_is:8001", "max_classification": CLASSIFICATION.RESTRICTED},
+    hash_search.external_sources = [
+        ExternalSource({
+            "name": "internal_source", "url": "http://lookup_is", "max_classification": CLASSIFICATION.RESTRICTED
+        }),
     ]
     _, client = user_login_session
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/external/{'a' * 40}/")
+    rsp = client.get(
+        f"/api/v4/hash_search/{'a' * 40}/",
+        query_string={"db": "x.internal_source"}
+    )
 
     assert mock_get.call_count == 0
     assert rsp.status_code == 422
     data = rsp.json["api_response"]
     expected = {
-        "internal_source": {
+        "x.internal_source": {
             "error": "Unsupported hash type.",
             "items": [],
         },
@@ -714,7 +748,8 @@ def test_access_control_submit_hash_classification(
         datastore, admin_login_session, mock_get, mock_lookup_success_response):
     """With multiple configured sources ensure access controls are applied to hashes before searching.
 
-    Given an external lookups for Malware Bazaar and Assemblyline are configured
+    Given external lookups for Malware Bazaar and Assemblyline are configured
+        And local lookups for `al` and `alert` are configured
         And the given `md5` value exists in both sources
         And the given `md5`'s classification is RESTRICTED
         And Malware Bazaar's max classification is UNRESTRICTED
@@ -722,29 +757,36 @@ def test_access_control_submit_hash_classification(
         And the given user has access to RESTRICTED classification data
 
     When a user requests a lookup of the `md5`
-        And no filter is applied
+        And a filter for external Assemblyline and Malware Bazaar is applied
 
-    Then the user should not receive any results
+    Then the user should receive results only from Assemblyline
     """
-    config.ui.external_sources = [
-        {"name": "malware_bazaar", "url": "http://lookup_mb:8000"},
-        {"name": "assemblyline", "url": "http://lookup_al:8001", "max_classification": CLASSIFICATION.RESTRICTED},
+    hash_search.external_sources = [
+        ExternalSource({"name": "malware_bazaar", "url": "http://lookup_mb"}),
+        ExternalSource(
+            {"name": "assemblyline", "url": "http://lookup_al", "max_classification": CLASSIFICATION.RESTRICTED}),
     ]
-    mock_get.return_value = mock_lookup_success_response(source=None)
     _, client = admin_login_session
+
+    def mock_return(*args, **kwargs):
+        if args[0].startswith("http://lookup_al"):
+            return mock_lookup_success_response(source=None)
+        return mock_lookup_error_response()
+
+    mock_get.side_effect = mock_return
 
     # User requests a lookup with no filter
     rsp = client.get(
-        f"/api/v4/hash_search/external/{'a' * 32}/",
-        query_string={"classification": CLASSIFICATION.RESTRICTED},
+        f"/api/v4/hash_search/{'a' * 32}/",
+        query_string={"classification": CLASSIFICATION.RESTRICTED, "db": "x.assemblyline|x.malware_bazaar"},
     )
 
     assert mock_get.call_count == 1
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "assemblyline": {
-            "error": "",
+        "x.assemblyline": {
+            "error": None,
             "items": [{
                 "classification": CLASSIFICATION.UNRESTRICTED,
                 "description": "Malware",
@@ -753,7 +795,7 @@ def test_access_control_submit_hash_classification(
                 "data": {},
             }],
         },
-        "malware_bazaar": {
+        "x.malware_bazaar": {
             "error": "File hash classification exceeds max classification.",
             "items": []
         },

@@ -1,5 +1,4 @@
 import concurrent.futures
-import copy
 import os
 import re
 
@@ -43,11 +42,7 @@ def create_query_datasource(ds):
     return query_datasource
 
 
-# external sources should be refereced with an `x.` prefix/namespace in this module to avoid name collisions with
-# existing internal data sources
-external_sources = copy.deepcopy(getattr(config.ui, "external_sources", []))
-for s in external_sources:
-    s.name = f"x.{s.name}"
+external_sources = getattr(config.ui, "external_sources", [])
 sources = {}
 # noinspection PyBroadException
 try:
@@ -104,13 +99,13 @@ def get_external_details(
             ]
     }
     """
-    sname = source.name.removeprefix("x.")
-    result = {"error": "", "items": []}
-    if hash_type not in all_supported_tags.get(sname, {}):
+    sname = f"x.{source.name}"
+    result = {"error": None, "items": []}
+    if hash_type not in all_supported_tags.get(source.name, {}):
         result["error"] = NOT_SUPPORTED
         return result
     # check the query against the max supported classification of the hash type in the external system
-    hash_type_classif = all_supported_tags[sname][hash_type]
+    hash_type_classif = all_supported_tags[source.name][hash_type]
     if not Classification.is_accessible(user["classification"], hash_type_classif):
         result["error"] = NOT_SUPPORTED
         return result
@@ -141,7 +136,7 @@ def get_external_details(
     elif status_code != 200:
         # as we query across multiple sources, just log errors.
         err_msg = rsp.json()["api_error_message"]
-        err_id = log_error(f"Error from {source.name}", err_msg, status_code)
+        err_id = log_error(f"Error from {sname}", err_msg, status_code)
         result["error"] = f"{err_msg}. Error ID: {err_id}"
     else:
         try:
@@ -150,7 +145,7 @@ def get_external_details(
                     result["items"].append(data)
         # noinspection PyBroadException
         except Exception as err:
-            err_msg = f"{source.name}-proxy did not return a response in the expected format"
+            err_msg = f"{sname}-proxy did not return a response in the expected format"
             err_id = log_error(err_msg, err)
             result["error"] = f"{err_msg}. Error ID: {err_id}"
     return result
@@ -217,19 +212,19 @@ def search_hash(file_hash, *args, **kwargs):
         for s in db.split("|"):
             if s.startswith("x."):
                 ext_list.append(s)
-            elif hash_type(file_hash) != "invalid":
+            elif hash_type(file_hash) != "invalid" and s in sources:
                 # internal db queries only support subset of hashes
                 db_list.append(s)
     else:
         db_list = sources.keys()
-        ext_list = [s.name for s in external_sources]
+        ext_list = [f"x.{s.name}" for s in external_sources]
 
     # validate what sources the user is allowed to submit requests to.
     # this must first be checked against what systems the user is allowed to see
     # additional file hash level checking is then done later to provide feedback to user
     ext = [
-        x for x in external_sources
-        if x.name in ext_list and Classification.is_accessible(user["classification"], x.classification)
+        s for s in external_sources
+        if f"x.{s.name}" in ext_list and Classification.is_accessible(user["classification"], s.classification)
     ]
 
     total_sources = len(ext) + len(db_list)
@@ -245,7 +240,7 @@ def search_hash(file_hash, *args, **kwargs):
                 hash_classification=hash_classification,
                 timeout=max(0, max_timeout - 0.5),
                 limit=limit,
-            ): source.name
+            ): f"x.{source.name}"
             for source in ext
         }
 
@@ -260,7 +255,7 @@ def search_hash(file_hash, *args, **kwargs):
         }
 
     status_code = 200
-    error = ""
+    error = None
     # if any successful results at all are given we should return a success 200.
     # otherwise, if ALL results are 404s we should return a 404,
     # else fallback to return a generic server error
@@ -269,7 +264,7 @@ def search_hash(file_hash, *args, **kwargs):
         # remove error message for Hash Not Found
         for r in res:
             if r["error"] == HNF:
-                r["error"] = ""
+                r["error"] = None
     elif not results or all({s["error"] == HNF for s in res}):
         status_code = 404
         error = HNF
@@ -303,6 +298,6 @@ def list_data_sources(*args, **kwargs):
     Result example:
     [ <list of sources> ]
     """
-    src = [s.name for s in external_sources]
+    src = [f"x.{s.name}" for s in external_sources]
     src.extend(sources.keys())
     return make_api_response(sorted(src))
