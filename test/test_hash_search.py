@@ -231,11 +231,12 @@ def mock_get(mocker):
 
 
 # noinspection PyUnusedLocal
-def test_list_data_sources(datastore, login_session):
-    _, session, host = login_session
+def test_list_data_sources(datastore, user_login_session):
+    _, client = user_login_session
 
-    resp = get_api_data(session, f"{host}/api/v4/hash_search/list_data_sources/")
-    assert resp == sorted(['al', 'alert', 'x.malware_bazaar', 'x.virustotal'])
+    resp = client.get("/api/v4/hash_search/list_data_sources/")
+    data = resp.json["api_response"]
+    assert data == sorted(['al', 'alert', 'x.malware_bazaar', 'x.virustotal'])
 
 
 # noinspection PyUnusedLocal
