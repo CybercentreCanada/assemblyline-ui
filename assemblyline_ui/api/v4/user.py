@@ -180,7 +180,7 @@ def who_am_i(**kwargs):
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
             "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []],
-            "url_egress_proxies": list(config.ui.url_egress_proxies.keys())
+            "url_egress_proxies": list(config.ui.url_egress_proxies.keys()) if config.ui.url_egress_proxies else []
         },
         "user": {
             "api_priv_map": API_PRIV_MAP,
