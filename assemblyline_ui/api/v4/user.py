@@ -179,7 +179,8 @@ def who_am_i(**kwargs):
             "services_feed": config.ui.services_feed,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
-            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
+            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []],
+            "url_egress_proxies": list(config.ui.url_egress_proxies.keys())
         },
         "user": {
             "api_priv_map": API_PRIV_MAP,

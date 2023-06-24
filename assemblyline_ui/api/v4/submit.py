@@ -234,6 +234,7 @@ def submit(**kwargs):
 
       // OPTIONAL VALUES
       "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
+      "proxy": "CA"               # Name of proxy to egress from for URL-based submissions
 
       "metadata": {               # Submission metadata
         "key": val,                 # Key/Value pair metadata values
@@ -408,8 +409,10 @@ def submit(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
+                    proxy_name = data.get("proxy", None)
+                    proxies = config.ui.url_egress_proxies.get(proxy_name, config.ui.url_submission_proxies)
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                                    proxies=config.ui.url_submission_proxies,
+                                                    proxies=proxies,
                                                     timeout=config.ui.url_submission_timeout,
                                                     verify=False, ignore_size=s_params.get('ignore_size', False))
                     if url_history is None:
