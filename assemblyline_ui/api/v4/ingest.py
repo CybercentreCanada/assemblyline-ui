@@ -137,6 +137,7 @@ def ingest_single_file(**kwargs):
 
      //OPTIONAL VALUES
      "name": "file.exe",             # Name of the file
+     "proxy": "CA"                   # Name of proxy to egress from for URL-based submissions
 
      "metadata": {                   # Submission Metadata
          "key": val,                    # Key/Value pair for metadata parameters
@@ -317,8 +318,10 @@ def ingest_single_file(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
+                    proxy_name = data.get("proxy", None)
+                    proxies = config.ui.url_egress_proxies.get(proxy_name, config.ui.url_submission_proxies)
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                                    proxies=config.ui.url_submission_proxies,
+                                                    proxies=proxies,
                                                     timeout=config.ui.url_submission_timeout, verify=False,
                                                     ignore_size=s_params.get('ignore_size', False))
                     if url_history is None:
