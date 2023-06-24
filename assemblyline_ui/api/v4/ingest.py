@@ -318,8 +318,10 @@ def ingest_single_file(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
-                    proxy_name = data.get("proxy", None)
-                    proxies = config.ui.url_egress_proxies.get(proxy_name, config.ui.url_submission_proxies)
+                    proxies = config.ui.url_submission_proxies
+                    if config.ui.url_egress_proxies:
+                        proxy_name = data.get("proxy", None)
+                        proxies = config.ui.url_egress_proxies.get(proxy_name) or proxies
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
                                                     proxies=proxies,
                                                     timeout=config.ui.url_submission_timeout, verify=False,
