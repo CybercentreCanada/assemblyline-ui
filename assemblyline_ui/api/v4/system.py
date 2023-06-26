@@ -648,7 +648,7 @@ def put_post_processing_actions(**_):
     try:
         actions_data = yaml.safe_load(actions)
         if not isinstance(actions_data, dict):
-            raise ValueError("Unexpected input: " + actions)
+            raise ValueError("Unexpected input: " + actions + ';' + actions_data)
     except Exception as e:
         return make_api_response({'success': False}, f"Invalid post processing actions file submitted: {str(e)}", 400)
 
