@@ -10,6 +10,7 @@ import yara
 import yaml
 
 from assemblyline.common import forge
+from assemblyline.common.constants import CONFIG_HASH, POST_PROCESS_CONFIG_KEY
 from assemblyline.common.digests import get_sha256_for_file
 from assemblyline.common.identify_defaults import magic_patterns, trusted_mimes
 from assemblyline.common.postprocess import SubmissionFilter
@@ -35,6 +36,7 @@ constants = forge.get_constants()
 event_sender = EventSender('system',
                            host=config.core.redis.nonpersistent.host,
                            port=config.core.redis.nonpersistent.port)
+config_hash = Hash(CONFIG_HASH, redis_persistent)
 
 PREPARED_POSTPROCESSING_ACTIONS = {
     key: rule.as_primitives()
@@ -606,6 +608,12 @@ def get_post_processing_actions(**_):
     """
     default = request.args.get('default', 'false').lower() in ['true', '']
     if not default:
+        # Try loading information from redis
+        data = config_hash.get(POST_PROCESS_CONFIG_KEY)
+        if data:
+            return make_api_response(data)
+
+        # Fall back to legacy storage
         with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
             try:
                 cached_rules = cache.get('postprocess_actions')
@@ -670,11 +678,12 @@ def put_post_processing_actions(**_):
                 status_code=400
             )
 
+    # Save data
+    config_hash.set(POST_PROCESS_CONFIG_KEY, actions)
+
+    # Clean up legacy data
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
-        if parsed_rules == DEFAULT_POSTPROCESS_ACTIONS:
-            cache.delete('postprocess_actions')
-        else:
-            cache.save('postprocess_actions', actions, ttl=ADMIN_FILE_TTL, force=True)
+        cache.delete('postprocess_actions')
 
     # Notify components watching to reload file
     event_sender.send('postprocess', 'rules')
