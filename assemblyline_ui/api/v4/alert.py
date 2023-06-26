@@ -31,6 +31,7 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
         operations.append((STORAGE.alert.UPDATE_APPEND, 'events', AlertEvent({
             'entity_type': 'user',
             'entity_id': user_id,
+            'entity_name': STORAGE.user.get(user_id).name,
             'status': status,
             'priority': priority,
             'labels': labels or None,

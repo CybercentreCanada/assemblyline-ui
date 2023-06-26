@@ -30,6 +30,7 @@ def get_alert_update_ops(workflow: Workflow):
                            Event({
                                "entity_type": "workflow",
                                "entity_id": workflow.workflow_id,
+                               "entity_name": workflow.name,
                                "priority": workflow.priority,
                                "status": workflow.status,
                                "labels": workflow.labels or None,
