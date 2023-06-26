@@ -638,12 +638,12 @@ def put_post_processing_actions(**_):
     None
 
     Data Block:
-    JSON dictionary of PostprocessingAction.
+    YAML dictionary of PostprocessingAction.
 
     Result example:
     {"success": True}
     """
-    actions = request.json.encode('utf-8')
+    actions = request.data.decode()
 
     try:
         actions_data = yaml.safe_load(actions)
