@@ -36,7 +36,7 @@ constants = forge.get_constants()
 event_sender = EventSender('system',
                            host=config.core.redis.nonpersistent.host,
                            port=config.core.redis.nonpersistent.port)
-config_hash = Hash(CONFIG_HASH, redis_persistent)
+config_hash: Hash[str] = Hash(CONFIG_HASH, redis_persistent)
 
 PREPARED_POSTPROCESSING_ACTIONS = {
     key: rule.as_primitives()
@@ -647,6 +647,8 @@ def put_post_processing_actions(**_):
 
     try:
         actions_data = yaml.safe_load(actions)
+        if not isinstance(actions_data, dict):
+            raise ValueError("Unexpected input: " + actions)
     except Exception as e:
         return make_api_response({'success': False}, f"Invalid post processing actions file submitted: {str(e)}", 400)
 
