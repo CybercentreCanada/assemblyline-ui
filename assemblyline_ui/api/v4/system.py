@@ -638,12 +638,12 @@ def put_post_processing_actions(**_):
     None
 
     Data Block:
-    YAML dictionary of PostprocessingAction.
+    string encoded YAML dictionary of PostprocessingAction.
 
     Result example:
     {"success": True}
     """
-    actions = request.data.decode()
+    actions = request.json.encode('utf-8')
 
     try:
         actions_data = yaml.safe_load(actions)
@@ -681,7 +681,7 @@ def put_post_processing_actions(**_):
             )
 
     # Save data
-    config_hash.set(POST_PROCESS_CONFIG_KEY, actions)
+    config_hash.set(POST_PROCESS_CONFIG_KEY, actions.decode())
 
     # Clean up legacy data
     with forge.get_cachestore('system', config=config, datastore=STORAGE) as cache:
