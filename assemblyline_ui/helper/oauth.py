@@ -20,7 +20,7 @@ def reorder_name(name):
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
     email_adr = None
-    for email_key in ['email', 'emails', 'extension_selectedEmailAddress', 'otherMails', 'preferred_username', 'upn']:
+    for email_key in provider.email_fields:
         email_adr = profile.get(email_key, None)
         if email_adr:
             break
@@ -42,7 +42,7 @@ def parse_profile(profile, provider):
         uname = random_user(digits=provider.uid_randomize_digits, delimiter=provider.uid_randomize_delimiter)
     else:
         # Generate it from email address
-        uname = profile.get('uname', email_adr)
+        uname = profile.get(provider.username_field, email_adr)
 
         # 1. Use provided regex matcher
         if uname is not None and uname == email_adr and provider.uid_regex:
