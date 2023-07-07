@@ -11,7 +11,7 @@ from flask import session as flsk_session
 from io import BytesIO
 from passlib.hash import bcrypt
 from urllib.parse import urlparse
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
@@ -295,7 +295,7 @@ def get_reset_link(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     email = data.get('email', None)
@@ -343,7 +343,7 @@ def login(**_):
     """
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     user = data.get('user', None)
@@ -671,7 +671,7 @@ def reset_pwd(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     reset_id = data.get('reset_id', None)
@@ -786,7 +786,7 @@ def signup(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     uname = data.get('user', None)
@@ -879,7 +879,7 @@ def signup_validate(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     registration_key = data.get('registration_key', None)
