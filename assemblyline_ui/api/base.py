@@ -1,4 +1,5 @@
 
+from urllib.parse import quote
 import elasticapm
 import functools
 import hashlib
@@ -217,10 +218,13 @@ def make_file_response(data, name, size, status_code=200, content_type="applicat
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
+    filename = f"UTF-8''{quote(safe_str(name), safe='')}"
+
     response = make_response(data, status_code)
     response.headers["Content-Type"] = content_type
     response.headers["Content-Length"] = size
-    response.headers["Content-Disposition"] = 'attachment; filename="%s"' % safe_str(name)
+    response.headers["Content-Disposition"] = f"attachment; filename=file.bin; filename*={filename}"
+
     return response
 
 
@@ -241,9 +245,10 @@ def stream_file_response(reader, name, size, status_code=200):
             yield data
         reader.close()
 
-    headers = {"Content-Type": 'application/octet-stream',
-               "Content-Length": size,
-               "Content-Disposition": 'attachment; filename="%s"' % safe_str(name)}
+    filename = f"UTF-8''{quote(safe_str(name), safe='')}"
+
+    headers = {"Content-Type": 'application/octet-stream', "Content-Length": size,
+               "Content-Disposition": f"attachment; filename=file.bin; filename*={filename}"}
     return Response(generate(), status=status_code, headers=headers)
 
 
