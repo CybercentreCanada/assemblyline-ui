@@ -108,7 +108,7 @@ def parse_profile(profile, provider):
                 # Append user type from matching patterns
                 elif auto_prop.type == "type":
                     if re.match(auto_prop.pattern, value):
-                        user_type = auto_prop.value
+                        user_type.extend(auto_prop.value)
                         break
 
                 # Append roles from matching patterns
