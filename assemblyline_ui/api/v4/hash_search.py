@@ -164,7 +164,7 @@ def search_hash(file_hash, *args, **kwargs):
 
     Arguments:(optional)
     db               => | separated list of data sources, external sources are prefixed with `x.`
-    classification   => Classification of the tag [Default: minimum configured classification]
+    classification   => Classification of the tag [Default: Submitter's maximum allowed classification]
     max_timeout      => Maximum execution time for the call in seconds [Default: 3]
     limit            => limit the amount of returned results counted per source [Default: 500]
 
@@ -196,7 +196,9 @@ def search_hash(file_hash, *args, **kwargs):
     if not submitted_hash_type:
         return make_api_response("", f"Invalid hash. This API only supports {', '.join(HASH_MAP.keys())}.", 400)
 
-    hash_classification = request.args.get("classification", Classification.UNRESTRICTED)
+    # default to the submitters classification to prevent accidental data leak by forgetting to set a classification
+    # but also allowing classification to be optional for when classification engine is disabled.
+    hash_classification = request.args.get("classification", user["classification"])
     limit = request.args.get("limit", "500")
     max_timeout = request.args.get('max_timeout', "3")
     # noinspection PyBroadException
