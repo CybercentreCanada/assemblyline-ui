@@ -21,6 +21,7 @@ def test_client():
 @pytest.fixture()
 def mock_lookup_exists(mocker):
     """Mock response for a generic lookup that exists."""
+
     def _mock_lookup_exists(
         *,
         last_analysis_stats={
@@ -31,10 +32,11 @@ def mock_lookup_exists(mocker):
             "suspicious": 0,
             "timeout": 0,
             "type-unsupported": 0,
-            "undetected": 2
+            "undetected": 2,
         },
+        sandboxes=None,
+        threat_classifications=None,
     ):
-
         # create the default result
         r = {
             "data": {
@@ -43,6 +45,10 @@ def mock_lookup_exists(mocker):
                 },
             },
         }
+        if sandboxes:
+            r["data"]["attributes"]["sandbox_verdicts"] = sandboxes
+        if threat_classifications:
+            r["data"]["attributes"]["popular_threat_classification"] = threat_classifications
 
         mock_response = mocker.MagicMock()
         mock_response.status_code = 200
@@ -191,18 +197,44 @@ def test_error_conditions(test_client, mocker):
 
 def test_detailed_malicious(test_client, mock_lookup_exists):
     """Test getting details for a valid tag that is found and is malicious."""
-    data = mock_lookup_exists()
+    sandboxes = {
+        "VMRay": {
+            "category": "malicious",
+            "sandbox_name": "VMRay",
+            "malware_classification": ["MALWARE"],
+        },
+        "Yomi Hunter": {
+            "category": "harmless",
+            "sandbox_name": "Yomi Hunter",
+            "malware_classification": ["CLEAN"],
+        },
+    }
+    threat_classifications = {
+        "suggested_threat_label": "trojan.w97m/rtfobfustream",
+        "popular_threat_category": [{"count": 15, "value": "trojan"}],
+        "popular_threat_name": [
+            {"count": 3, "value": "w97m"},
+            {"count": 2, "value": "rtfobfustream"},
+            {"count": 2, "value": "pfkno"},
+        ],
+    }
+    data = mock_lookup_exists(sandboxes=sandboxes, threat_classifications=threat_classifications)
 
     rsp = test_client.get(f"/details/sha256/{'a' * 64}/")
     expected = {
         "api_error_message": "",
-        "api_response": [{
-            "classification": "TLP:CLEAR",
-            "description": "VirusTotal submission result.",
-            "confirmed": False,
-            "malicious": True,
-            "data": data,
-        }],
+        "api_response": [
+            {
+                "classification": "TLP:CLEAR",
+                "description": (
+                    "3 security vendors and 1 sandboxes flagged this as malicious. Threat label: "
+                    "trojan.w97m/rtfobfustream. Threat categories: trojan. Family labels: w97m, rtfobfustream, pfkno."
+                ),
+                "confirmed": False,
+                "malicious": True,
+                "data": data,
+            }
+        ],
         "api_status_code": 200,
     }
 
@@ -221,20 +253,22 @@ def test_detailed_not_malicious(test_client, mock_lookup_exists):
             "suspicious": 1,
             "timeout": 0,
             "type-unsupported": 0,
-            "undetected": 2
+            "undetected": 2,
         }
     )
 
     rsp = test_client.get(f"/details/sha256/{'a' * 64}/")
     expected = {
         "api_error_message": "",
-        "api_response": [{
-            "classification": "TLP:CLEAR",
-            "description": "VirusTotal submission result.",
-            "confirmed": False,
-            "malicious": False,
-            "data": data,
-        }],
+        "api_response": [
+            {
+                "classification": "TLP:CLEAR",
+                "description": "0 security vendors flagged this as malicious.",
+                "confirmed": False,
+                "malicious": False,
+                "data": data,
+            }
+        ],
         "api_status_code": 200,
     }
 
