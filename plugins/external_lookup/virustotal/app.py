@@ -25,17 +25,20 @@ API_URL = os.environ.get("API_URL", "https://www.virustotal.com/api/v3")  # over
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://www.virustotal.com/gui/search")  # override in case of mirror
 
 # Mapping of AL tag names to external systems "tag" names
-TAG_MAPPING = os.environ.get("TAG_MAPPING", {
-    "md5": "files",
-    "sha1": "files",
-    "sha256": "files",
-    "network.dynamic.domain": "domains",
-    "network.static.domain": "domains",
-    "network.dynamic.ip": "ip_addresses",
-    "network.static.ip": "ip_addresses",
-    "network.dynamic.uri": "urls",
-    "network.static.uri": "urls",
-})
+TAG_MAPPING = os.environ.get(
+    "TAG_MAPPING",
+    {
+        "md5": "files",
+        "sha1": "files",
+        "sha256": "files",
+        "network.dynamic.domain": "domains",
+        "network.static.domain": "domains",
+        "network.dynamic.ip": "ip_addresses",
+        "network.static.ip": "ip_addresses",
+        "network.dynamic.uri": "urls",
+        "network.static.uri": "urls",
+    },
+)
 if not isinstance(TAG_MAPPING, dict):
     TAG_MAPPING = json.loads(TAG_MAPPING)
 
@@ -43,11 +46,13 @@ if not isinstance(TAG_MAPPING, dict):
 def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
     """Create a standard response for this API."""
     return make_response(
-        jsonify({
-            "api_response": data,
-            "api_error_message": err,
-            "api_status_code": status_code,
-        }),
+        jsonify(
+            {
+                "api_response": data,
+                "api_error_message": err,
+                "api_status_code": status_code,
+            }
+        ),
         status_code,
     )
 
@@ -135,11 +140,13 @@ def search_tag(tag_name: str, tag: str) -> Response:
     # to vt that it hasn't seen before, it will start a new scan of that url
     # note: tag must be double url encoded, and include encoding of `/` for URLs to search correctly.
     search_encoded_tag = ul.quote(ul.quote(tag, safe=""), safe="")
-    return make_api_response({
-        "link": f"{FRONTEND_URL}/{search_encoded_tag}",
-        "count": 1,  # url/domain/file/ip searches only return a single result/report
-        "classification": CLASSIFICATION,
-    })
+    return make_api_response(
+        {
+            "link": f"{FRONTEND_URL}/{search_encoded_tag}",
+            "count": 1,  # url/domain/file/ip searches only return a single result/report
+            "classification": CLASSIFICATION,
+        }
+    )
 
 
 @app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
@@ -181,17 +188,45 @@ def tag_details(tag_name: str, tag: str) -> Response:
     data = lookup_tag(tag_name=tag_name, tag=tag, timeout=max_timeout)
     if isinstance(data, Response):
         return data
+    attrs = data.get("attributes", {})
+
+    # only available for hash lookups
+    sandboxes = 0
+    for results in attrs.get("sandbox_verdicts", {}).values():
+        if results.get("category", "") == "malicious":
+            sandboxes += 1
+    threats = attrs.get("popular_threat_classification")
+    threat_info = []
+    if threats:
+        label = threats.get("suggested_threat_label")
+        if label:
+            threat_info.append(f"Threat label: {label}")
+        categories = threats.get("popular_threat_category", [])
+        if categories:
+            cats = ", ".join(cat["value"] for cat in categories)
+            threat_info.append(f"Threat categories: {cats}")
+        names = threats.get("popular_threat_name", [])
+        if names:
+            families = ", ".join(name["value"] for name in names)
+            threat_info.append(f"Family labels: {families}")
+    threat = ". ".join(threat_info)
+
+    # construct a useful description based on available summary info
+    vendors = attrs.get("last_analysis_stats", {}).get("malicious", 0)
+    description = f"{vendors} security vendors"
+    if sandboxes:
+        description += f" and {sandboxes} sandboxes"
+    description += " flagged this as malicious."
+    if threat:
+        description += f" {threat}."
 
     r = {
-        "data": data,
         "classification": CLASSIFICATION,
-        "description": "VirusTotal submission result.",
         "confirmed": False,  # virustotal does not offer a confirmed property
+        "data": data,
+        "description": description,
+        "malicious": True if vendors > 0 else False,
     }
-    malicious = False
-    if data.get("attributes", {}).get("last_analysis_stats", {}).get("malicious", 0) > 0:
-        malicious = True
-    r["malicious"] = malicious
 
     return make_api_response([r])
 
