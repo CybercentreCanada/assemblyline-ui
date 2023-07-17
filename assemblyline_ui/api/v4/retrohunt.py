@@ -1,13 +1,14 @@
-import hauntedhouse
 import typing
-from flask import request
 
+import hauntedhouse
 from assemblyline.common.chunk import chunk
-from assemblyline.odm.models.user import ROLES
-from assemblyline.odm.models.retrohunt import Retrohunt
 from assemblyline.datastore.collection import Index
+from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.retrohunt import Retrohunt
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config, CLASSIFICATION
+from assemblyline_ui.config import CLASSIFICATION, STORAGE, config
+from flask import request
 
 SUB_API = 'retrohunt'
 retrohunt_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -32,30 +33,95 @@ def is_finished(result):
     return False
 
 
+def get_hits(selected_hashes: list = []):
+    fields = ["hits.offset", "hits.rows", "hits.sort", "hits.fl", 'hits.track_total_hits']
+
+    if request.method == "POST":
+        req_data = request.json
+    else:
+        req_data = request.args
+
+    params = {k.rpartition('hits.')[2]: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+
+    params.setdefault('offset', '0')
+    params.setdefault('rows', '20')
+    params.setdefault('sort', 'seen.last desc')
+
+    # use_archive = req_data.get('hits.use_archive', False)
+    # archive_only = req_data.get('hits.archive_only', False)
+    # if archive_only:
+    #     params['index_type'] = Index.ARCHIVE
+    # elif use_archive:
+    #     params['index_type'] = Index.HOT_AND_ARCHIVE
+    # else:
+    #     params['index_type'] = Index.HOT
+
+    params['index_type'] = Index.HOT_AND_ARCHIVE
+    params['as_obj'] = False
+
+    try:
+        return STORAGE.file.multiget_search(selected_hashes, **params)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
+
+
+def get_errors(errors: list):
+
+    if request.method == "POST":
+        req_data = request.json
+    else:
+        req_data = request.args
+
+    offset = int(req_data.get('errors.offset', 0))
+    rows = int(req_data.get('errors.rows', 20))
+
+    if (errors is None):
+        return {
+            'offset': offset,
+            'rows': rows,
+            'total': None,
+            'items': []
+        }
+    else:
+        return {
+            'offset': offset,
+            'rows': rows,
+            'total': len(errors),
+            'items': errors[offset:offset + rows]
+        }
+
+
 def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.SearchStatus], datastore_result: dict,
-                                 user_access, offset=0, rows=50):
+                                 user_access):
+    # Get the appropriate data from the sources
     if api_result:
-        selected_hashes = api_result.hits[offset:offset+rows]
+        selected_hashes = api_result.hits
         errors = api_result.errors
         truncated = api_result.truncated
         total_hits = len(api_result.hits)
         phase = api_result.phase
         progress = api_result.progress
     else:
-        selected_hashes = datastore_result['hits'][offset:offset+rows]
+        selected_hashes = datastore_result['hits']
         errors = datastore_result['errors']
         truncated = datastore_result['truncated']
         total_hits = datastore_result['total_hits']
         phase = 'finished'
         progress = (1, 1)
 
+    # Get the hits' file information
+    hits = get_hits(selected_hashes)
+
+    # Get the errors sliced
+    errors = get_errors(errors)
     # supplement file information
-    hits = []
-    for batch in chunk(selected_hashes, 1000):
-        for doc in STORAGE.file.multiget(batch, as_obj=False, error_on_missing=False,
-                                         as_dictionary=False, index_type=Index.HOT_AND_ARCHIVE):
-            if CLASSIFICATION.is_accessible(user_access, doc['classification']):
-                hits.append(doc)
+
+    # hits = []
+    # for batch in chunk(selected_hashes, 1000):
+    #     for doc in STORAGE.file.multiget(batch, as_obj=False, error_on_missing=False,
+    #                                      as_dictionary=False, index_type=Index.HOT_AND_ARCHIVE):
+    #         if CLASSIFICATION.is_accessible(user_access, doc['classification']):
+    #             hits.append(doc)
 
     # Mix togeather the documents from the two information sources
     datastore_result.update({
@@ -126,10 +192,10 @@ def create(**kwargs):
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification'], offset=0, rows=100))
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
 
 
-@retrohunt_api.route("/<code>/", methods=["GET"])
+@retrohunt_api.route("/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def detail(code, **kwargs):
     """
@@ -160,8 +226,6 @@ def detail(code, **kwargs):
         truncated           => boolean has the list of hits been truncated at some limit
     """
     user = kwargs['user']
-    offset = int(request.args.get('offset', '0'))
-    rows = int(request.args.get('rows', '50'))
 
     # Make sure retrohunt is configured
     if haunted_house_client is None:
@@ -188,5 +252,4 @@ def detail(code, **kwargs):
             doc['finished'] = True
             STORAGE.retrohunt.save(code, doc)
 
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification'],
-                                                          offset=offset, rows=rows))
+    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
