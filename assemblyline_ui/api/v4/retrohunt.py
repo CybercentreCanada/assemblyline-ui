@@ -1,7 +1,7 @@
+import re
 import typing
 
 import hauntedhouse
-from assemblyline.common.chunk import chunk
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.retrohunt import Retrohunt
@@ -33,8 +33,8 @@ def is_finished(result):
     return False
 
 
-def get_hits(selected_hashes: list = []):
-    fields = ["hits.offset", "hits.rows", "hits.sort", "hits.fl", 'hits.track_total_hits']
+def get_hits(ids: list = [], user=None):
+    fields = ["hits.query", "hits.offset", "hits.rows", "hits.sort", "hits.fl", "hits.filters", 'hits.track_total_hits']
 
     if request.method == "POST":
         req_data = request.json
@@ -43,9 +43,13 @@ def get_hits(selected_hashes: list = []):
 
     params = {k.rpartition('hits.')[2]: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
 
+    params.setdefault('query', '*')
     params.setdefault('offset', '0')
     params.setdefault('rows', '20')
     params.setdefault('sort', 'seen.last desc')
+
+    if (user is not None):
+        params.update({'access_control': user['access_control']})
 
     # use_archive = req_data.get('hits.use_archive', False)
     # archive_only = req_data.get('hits.archive_only', False)
@@ -60,7 +64,7 @@ def get_hits(selected_hashes: list = []):
     params['as_obj'] = False
 
     try:
-        return STORAGE.file.multiget_search(selected_hashes, **params)
+        return STORAGE.file.multiget_search(ids, **params)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
@@ -74,6 +78,20 @@ def get_errors(errors: list):
 
     offset = int(req_data.get('errors.offset', 0))
     rows = int(req_data.get('errors.rows', 20))
+
+    query = req_data.get('errors.query', ".*")
+    try:
+        p = re.compile(query)
+        errors = [error for error in errors if p.match(error)]
+    except re.error:
+        errors = errors
+
+    sort = req_data.get('errors.sort', None)
+    if sort is not None:
+        if 'asc' in sort.lower():
+            errors.sort()
+        elif 'desc' in sort.lower():
+            errors.sort(reverse=True)
 
     if (errors is None):
         return {
@@ -92,7 +110,7 @@ def get_errors(errors: list):
 
 
 def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.SearchStatus], datastore_result: dict,
-                                 user_access):
+                                 user):
     # Get the appropriate data from the sources
     if api_result:
         selected_hashes = api_result.hits
@@ -110,7 +128,7 @@ def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.Search
         progress = (1, 1)
 
     # Get the hits' file information
-    hits = get_hits(selected_hashes)
+    hits = get_hits(ids=selected_hashes, user=user)
 
     # Get the errors sliced
     errors = get_errors(errors)
@@ -192,7 +210,7 @@ def create(**kwargs):
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
+    return make_api_response(prepare_search_result_detail(status, doc, user))
 
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
@@ -252,4 +270,4 @@ def detail(code, **kwargs):
             doc['finished'] = True
             STORAGE.retrohunt.save(code, doc)
 
-    return make_api_response(prepare_search_result_detail(status, doc, user['classification']))
+    return make_api_response(prepare_search_result_detail(status, doc, user))
