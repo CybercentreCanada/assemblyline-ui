@@ -277,10 +277,10 @@ def detail(code, **kwargs):
 @api_login(require_role=[ROLES.retrohunt_view])
 def hits(code, **kwargs):
     """
-    Get details about a completed or in progress retrohunt search.
+    Get hit results of a retrohunt job completed or in progress.
 
     Variables:
-        code                    => Search code to be retrieved
+        code                    =>  Search code to be retrieved
 
     Optional Arguments:
         query                   =>  Query to filter the file list
@@ -393,3 +393,91 @@ def hits(code, **kwargs):
         return make_api_response(STORAGE.file.search(**params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
+
+
+@retrohunt_api.route("/errors/<code>/", methods=["GET", "POST"])
+@api_login(require_role=[ROLES.retrohunt_view])
+def errors(code, **kwargs):
+    """
+    Get errors of a retrohunt job completed or in progress.
+
+    Variables:
+        code                    =>  Search code to be retrieved
+
+    Optional Arguments:
+        offset                  =>  Offset at which we start giving files
+        rows                    =>  Numbers of files to return
+        sort                    =>  How to sort the errors
+
+    Data Block (POST ONLY):
+    {
+        "offset": 0,            #   Offset in the errors
+        "rows": 100,            #   Max number of errors
+        "sort": "asc",          #   How to sort the errors
+    }
+
+    Response Fields:
+    {
+        "total": 200,           # Total errors found
+        "offset": 0,            # Offset in the error list
+        "rows": 100,            # Number of errors returned
+        "items": [              # List of errors
+            "File not available: channel closed",
+            ...
+        ]
+    }
+    """
+    user = kwargs['user']
+
+    # Make sure retrohunt is configured
+    if haunted_house_client is None:
+        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+
+    # Fetch the retrohunt job from elasticsearch
+    doc = STORAGE.retrohunt.get(code, as_obj=False)
+
+    # Make sure the user has the right classification to access this retrohunt job
+    if doc is None:
+        return make_api_response({}, err="Not Found.", status_code=404)
+    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+        return make_api_response({}, err="Access denied.", status_code=403)
+
+    # Get status information from retrohunt server
+    status = None
+    if not doc.get('finished'):
+        user = kwargs['user']
+        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
+
+        if is_finished(status):
+            doc['errors'] = status.errors
+            STORAGE.retrohunt.save(code, doc)
+
+    if request.method == "POST":
+        req_data = request.json
+    else:
+        req_data = request.args
+
+    offset = int(req_data.get('offset', 0))
+    rows = int(req_data.get('rows', 20))
+
+    sort = req_data.get('sort', None)
+    if sort is not None:
+        if 'asc' in sort.lower():
+            errors.sort()
+        elif 'desc' in sort.lower():
+            errors.sort(reverse=True)
+
+    if doc['errors'] is None:
+        return {
+            'offset': offset,
+            'rows': rows,
+            'total': None,
+            'items': []
+        }
+    else:
+        return {
+            'offset': offset,
+            'rows': rows,
+            'total': len(doc['errors']),
+            'items': doc['errors'][offset:offset + rows]
+        }
