@@ -217,31 +217,37 @@ def create(**kwargs):
 @api_login(require_role=[ROLES.retrohunt_view])
 def detail(code, **kwargs):
     """
-    Get details about a completed or in progress retrohunt search.
+    Get the details of a completed or an in progress retrohunt search.
 
     Variables:
         code                => Search code to be retrieved
 
-    Parameters:
-        offset              => how far into the hit set to return details for
-        rows                => how many rows to return details for
-
     Response Fields:
-        code                => unique code identifying this search request
-        creator             => user who created this search
-        tags                => tags describing this search
-        description         => human readable description of search
-        created             => timestamp when search started
-        classification      => classification string for search and results list
-        yara_signature      => text of original yara signature run
-        raw_query           => text of filter query derived from yara signature
+    {
+        "classification": "TLP:WHITE",              #   Classification string for search and results list
+        "code": "0x",                               #   Unique code identifying this search request
+        "created": "2023-01-01T00:00:00.000000Z",   #   Timestamp when search started
+        "creator": "admin",                         #   User who created this search
+        "description": "This is the description",   #   Human readable description of search
+        "finished": True,                           #   Boolean indicating if the search is finished
+        "id": "0x",                                 #   Unique code identifying this search request
+        "phase": "finished",                        #   Phase the job is on : 'filtering' | 'yara' | 'finished'
+        "pourcentage": 0,                           #   Pourcentage of completion the phase is at
+        "progress": [1, 1],                         #   Progress values when the job is running
+        "raw_query": "(min 1 of (100))",            #   Text of filter query derived from yara signature
+        "tags": {},                                 #   Tags describing this search
+        "total_hits": 100,                          #   Total number of hits when the job first ran
+        "truncated": False,                         #   Boolean has the list of hits been truncated at some limit
+        "yara_signature":   "rule my_rule {\r\n"    #   Text of original yara signature run
+                            "    meta:\r\n"
+                            "        KEY = "VALUE"\r\n"
+                            "    strings:\r\n"
+                            "        $name = "string"\r\n"
+                            "    condition:\r\n"
+                            "        any of them\r\n"
+                            "}"
 
-        errors              => a list of error messages accumulated
-        hits                => list of dicts with information about what the search hit on
-        total_hits
-        offset
-        finished            => boolean indicating if the search is finished
-        truncated           => boolean has the list of hits been truncated at some limit
+    }
     """
     user = kwargs['user']
 
@@ -270,7 +276,36 @@ def detail(code, **kwargs):
             doc['finished'] = True
             STORAGE.retrohunt.save(code, doc)
 
-    return make_api_response(prepare_search_result_detail(status, doc, user))
+    if status is not None:
+        truncated = status.truncated
+        total_hits = len(status.hits)
+        phase = status.phase
+        progress = status.progress
+    else:
+        truncated = doc['truncated']
+        total_hits = doc['total_hits']
+        phase = 'finished'
+        progress = (1, 1)
+
+    pourcentage = 100
+    if phase == 'filtering':
+        pourcentage = 100 * progress[0] / progress[1]
+    elif phase == 'yara':
+        pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
+
+    doc.pop('hits')
+    doc.pop('errors')
+
+    doc.update({
+        'finished': True if status is None else is_finished(status),
+        'phase': phase,
+        'pourcentage': pourcentage,
+        'progress': progress,
+        'total_hits': total_hits,
+        'truncated': truncated,
+    })
+
+    return make_api_response(doc)
 
 
 @retrohunt_api.route("/hits/<code>/", methods=["GET", "POST"])
@@ -297,7 +332,7 @@ def hits(code, **kwargs):
         "rows": 100,            #   Max number of results
         "sort": "field asc",    #   How to sort the results
         "fl": "id,score",       #   List of fields to return
-        "filters": ['fq']       #   List of additional filter queries limit the data
+        "filters": ["fq"]       #   List of additional filter queries limit the data
     }
 
     Response Fields:
@@ -307,28 +342,28 @@ def hits(code, **kwargs):
         "rows": 100,            # Number of results returned
         "items": [              # List of files
             {
-                'classification': 'TLP:CLEAR',
-                'entropy': 0.00,
-                'from_archive': False,
-                'id': '0aa',
-                'is_section_image': False,
-                'label_categories': {
-                    'attribution': [],
-                    'info': [],
-                    'technique': []
+                "classification": "TLP:CLEAR",
+                "entropy": 0.00,
+                "from_archive": False,
+                "id": "0aa",
+                "is_section_image": False,
+                "label_categories": {
+                    "attribution": [],
+                    "info": [],
+                    "technique": []
                 },
-                'labels': [],
-                'md5': '0aa',
-                'seen': {
-                    'count': 1,
-                    'first': '2023-01-01T00:00:00.000000Z',
-                    'last': '2023-01-01T00:00:00.000000Z'
+                "labels": [],
+                "md5": "0aa",
+                "seen": {
+                    "count": 1,
+                    "first": "2023-01-01T00:00:00.000000Z",
+                    "last": "2023-01-01T00:00:00.000000Z"
                 },
-                'sha1': '0aa',
-                'sha256': '0aa',
-                'size': 100,
-                'tlsh': 'T134',
-                'type': 'text/json'
+                "sha1": "0aa",
+                "sha256": "0aa",
+                "size": 100,
+                "tlsh": "T134",
+                "type": "text/json"
             },
             {
                 ...
