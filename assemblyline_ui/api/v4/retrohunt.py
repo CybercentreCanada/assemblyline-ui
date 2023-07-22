@@ -156,7 +156,7 @@ def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.Search
 
 @retrohunt_api.route("/", methods=["POST"])
 @api_login(require_role=[ROLES.retrohunt_run])
-def create(**kwargs):
+def create_retrohunt_job(**kwargs):
     """
     Create a new search over file storage.
 
@@ -215,7 +215,7 @@ def create(**kwargs):
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def detail(code, **kwargs):
+def get_retrohunt_job_detail(code, **kwargs):
     """
     Get the details of a completed or an in progress retrohunt search.
 
@@ -310,7 +310,7 @@ def detail(code, **kwargs):
 
 @retrohunt_api.route("/hits/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def hits(code, **kwargs):
+def get_retrohunt_job_hits(code, **kwargs):
     """
     Get hit results of a retrohunt job completed or in progress.
 
@@ -393,11 +393,7 @@ def hits(code, **kwargs):
         status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
         if is_finished(status):
-            # doc['truncated'] = status.truncated
             doc['hits'] = status.hits
-            # doc['errors'] = status.errors
-            # doc['total_hits'] = len(status.hits)
-            # doc['finished'] = True
             STORAGE.retrohunt.save(code, doc)
 
     # Get the request parameters and apply the multi_field parameter to it
@@ -432,7 +428,7 @@ def hits(code, **kwargs):
 
 @retrohunt_api.route("/errors/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def errors(code, **kwargs):
+def get_retrohunt_job_errors(code, **kwargs):
     """
     Get errors of a retrohunt job completed or in progress.
 
@@ -492,9 +488,17 @@ def errors(code, **kwargs):
     else:
         req_data = request.args
 
+    errors = doc['errors']
+    if errors is None:
+        return {
+            'offset': offset,
+            'rows': rows,
+            'total': None,
+            'items': []
+        }
+
     offset = int(req_data.get('offset', 0))
     rows = int(req_data.get('rows', 20))
-
     sort = req_data.get('sort', None)
     if sort is not None:
         if 'asc' in sort.lower():
@@ -502,17 +506,9 @@ def errors(code, **kwargs):
         elif 'desc' in sort.lower():
             errors.sort(reverse=True)
 
-    if doc['errors'] is None:
-        return {
-            'offset': offset,
-            'rows': rows,
-            'total': None,
-            'items': []
-        }
-    else:
-        return {
-            'offset': offset,
-            'rows': rows,
-            'total': len(doc['errors']),
-            'items': doc['errors'][offset:offset + rows]
-        }
+    return {
+        'offset': offset,
+        'rows': rows,
+        'total': len(errors),
+        'items': errors[offset:offset + rows]
+    }
