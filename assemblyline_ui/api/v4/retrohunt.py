@@ -489,6 +489,9 @@ def get_retrohunt_job_errors(code, **kwargs):
         req_data = request.args
 
     errors = doc['errors']
+    offset = int(req_data.get('offset', 0))
+    rows = int(req_data.get('rows', 20))
+
     if errors is None:
         return {
             'offset': offset,
@@ -497,8 +500,6 @@ def get_retrohunt_job_errors(code, **kwargs):
             'items': []
         }
 
-    offset = int(req_data.get('offset', 0))
-    rows = int(req_data.get('rows', 20))
     sort = req_data.get('sort', None)
     if sort is not None:
         if 'asc' in sort.lower():
