@@ -239,13 +239,13 @@ def get_retrohunt_job_detail(code, **kwargs):
         "total_hits": 100,                          #   Total number of hits when the job first ran
         "truncated": False,                         #   Boolean has the list of hits been truncated at some limit
         "yara_signature":                           #   Text of original yara signature run
-                            rule my_rule {\r\n
-                                meta:\r\n
-                                    KEY = "VALUE"\r\n
-                                strings:\r\n"
-                                    $name = "string"\r\n
-                                condition:\r\n"
-                                    any of them\r\n
+                            rule my_rule {
+                                meta:
+                                    KEY = "VALUE"
+                                strings:
+                                    $name = "string"
+                                condition:
+                                    any of them
                             }
     }
     """
