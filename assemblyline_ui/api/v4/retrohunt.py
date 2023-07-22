@@ -161,10 +161,10 @@ def create_retrohunt_job(**kwargs):
     Create a new search over file storage.
 
     Arguments:
-        yara_signature => yara signature to search with
-        archive_only => Should the search only be run on archived files
-        description => Textual description of this search
-        classification => Classification level for the search
+        yara_signature  => yara signature to search with
+        archive_only    => Should the search only be run on archived files
+        description     => Textual description of this search
+        classification  => Classification level for the search
 
     Response should always be the same as polling the details of the search.
     """
@@ -238,15 +238,15 @@ def get_retrohunt_job_detail(code, **kwargs):
         "tags": {},                                 #   Tags describing this search
         "total_hits": 100,                          #   Total number of hits when the job first ran
         "truncated": False,                         #   Boolean has the list of hits been truncated at some limit
-        "yara_signature":   "rule my_rule {\r\n"    #   Text of original yara signature run
-                            "    meta:\r\n"
-                            "        KEY = "VALUE"\r\n"
-                            "    strings:\r\n"
-                            "        $name = "string"\r\n"
-                            "    condition:\r\n"
-                            "        any of them\r\n"
-                            "}"
-
+        "yara_signature":                           #   Text of original yara signature run
+                            rule my_rule {\r\n
+                                meta:\r\n
+                                    KEY = "VALUE"\r\n
+                                strings:\r\n"
+                                    $name = "string"\r\n
+                                condition:\r\n"
+                                    any of them\r\n
+                            }
     }
     """
     user = kwargs['user']
@@ -337,10 +337,10 @@ def get_retrohunt_job_hits(code, **kwargs):
 
     Response Fields:
     {
-        "total": 200,           # Total results found
-        "offset": 0,            # Offset in the result list
-        "rows": 100,            # Number of results returned
-        "items": [              # List of files
+        "total": 200,           #   Total results found
+        "offset": 0,            #   Offset in the result list
+        "rows": 100,            #   Number of results returned
+        "items": [              #   List of files
             {
                 "classification": "TLP:CLEAR",
                 "entropy": 0.00,
@@ -449,10 +449,10 @@ def get_retrohunt_job_errors(code, **kwargs):
 
     Response Fields:
     {
-        "total": 200,           # Total errors found
-        "offset": 0,            # Offset in the error list
-        "rows": 100,            # Number of errors returned
-        "items": [              # List of errors
+        "total": 200,           #   Total errors found
+        "offset": 0,            #   Offset in the error list
+        "rows": 100,            #   Number of errors returned
+        "items": [              #   List of errors
             "File not available: channel closed",
             ...
         ]
