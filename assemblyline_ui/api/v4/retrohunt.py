@@ -512,9 +512,9 @@ def get_retrohunt_job_errors(code, **kwargs):
         elif 'desc' in sort.lower():
             errors.sort(reverse=True)
 
-    return {
+    return make_api_response({
         'offset': offset,
         'rows': rows,
         'total': len(errors),
         'items': errors[offset:offset + rows]
-    }
+    })
