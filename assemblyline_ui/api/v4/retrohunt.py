@@ -237,6 +237,7 @@ def get_retrohunt_job_detail(code, **kwargs):
         "raw_query": "(min 1 of (100))",            #   Text of filter query derived from yara signature
         "tags": {},                                 #   Tags describing this search
         "total_hits": 100,                          #   Total number of hits when the job first ran
+        "total_errors": 80,                         #   Total number of errors encountered during the job
         "truncated": False,                         #   Boolean has the list of hits been truncated at some limit
         "yara_signature":                           #   Text of original yara signature run
                             rule my_rule {
@@ -269,23 +270,26 @@ def get_retrohunt_job_detail(code, **kwargs):
         status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
         if is_finished(status):
-            doc['truncated'] = status.truncated
-            doc['hits'] = status.hits
             doc['errors'] = status.errors
-            doc['total_hits'] = len(status.hits)
             doc['finished'] = True
+            doc['hits'] = status.hits
+            doc['total_errors'] = len(status.errors)
+            doc['total_hits'] = len(status.hits)
+            doc['truncated'] = status.truncated
             STORAGE.retrohunt.save(code, doc)
 
     if status is not None:
-        truncated = status.truncated
-        total_hits = len(status.hits)
         phase = status.phase
         progress = status.progress
+        total_errors = len(status.errors)
+        total_hits = len(status.hits)
+        truncated = status.truncated
     else:
-        truncated = doc['truncated']
-        total_hits = doc['total_hits']
         phase = 'finished'
         progress = (1, 1)
+        total_errors = len(doc['errors'])
+        total_hits = doc['total_hits']
+        truncated = doc['truncated']
 
     pourcentage = 100
     if phase == 'filtering':
@@ -301,6 +305,7 @@ def get_retrohunt_job_detail(code, **kwargs):
         'phase': phase,
         'pourcentage': pourcentage,
         'progress': progress,
+        'total_errors': total_errors,
         'total_hits': total_hits,
         'truncated': truncated,
     })
