@@ -11,7 +11,7 @@ To allow for extended use by non-AL systems, these tag mappings should also be c
 import json
 import os
 
-from flask import Flask, Response, jsonify, make_response
+from flask import Flask, Response, jsonify, make_response, request
 
 app = Flask(__name__)
 
@@ -23,6 +23,9 @@ CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")
 TAG_MAPPING = os.environ.get("TAG_MAPPING", {})
 if not isinstance(TAG_MAPPING, dict):
     TAG_MAPPING = json.loads(TAG_MAPPING)
+# Default settings
+MAX_LIMIT = int(os.environ.get("MAX_LIMIT", 100))
+MAX_TIMEOUT = float(os.environ.get("MAX_TIMEOUT", 3))
 
 
 def make_api_response(data, err: str = "", status_code: int = 200) -> Response:
@@ -47,6 +50,10 @@ def get_tag_names() -> Response:
 def search_tag(tag_name: str, tag: str) -> Response:
     """Define how to lookup a tag in the external system.
 
+    Query Params:
+    max_timeout => Maximum execution time for the call in seconds
+    limit       => Maximum number of items to return
+
     This method should return an api_response containing:
 
         {
@@ -63,12 +70,19 @@ def search_tag(tag_name: str, tag: str) -> Response:
             f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
             422,
         )
+    limit = min(request.args.get("limit", MAX_LIMIT, type=int), MAX_LIMIT)
+    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT, type=float)
     raise NotImplementedError("Not Implemented.")
 
 
 @app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
 def tag_details(tag_name: str, tag: str) -> Response:
     """Define how to search for detailed tag results.
+
+    Query Params:
+    max_timeout => Maximum execution time for the call in seconds
+    limit       => Maximum number of items to return
+    enrich      => If specified, return semi structured Key:Value pairs of additional metadata under "enrichment"
 
     Result output should conform to the following:
     # List of:
@@ -79,6 +93,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
             "confirmed": <bool>,                   # Is the maliciousness attribution confirmed or not
             "data": {...},                         # Additional Raw data
             "classification": <access control>,    # [Optional] Classification of the returned data
+            "enrichment": [{name: <name>, value: <value>}, ...}   # [Optional] list of pairs of additional metadata
         },
         ...,
     ]
@@ -91,6 +106,11 @@ def tag_details(tag_name: str, tag: str) -> Response:
             f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
             422,
         )
+
+    limit = min(request.args.get("limit", MAX_LIMIT, type=int), MAX_LIMIT)
+    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT, type=float)
+    enrich = request.args.get("enrich", "false").lower() in ("true", "1")
+
     raise NotImplementedError("Not Implemented.")
 
 
