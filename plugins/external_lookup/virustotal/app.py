@@ -161,10 +161,12 @@ def tag_details(tag_name: str, tag: str) -> Response:
             "confirmed": <bool>,                   # Is the maliciousness attribution confirmed or not
             "data": {...},                         # Additional Raw data
             "classification": <access control>,    # [Optional] Classification of the returned data
-            "enrichment": {
-                <group>: {<name>: <value>},
-                ...
-            }   # [Optional] groupings of additional metadata
+            "enrichment": [
+                #{"group": <group>, "values": {<name>: [<value>, ...], ...}},
+                #{"group": <group>, "name": <name>, "value": <value>},
+                {"group": <group>, "values": [{"name": <name>, "values": [<value>, ...], ...}]},
+                ...,
+            ]   # [Optional] ordered groupings of additional metadata
         },
         ...,
     ]
@@ -242,33 +244,98 @@ class Enricher():
     """Object to parse and hold enrichment info."""
 
     def __init__(self, data: dict) -> None:
+        self._enrichment = {}
         self.enrichment = []
         self.data = data
         self._enrich()
-        self.enrichment.sort(key=lambda x: x["name"])
+
+        # Convert dict to ordered list as JSON objects are unordered.
+        # (note: As of py3.7 item order for dicts is part of the official language spec so we can rely on insert order)
+        #
+        # convert {<group>: {<name>: [<vals>]}} ->
+        #   {"group": <group>, "values": [{"name": <name>, "values": [<value>]}]}
+        for group, kvals in self._enrichment.items():
+            values = [{"name": name, "values": vals} for name, vals in kvals.items()]
+            self.enrichment.append({"group": group, "values": values})
+
+    # def _add2(
+    #     self,
+    #     group: str,
+    #     name: str,
+    #     key: str = None,
+    #     default=None,
+    #     *,
+    #     label: str = "",
+    #     label_key: str = None,
+    #     value: str = None,
+    #     value_key: Union[str, list] = None,
+    #     is_timestamp: bool = False,
+    #     data: dict = None
+    # ):
+    #     """
+    #     group: enrichment group
+    #     name: enrichment name
+    #     key: key in data to lookup
+    #     default: default value if key doesn't exist (None to ignore)
+    #     label: label to add to the value
+    #     data: data dict to parse instead of top level
+    #     """
+    #     # allow a passed in dict to be parsed instead
+    #     data = data or self.data
+
+    #     # when value is directly given, we don't need to get the value out of a dict
+    #     if value is not None:
+    #         item = value
+    #     else:
+    #         # key defaults to name if not specified.
+    #         if key is None:
+    #             key = name
+    #         item = data.get(key, default)
+    #         if item is None:
+    #             return
+
+    #     items = item
+    #     if not isinstance(item, list):
+    #         items = [item]
+
+    #     for item in items:
+    #         _label = label
+    #         if label_key is not None:
+    #             _label = item.get(label_key, None)
+
+    #         # allow multiple value_keys to be given
+    #         values = [item]
+    #         if value_key:
+    #             if not isinstance(value_key, list):
+    #                 value_key = [value_key]
+    #             values = [item[k] for k in value_key if k in item]
+
+    #         for value in values:
+    #             # if timestamp is specified, all values must be timestamps
+    #             if is_timestamp:
+    #                 value = datetime.datetime.fromtimestamp(value, datetime.timezone.utc).isoformat()
+
+    #             if _label:
+    #                 value = f"{_label}::{value}"
+
+    #             self.enrichment.append({"name": name, "value": value})
 
     def _add(
         self,
         group: str,
-        name: str,
+        name: str = None,
         key: str = None,
         default=None,
         *,
-        label: str = "",
-        label_key: str = None,
+        name_key: str = None,
         value: str = None,
         value_key: Union[str, list] = None,
+        description: str = None,
+        description_key: str = None,
         is_timestamp: bool = False,
+        ignore_falsy: bool = False,
         data: dict = None
     ):
-        """
-        group: enrichment group
-        name: enrichment name
-        key: key in data to lookup
-        default: default value if key doesn't exist (None to ignore)
-        label: label to add to the value
-        data: data dict to parse instead of top level
-        """
         # allow a passed in dict to be parsed instead
         data = data or self.data
 
@@ -288,10 +355,6 @@ class Enricher():
             items = [item]
 
         for item in items:
-            _label = label
-            if label_key is not None:
-                _label = item.get(label_key, None)
-
             # allow multiple value_keys to be given
             values = [item]
             if value_key:
@@ -300,83 +363,183 @@ class Enricher():
                 values = [item[k] for k in value_key if k in item]
 
             for value in values:
+                if ignore_falsy and not value:
+                    continue
+
+                if name is None:
+                    name = item.get(name_key)
+
                 # if timestamp is specified, all values must be timestamps
                 if is_timestamp:
                     value = datetime.datetime.fromtimestamp(value, datetime.timezone.utc).isoformat()
 
-                if _label:
-                    value = f"{_label}::{value}"
+                # sets cannot be json serialised by default
+                x = self._enrichment.setdefault(group, {}).setdefault(name, [])
+                if value not in x:
+                    x.append(value)
 
-                self.enrichment.append({"name": name, "value": value})
+                # self.enrichment_ordered.append({"group": group, "name": name, "value": value})
 
     def _enrich(self):
-        # all
-        self._add("reputation", default=0)
-        self._add("tag", key="tags")
-        for vendor, results in self.data.get("last_analysis_results", {}).items():
-            self._add("av_results", key="category", label=vendor, data=results)
-            self._add("av_last_updated", key="engine_update", label=vendor, data=results)
-            self._add("av_name", key="result", label=vendor, data=results)
+        """Parse the data and build an ordered result dict."""
+        # Summary Info
+        self._add("summary", "av_malicious", key="last_analysis_stats", value_key="malicious")
+        self._add("summary", "av_suspicious", key="last_analysis_stats", value_key="suspicious", ignore_falsy=True)
+        verdicts = [r.get("category", "") for r in self.data.get("sandbox_verdicts", {}).values()]
+        self._add("summary", "sandbox_malicious", value=verdicts.count("malicious"))
+        self._add("summary", "sandbox_suspicious", value=verdicts.count("suspicious"), ignore_falsy=True)
+        verdicts = [r.get("verdict", "") for r in self.data.get("crowdsourced_ai_results", [])]
+        self._add("summary", "ai_malicious", value=verdicts.count("malicious"), ignore_falsy=True)
+        self._add("summary", "ai_suspicious", value=verdicts.count("suspicious"), ignore_falsy=True)
+        threats = self.data.get("popular_threat_classification", {})
+        if threats:
+            self._add("summary", "threat", key="suggested_threat_label", data=threats)
+            self._add("summary", "threat_family", key="popular_threat_name", value_key="value", data=threats)
+            self._add("summary", "threat_category", key="popular_threat_category", value_key="value", data=threats)
+        self._add("summary", "reputation", default=0)
+        self._add("summary", "capabilities", key="capabilities_tags")
+        if self.data.get("popularity_ranks", {}):
+            self._add("summary", "labels", value="popular domain")
+        for category in self.data.get("categories", {}).values():
+            self._add("summary", "labels", value=category)
+        for value in self.data.get("targeted_brand", {}).values():
+            self._add("summary", "targeted_brand", value=value)
 
-        # files specific
-        self._add("name", key="names")
-        self._add("network_infrastructure")
-        self._add("capability", key="capabilities_tags")
-        self._add("yara_result", key="crowdsourced_yara_results", label_key="author", value_key="rule_name")
-        for results in self.data.get("crowdsourced_ai_results", []):
-            source = results.get("source")
-            self._add("ai_result_category", key="category", label=source, data=results)
-            self._add("ai_result_verdict", key="verdict", label=source, data=results)
-            self._add("ai_result_analysis", key="analysis", label=source, data=results)
-        for results in self.data.get("sigma_analysis_results", []):
-            rule_id = results.get("rule_id")
-            self._add("sigma_result_severity", key="rule_level", label=rule_id, data=results)
-            self._add("sigma_result_name", key="rule_title", label=rule_id, data=results)
-            self._add("sigma_result_description", key="rule_description", label=rule_id, data=results)
-            self._add("sigma_result_author", key="rule_author", label=rule_id, data=results)
+        # Alerts
+        self._add("alerts", "sigma_alerts_critical", key="sigma_analysis_stats", value_key="critical", ignore_falsy=True)
+        self._add("alerts", "sigma_alerts_high", key="sigma_analysis_stats", value_key="high", ignore_falsy=True)
+        self._add("alerts", "sigma_alerts_medium", key="sigma_analysis_stats", value_key="medium", ignore_falsy=True)
+        self._add("alerts", "sigma_alerts_low", key="sigma_analysis_stats", value_key="low", ignore_falsy=True)
+        self._add("alerts", "ids_alerts_high", key="crowdsourced_ids_stats", value_key="high", ignore_falsy=True)
+        self._add("alerts", "ids_alerts_medium", key="crowdsourced_ids_stats", value_key="medium", ignore_falsy=True)
+        self._add("alerts", "ids_alerts_low", key="crowdsourced_ids_stats", value_key="low", ignore_falsy=True)
+        self._add("alerts", "ids_alerts_info", key="crowdsourced_ids_stats", value_key="info", ignore_falsy=True)
+
+        # Crowdsourced context
+        for context in self.data.get("crowdsourced_context", []):
+            name = f"{context['title']} ({context['source']})"
+            self._add("crowdsourced_context", name, value=context['details'])
+
+        # Config extraction
+        for k, v in self.data.get("malware_config", {}).items():
+            self._add("configuration_extraction", k, value=v)
+
+        # Networking
+        self._add("networking", "infrastructure", key="network_infrastructure")
+        for r in self.data.get("traffic_inspection", {}).get("http", []):
+            url = r["url"]
+            if url:
+                self._add("networking", "http_request", value=f"{r['method']} {url}")
+            url = r["remote_host"]
+            if url:
+                self._add("networking", "http_request", value=f"{r['method']} {url}")
+            user_agent = r["user-agent"]
+            if user_agent:
+                self._add("networking", "user-agent", value=user_agent)
+
+        # Yara rule hits
+        # show source: rule_name, or rule_name: description?
+        self._add("yara_hits", key="crowdsourced_yara_results", name_key="source", value_key="rule_name")
+
+        # Popularity
+        for vendor, r in self.data.get("popularity_ranks", {}).items():
+            last_updated = datetime.datetime.fromtimestamp(r["timestamp"], datetime.timezone.utc).isoformat()
+            value = f"{r['rank']} ({last_updated})"
+            self._add("popularity_ranks", vendor, value=value)
+
+        # Sandbox results
+        # ordered to show malicious before suspicious
+        malicious = []
+        sus = []
+        for r in self.data.get("sandbox_verdicts", {}).values():
+            if r["category"] == "malicious":
+                malicious.append(r)
+            if r["category"] == "suspicious":
+                sus.append(r)
+        for r in malicious:
+            # sometimes malware_names are not set...
+            value = ", ".join(r.get("malware_names", [])) or "malicious"
+            confidence = f" (Confidence: {r.get('confidence')})" if r.get("confidence") else ""
+            self._add("sandboxes", r["sandbox_name"], value=f"{value}{confidence}")
+        for r in sus:
+            self._add("sandboxes", r["sandbox_name"], value="suspicious")
+
+        # AV results
+        # ordered to show malicious before suspicious
+        malicious = []
+        sus = []
+        for r in self.data.get("last_analysis_results", {}).values():
+            if r["category"] == "malicious":
+                malicious.append(r)
+            if r["category"] == "suspicious":
+                sus.append(r)
+        for r in malicious:
+            updated = f" ({r.get('engine_update')})" if r.get("engine_update") else ""
+            self._add("security_vendors", r["engine_name"], value=f"{r['result']}{updated}")
+        for r in sus:
+            updated = f" ({r.get('engine_update')})" if r.get("engine_update") else ""
+            self._add("security_vendors", r["engine_name"], value=f"suspicious{updated}")
+
+        # Sigma results
+        for r in self.data.get("sigma_analysis_results", []):
+            self._add("sigma_alerts", r["rule_level"], value=f"{r['rule_title']} [{r['rule_author']}]")
+
+        # IDS details
         for results in self.data.get("crowdsourced_ids_results", []):
-            rule_id = results.get("rule_id")
-            self._add("ids_result_severity", key="alert_severity", label=rule_id, data=results)
-            self._add("ids_result_category", key="alert_category", label=rule_id, data=results)
-            self._add("ids_result_rule_message", key="rule_msg", label=rule_id, data=results)
+            name = f"{results['alert_severity']}::{results['rule_category']}::{results['rule-msg']}"
             for context in results.get("alert_context", []):
                 for k, v in context.items():
-                    label = f"{rule_id}::{k}"
-                    self._add("ids_result_context", value=v, label=label)
-        for vendor, results in self.data.get("sandbox_verdicts", {}).items():
-            self._add("sandbox_verdict", key="category", label=vendor, data=results)
-        threat_classifications = self.data.get("popular_threat_classification", {})
-        if threat_classifications:
-            self._add("threat", key="suggested_threat_label", data=threat_classifications)
-            self._add("threat_category", key="popular_threat_category", value_key="value", data=threat_classifications)
-            self._add("threat_family", key="popular_threat_name", value_key="value", data=threat_classifications)
-        # for k, v in self.data.get("signature_info", {}).items():
-        #     self._add("signature_info", label=k, value=v)
-        for k, v in self.data.get("malware_config", {}).items():
-            self._add("malware_config", label=k, value=v)
-        self._add(
-            "http_request", key="http", label_key="method", value_key=["url", "remote_host"],
-            data=self.data.get("traffic_inspection", {})
-        )
+                    self._add("ids_alerts", name, value=f"{k}: {v}")
 
-        # domain specific
-        self._add("registrar")
-        self._add("last_dns_record_date", is_timestamp=True)
-        for dns_record in self.data.get("last_dns_records", []):
+        # AI results
+        for r in self.data.get("crowdsourced_ai_results", []):
+            name = f"{r['source']}::{r['category']}"
+            self._add("ai_analysis", key="crowdsourced_ai_results", name=name, value_key="analysis")
+
+        # DNS details
+        self._add("dns_records", "last_updated", key="last_dns_record_date", is_timestamp=True)
+        for dns_record in sorted(self.data.get("last_dns_records", []), key=lambda x: x["type"]):
             dns_type = dns_record["type"]
-            self._add("last_dns_record", key="value", label=dns_type, data=dns_record)
+            self._add("dns_records", dns_type, value=dns_record["value"])
             if dns_type == "SOA":
-                self._add("last_dns_record", key="rname", label="SOA_RNAME", data=dns_record)
-        for vendor, rank_info in self.data.get("popularity_ranks", {}).items():
-            self._add("popularity_rank", key="rank", label=vendor, data=rank_info)
-        for vendor, category in self.data.get("categories", {}).items():
-            self._add("category", label=vendor, value=category)
+                self._add("dns_records", "SOA_RNAME", value=dns_record["rname"])
 
-        # ip and domain
-        self._add("whois")
-        self._add("whois_date", is_timestamp=True)
+        # Related URLs
+        self._add("linked_urls", "final_url", key="last_final_url")
+        self._add("linked_urls", "redirection_chain")
+        self._add("linked_urls", "outgoing_links")
+
+        # Last reponse
+        self._add("last_response", "has_content")
+        self._add("last_response", "content_sha256", key="last_http_response_content_sha256")
+        self._add("last_response", "response_code", key="last_http_response_code")
+        self._add("last_response", "content_length", key="last_http_response_content_length")
+        for header, value in self.data.get("last_http_response_headers", {}).items():
+            self._add("last_response_headers", header, value=value)
+        for cookie, value in self.data.get("last_http_response_cookies", {}).items():
+            self._add("last_response_cookies", cookie, value=value)
+
+        # General for info only
+        self._add("info", "names")
+        self._add("info", "labels", key="tags")
+        self._add("info", "jarm_hash", key="jarm")
+        self._add("info", "url")
+        self._add("info", "title")
+        self._add("info", "tld")
+        self._add("info", "regional_internet_registry")
+        self._add("info", "registrar")
+        self._add("info", "country")
+        self._add("info", "continent")
+        self._add("info", "network")
+        self._add("info", "whois_date", is_timestamp=True)
+        self._add("info", "whois")
+        self._add("info", "autonomous_system_owner", key="as_owner")
+        self._add("info", "autonomous_system_number", key="asn")
+
+        # Certificate info
         cert = self.data.get("last_https_certificate", {})
         if cert:
+            self._add("certificate_info", "last_updated", key="last_https_certificate_date", is_timestamp=True)
             # enforce correct DN order as per RFC 5280 and RFC 2253.
             # VT returns the cert as a dict, so I have no idea how it's supposed
             # to handle certs with multiple values for the same key...
@@ -384,48 +547,23 @@ class Enricher():
                 f"{k}={cert['subject'][k]}" for k in ("CN", "L", "ST", "O", "OU", "C", "STREET", "DC", "UID")
                 if cert["subject"].get(k, None)
             ])
-            self._add("last_https_certificate_subject", value=subject)
+            self._add("certificate_info", "subject", value=subject)
             issuer = ",".join([
                 f"{k}={cert['issuer'][k]}" for k in ("CN", "L", "ST", "O", "OU", "C", "STREET", "DC", "UID")
                 if cert["issuer"].get(k, None)
             ])
-            self._add("last_https_certificate_issuer", value=issuer)
-            self._add("last_https_certificate_validity_not_after", value=cert["validity"]["not_after"])
-            self._add("last_https_certificate_validity_not_before", value=cert["validity"]["not_before"])
-            self._add("last_https_certificate_date", is_timestamp=True)
+            self._add("certificate_info", "issuer", value=issuer)
+            self._add("certificate_info", "validity_not_after", value=cert["validity"]["not_after"])
+            self._add("certificate_info", "validity_not_before", value=cert["validity"]["not_before"])
 
-        # ip specific
-        self._add("country")
-        self._add("continent")
-        self._add("network")
-        self._add("regional_internet_registry")
-        self._add("autonomous_system_owner", key="as_owner")
-        self._add("autonomous_system_number", key="asn")
-        self._add("jarm_hash", key="jarm")
-        for context in self.data.get("crowdsourced_context", []):
-            value = context.get("details", None) or context.get("title")
-            if value:
-                self._add("crowdsource_context", label=context["source"], value=value)
+        # Yara rule descriptions
+        self._add("yara_descriptions", key="crowdsourced_yara_results", name_key="rule_name", value_key="description")
+        # Sigma rule descriptions
+        self._add("sigma_descriptions", key="sigma_analysis_results", name_key="rule_title", value_key="rule_description")
 
-        # urls specific
-        self._add("redirection_chain")
-        self._add("has_content")
-        self._add("last_final_url")
-        self._add("outgoing_link", key="outgoing_links")
-        self._add("url")
-        self._add("title")
-        self._add("tld")
-        self._add("last_http_response_content_length")
-        self._add("last_http_response_content_sha256")
-        self._add("last_http_response_code")
-        for header, value in self.data.get("last_http_response_headers", {}).items():
-            self._add("last_http_response_header", label=header, value=value)
-        for cookie, value in self.data.get("last_http_response_cookies", {}).items():
-            self._add("last_http_response_cookie", label=cookie, value=value)
-        for vendor, value in self.data.get("targeted_brand", {}).items():
-            self._add("targeted_brand", label=vendor, value=value)
+        # Trackers
         for tracker in self.data.get("trackers", {}):
-            self._add("tracker", key=tracker, label=tracker, value_key="url", data=self.data.get("trackers", {}))
+            self._add("trackers", tracker, value_key="url", data=self.data.get("trackers", {}))
 
 
 def main():
