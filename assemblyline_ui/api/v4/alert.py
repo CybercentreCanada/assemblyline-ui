@@ -441,12 +441,14 @@ def run_workflow(**kwargs):
     user = kwargs['user']
     try:
         labels = set(request.json.get('labels', []))
-        priority = request.json.get('priority', "").upper()
-        if priority not in PRIORITIES:
+        priority = request.json.get('priority')
+        if priority and priority.upper() not in PRIORITIES:
             raise ValueError(f"Priority {priority} not in priorities")
-        status = request.json.get('status', "").upper()
-        if status not in STATUSES:
+        status = request.json.get('status')
+        if status and status.upper() not in STATUSES:
             raise ValueError(f"Status '{status}' not in statuses")
+        priority = priority.upper() if priority else None
+        status = status.upper() if status else None
     except ValueError as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
 
@@ -498,12 +500,14 @@ def run_workflow_by_batch(**kwargs):
     user = kwargs['user']
     try:
         labels = set(request.json.get('labels', []))
-        priority = request.json.get('priority', "").upper()
-        if priority not in PRIORITIES:
+        priority = request.json.get('priority')
+        if priority and priority.upper() not in PRIORITIES:
             raise ValueError(f"Priority {priority} not in priorities")
-        status = request.json.get('status', "").upper()
-        if status not in STATUSES:
+        status = request.json.get('status')
+        if status and status.upper() not in STATUSES:
             raise ValueError(f"Status '{status}' not in statuses")
+        priority = priority.upper() if priority else None
+        status = status.upper() if status else None
     except ValueError as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
 
