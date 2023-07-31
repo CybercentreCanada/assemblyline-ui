@@ -47,6 +47,7 @@ def get_hits(ids: list = [], user=None):
     params.setdefault('offset', '0')
     params.setdefault('rows', '20')
     params.setdefault('sort', 'seen.last desc')
+    params.setdefault('key_space', ids)
 
     if (user is not None):
         params.update({'access_control': user['access_control']})
@@ -64,7 +65,7 @@ def get_hits(ids: list = [], user=None):
     params['as_obj'] = False
 
     try:
-        return STORAGE.file.multiget_search(ids, **params)
+        return make_api_response(STORAGE.file.search(**params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
