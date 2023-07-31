@@ -156,15 +156,15 @@ def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.Search
 
 @retrohunt_api.route("/", methods=["POST"])
 @api_login(require_role=[ROLES.retrohunt_run])
-def create(**kwargs):
+def create_retrohunt_job(**kwargs):
     """
     Create a new search over file storage.
 
     Arguments:
-        yara_signature => yara signature to search with
-        archive_only => Should the search only be run on archived files
-        description => Textual description of this search
-        classification => Classification level for the search
+        yara_signature  => yara signature to search with
+        archive_only    => Should the search only be run on archived files
+        description     => Textual description of this search
+        classification  => Classification level for the search
 
     Response should always be the same as polling the details of the search.
     """
@@ -215,33 +215,40 @@ def create(**kwargs):
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def detail(code, **kwargs):
+def get_retrohunt_job_detail(code, **kwargs):
     """
-    Get details about a completed or in progress retrohunt search.
+    Get the details of a completed or an in progress retrohunt search.
 
     Variables:
         code                => Search code to be retrieved
 
-    Parameters:
-        offset              => how far into the hit set to return details for
-        rows                => how many rows to return details for
-
     Response Fields:
-        code                => unique code identifying this search request
-        creator             => user who created this search
-        tags                => tags describing this search
-        description         => human readable description of search
-        created             => timestamp when search started
-        classification      => classification string for search and results list
-        yara_signature      => text of original yara signature run
-        raw_query           => text of filter query derived from yara signature
-
-        errors              => a list of error messages accumulated
-        hits                => list of dicts with information about what the search hit on
-        total_hits
-        offset
-        finished            => boolean indicating if the search is finished
-        truncated           => boolean has the list of hits been truncated at some limit
+    {
+        "classification": "TLP:WHITE",              #   Classification string for search and results list
+        "code": "0x",                               #   Unique code identifying this search request
+        "created": "2023-01-01T00:00:00.000000Z",   #   Timestamp when search started
+        "creator": "admin",                         #   User who created this search
+        "description": "This is the description",   #   Human readable description of search
+        "finished": True,                           #   Boolean indicating if the search is finished
+        "id": "0x",                                 #   Unique code identifying this search request
+        "phase": "finished",                        #   Phase the job is on : 'filtering' | 'yara' | 'finished'
+        "pourcentage": 0,                           #   Pourcentage of completion the phase is at
+        "progress": [1, 1],                         #   Progress values when the job is running
+        "raw_query": "(min 1 of (100))",            #   Text of filter query derived from yara signature
+        "tags": {},                                 #   Tags describing this search
+        "total_hits": 100,                          #   Total number of hits when the job first ran
+        "total_errors": 80,                         #   Total number of errors encountered during the job
+        "truncated": False,                         #   Boolean has the list of hits been truncated at some limit
+        "yara_signature":                           #   Text of original yara signature run
+                            rule my_rule {
+                                meta:
+                                    KEY = "VALUE"
+                                strings:
+                                    $name = "string"
+                                condition:
+                                    any of them
+                            }
+    }
     """
     user = kwargs['user']
 
@@ -263,11 +270,304 @@ def detail(code, **kwargs):
         status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
         if is_finished(status):
-            doc['truncated'] = status.truncated
-            doc['hits'] = status.hits
             doc['errors'] = status.errors
-            doc['total_hits'] = len(status.hits)
             doc['finished'] = True
+            doc['hits'] = status.hits
+            doc['total_errors'] = len(status.errors)
+            doc['total_hits'] = len(status.hits)
+            doc['truncated'] = status.truncated
             STORAGE.retrohunt.save(code, doc)
 
-    return make_api_response(prepare_search_result_detail(status, doc, user))
+    if status is not None:
+        phase = status.phase
+        progress = status.progress
+        total_errors = len(status.errors)
+        total_hits = len(status.hits)
+        truncated = status.truncated
+    else:
+        phase = 'finished'
+        progress = (1, 1)
+        total_errors = len(doc['errors'])
+        total_hits = doc['total_hits']
+        truncated = doc['truncated']
+
+    pourcentage = 100
+    if phase == 'filtering':
+        pourcentage = 100 * progress[0] / progress[1]
+    elif phase == 'yara':
+        pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
+
+    doc.pop('hits')
+    doc.pop('errors')
+
+    doc.update({
+        'finished': True if status is None else is_finished(status),
+        'phase': phase,
+        'pourcentage': pourcentage,
+        'progress': progress,
+        'total_errors': total_errors,
+        'total_hits': total_hits,
+        'truncated': truncated,
+    })
+
+    return make_api_response(doc)
+
+
+@retrohunt_api.route("/hits/<code>/", methods=["GET"])
+@api_login(require_role=[ROLES.retrohunt_view])
+def get_retrohunt_job_hits(code, **kwargs):
+    """
+    Get hit results of a retrohunt job completed or in progress.
+
+    Variables:
+        code                    =>  Search code to be retrieved
+
+    Optional Arguments:
+        query                   =>  Query to filter the file list
+        offset                  =>  Offset at which we start giving files
+        rows                    =>  Numbers of files to return
+        filters                 =>  List of additional filter queries limit the data
+        sort                    =>  How to sort the results (not available in deep paging)
+        fl                      =>  List of fields to return
+
+    Response Fields:
+    {
+        "total": 200,           #   Total results found
+        "offset": 0,            #   Offset in the result list
+        "rows": 100,            #   Number of results returned
+        "items": [              #   List of files
+            {
+                "classification": "TLP:CLEAR",
+                "entropy": 0.00,
+                "from_archive": False,
+                "id": "0aa",
+                "is_section_image": False,
+                "label_categories": {
+                    "attribution": [],
+                    "info": [],
+                    "technique": []
+                },
+                "labels": [],
+                "md5": "0aa",
+                "seen": {
+                    "count": 1,
+                    "first": "2023-01-01T00:00:00.000000Z",
+                    "last": "2023-01-01T00:00:00.000000Z"
+                },
+                "sha1": "0aa",
+                "sha256": "0aa",
+                "size": 100,
+                "tlsh": "T134",
+                "type": "text/json"
+            },
+            {
+                ...
+            }
+        ]
+    }
+    """
+    user = kwargs['user']
+
+    # Make sure retrohunt is configured
+    if haunted_house_client is None:
+        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+
+    # Fetch the retrohunt job from elasticsearch
+    doc = STORAGE.retrohunt.get(code, as_obj=False)
+
+    # Make sure the user has the right classification to access this retrohunt job
+    if doc is None:
+        return make_api_response({}, err="Not Found.", status_code=404)
+    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+        return make_api_response({}, err="Access denied.", status_code=403)
+
+    # Get status information from retrohunt server
+    status = None
+    if not doc.get('finished'):
+        user = kwargs['user']
+        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
+
+        if is_finished(status):
+            doc['hits'] = status.hits
+            STORAGE.retrohunt.save(code, doc)
+
+    # Get the request parameters and apply the multi_field parameter to it
+    multi_fields = ['filters']
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+    else:
+        req_data = request.args
+        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+
+    # Set the default search parameters
+    params.setdefault('query', '*')
+    params.setdefault('offset', '0')
+    params.setdefault('rows', '10')
+    params.setdefault('sort', 'seen.last desc')
+    params.setdefault('access_control', user['access_control'])
+    params.setdefault('as_obj', False)
+    params.setdefault('key_space', doc['hits'])
+    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
+    params.setdefault('track_total_hits', True)
+
+    # Append the other request parameters
+    fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+
+    try:
+        return make_api_response(STORAGE.file.search(**params))
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
+
+
+@retrohunt_api.route("/errors/<code>/", methods=["GET"])
+@api_login(require_role=[ROLES.retrohunt_view])
+def get_retrohunt_job_errors(code, **kwargs):
+    """
+    Get errors of a retrohunt job completed or in progress.
+
+    Variables:
+        code                    =>  Search code to be retrieved
+
+    Optional Arguments:
+        offset                  =>  Offset at which we start giving files
+        rows                    =>  Numbers of files to return
+        sort                    =>  How to sort the errors
+
+    Response Fields:
+    {
+        "total": 200,           #   Total errors found
+        "offset": 0,            #   Offset in the error list
+        "rows": 100,            #   Number of errors returned
+        "items": [              #   List of errors
+            "File not available: channel closed",
+            ...
+        ]
+    }
+    """
+    user = kwargs['user']
+
+    # Make sure retrohunt is configured
+    if haunted_house_client is None:
+        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+
+    # Fetch the retrohunt job from elasticsearch
+    doc = STORAGE.retrohunt.get(code, as_obj=False)
+
+    # Make sure the user has the right classification to access this retrohunt job
+    if doc is None:
+        return make_api_response({}, err="Not Found.", status_code=404)
+    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+        return make_api_response({}, err="Access denied.", status_code=403)
+
+    # Get status information from retrohunt server
+    status = None
+    if not doc.get('finished'):
+        user = kwargs['user']
+        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
+
+        if is_finished(status):
+            doc['errors'] = status.errors
+            STORAGE.retrohunt.save(code, doc)
+
+    if request.method == "POST":
+        req_data = request.json
+    else:
+        req_data = request.args
+
+    errors = doc['errors']
+    offset = int(req_data.get('offset', 0))
+    rows = int(req_data.get('rows', 20))
+
+    if errors is None:
+        return {
+            'offset': offset,
+            'rows': rows,
+            'total': None,
+            'items': []
+        }
+
+    sort = req_data.get('sort', None)
+    if sort is not None:
+        if 'asc' in sort.lower():
+            errors.sort()
+        elif 'desc' in sort.lower():
+            errors.sort(reverse=True)
+
+    return make_api_response({
+        'offset': offset,
+        'rows': rows,
+        'total': len(errors),
+        'items': errors[offset:offset + rows]
+    })
+
+
+@retrohunt_api.route("/types/<code>/", methods=["GET"])
+@api_login(require_role=[ROLES.retrohunt_view])
+def get_retrohunt_job_types(code, **kwargs):
+    """
+    Get types distribution of a retrohunt job completed or in progress.
+
+    Variables:
+        code                    =>  Search code to be retrieved
+
+    Optional Arguments:
+        query                   =>  Query to filter the file list
+        filters                 =>  List of additional filter queries limit the data
+
+    Result example:
+    {                 # Facetting results
+        "value_0": 2,
+        ...
+        "value_N": 19,
+    }
+    """
+    user = kwargs['user']
+
+    # Make sure retrohunt is configured
+    if haunted_house_client is None:
+        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+
+    # Fetch the retrohunt job from elasticsearch
+    doc = STORAGE.retrohunt.get(code, as_obj=False)
+
+    # Make sure the user has the right classification to access this retrohunt job
+    if doc is None:
+        return make_api_response({}, err="Not Found.", status_code=404)
+    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+        return make_api_response({}, err="Access denied.", status_code=403)
+
+    # Get status information from retrohunt server
+    status = None
+    if not doc.get('finished'):
+        user = kwargs['user']
+        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
+
+        if is_finished(status):
+            doc['hits'] = status.hits
+            STORAGE.retrohunt.save(code, doc)
+
+    # Get the request parameters and apply the multi_field parameter to it
+    multi_fields = ['filters']
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+    else:
+        req_data = request.args
+        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+
+    # Set the default search parameters
+    params.setdefault('query', '*')
+    params.setdefault('access_control', user['access_control'])
+    params.setdefault('key_space', doc['hits'])
+    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
+
+    # Append the other request parameters
+    fields = ["query"]
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+
+    try:
+        return make_api_response(STORAGE.file.facet('type', **params))
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
