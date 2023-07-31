@@ -36,6 +36,7 @@ def parse_external_links(external_links: List[ExternalLinks]):
             out.setdefault(target.type, {})
             out[target.type].setdefault(target.key, [])
             out[target.type][target.key].append({
+                "allow_bypass": link.allow_bypass,
                 "double_encode": link.double_encode,
                 "name": link.name,
                 "replace_pattern": link.replace_pattern,
