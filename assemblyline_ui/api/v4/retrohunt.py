@@ -313,7 +313,7 @@ def get_retrohunt_job_detail(code, **kwargs):
     return make_api_response(doc)
 
 
-@retrohunt_api.route("/hits/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/hits/<code>/", methods=["GET"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_hits(code, **kwargs):
     """
@@ -329,16 +329,6 @@ def get_retrohunt_job_hits(code, **kwargs):
         filters                 =>  List of additional filter queries limit the data
         sort                    =>  How to sort the results (not available in deep paging)
         fl                      =>  List of fields to return
-
-    Data Block (POST ONLY):
-    {
-        "query": "*",           #   Query to search for
-        "offset": 0,            #   Offset in the results
-        "rows": 100,            #   Max number of results
-        "sort": "field asc",    #   How to sort the results
-        "fl": "id,score",       #   List of fields to return
-        "filters": ["fq"]       #   List of additional filter queries limit the data
-    }
 
     Response Fields:
     {
@@ -432,7 +422,7 @@ def get_retrohunt_job_hits(code, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@retrohunt_api.route("/errors/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/errors/<code>/", methods=["GET"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_errors(code, **kwargs):
     """
@@ -445,13 +435,6 @@ def get_retrohunt_job_errors(code, **kwargs):
         offset                  =>  Offset at which we start giving files
         rows                    =>  Numbers of files to return
         sort                    =>  How to sort the errors
-
-    Data Block (POST ONLY):
-    {
-        "offset": 0,            #   Offset in the errors
-        "rows": 100,            #   Max number of errors
-        "sort": "asc",          #   How to sort the errors
-    }
 
     Response Fields:
     {
@@ -521,7 +504,7 @@ def get_retrohunt_job_errors(code, **kwargs):
     })
 
 
-@retrohunt_api.route("/types/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/types/<code>/", methods=["GET"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_types(code, **kwargs):
     """
@@ -532,27 +515,13 @@ def get_retrohunt_job_types(code, **kwargs):
 
     Optional Arguments:
         query                   =>  Query to filter the file list
-        offset                  =>  Offset at which we start giving files
-        rows                    =>  Numbers of files to return
         filters                 =>  List of additional filter queries limit the data
-        sort                    =>  How to sort the results (not available in deep paging)
-        fl                      =>  List of fields to return
-
-    Data Block (POST ONLY):
-    {
-        "query": "*",           #   Query to search for
-        "offset": 0,            #   Offset in the results
-        "rows": 100,            #   Max number of results
-        "sort": "field asc",    #   How to sort the results
-        "fl": "id,score",       #   List of fields to return
-        "filters": ["fq"]       #   List of additional filter queries limit the data
-    }
 
     Result example:
     {                 # Facetting results
-     "value_0": 2,
-     ...
-     "value_N": 19,
+        "value_0": 2,
+        ...
+        "value_N": 19,
     }
     """
     user = kwargs['user']
