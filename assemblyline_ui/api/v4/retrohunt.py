@@ -591,21 +591,16 @@ def get_retrohunt_job_types(code, **kwargs):
 
     # Set the default search parameters
     params.setdefault('query', '*')
-    params.setdefault('offset', '0')
-    params.setdefault('rows', '10')
-    params.setdefault('sort', 'seen.last desc')
     params.setdefault('access_control', user['access_control'])
-    params.setdefault('as_obj', False)
     # TODO
     # params.setdefault('key_space', doc['hits'])
     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-    params.setdefault('track_total_hits', True)
 
     # Append the other request parameters
-    fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
+    fields = ["query"]
     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
     try:
-        return make_api_response(STORAGE.file.facet(**params))
+        return make_api_response(STORAGE.file.facet('type', **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
