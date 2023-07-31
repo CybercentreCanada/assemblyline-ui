@@ -407,8 +407,7 @@ def get_retrohunt_job_hits(code, **kwargs):
     params.setdefault('sort', 'seen.last desc')
     params.setdefault('access_control', user['access_control'])
     params.setdefault('as_obj', False)
-    # TODO
-    # params.setdefault('key_space', doc['hits'])
+    params.setdefault('key_space', doc['hits'])
     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
     params.setdefault('track_total_hits', True)
 
@@ -561,8 +560,7 @@ def get_retrohunt_job_types(code, **kwargs):
     # Set the default search parameters
     params.setdefault('query', '*')
     params.setdefault('access_control', user['access_control'])
-    # TODO
-    # params.setdefault('key_space', doc['hits'])
+    params.setdefault('key_space', doc['hits'])
     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
 
     # Append the other request parameters
