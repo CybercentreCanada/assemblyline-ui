@@ -110,45 +110,44 @@ def get_errors(errors: list):
         }
 
 
-def get_latest_job_details(api_result: typing.Optional[hauntedhouse.SearchStatus], datastore_result: dict):
-    # Get the appropriate data from the sources
-    if api_result is not None:
-        errors = api_result.errors
-        phase = api_result.phase
-        progress = api_result.progress
-        hits = api_result.hits
-        total_errors = len(api_result.errors)
-        total_hits = len(api_result.hits)
-        truncated = api_result.truncated
-    else:
-        errors = datastore_result['errors']
-        phase = 'finished'
-        progress = (1, 1)
-        hits = datastore_result['hits']
-        total_errors = len(datastore_result['total_errors'])
-        total_hits = datastore_result['total_hits']
-        truncated = datastore_result['truncated']
+def get_job_details(doc: dict, user):
+    code = doc['code']
 
-    # Calculate the pourcentage of the phase completion
-    pourcentage = 100
-    if phase == 'filtering':
-        pourcentage = 100 * progress[0] / progress[1]
-    elif phase == 'yara':
-        pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
+    # If the datastore document is finished, there no need to get the latest information.
+    status = None
+    if not doc.get('finished'):
+        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
-    # Mix together the documents from the two information sources
-    datastore_result.update({
-        'errors': errors,
-        'finished': True if api_result is None else is_finished(api_result),
-        'hits': hits,
-        'phase': phase,
-        'pourcentage': pourcentage,
-        'progress': progress,
-        'total_errors': total_errors,
-        'total_hits': total_hits,
-        'truncated': truncated,
-    })
-    return datastore_result
+        # If the retrohunt job is finished, update the datastore to the latest values
+        if is_finished(status):
+            doc['errors'] = status.errors
+            doc['finished'] = True
+            doc['hits'] = status.hits
+            doc['total_errors'] = len(status.errors)
+            doc['total_hits'] = len(status.hits)
+            doc['truncated'] = status.truncated
+            STORAGE.retrohunt.save(code, doc)
+
+        # If the retrohunt job is not finished, get the current state values
+        else:
+            value_fields = ['errors', 'finished', 'hits', 'phase', 'progress', 'truncated']
+            doc.update({k: status.get(k, None) for k in value_fields if status.get(k, None) is not None})
+
+            pourcentage = 100
+            if status.get('phase', None) == 'filtering':
+                progress = status.get('progress', (1, 1))
+                pourcentage = 100 * progress[0] / progress[1]
+            elif status.get('phase', None) == 'yara':
+                progress = status.get('progress', (1, 1))
+                pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
+
+            doc.update({
+                'pourcentage': pourcentage,
+                'total_errors': len(status.get('errors', doc['errors'])),
+                'total_hits': len(status.get('hits', doc['hits'])),
+            })
+
+    return doc
 
 
 @retrohunt_api.route("/", methods=["PUT"])
