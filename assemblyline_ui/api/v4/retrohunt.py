@@ -53,7 +53,7 @@ def get_job_details(doc: dict, user):
         # If the retrohunt job is not finished, get the current state values
         else:
             value_fields = ['errors', 'finished', 'hits', 'phase', 'progress', 'truncated']
-            doc.update({k: status.get(k, None) for k in value_fields if status.get(k, None) is not None})
+            doc.update({k: status[k] for k in value_fields if status.get(k, None) is not None})
 
             percentage = 100
             if status.get('phase', None) == 'filtering':
