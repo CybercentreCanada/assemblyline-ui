@@ -58,13 +58,13 @@ def get_job_details(doc: dict, user):
             pourcentage = 100
             if status.get('phase', None) == 'filtering':
                 progress = status.get('progress', (1, 1))
-                pourcentage = round(100 * progress[0] / progress[1])
+                pourcentage = 100 * progress[0] / progress[1]
             elif status.get('phase', None) == 'yara':
                 progress = status.get('progress', (1, 1))
-                pourcentage = round(100 * (progress[0] - progress[1]) / progress[0])
+                pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
 
             doc.update({
-                'pourcentage': pourcentage,
+                'pourcentage': round(pourcentage),
                 'total_errors': len(status.get('errors', doc['errors'])),
                 'total_hits': len(status.get('hits', doc['hits'])),
             })
