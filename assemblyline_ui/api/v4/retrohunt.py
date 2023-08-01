@@ -263,15 +263,10 @@ def get_retrohunt_job_detail(code, **kwargs):
     if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
 
-    # Get the latest information from retrohunt server
-    doc = get_job_details(doc, user)
-    doc.pop('hits')
-    doc.pop('errors')
-
     try:
         doc = get_job_details(doc, user)
-        doc.pop('hits')
-        doc.pop('errors')
+        doc.pop('hits', None)
+        doc.pop('errors', None)
         return make_api_response(doc)
     except Exception as e:
         return make_api_response("", f"{e}", 400)
