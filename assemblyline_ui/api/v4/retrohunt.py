@@ -1,3 +1,4 @@
+import math
 import typing
 
 import hauntedhouse
@@ -62,6 +63,8 @@ def get_job_details(doc: dict, user):
             elif status.get('phase', None) == 'yara':
                 progress = status.get('progress', (1, 1))
                 pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
+
+            pourcentage = math.floor(pourcentage)
 
             doc.update({
                 'pourcentage': pourcentage,
