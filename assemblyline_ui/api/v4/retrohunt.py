@@ -6,6 +6,7 @@ from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.retrohunt import Retrohunt
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.api.v4.search import search
 from assemblyline_ui.config import CLASSIFICATION, STORAGE, config
 from flask import request
 
@@ -134,6 +135,59 @@ def create_retrohunt_job(**kwargs):
         return make_api_response(get_job_details(doc, user))
     except Exception as e:
         return make_api_response("", f"{e}", 400)
+
+
+@retrohunt_api.route("/", methods=["GET", "POST"])
+@api_login(require_role=["retrohunt_view"])
+def search_retrohunt_jobs(**kwargs):
+    """
+    Search through the retrohunt index for a given query.
+    Uses lucene search syntax for query.
+
+    Variables:
+    index  =>   Bucket to search in (alert, submission,...)
+
+    Arguments:
+    query   =>   Query to search for
+
+    Optional Arguments:
+    deep_paging_id =>   ID of the next page or * to start deep paging
+    filters        =>   List of additional filter queries limit the data
+    offset         =>   Offset in the results
+    rows           =>   Number of results per page
+    sort           =>   How to sort the results (not available in deep paging)
+    fl             =>   List of fields to return
+    timeout        =>   Maximum execution time (ms)
+    use_archive    =>   Allow access to the malware archive (Default: False)
+    archive_only   =>   Only access the Malware archive (Default: False)
+
+    Data Block (POST ONLY):
+    {"query": "query",     # Query to search for
+     "offset": 0,          # Offset in the results
+     "rows": 100,          # Max number of results
+     "sort": "field asc",  # How to sort the results
+     "fl": "id,score",     # List of fields to return
+     "timeout": 1000,      # Maximum execution time (ms)
+     "filters": ['fq']}    # List of additional filter queries limit the data
+
+
+    Result example:
+    {"total": 201,                          # Total results found
+     "offset": 0,                           # Offset in the result list
+     "rows": 100,                           # Number of results returned
+     "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
+     "items": []}                           # List of results
+    """
+
+    try:
+        user = kwargs['user']
+        results = search('retrohunt', **kwargs)
+        items = results.get('items', [])
+        results['items'] = [get_job_details(item, user) if item.get(
+            'finished', True) is False else item for item in items]
+        return make_api_response(results)
+    except SearchException as e:
+        return make_api_response("", f"SearchException: {e}", 400)
 
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
