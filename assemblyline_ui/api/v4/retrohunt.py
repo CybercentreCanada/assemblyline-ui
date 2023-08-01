@@ -1,4 +1,3 @@
-import re
 import typing
 
 import hauntedhouse
@@ -37,7 +36,7 @@ def get_job_details(doc: dict, user):
     code = doc['code']
 
     # If the datastore document is finished, there no need to get the latest information.
-    status = None
+    status: typing.Optional[hauntedhouse.SearchStatus] = None
     if not doc.get('finished'):
         status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
 
@@ -131,7 +130,7 @@ def create_retrohunt_job(**kwargs):
 
     STORAGE.retrohunt.save(status.code, doc)
 
-    return make_api_response(get_latest_job_details(status, doc, user))
+    return make_api_response(get_job_details(doc, user))
 
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
@@ -185,53 +184,10 @@ def get_retrohunt_job_detail(code, **kwargs):
     if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
 
-    # Get status information from retrohunt server
-    status = None
-    if not doc.get('finished'):
-        user = kwargs['user']
-        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
-
-        if is_finished(status):
-            doc['errors'] = status.errors
-            doc['finished'] = True
-            doc['hits'] = status.hits
-            doc['total_errors'] = len(status.errors)
-            doc['total_hits'] = len(status.hits)
-            doc['truncated'] = status.truncated
-            STORAGE.retrohunt.save(code, doc)
-
-    if status is not None:
-        phase = status.phase
-        progress = status.progress
-        total_errors = len(status.errors)
-        total_hits = len(status.hits)
-        truncated = status.truncated
-    else:
-        phase = 'finished'
-        progress = (1, 1)
-        total_errors = len(doc['errors'])
-        total_hits = doc['total_hits']
-        truncated = doc['truncated']
-
-    pourcentage = 100
-    if phase == 'filtering':
-        pourcentage = 100 * progress[0] / progress[1]
-    elif phase == 'yara':
-        pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
-
+    # Get the latest information from retrohunt server
+    doc = get_job_details(doc, user)
     doc.pop('hits')
     doc.pop('errors')
-
-    doc.update({
-        'finished': True if status is None else is_finished(status),
-        'phase': phase,
-        'pourcentage': pourcentage,
-        'progress': progress,
-        'total_errors': total_errors,
-        'total_hits': total_hits,
-        'truncated': truncated,
-    })
-
     return make_api_response(doc)
 
 
@@ -304,14 +260,7 @@ def get_retrohunt_job_hits(code, **kwargs):
         return make_api_response({}, err="Access denied.", status_code=403)
 
     # Get status information from retrohunt server
-    status = None
-    if not doc.get('finished'):
-        user = kwargs['user']
-        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
-
-        if is_finished(status):
-            doc['hits'] = status.hits
-            STORAGE.retrohunt.save(code, doc)
+    doc = get_job_details(doc, user)
 
     # Get the request parameters and apply the multi_field parameter to it
     multi_fields = ['filters']
@@ -384,14 +333,7 @@ def get_retrohunt_job_errors(code, **kwargs):
         return make_api_response({}, err="Access denied.", status_code=403)
 
     # Get status information from retrohunt server
-    status = None
-    if not doc.get('finished'):
-        user = kwargs['user']
-        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
-
-        if is_finished(status):
-            doc['errors'] = status.errors
-            STORAGE.retrohunt.save(code, doc)
+    doc = get_job_details(doc, user)
 
     if request.method == "POST":
         req_data = request.json
@@ -461,14 +403,7 @@ def get_retrohunt_job_types(code, **kwargs):
         return make_api_response({}, err="Access denied.", status_code=403)
 
     # Get status information from retrohunt server
-    status = None
-    if not doc.get('finished'):
-        user = kwargs['user']
-        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
-
-        if is_finished(status):
-            doc['hits'] = status.hits
-            STORAGE.retrohunt.save(code, doc)
+    doc = get_job_details(doc, user)
 
     # Get the request parameters and apply the multi_field parameter to it
     multi_fields = ['filters']
