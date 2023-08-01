@@ -167,7 +167,7 @@ def create_retrohunt_job(**kwargs):
         description     => Textual description of this search
         classification  => Classification level for the search
 
-    Response should always be the same as polling the details of the search.
+    Response Fields:    => It should always be the same as polling the details of the search
     """
     user = kwargs['user']
 
@@ -198,16 +198,17 @@ def create_retrohunt_job(**kwargs):
     )
 
     doc = Retrohunt({
-        'creator': user['uname'],
-        'tags': {},
-        'description': description,
+        'archive_only': archive_only,
         'classification': classification,
-        'yara_signature': signature,
-        'raw_query': hauntedhouse.client.query_from_yara(signature),
         'code': status.code,
+        'creator': user['uname'],
+        'description': description,
+        'errors': [],
         'finished': False,
         'hits': [],
-        'errors': [],
+        'raw_query': hauntedhouse.client.query_from_yara(signature),
+        'tags': {},
+        'yara_signature': signature,
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
@@ -218,28 +219,29 @@ def create_retrohunt_job(**kwargs):
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_detail(code, **kwargs):
     """
-    Get the details of a completed or an in progress retrohunt search.
+    Get the details of a completed or an in progress retrohunt job.
 
     Variables:
         code                => Search code to be retrieved
 
     Response Fields:
     {
-        "classification": "TLP:WHITE",              #   Classification string for search and results list
-        "code": "0x",                               #   Unique code identifying this search request
-        "created": "2023-01-01T00:00:00.000000Z",   #   Timestamp when search started
-        "creator": "admin",                         #   User who created this search
-        "description": "This is the description",   #   Human readable description of search
-        "finished": True,                           #   Boolean indicating if the search is finished
-        "id": "0x",                                 #   Unique code identifying this search request
+        "archive_only": False,                      #   Defines the indices used for this retrohunt job
+        "classification": "TLP:WHITE",              #   Classification string for the retrohunt job and results list
+        "code": "0x",                               #   Unique code identifying this retrohunt job
+        "created": "2023-01-01T00:00:00.000000Z",   #   Timestamp when this retrohunt job started
+        "creator": "admin",                         #   User who created this retrohunt job
+        "description": "This is the description",   #   Human readable description of this retrohunt job
+        "finished": True,                           #   Boolean indicating if this retrohunt job is finished
+        "id": "0x",                                 #   Unique code identifying this retrohunt job
         "phase": "finished",                        #   Phase the job is on : 'filtering' | 'yara' | 'finished'
         "pourcentage": 0,                           #   Pourcentage of completion the phase is at
         "progress": [1, 1],                         #   Progress values when the job is running
         "raw_query": "(min 1 of (100))",            #   Text of filter query derived from yara signature
-        "tags": {},                                 #   Tags describing this search
+        "tags": {},                                 #   Tags describing this retrohunt job
         "total_hits": 100,                          #   Total number of hits when the job first ran
         "total_errors": 80,                         #   Total number of errors encountered during the job
-        "truncated": False,                         #   Boolean has the list of hits been truncated at some limit
+        "truncated": False,                         #   Indicates if the list of hits been truncated at some limit
         "yara_signature":                           #   Text of original yara signature run
                             rule my_rule {
                                 meta:
