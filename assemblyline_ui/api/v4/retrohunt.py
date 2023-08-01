@@ -130,7 +130,10 @@ def create_retrohunt_job(**kwargs):
 
     STORAGE.retrohunt.save(status.code, doc)
 
-    return make_api_response(get_job_details(doc, user))
+    try:
+        return make_api_response(get_job_details(doc, user))
+    except Exception as e:
+        return make_api_response("", f"{e}", 400)
 
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
@@ -188,7 +191,14 @@ def get_retrohunt_job_detail(code, **kwargs):
     doc = get_job_details(doc, user)
     doc.pop('hits')
     doc.pop('errors')
-    return make_api_response(doc)
+
+    try:
+        doc = get_job_details(doc, user)
+        doc.pop('hits')
+        doc.pop('errors')
+        return make_api_response(doc)
+    except Exception as e:
+        return make_api_response("", f"{e}", 400)
 
 
 @retrohunt_api.route("/hits/<code>/", methods=["GET"])
