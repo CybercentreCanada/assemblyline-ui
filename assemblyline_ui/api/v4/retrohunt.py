@@ -6,7 +6,6 @@ from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.retrohunt import Retrohunt
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.api.v4.search import search
 from assemblyline_ui.config import CLASSIFICATION, STORAGE, config
 from flask import request
 
@@ -151,15 +150,13 @@ def search_retrohunt_jobs(**kwargs):
     query   =>   Query to search for
 
     Optional Arguments:
-    deep_paging_id =>   ID of the next page or * to start deep paging
+    archive_only   =>   Only access the Malware archive (Default: False)
     filters        =>   List of additional filter queries limit the data
+    fl             =>   List of fields to return
     offset         =>   Offset in the results
     rows           =>   Number of results per page
     sort           =>   How to sort the results (not available in deep paging)
-    fl             =>   List of fields to return
-    timeout        =>   Maximum execution time (ms)
     use_archive    =>   Allow access to the malware archive (Default: False)
-    archive_only   =>   Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {"query": "query",     # Query to search for
@@ -167,25 +164,50 @@ def search_retrohunt_jobs(**kwargs):
      "rows": 100,          # Max number of results
      "sort": "field asc",  # How to sort the results
      "fl": "id,score",     # List of fields to return
-     "timeout": 1000,      # Maximum execution time (ms)
      "filters": ['fq']}    # List of additional filter queries limit the data
 
 
     Result example:
-    {"total": 201,                          # Total results found
-     "offset": 0,                           # Offset in the result list
-     "rows": 100,                           # Number of results returned
-     "next_deep_paging_id": "asX3f...342",  # ID to pass back for the next page during deep paging
-     "items": []}                           # List of results
+    {"total": 201,                          # Total retrohunt jobs found
+     "offset": 0,                           # Offset in the retrohunt job list
+     "rows": 100,                           # Number of retrohunt jobs returned
+     "items": []}                           # List of retrohunt jobs
     """
+    user = kwargs['user']
+
+    # Make sure retrohunt is configured
+    if haunted_house_client is None:
+        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+
+    # Get the request parameters and apply the multi_field parameter to it
+    multi_fields = ['filters']
+    if request.method == "POST":
+        req_data = request.json
+        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+    else:
+        req_data = request.args
+        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+
+    # Set the default search parameters
+    params.setdefault('query', '*')
+    params.setdefault('offset', '0')
+    params.setdefault('rows', '20')
+    params.setdefault('sort', 'created desc')
+    params.setdefault('access_control', user['access_control'])
+    params.setdefault('as_obj', False)
+    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
+    params.setdefault('track_total_hits', True)
+
+    # Append the other request parameters
+    fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
     try:
-        user = kwargs['user']
-        results = search('retrohunt', **kwargs)
-        items = results.get('items', [])
-        results['items'] = [get_job_details(item, user) if item.get(
+        result = STORAGE.retrohunt.search(**params)
+        items = result.get('items', [])
+        result['items'] = [get_job_details(item, user) if item.get(
             'finished', True) is False else item for item in items]
-        return make_api_response(results)
+        return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
