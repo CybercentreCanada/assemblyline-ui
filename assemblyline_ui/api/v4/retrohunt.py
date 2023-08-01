@@ -110,52 +110,48 @@ def get_errors(errors: list):
         }
 
 
-def prepare_search_result_detail(api_result: typing.Optional[hauntedhouse.SearchStatus], datastore_result: dict,
-                                 user):
+def get_latest_job_details(api_result: typing.Optional[hauntedhouse.SearchStatus], datastore_result: dict):
     # Get the appropriate data from the sources
-    if api_result:
-        selected_hashes = api_result.hits
+    if api_result is not None:
         errors = api_result.errors
-        truncated = api_result.truncated
-        total_hits = len(api_result.hits)
         phase = api_result.phase
         progress = api_result.progress
+        hits = api_result.hits
+        total_errors = len(api_result.errors)
+        total_hits = len(api_result.hits)
+        truncated = api_result.truncated
     else:
-        selected_hashes = datastore_result['hits']
         errors = datastore_result['errors']
-        truncated = datastore_result['truncated']
-        total_hits = datastore_result['total_hits']
         phase = 'finished'
         progress = (1, 1)
+        hits = datastore_result['hits']
+        total_errors = len(datastore_result['total_errors'])
+        total_hits = datastore_result['total_hits']
+        truncated = datastore_result['truncated']
 
-    # Get the hits' file information
-    hits = get_hits(ids=selected_hashes, user=user)
+    # Calculate the pourcentage of the phase completion
+    pourcentage = 100
+    if phase == 'filtering':
+        pourcentage = 100 * progress[0] / progress[1]
+    elif phase == 'yara':
+        pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
 
-    # Get the errors sliced
-    errors = get_errors(errors)
-    # supplement file information
-
-    # hits = []
-    # for batch in chunk(selected_hashes, 1000):
-    #     for doc in STORAGE.file.multiget(batch, as_obj=False, error_on_missing=False,
-    #                                      as_dictionary=False, index_type=Index.HOT_AND_ARCHIVE):
-    #         if CLASSIFICATION.is_accessible(user_access, doc['classification']):
-    #             hits.append(doc)
-
-    # Mix togeather the documents from the two information sources
+    # Mix together the documents from the two information sources
     datastore_result.update({
         'errors': errors,
-        'hits': hits,
-        'total_hits': total_hits,
         'finished': True if api_result is None else is_finished(api_result),
-        'truncated': truncated,
+        'hits': hits,
         'phase': phase,
+        'pourcentage': pourcentage,
         'progress': progress,
+        'total_errors': total_errors,
+        'total_hits': total_hits,
+        'truncated': truncated,
     })
     return datastore_result
 
 
-@retrohunt_api.route("/", methods=["POST"])
+@retrohunt_api.route("/", methods=["PUT"])
 @api_login(require_role=[ROLES.retrohunt_run])
 def create_retrohunt_job(**kwargs):
     """
@@ -212,7 +208,8 @@ def create_retrohunt_job(**kwargs):
     }).as_primitives()
 
     STORAGE.retrohunt.save(status.code, doc)
-    return make_api_response(prepare_search_result_detail(status, doc, user))
+
+    return make_api_response(get_latest_job_details(status, doc, user))
 
 
 @retrohunt_api.route("/<code>/", methods=["GET", "POST"])
