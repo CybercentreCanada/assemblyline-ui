@@ -55,16 +55,16 @@ def get_job_details(doc: dict, user):
             value_fields = ['errors', 'finished', 'hits', 'phase', 'progress', 'truncated']
             doc.update({k: status.get(k, None) for k in value_fields if status.get(k, None) is not None})
 
-            pourcentage = 100
+            percentage = 100
             if status.get('phase', None) == 'filtering':
                 progress = status.get('progress', (1, 1))
-                pourcentage = 100 * progress[0] / progress[1]
+                percentage = 100 * progress[0] / progress[1]
             elif status.get('phase', None) == 'yara':
                 progress = status.get('progress', (1, 1))
-                pourcentage = 100 * (progress[0] - progress[1]) / progress[0]
+                percentage = 100 * (progress[0] - progress[1]) / progress[0]
 
             doc.update({
-                'pourcentage': round(pourcentage),
+                'percentage': round(percentage),
                 'total_errors': len(status.get('errors', doc['errors'])),
                 'total_hits': len(status.get('hits', doc['hits'])),
             })
@@ -232,7 +232,7 @@ def get_retrohunt_job_detail(code, **kwargs):
         "finished": True,                           #   Boolean indicating if this retrohunt job is finished
         "id": "0x",                                 #   Unique code identifying this retrohunt job
         "phase": "finished",                        #   Phase the job is on : 'filtering' | 'yara' | 'finished'
-        "pourcentage": 0,                           #   Pourcentage of completion the phase is at
+        "percentage": 0,                            #   Percentage of completion the phase is at
         "progress": [1, 1],                         #   Progress values when the job is running
         "raw_query": "(min 1 of (100))",            #   Text of filter query derived from yara signature
         "tags": {},                                 #   Tags describing this retrohunt job
