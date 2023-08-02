@@ -130,7 +130,7 @@ def create_retrohunt_job(**kwargs):
         'yara_signature': signature,
     }).as_primitives()
 
-    STORAGE.retrohunt.save(status.code, doc)
+    STORAGE.retrohunt.save(status.get('code', None), doc)
 
     try:
         doc.update({
