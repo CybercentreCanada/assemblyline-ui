@@ -38,24 +38,24 @@ def get_job_details(doc: dict, user):
     # If the datastore document is finished, there no need to get the latest information.
     status: typing.Optional[hauntedhouse.SearchStatus] = None
     if not doc.get('finished'):
-        status = haunted_house_client.search_status_sync(code=code, access=user['classification'])
+        status = dict(haunted_house_client.search_status_sync(code=code, access=user['classification']))
 
         # If the retrohunt job is finished, update the datastore to the latest values
         if is_finished(status):
             doc.update({
-                'errors': status.errors,
+                'errors': status.get('errors', []),
                 'finished': True,
-                'hits': status.hits,
-                'total_errors': len(status.errors),
-                'total_hits': len(status.hits),
-                'truncated': status.truncated
+                'hits': status.get('hits', []),
+                'total_errors': len(status.get('errors', [])),
+                'total_hits': len(status.get('hits', [])),
+                'truncated': status.get('truncated', False)
             })
             STORAGE.retrohunt.save(code, doc)
 
         # If the retrohunt job is not finished, get the current state values
-        else:
+        elif status is not None:
             value_fields = ['errors', 'finished', 'hits', 'phase', 'progress', 'truncated']
-            doc.update({k: status[k] for k in value_fields if status.get(k, None) is not None})
+            doc.update({k: status.get(k, None) for k in value_fields if status.get(k, None) is not None})
 
             percentage = 100
             if status.get('phase', None) == 'filtering':
@@ -109,17 +109,17 @@ def create_retrohunt_job(**kwargs):
         return make_api_response({}, err="Searches may not be above user access.", status_code=403)
 
     # Parse the signature and send it to the retrohunt api
-    status = haunted_house_client.start_search_sync(
+    status = dict(haunted_house_client.start_search_sync(
         yara_rule=signature,
         access_control=classification,
         group=user['uname'],
         archive_only=archive_only
-    )
+    ))
 
     doc = Retrohunt({
         'archive_only': archive_only,
         'classification': classification,
-        'code': status.code,
+        'code': status.get('code', None),
         'creator': user['uname'],
         'description': description,
         'errors': [],
@@ -133,7 +133,16 @@ def create_retrohunt_job(**kwargs):
     STORAGE.retrohunt.save(status.code, doc)
 
     try:
-        return make_api_response(get_job_details(doc, user))
+        doc.update({
+            'percentage': 0,
+            'phase': status.get('phase', 'unknown'),
+            'progress': status.get('progress', (1, 1)),
+            'total_errors': 0,
+            'total_hits': 0,
+            'truncated': False,
+        })
+
+        return make_api_response(doc)
     except Exception as e:
         return make_api_response("", f"{e}", 400)
 
