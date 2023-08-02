@@ -1,3 +1,5 @@
+from typing import List
+from assemblyline.odm.models.config import ExternalLinks
 from flask import request
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
@@ -24,6 +26,25 @@ user_api._doc = "Manage the different users of the system"
 
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
+
+
+def parse_external_links(external_links: List[ExternalLinks]):
+    out = {}
+
+    for link in external_links:
+        for target in link.targets:
+            out.setdefault(target.type, {})
+            out[target.type].setdefault(target.key, [])
+            out[target.type][target.key].append({
+                "allow_bypass": link.allow_bypass,
+                "double_encode": link.double_encode,
+                "name": link.name,
+                "replace_pattern": link.replace_pattern,
+                "url": link.url,
+                "max_classification": link.max_classification,
+            })
+
+    return out
 
 
 @user_api.route("/whoami/", methods=["GET"])
@@ -165,8 +186,13 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "external_links": parse_external_links([
+                x for x in config.ui.external_links
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ]),
             "external_sources": [
-                x.name for x in getattr(config.ui, "external_sources", [])
+                x.name for x in config.ui.external_sources
                 if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
                                                 x.classification or CLASSIFICATION.UNRESTRICTED)
             ],
