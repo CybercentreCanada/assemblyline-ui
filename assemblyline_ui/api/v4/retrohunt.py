@@ -32,12 +32,16 @@ def is_finished(result):
     return False
 
 
-def get_job_details(doc: dict, user):
-    code = doc['code']
+def get_job_details(code: str, user, fl=None):
+
+    # Fetch the retrohunt job from elasticsearch
+    doc = STORAGE.retrohunt.get(code, as_obj=False)
+    if doc is None:
+        return None
 
     # If the datastore document is finished, there no need to get the latest information.
-    status: typing.Optional[hauntedhouse.SearchStatus] = None
-    if not doc.get('finished'):
+    if not doc.get('finished', None):
+        status: typing.Optional[hauntedhouse.SearchStatus] = None
         status = dict(haunted_house_client.search_status_sync(code=code, access=user['classification']))
 
         # If the retrohunt job is finished, update the datastore to the latest values
@@ -70,6 +74,11 @@ def get_job_details(doc: dict, user):
                 'total_errors': len(status.get('errors', doc['errors'])),
                 'total_hits': len(status.get('hits', doc['hits'])),
             })
+
+    # filter the fields
+    if fl and isinstance(fl, str) and fl != "":
+        fields = fl.replace(" ", "").split(',')
+        doc = dict({key: doc[key] for key in doc if key in fields})
 
     return doc
 
@@ -127,6 +136,9 @@ def create_retrohunt_job(**kwargs):
         'hits': [],
         'raw_query': hauntedhouse.client.query_from_yara(signature),
         'tags': {},
+        'total_errors': 0,
+        'total_hits': 0,
+        'truncated': False,
         'yara_signature': signature,
     }).as_primitives()
 
@@ -136,10 +148,7 @@ def create_retrohunt_job(**kwargs):
         doc.update({
             'percentage': 0,
             'phase': status.get('phase', 'unknown'),
-            'progress': status.get('progress', (1, 1)),
-            'total_errors': 0,
-            'total_hits': 0,
-            'truncated': False,
+            'progress': status.get('progress', (1, 1))
         })
 
         return make_api_response(doc)
@@ -216,8 +225,8 @@ def search_retrohunt_jobs(**kwargs):
     try:
         result = STORAGE.retrohunt.search(**params)
         items = result.get('items', [])
-        result['items'] = [get_job_details(item, user) if item.get(
-            'finished', True) is False else item for item in items]
+        result['items'] = [get_job_details(item.get('code', None), user, fl=params.get(
+            'fl', None)) if item.get('finished', True) is False else item for item in items]
         return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
@@ -267,20 +276,17 @@ def get_retrohunt_job_detail(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Fetch the data from elasticsearch, use that as access filter
-    doc: dict = STORAGE.retrohunt.get(code, as_obj=False)
+    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
+    doc: dict = get_job_details(code, user)
+
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
     if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
 
-    try:
-        doc = get_job_details(doc, user)
-        doc.pop('hits', None)
-        doc.pop('errors', None)
-        return make_api_response(doc)
-    except Exception as e:
-        return make_api_response("", f"{e}", 400)
+    doc.pop('hits', None)
+    doc.pop('errors', None)
+    return make_api_response(doc)
 
 
 @retrohunt_api.route("/hits/<code>/", methods=["GET"])
@@ -342,17 +348,14 @@ def get_retrohunt_job_hits(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Fetch the retrohunt job from elasticsearch
-    doc = STORAGE.retrohunt.get(code, as_obj=False)
+    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
+    doc: dict = get_job_details(code, user)
 
     # Make sure the user has the right classification to access this retrohunt job
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
     if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-
-    # Get status information from retrohunt server
-    doc = get_job_details(doc, user)
 
     # Get the request parameters and apply the multi_field parameter to it
     multi_fields = ['filters']
@@ -415,17 +418,14 @@ def get_retrohunt_job_errors(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Fetch the retrohunt job from elasticsearch
-    doc = STORAGE.retrohunt.get(code, as_obj=False)
+    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
+    doc: dict = get_job_details(code, user)
 
     # Make sure the user has the right classification to access this retrohunt job
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
     if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-
-    # Get status information from retrohunt server
-    doc = get_job_details(doc, user)
 
     if request.method == "POST":
         req_data = request.json
@@ -485,17 +485,14 @@ def get_retrohunt_job_types(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Fetch the retrohunt job from elasticsearch
-    doc = STORAGE.retrohunt.get(code, as_obj=False)
+    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
+    doc: dict = get_job_details(code, user)
 
     # Make sure the user has the right classification to access this retrohunt job
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
     if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-
-    # Get status information from retrohunt server
-    doc = get_job_details(doc, user)
 
     # Get the request parameters and apply the multi_field parameter to it
     multi_fields = ['filters']
