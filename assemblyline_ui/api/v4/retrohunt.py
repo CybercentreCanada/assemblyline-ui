@@ -42,12 +42,14 @@ def get_job_details(doc: dict, user):
 
         # If the retrohunt job is finished, update the datastore to the latest values
         if is_finished(status):
-            doc['errors'] = status.errors
-            doc['finished'] = True
-            doc['hits'] = status.hits
-            doc['total_errors'] = len(status.errors)
-            doc['total_hits'] = len(status.hits)
-            doc['truncated'] = status.truncated
+            doc.update({
+                'errors': status.errors,
+                'finished': True,
+                'hits': status.hits,
+                'total_errors': len(status.errors),
+                'total_hits': len(status.hits),
+                'truncated': status.truncated
+            })
             STORAGE.retrohunt.save(code, doc)
 
         # If the retrohunt job is not finished, get the current state values
