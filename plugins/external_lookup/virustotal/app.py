@@ -104,8 +104,8 @@ def search_tag(tag_name: str, tag: str) -> Response:
     Tags submitted must be URL encoded (not url_plus quoted).
 
     Arguments:(optional)
-    max_timeout => Maximum execution time for the call in seconds [Default: 3 seconds]
-    limit       => limit the amount of returned results per source [Default: 100]
+    max_timeout => Maximum execution time for the call in seconds
+    limit       => limit the amount of returned results per source
 
 
     This method should return an api_response containing:
@@ -123,7 +123,12 @@ def search_tag(tag_name: str, tag: str) -> Response:
             f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
             422,
         )
-    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT, type=float)
+    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT)
+    # noinspection PyBroadException
+    try:
+        max_timeout = float(max_timeout)
+    except Exception:
+        max_timeout = MAX_TIMEOUT
 
     data = lookup_tag(tag_name=tn, tag=tag, timeout=max_timeout)
     if isinstance(data, Response):
@@ -164,7 +169,9 @@ def tag_details(tag_name: str, tag: str) -> Response:
             "enrichment": [
                 #{"group": <group>, "values": {<name>: [<value>, ...], ...}},
                 #{"group": <group>, "name": <name>, "value": <value>},
-                {"group": <group>, "values": [{"name": <name>, "values": [<value>, ...], ...}]},
+                #{"group": <group>, "values": [{"name": <name>, "values": [<value>, ...], ...}]},
+                {"group": <group>, "name": <name>, "name_description": <description>,
+                  "value": <value>, "value_description": <description>}
                 ...,
             ]   # [Optional] ordered groupings of additional metadata
         },
@@ -179,9 +186,14 @@ def tag_details(tag_name: str, tag: str) -> Response:
             f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
             422,
         )
-    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT, type=float)
     enrich = request.args.get("enrich", "false").lower() in ("true", "1")
     noraw = request.args.get("noraw", "false").lower() in ("true", "1")
+    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT)
+    # noinspection PyBroadException
+    try:
+        max_timeout = float(max_timeout)
+    except Exception:
+        max_timeout = MAX_TIMEOUT
 
     data = lookup_tag(tag_name=tn, tag=tag, timeout=max_timeout)
     if isinstance(data, Response):
@@ -244,7 +256,7 @@ class Enricher():
     """Object to parse and hold enrichment info."""
 
     def __init__(self, data: dict) -> None:
-        self._enrichment = {}
+        # self._enrichment = {}
         self.enrichment = []
         self.data = data
         self._enrich()
@@ -254,71 +266,9 @@ class Enricher():
         #
         # convert {<group>: {<name>: [<vals>]}} ->
         #   {"group": <group>, "values": [{"name": <name>, "values": [<value>]}]}
-        for group, kvals in self._enrichment.items():
-            values = [{"name": name, "values": vals} for name, vals in kvals.items()]
-            self.enrichment.append({"group": group, "values": values})
-
-    # def _add2(
-    #     self,
-    #     group: str,
-    #     name: str,
-    #     key: str = None,
-    #     default=None,
-    #     *,
-    #     label: str = "",
-    #     label_key: str = None,
-    #     value: str = None,
-    #     value_key: Union[str, list] = None,
-    #     is_timestamp: bool = False,
-    #     data: dict = None
-    # ):
-    #     """
-    #     group: enrichment group
-    #     name: enrichment name
-    #     key: key in data to lookup
-    #     default: default value if key doesn't exist (None to ignore)
-    #     label: label to add to the value
-    #     data: data dict to parse instead of top level
-    #     """
-    #     # allow a passed in dict to be parsed instead
-    #     data = data or self.data
-
-    #     # when value is directly given, we don't need to get the value out of a dict
-    #     if value is not None:
-    #         item = value
-    #     else:
-    #         # key defaults to name if not specified.
-    #         if key is None:
-    #             key = name
-    #         item = data.get(key, default)
-    #         if item is None:
-    #             return
-
-    #     items = item
-    #     if not isinstance(item, list):
-    #         items = [item]
-
-    #     for item in items:
-    #         _label = label
-    #         if label_key is not None:
-    #             _label = item.get(label_key, None)
-
-    #         # allow multiple value_keys to be given
-    #         values = [item]
-    #         if value_key:
-    #             if not isinstance(value_key, list):
-    #                 value_key = [value_key]
-    #             values = [item[k] for k in value_key if k in item]
-
-    #         for value in values:
-    #             # if timestamp is specified, all values must be timestamps
-    #             if is_timestamp:
-    #                 value = datetime.datetime.fromtimestamp(value, datetime.timezone.utc).isoformat()
-
-    #             if _label:
-    #                 value = f"{_label}::{value}"
-
-    #             self.enrichment.append({"name": name, "value": value})
+        # for group, kvals in self._enrichment.items():
+        #     values = [{"name": name, "values": vals} for name, vals in kvals.items()]
+        #     self.enrichment.append({"group": group, "values": values})
 
     def _add(
         self,
@@ -328,10 +278,12 @@ class Enricher():
         default=None,
         *,
         name_key: str = None,
+        name_description: str = "",
+        name_description_key: str = None,
         value: str = None,
-        value_key: Union[str, list] = None,
-        description: str = None,
-        description_key: str = None,
+        value_key: str = None,
+        value_description: str = "",
+        value_description_key: str = None,
         is_timestamp: bool = False,
         ignore_falsy: bool = False,
         data: dict = None
@@ -340,45 +292,55 @@ class Enricher():
         data = data or self.data
 
         # when value is directly given, we don't need to get the value out of a dict
-        if value is not None:
-            item = value
-        else:
+        items = value
+        if items is None:
             # key defaults to name if not specified.
             if key is None:
                 key = name
-            item = data.get(key, default)
-            if item is None:
+            items = data.get(key, default)
+            if items is None:
                 return
 
-        items = item
-        if not isinstance(item, list):
-            items = [item]
+        if not isinstance(items, list):
+            items = [items]
 
         for item in items:
-            # allow multiple value_keys to be given
-            values = [item]
+            # values should be either a str or list of str
+            values = item
             if value_key:
-                if not isinstance(value_key, list):
-                    value_key = [value_key]
-                values = [item[k] for k in value_key if k in item]
+                values = item.get(value_key, [])
+            if not isinstance(values, list):
+                values = [values]
 
+            if isinstance(item, dict):
+                name_description = item.get(name_description_key, "")
             for value in values:
                 if ignore_falsy and not value:
                     continue
 
+                name_ = name
                 if name is None:
-                    name = item.get(name_key)
+                    name_ = item.get(name_key)
 
-                # if timestamp is specified, all values must be timestamps
+                if isinstance(item, dict):
+                    value_description = item.get(value_description_key, "")
+
+                # when is_timestamp is specified, all values must be timestamps
                 if is_timestamp:
                     value = datetime.datetime.fromtimestamp(value, datetime.timezone.utc).isoformat()
 
                 # sets cannot be json serialised by default
-                x = self._enrichment.setdefault(group, {}).setdefault(name, [])
-                if value not in x:
-                    x.append(value)
+                # x = self._enrichment.setdefault(group, {}).setdefault(name_, [])
+                # if value not in x:
+                #     x.append(value)
 
-                # self.enrichment_ordered.append({"group": group, "name": name, "value": value})
+                self.enrichment.append({
+                    "group": group,
+                    "name": name_,
+                    "name_description": name_description,
+                    "value": value,
+                    "value_description": value_description,
+                })
 
     def _enrich(self):
         """Parse the data and build an ordered result dict."""
@@ -396,6 +358,7 @@ class Enricher():
             self._add("summary", "threat", key="suggested_threat_label", data=threats)
             self._add("summary", "threat_family", key="popular_threat_name", value_key="value", data=threats)
             self._add("summary", "threat_category", key="popular_threat_category", value_key="value", data=threats)
+        self._add("summary", "threat_family", key="threat_names")
         self._add("summary", "reputation", default=0)
         self._add("summary", "capabilities", key="capabilities_tags")
         if self.data.get("popularity_ranks", {}):
@@ -439,7 +402,9 @@ class Enricher():
 
         # Yara rule hits
         # show source: rule_name, or rule_name: description?
-        self._add("yara_hits", key="crowdsourced_yara_results", name_key="source", value_key="rule_name")
+        self._add(
+            "yara_hits", key="crowdsourced_yara_results", name_key="source", value_key="rule_name",
+            value_description_key="description")
 
         # Popularity
         for vendor, r in self.data.get("popularity_ranks", {}).items():
@@ -447,42 +412,11 @@ class Enricher():
             value = f"{r['rank']} ({last_updated})"
             self._add("popularity_ranks", vendor, value=value)
 
-        # Sandbox results
-        # ordered to show malicious before suspicious
-        malicious = []
-        sus = []
-        for r in self.data.get("sandbox_verdicts", {}).values():
-            if r["category"] == "malicious":
-                malicious.append(r)
-            if r["category"] == "suspicious":
-                sus.append(r)
-        for r in malicious:
-            # sometimes malware_names are not set...
-            value = ", ".join(r.get("malware_names", [])) or "malicious"
-            confidence = f" (Confidence: {r.get('confidence')})" if r.get("confidence") else ""
-            self._add("sandboxes", r["sandbox_name"], value=f"{value}{confidence}")
-        for r in sus:
-            self._add("sandboxes", r["sandbox_name"], value="suspicious")
-
-        # AV results
-        # ordered to show malicious before suspicious
-        malicious = []
-        sus = []
-        for r in self.data.get("last_analysis_results", {}).values():
-            if r["category"] == "malicious":
-                malicious.append(r)
-            if r["category"] == "suspicious":
-                sus.append(r)
-        for r in malicious:
-            updated = f" ({r.get('engine_update')})" if r.get("engine_update") else ""
-            self._add("security_vendors", r["engine_name"], value=f"{r['result']}{updated}")
-        for r in sus:
-            updated = f" ({r.get('engine_update')})" if r.get("engine_update") else ""
-            self._add("security_vendors", r["engine_name"], value=f"suspicious{updated}")
-
         # Sigma results
         for r in self.data.get("sigma_analysis_results", []):
-            self._add("sigma_alerts", r["rule_level"], value=f"{r['rule_title']} [{r['rule_author']}]")
+            self._add(
+                "sigma_alerts", r["rule_level"], value=f"{r['rule_title']} [{r['rule_author']}]",
+                value_description_key="rule_description")
 
         # IDS details
         for results in self.data.get("crowdsourced_ids_results", []):
@@ -519,8 +453,14 @@ class Enricher():
         for cookie, value in self.data.get("last_http_response_cookies", {}).items():
             self._add("last_response_cookies", cookie, value=value)
 
+        # Trackers
+        for tracker in self.data.get("trackers", {}):
+            self._add("trackers", tracker, value_key="url", data=self.data.get("trackers", {}))
+
         # General for info only
         self._add("info", "names")
+        self._add("info", "autonomous_system_owner", key="as_owner")
+        self._add("info", "autonomous_system_number", key="asn")
         self._add("info", "labels", key="tags")
         self._add("info", "jarm_hash", key="jarm")
         self._add("info", "url")
@@ -533,8 +473,6 @@ class Enricher():
         self._add("info", "network")
         self._add("info", "whois_date", is_timestamp=True)
         self._add("info", "whois")
-        self._add("info", "autonomous_system_owner", key="as_owner")
-        self._add("info", "autonomous_system_number", key="asn")
 
         # Certificate info
         cert = self.data.get("last_https_certificate", {})
@@ -556,14 +494,38 @@ class Enricher():
             self._add("certificate_info", "validity_not_after", value=cert["validity"]["not_after"])
             self._add("certificate_info", "validity_not_before", value=cert["validity"]["not_before"])
 
-        # Yara rule descriptions
-        self._add("yara_descriptions", key="crowdsourced_yara_results", name_key="rule_name", value_key="description")
-        # Sigma rule descriptions
-        self._add("sigma_descriptions", key="sigma_analysis_results", name_key="rule_title", value_key="rule_description")
+        # Sandbox results
+        # ordered to show malicious before suspicious
+        malicious = []
+        sus = []
+        for r in self.data.get("sandbox_verdicts", {}).values():
+            if r["category"] == "malicious":
+                malicious.append(r)
+            if r["category"] == "suspicious":
+                sus.append(r)
+        for r in malicious:
+            # sometimes malware_names are not set...
+            value = ", ".join(r.get("malware_names", [])) or "malicious"
+            confidence = f" (Confidence: {r.get('confidence')})" if r.get("confidence") else ""
+            self._add("sandboxes", r["sandbox_name"], value=f"{value}{confidence}")
+        for r in sus:
+            self._add("sandboxes", r["sandbox_name"], value="suspicious")
 
-        # Trackers
-        for tracker in self.data.get("trackers", {}):
-            self._add("trackers", tracker, value_key="url", data=self.data.get("trackers", {}))
+        # AV results
+        # ordered to show malicious before suspicious
+        malicious = []
+        sus = []
+        for r in self.data.get("last_analysis_results", {}).values():
+            if r["category"] == "malicious":
+                malicious.append(r)
+            if r["category"] == "suspicious":
+                sus.append(r)
+        for r in malicious:
+            updated = f" ({r.get('engine_update')})" if r.get("engine_update") else ""
+            self._add("security_vendors", r["engine_name"], value=f"{r['result']}{updated}")
+        for r in sus:
+            updated = f" ({r.get('engine_update')})" if r.get("engine_update") else ""
+            self._add("security_vendors", r["engine_name"], value=f"suspicious{updated}")
 
 
 def main():
