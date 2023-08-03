@@ -163,35 +163,31 @@ def search_retrohunt_jobs(**kwargs):
     Search through the retrohunt index for a given query.
     Uses lucene search syntax for query.
 
-    Variables:
-    index  =>   Bucket to search in (alert, submission,...)
-
-    Arguments:
-    query   =>   Query to search for
-
     Optional Arguments:
-    archive_only   =>   Only access the Malware archive (Default: False)
-    filters        =>   List of additional filter queries limit the data
-    fl             =>   List of fields to return
-    offset         =>   Offset in the results
-    rows           =>   Number of results per page
-    sort           =>   How to sort the results (not available in deep paging)
-    use_archive    =>   Allow access to the malware archive (Default: False)
+        query                   =>  Query to search for
+        offset                  =>  Offset in the results
+        rows                    =>  Number of results per page
+        sort                    =>  How to sort the results (not available in deep paging)
+        fl                      =>  List of fields to return
+        filters                 =>  List of additional filter queries limit the data
 
     Data Block (POST ONLY):
-    {"query": "query",     # Query to search for
-     "offset": 0,          # Offset in the results
-     "rows": 100,          # Max number of results
-     "sort": "field asc",  # How to sort the results
-     "fl": "id,score",     # List of fields to return
-     "filters": ['fq']}    # List of additional filter queries limit the data
-
+    {
+        "query": "*",           =>  Query to search for
+        "offset": 0,            =>  Offset in the results
+        "rows": 100,            =>  Max number of results
+        "sort": "field asc",    =>  How to sort the results
+        "fl": "id,score",       =>  List of fields to return
+        "filters": ['fq']       =>  List of additional filter queries limit the data
+    }
 
     Result example:
-    {"total": 201,                          # Total retrohunt jobs found
-     "offset": 0,                           # Offset in the retrohunt job list
-     "rows": 100,                           # Number of retrohunt jobs returned
-     "items": []}                           # List of retrohunt jobs
+    {
+        "total": 201,           =>  Total retrohunt jobs found
+        "offset": 0,            =>  Offset in the retrohunt job list
+        "rows": 20,             =>  Number of retrohunt jobs returned
+        "items": []             =>  List of retrohunt jobs
+    }
     """
     user = kwargs['user']
 
@@ -239,7 +235,7 @@ def get_retrohunt_job_detail(code, **kwargs):
     Get the details of a completed or an in progress retrohunt job.
 
     Variables:
-        code                => Search code to be retrieved
+        code                => Search code of the retrohunt job to be retrieved
 
     Response Fields:
     {
@@ -289,22 +285,33 @@ def get_retrohunt_job_detail(code, **kwargs):
     return make_api_response(doc)
 
 
-@retrohunt_api.route("/hits/<code>/", methods=["GET"])
+@retrohunt_api.route("/hits/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_hits(code, **kwargs):
     """
     Get hit results of a retrohunt job completed or in progress.
 
     Variables:
-        code                    =>  Search code to be retrieved
+        code                    =>  Search code of the retrohunt job to be retrieved
 
     Optional Arguments:
         query                   =>  Query to filter the file list
         offset                  =>  Offset at which we start giving files
-        rows                    =>  Numbers of files to return
+        rows                    =>  Number of files to return
         filters                 =>  List of additional filter queries limit the data
         sort                    =>  How to sort the results (not available in deep paging)
         fl                      =>  List of fields to return
+
+    Data Block (POST ONLY):
+    {
+        "query": "id:*",        =>  Query to filter the file list
+        "offset": "0",          =>  Offset at which we start giving files
+        "rows": "0",            =>  Number of files to return
+        "filters": "0",         =>  List of additional filter queries limit the data
+        "sort": "0",            =>  How to sort the results (not available in deep paging)
+        "fl": "0",              =>  List of fields to return
+        "filters": ['fq']
+    }
 
     Response Fields:
     {
@@ -387,19 +394,26 @@ def get_retrohunt_job_hits(code, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@retrohunt_api.route("/errors/<code>/", methods=["GET"])
+@retrohunt_api.route("/errors/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_errors(code, **kwargs):
     """
     Get errors of a retrohunt job completed or in progress.
 
     Variables:
-        code                    =>  Search code to be retrieved
+        code                    =>  Search code of the retrohunt job to be retrieved
 
     Optional Arguments:
-        offset                  =>  Offset at which we start giving files
-        rows                    =>  Numbers of files to return
-        sort                    =>  How to sort the errors
+        offset                  =>  Offset at which we start giving error messages
+        rows                    =>  Number of error messages to return
+        sort                    =>  How to sort the error messages
+
+    Data Block (POST ONLY):
+    {
+        "offset": "0",          =>  Offset at which we start giving error messages
+        "rows": "25",           =>  Number of error messages to return
+        "sort": "asc",          =>  How to sort the error messages
+    }
 
     Response Fields:
     {
@@ -459,21 +473,29 @@ def get_retrohunt_job_errors(code, **kwargs):
     })
 
 
-@retrohunt_api.route("/types/<code>/", methods=["GET"])
+@retrohunt_api.route("/types/<code>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_types(code, **kwargs):
     """
     Get types distribution of a retrohunt job completed or in progress.
 
     Variables:
-        code                    =>  Search code to be retrieved
+        code                    =>  Search code of the retrohunt job to be retrieved
 
     Optional Arguments:
         query                   =>  Query to filter the file list
+        mincount                =>  Minimum number of types for the fieldvalue to be returned
         filters                 =>  List of additional filter queries limit the data
 
+    Data Block (POST ONLY):
+    {
+        "query": "id:*",        =>  Query to filter the file list
+        "mincount": "0",        =>  Minimum number of types for the fieldvalue to be returned
+        "filters": "0",         =>  List of additional filter queries limit the data
+    }
+
     Result example:
-    {                 # Facetting results
+    {                           # Facet results
         "value_0": 2,
         ...
         "value_N": 19,
@@ -505,12 +527,13 @@ def get_retrohunt_job_types(code, **kwargs):
 
     # Set the default search parameters
     params.setdefault('query', '*')
+    params.setdefault('mincount', 0)
     params.setdefault('access_control', user['access_control'])
     params.setdefault('key_space', doc['hits'])
     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
 
     # Append the other request parameters
-    fields = ["query"]
+    fields = ["query", "mincount"]
     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
     try:
