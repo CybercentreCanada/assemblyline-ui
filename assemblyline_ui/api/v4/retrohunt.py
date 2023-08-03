@@ -527,7 +527,6 @@ def get_retrohunt_job_types(code, **kwargs):
 
     # Set the default search parameters
     params.setdefault('query', '*')
-    params.setdefault('mincount', 0)
     params.setdefault('access_control', user['access_control'])
     params.setdefault('key_space', doc['hits'])
     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
