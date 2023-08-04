@@ -3,12 +3,10 @@
 Lookup related data from external systems.
 
 * Provide endpoints to query systems and return links to those results.
-
-
-Future:
-
 * Provide endpoints to query other systems to enable enrichment of AL data.
 """
+import concurrent.futures
+import os
 import uuid
 
 from flask import request
@@ -22,6 +20,8 @@ from assemblyline_ui.config import config, CLASSIFICATION as Classification, LOG
 SUB_API = "federated_lookup"
 federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
 federated_lookup_api._doc = "Lookup related data through configured external data sources/systems."
+
+NF = "Not found"
 
 
 class _Tags():
@@ -96,6 +96,30 @@ def filtered_tag_names(user):
     return available_tags
 
 
+def parse_qp(request, limit: int = 100, timeout: float = 3.0):
+    """Parse the standard query params."""
+    query_sources = request.args.get("sources")
+    if query_sources:
+        query_sources = query_sources.split("|")
+
+    max_timeout = request.args.get("max_timeout", timeout)
+    limit = request.args.get("limit", limit, type=int)
+    # noinspection PyBroadException
+    try:
+        max_timeout = float(max_timeout)
+    except Exception:
+        max_timeout = timeout
+
+    tag_classification = request.args.get("classification", Classification.UNRESTRICTED)
+
+    return {
+        "query_sources": query_sources,
+        "max_timeout": max_timeout,
+        "limit": limit,
+        "tag_classification": tag_classification,
+    }
+
+
 def log_error(msg, err=None, status_code=None):
     """Log a standard error string, with a unique id reference for logging."""
     err_id = str(uuid.uuid4())
@@ -109,13 +133,85 @@ def log_error(msg, err=None, status_code=None):
     return err_id
 
 
+def query_external(
+    query_type,
+    user,
+    source,
+    tag_name: str,
+    tag: str,
+    tag_classification: str,
+    limit: int,
+    timeout: float,
+):
+    """Query the external source for details.
+
+    Returns:
+    {
+        "error": str,
+        "result": list,
+    }
+
+    """
+    if tag_name not in all_supported_tags.get(source.name, {}):
+        return
+
+    result = {
+        "error": "",
+        "items": [],
+    }
+    # check query against the max supported classification of the external system
+    # if this is not supported, we should let the user know.
+    if not Classification.is_accessible(
+        source.max_classification or Classification.UNRESTRICTED,
+        tag_classification
+    ):
+        result["error"] = f"Tag classification exceeds max classification of source: {source.name}."
+        return result
+
+    # perform the lookup, ensuring access controls are applied
+    session = Session()
+    headers = {
+        "accept": "application/json",
+    }
+    params = {
+        "limit": limit,
+        "max_timeout": timeout,
+    }
+    if query_type == "details":
+        params["enrich"] = True
+        params["noraw"] = True
+
+    url = f"{source.url}/{query_type}/{tag_name}/{tag}"
+    rsp = session.get(url, params=params, headers=headers)
+
+    status_code = rsp.status_code
+    if status_code == 404 or status_code == 422:
+        result["error"] = NF
+    elif status_code != 200:
+        err_msg = rsp.json()["api_error_message"]
+        err_id = log_error(f"Error from {source.name}", err_msg, status_code)
+        result["error"] = f"{err_msg}. Error ID: {err_id}"
+    else:
+        try:
+            api_response = rsp.json()["api_response"]
+            if isinstance(api_response, dict):
+                api_response = [api_response]
+            for data in api_response:
+                if user and Classification.is_accessible(user["classification"], data["classification"]):
+                    result["items"].append(data)
+        # noinspection PyBroadException
+        except Exception as err:
+            err_msg = f"{source.name}-proxy did not return a response in the expected format"
+            err_id = log_error(err_msg, err)
+            result["error"] = f"{err_msg}. Error ID: {err_id}"
+
+    return result
+
+
 @federated_lookup_api.route("/tags/", methods=["GET"])
 @api_login(require_role=[ROLES.external_query])
 def get_tag_names(**kwargs):
     """Return the supported tags of each external service.
-
-    Arguments: (optional)
-    max_timeout     => Maximum execution time for the call in seconds [Default: 3 seconds]
 
     Data Block:
     None
@@ -137,12 +233,6 @@ def get_tag_names(**kwargs):
     }
     """
     user = kwargs["user"]
-    max_timeout = request.args.get("max_timeout", "3")
-    # noinspection PyBroadException
-    try:
-        max_timeout = float(max_timeout)
-    except Exception:
-        max_timeout = 3.0
     return make_api_response(filtered_tag_names(user))
 
 
@@ -158,8 +248,8 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     Arguments: (optional)
     classification  => Classification of the tag [Default: minimum configured classification]
     sources         => | separated list of data sources. If empty, all configured sources are used.
-    max_timeout     => Maximum execution time for the call in seconds [Default: 3 seconds]
-    limit           => limit the amount of returned results counted per source [Default: 500]
+    max_timeout     => Maximum execution time for the call in seconds
+    limit           => limit the amount of returned results counted per source
 
     Data Block:
     None
@@ -182,19 +272,8 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     }
     """
     user = kwargs["user"]
-    query_sources = request.args.get("sources")
-    if query_sources:
-        query_sources = query_sources.split("|")
-
-    max_timeout = request.args.get("max_timeout", "3")
-    limit = request.args.get("limit", "500")
-    # noinspection PyBroadException
-    try:
-        max_timeout = float(max_timeout)
-    except Exception:
-        max_timeout = 3.0
-
-    tag_classification = request.args.get("classification", Classification.UNRESTRICTED)
+    qp = parse_qp(request=request)
+    query_sources = qp["query_sources"]
 
     # validate what sources the user is allowed to submit requests to.
     # this must first be checked against what systems the user is allowed to see
@@ -204,53 +283,42 @@ def search_tags(tag_name: str, tag: str, **kwargs):
         if Classification.is_accessible(user["classification"], x.classification)
     ]
 
-    session = Session()
-    headers = {
-        "accept": "application/json",
-    }
-    params = {
-        "limit": limit,
-        "max_timeout": max_timeout,
-    }
+    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:
+        # create searches for external sources
+        future_searches = {
+            executor.submit(
+                query_external,
+                query_type="search",
+                user=user,
+                source=source,
+                tag_name=tag_name,
+                tag=tag,
+                tag_classification=qp["tag_classification"],
+                limit=qp["limit"],
+                timeout=qp["max_timeout"]
+            ): source.name
+            for source in available_sources
+            if not query_sources or source.name in query_sources
+        }
+
+        results = {
+            future_searches[future]: future.result()
+            for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])
+            if future.result() is not None
+        }
 
     links = {}
     errors = {}
-    for source in available_sources:
-        if tag_name not in all_supported_tags.get(source.name, {}):
-            continue
-        if not query_sources or source.name in query_sources:
-            # check query against the max supported classification of the external system
-            # if this is not supported, we should let the user know.
-            if not Classification.is_accessible(
-                source.max_classification or Classification.UNRESTRICTED,
-                tag_classification
-            ):
-                errors[source.name] = f"Tag classification exceeds max classification of source: {source.name}."
-                continue
+    # format to expected structure
+    for sname, res in results.items():
+        items = res["items"]
+        if items:
+            links[sname] = items[0]  # search only returns a single item
 
-            # perform the lookup, ensuring access controls are applied
-            url = f"{source.url}/search/{tag_name}/{tag}"
-            rsp = session.get(url, params=params, headers=headers)
-            status_code = rsp.status_code
-            if status_code == 404 or status_code == 422:
-                # continue searching configured sources if not found or invliad tag.
-                continue
-            if status_code != 200:
-                # as we query across multiple sources, just log errors.
-                err_msg = f"Error from source: {source.name}"
-                err_id = log_error(err_msg, rsp.json()["api_error_message"], status_code)
-                errors[source.name] = f"{err_msg}. Error ID: {err_id}"
-                continue
-            try:
-                data = rsp.json()["api_response"]
-                if user and Classification.is_accessible(user["classification"], data["classification"]):
-                    links[source.name] = data
-            # noinspection PyBroadException
-            except Exception as err:
-                err_msg = f"{source.name}-proxy did not return a response in the expected format"
-                err_id = log_error(err_msg, err)
-                errors[source.name] = f"{err_msg}. Error ID: {err_id}"
-                continue
+        # Not found is skipped
+        err = res["error"]
+        if err and err != NF:
+            errors[sname] = err
 
     status_code = 200
     if not links:
@@ -260,8 +328,97 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     return make_api_response(links, err=errors, status_code=status_code)
 
 
-# @federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
-# @api_login(require_role=[ROLES.external_query])
-# def enrich_tags(tag_name: str, tag: str, **kwargs):
-#    """Search other services for additional information to enrich AL"""
-#    pass
+@federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
+@api_login(require_role=[ROLES.external_query])
+def enrich_tags(tag_name: str, tag: str, **kwargs):
+    """Search other services for additional information to enrich AL.
+
+    Variables:
+    tag_name => Tag to look up in the external system.
+    tag => Tag value to lookup. Must be URL encoded.
+
+    Arguments: (optional)
+    classification  => Classification of the tag [Default: minimum configured classification]
+    sources         => | separated list of data sources. If empty, all configured sources are used.
+    max_timeout     => Maximum execution time for the call in seconds
+    limit           => limit the amount of returned results counted per source
+
+
+    Data Block:
+    None
+
+    API call examples:
+    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/
+    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=virustotal|malware_bazar
+
+    Result example:
+    {                           # Dictionary of:
+        "al": {                   # Data source queried
+            "error": null,            # Error message returned by data source
+            "items": [                # List of items found in the data source
+                {"confirmed": true,        # Is the maliciousness attribution confirmed or not
+                 "description": "",        # Description of the findings
+                 "malicious": false,       # Is the file found malicious or not
+                 "enrichment":             # Semi structured details about the tag
+                    {"group": <group>, "name": <name>, "name_description": <description>,
+                    "value": <value>, "value_description": <description>}
+                },
+            ...
+            ]
+        },
+        ...
+    }
+    """
+    user = kwargs["user"]
+    qp = parse_qp(request=request)
+    query_sources = qp["query_sources"]
+
+    # validate what sources the user is allowed to submit requests to.
+    # this must first be checked against what systems the user is allowed to see
+    # additional tag level checking is then done later to provide feedback to user
+    available_sources = [
+        x for x in getattr(config.ui, "external_sources", [])
+        if Classification.is_accessible(user["classification"], x.classification)
+    ]
+
+    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:
+        # create searches for external sources
+        future_searches = {
+            executor.submit(
+                query_external,
+                query_type="details",
+                user=user,
+                source=source,
+                tag_name=tag_name,
+                tag=tag,
+                tag_classification=qp["tag_classification"],
+                limit=qp["limit"],
+                timeout=qp["max_timeout"]
+            ): source.name
+            for source in available_sources
+            if not query_sources or source.name in query_sources
+        }
+
+        results = {
+            future_searches[future]: future.result()
+            for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])
+            if future.result() is not None
+        }
+
+    # if any successful results at all are given we should return a success 200.
+    # otherwise, if ALL results are 404s we should return a 404,
+    # else fallback to return a generic server error
+    status_code = 200
+    error = None
+
+    res = results.values()
+    # if all results are 404s, return a 404
+    if not res or all({r["error"] == NF for r in res}):
+        status_code = 404
+        error = NF
+    # if all errors return a generic error
+    elif all(r["error"] for r in res):
+        status_code = 500
+        error = "One or more errors occured. See individual source results for more details."
+
+    return make_api_response(results, err=error, status_code=status_code)
