@@ -8,7 +8,6 @@ import datetime
 import json
 import os
 
-from typing import Union
 from urllib import parse as ul
 
 import requests
@@ -90,7 +89,7 @@ def lookup_tag(tag_name: str, tag: str, timeout: float):
 
     rsp = session.get(url, headers=headers, verify=VERIFY, timeout=timeout)
     if rsp.status_code == 404:
-        return make_api_response(None, "No results.", rsp.status_code)
+        return make_api_response(None, "No results.", 200)
     elif rsp.status_code != 200:
         return make_api_response(rsp.text, "Error submitting data to upstream.", rsp.status_code)
 
@@ -154,8 +153,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
     Query Params:
     max_timeout => Maximum execution time for the call in seconds
     limit       => Maximum number of items to return
-    enrich      => If specified, return semi structured Key:Value pairs of additional metadata under "enrichment"
-    noraw       => If specified, do not return the raw data under the `data` key
+    nodata      => If specified, do not return the enrichment data
 
     Returns:
     # List of:
@@ -164,14 +162,14 @@ def tag_details(tag_name: str, tag: str) -> Response:
             "description": "",                     # Description of the findings
             "malicious": <bool>,                   # Is the file found malicious or not
             "confirmed": <bool>,                   # Is the maliciousness attribution confirmed or not
-            "data": {...},                         # Additional Raw data
             "classification": <access control>,    # [Optional] Classification of the returned data
+            "link": <url to search results in external system>,
+            "count": <count of results from the external system>,
             "enrichment": [
-                #{"group": <group>, "values": {<name>: [<value>, ...], ...}},
-                #{"group": <group>, "name": <name>, "value": <value>},
-                #{"group": <group>, "values": [{"name": <name>, "values": [<value>, ...], ...}]},
-                {"group": <group>, "name": <name>, "name_description": <description>,
-                  "value": <value>, "value_description": <description>}
+                {"group": <group>, "classification": <classification>,
+                 "name": <name>, "name_description": <description>,
+                 "value": <value>, "value_description": <description>,
+                },
                 ...,
             ]   # [Optional] ordered groupings of additional metadata
         },
@@ -182,12 +180,11 @@ def tag_details(tag_name: str, tag: str) -> Response:
     tn = TAG_MAPPING.get(tag_name)
     if tn is None:
         return make_api_response(
-            None,
-            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
+            f"Tag name `{tag_name}` is invalid. Valid tags are: {', '.join(TAG_MAPPING.keys())}",
+            f"Invalid tag name: {tag_name}",
             422,
         )
-    enrich = request.args.get("enrich", "false").lower() in ("true", "1")
-    noraw = request.args.get("noraw", "false").lower() in ("true", "1")
+    nodata = request.args.get("nodata", "false").lower() in ("true", "1")
     max_timeout = request.args.get("max_timeout", MAX_TIMEOUT)
     # noinspection PyBroadException
     try:
@@ -234,20 +231,19 @@ def tag_details(tag_name: str, tag: str) -> Response:
     if threat:
         description += f" {threat}."
 
+    search_encoded_tag = ul.quote(ul.quote(tag, safe=""), safe="")
     r = {
         "classification": CLASSIFICATION,
+        "link": f"{FRONTEND_URL}/{search_encoded_tag}",
+        "count": 1,  # url/domain/file/ip searches only return a single result/report
         "confirmed": False,  # virustotal does not offer a confirmed property
-        "data": data,
         "description": description,
         "malicious": True if vendors > 0 else False,
     }
 
-    if enrich:
+    if not nodata:
         enricher = Enricher(data=attrs)
         r["enrichment"] = enricher.enrichment
-
-    if noraw:
-        del r["data"]
 
     return make_api_response([r])
 

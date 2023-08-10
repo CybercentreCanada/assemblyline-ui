@@ -9,6 +9,8 @@ import concurrent.futures
 import os
 import uuid
 
+from typing import TypedDict
+
 from flask import request
 from requests import Session, exceptions
 
@@ -20,8 +22,6 @@ from assemblyline_ui.config import config, CLASSIFICATION as Classification, LOG
 SUB_API = "federated_lookup"
 federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
 federated_lookup_api._doc = "Lookup related data through configured external data sources/systems."
-
-NF = "Not found"
 
 
 class _Tags():
@@ -142,16 +142,8 @@ def query_external(
     tag_classification: str,
     limit: int,
     timeout: float,
-):
-    """Query the external source for details.
-
-    Returns:
-    {
-        "error": str,
-        "result": list,
-    }
-
-    """
+) -> TypedDict("QueryResult", {"error": str, "items": list}):
+    """Query the external source for details."""
     if tag_name not in all_supported_tags.get(source.name, {}):
         return
 
@@ -186,7 +178,7 @@ def query_external(
 
     status_code = rsp.status_code
     if status_code == 404 or status_code == 422:
-        result["error"] = NF
+        result["error"] = "Not Found"
     elif status_code != 200:
         err_msg = rsp.json()["api_error_message"]
         err_id = log_error(f"Error from {source.name}", err_msg, status_code)
@@ -317,7 +309,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
 
         # Not found is skipped
         err = res["error"]
-        if err and err != NF:
+        if err and err != "Not Found":
             errors[sname] = err
 
     status_code = 200
@@ -349,24 +341,32 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
 
     API call examples:
     /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/
-    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=virustotal|malware_bazar
+    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=vt|malware_bazar
 
     Result example:
-    {                           # Dictionary of:
-        "al": {                   # Data source queried
-            "error": null,            # Error message returned by data source
-            "items": [                # List of items found in the data source
-                {"confirmed": true,        # Is the maliciousness attribution confirmed or not
-                 "description": "",        # Description of the findings
-                 "malicious": false,       # Is the file found malicious or not
-                 "enrichment":             # Semi structured details about the tag
-                    {"group": <group>, "name": <name>, "name_description": <description>,
-                    "value": <value>, "value_description": <description>}
+    {                           # Dictionary of data source queried
+        "vt": {
+            "error": null,          # Error message returned by data source
+            "items": [              # list of results from the source
+                {
+                    "link": "https://www.virustotal.com/gui/url/<id>",   # link to results
+                    "count": 1,                                          # number of hits from the search
+                    "classification": "TLP:C",                           # classification of the search result
+                    "confirmed": true,                                   # Is the maliciousness attribution confirmed
+                    "description": "",                                   # Description of the findings
+                    "malicious": false,                                  # Is the file found malicious or not
+                    "enrichment": [                                      # Semi structured details about the tag
+                        {
+                            "group": "yara_hits", "classification": "TLP:C",
+                            "name": "https://github.com/my/yararules", "name_description": "source of rule",
+                            "value": "Base64_encoded_url", "value_description": "detects presence of b64 encoded URIs",
+                        }
+                    ],
                 },
-            ...
-            ]
+                ...,
+            ],
         },
-        ...
+        ...,
     }
     """
     user = kwargs["user"]
@@ -399,26 +399,11 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
             if not query_sources or source.name in query_sources
         }
 
+        # results = {src: {"error", str, "items": list}}
         results = {
             future_searches[future]: future.result()
             for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])
             if future.result() is not None
         }
 
-    # if any successful results at all are given we should return a success 200.
-    # otherwise, if ALL results are 404s we should return a 404,
-    # else fallback to return a generic server error
-    status_code = 200
-    error = None
-
-    res = results.values()
-    # if all results are 404s, return a 404
-    if not res or all({r["error"] == NF for r in res}):
-        status_code = 404
-        error = NF
-    # if all errors return a generic error
-    elif all(r["error"] for r in res):
-        status_code = 500
-        error = "One or more errors occured. See individual source results for more details."
-
-    return make_api_response(results, err=error, status_code=status_code)
+    return make_api_response(results)
