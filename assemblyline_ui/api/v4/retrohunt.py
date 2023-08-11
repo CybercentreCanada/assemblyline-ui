@@ -6,6 +6,7 @@ from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.retrohunt import Retrohunt
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline.common.isotime import now_as_iso
 from assemblyline_ui.config import CLASSIFICATION, STORAGE, config
 from flask import request
 
@@ -13,6 +14,7 @@ SUB_API = 'retrohunt'
 retrohunt_api = make_subapi_blueprint(SUB_API, api_version=4)
 retrohunt_api._doc = "Run yara signatures over all files."
 
+SECONDS_PER_DAY = 24 * 60 * 60
 
 haunted_house_client = None
 if config.retrohunt:
@@ -90,10 +92,11 @@ def create_retrohunt_job(**kwargs):
     Create a new search over file storage.
 
     Arguments:
-        yara_signature  => yara signature to search with
         archive_only    => Should the search only be run on archived files
-        description     => Textual description of this search
         classification  => Classification level for the search
+        description     => Textual description of this search
+        yara_signature  => YARA signature to search with
+        ttl             => Time to live for this retrohunt job
 
     Response Fields:    => It should always be the same as polling the details of the search
     """
@@ -125,6 +128,14 @@ def create_retrohunt_job(**kwargs):
         archive_only=archive_only
     ))
 
+    # Enforce maximum DTL
+    max_expiry = None
+    if config.retrohunt.dtl:
+        max_expiry = int(request.json['ttl']) if request.json['ttl'] else config.retrohunt.dtl
+        if max_expiry and config.retrohunt.max_dtl > 0:
+            max_expiry = min(max_expiry, config.retrohunt.max_dtl)
+        max_expiry = now_as_iso(max_expiry * SECONDS_PER_DAY)
+
     doc = Retrohunt({
         'archive_only': archive_only,
         'classification': classification,
@@ -132,6 +143,7 @@ def create_retrohunt_job(**kwargs):
         'creator': user['uname'],
         'description': description,
         'errors': [],
+        'expiry_ts': max_expiry,
         'finished': False,
         'hits': [],
         'raw_query': hauntedhouse.client.query_from_yara(signature),
