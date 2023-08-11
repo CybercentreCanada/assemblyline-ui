@@ -412,7 +412,9 @@ def submit(**kwargs):
                     proxies = config.ui.url_submission_proxies
                     if config.ui.url_egress_proxies:
                         proxy_name = data.get("proxy", None)
-                        proxies = config.ui.url_egress_proxies.get(proxy_name) or proxies
+                        egress_proxy = config.ui.url_egress_proxies.get(proxy_name)
+                        if egress_proxy and Classification.is_accessible(user['classification'], egress_proxy.classification):
+                            proxies = egress_proxy.proxies
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
                                                     proxies=proxies,
                                                     timeout=config.ui.url_submission_timeout,
