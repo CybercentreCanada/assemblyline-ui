@@ -169,9 +169,8 @@ def query_external(
         "limit": limit,
         "max_timeout": timeout,
     }
-    if query_type == "details":
-        params["enrich"] = True
-        params["noraw"] = True
+    if query_type != "details":
+        params["nodata"] = True
 
     url = f"{source.url}/{query_type}/{tag_name}/{tag}"
     rsp = session.get(url, params=params, headers=headers)
@@ -186,11 +185,15 @@ def query_external(
     else:
         try:
             api_response = rsp.json()["api_response"]
-            if isinstance(api_response, dict):
-                api_response = [api_response]
-            for data in api_response:
-                if user and Classification.is_accessible(user["classification"], data["classification"]):
-                    result["items"].append(data)
+            # handle case of 200 OK for not found.
+            if not api_response:
+                result["error"] = "Not Found"
+            else:
+                if isinstance(api_response, dict):
+                    api_response = [api_response]
+                for data in api_response:
+                    if user and Classification.is_accessible(user["classification"], data["classification"]):
+                        result["items"].append(data)
         # noinspection PyBroadException
         except Exception as err:
             err_msg = f"{source.name}-proxy did not return a response in the expected format"
@@ -320,7 +323,7 @@ def search_tags(tag_name: str, tag: str, **kwargs):
     return make_api_response(links, err=errors, status_code=status_code)
 
 
-@federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
+@federated_lookup_api.route("/enrich/<tag_name>/<path:tag>/", methods=["GET"])
 @api_login(require_role=[ROLES.external_query])
 def enrich_tags(tag_name: str, tag: str, **kwargs):
     """Search other services for additional information to enrich AL.
@@ -399,7 +402,7 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
             if not query_sources or source.name in query_sources
         }
 
-        # results = {src: {"error", str, "items": list}}
+        # results = {src: {"error": str, "items": list}}
         results = {
             future_searches[future]: future.result()
             for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])

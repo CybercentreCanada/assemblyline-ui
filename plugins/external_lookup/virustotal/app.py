@@ -211,15 +211,15 @@ def tag_details(tag_name: str, tag: str) -> Response:
         if threats:
             label = threats.get("suggested_threat_label")
             if label:
-                threat_info.append(f"Threat label: {label}")
+                threat_info.append(f"It was identifed as {label}")
             categories = threats.get("popular_threat_category", [])
             if categories:
                 cats = ", ".join(cat["value"] for cat in categories)
-                threat_info.append(f"Threat categories: {cats}")
+                threat_info.append(f"It was categorised with the labels {cats}")
             names = threats.get("popular_threat_name", [])
             if names:
                 families = ", ".join(name["value"] for name in names)
-                threat_info.append(f"Family labels: {families}")
+                threat_info.append(f"It was given the names {families}")
         threat = ". ".join(threat_info)
 
     # construct a useful description based on available summary info
@@ -356,6 +356,14 @@ class Enricher():
             self._add("summary", "threat_category", key="popular_threat_category", value_key="value", data=threats)
         self._add("summary", "threat_family", key="threat_names")
         self._add("summary", "reputation", default=0)
+        self._add("summary", "sigma_alerts_critical", key="sigma_analysis_stats", value_key="critical", ignore_falsy=True)
+        self._add("summary", "sigma_alerts_high", key="sigma_analysis_stats", value_key="high", ignore_falsy=True)
+        self._add("summary", "sigma_alerts_medium", key="sigma_analysis_stats", value_key="medium", ignore_falsy=True)
+        self._add("summary", "sigma_alerts_low", key="sigma_analysis_stats", value_key="low", ignore_falsy=True)
+        self._add("summary", "ids_alerts_high", key="crowdsourced_ids_stats", value_key="high", ignore_falsy=True)
+        self._add("summary", "ids_alerts_medium", key="crowdsourced_ids_stats", value_key="medium", ignore_falsy=True)
+        self._add("summary", "ids_alerts_low", key="crowdsourced_ids_stats", value_key="low", ignore_falsy=True)
+        self._add("summary", "ids_alerts_info", key="crowdsourced_ids_stats", value_key="info", ignore_falsy=True)
         self._add("summary", "capabilities", key="capabilities_tags")
         if self.data.get("popularity_ranks", {}):
             self._add("summary", "labels", value="popular domain")
@@ -363,16 +371,6 @@ class Enricher():
             self._add("summary", "labels", value=category)
         for value in self.data.get("targeted_brand", {}).values():
             self._add("summary", "targeted_brand", value=value)
-
-        # Alerts
-        self._add("alerts", "sigma_alerts_critical", key="sigma_analysis_stats", value_key="critical", ignore_falsy=True)
-        self._add("alerts", "sigma_alerts_high", key="sigma_analysis_stats", value_key="high", ignore_falsy=True)
-        self._add("alerts", "sigma_alerts_medium", key="sigma_analysis_stats", value_key="medium", ignore_falsy=True)
-        self._add("alerts", "sigma_alerts_low", key="sigma_analysis_stats", value_key="low", ignore_falsy=True)
-        self._add("alerts", "ids_alerts_high", key="crowdsourced_ids_stats", value_key="high", ignore_falsy=True)
-        self._add("alerts", "ids_alerts_medium", key="crowdsourced_ids_stats", value_key="medium", ignore_falsy=True)
-        self._add("alerts", "ids_alerts_low", key="crowdsourced_ids_stats", value_key="low", ignore_falsy=True)
-        self._add("alerts", "ids_alerts_info", key="crowdsourced_ids_stats", value_key="info", ignore_falsy=True)
 
         # Crowdsourced context
         for context in self.data.get("crowdsourced_context", []):
@@ -416,7 +414,7 @@ class Enricher():
 
         # IDS details
         for results in self.data.get("crowdsourced_ids_results", []):
-            name = f"{results['alert_severity']}::{results['rule_category']}::{results['rule-msg']}"
+            name = f"{results['alert_severity']}::{results['rule_category']}::{results['rule_msg']}"
             for context in results.get("alert_context", []):
                 for k, v in context.items():
                     self._add("ids_alerts", name, value=f"{k}: {v}")
