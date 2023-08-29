@@ -49,10 +49,9 @@ def parse_external_links(external_links: List[ExternalLinks]):
 
 
 def parse_favorites(favorites: List[Favorite]):
-    favorites = {f.get('name'): f for f in favorites if Favorite(f)}
-    favorites = [v for k, v in favorites.items()]
-    favorites.sort(key=lambda f: f.get('name').lower())
-    return favorites
+    return sorted(
+        [v for k, v in {f.get('name'): f for f in favorites if Favorite(f)}.items()],
+        key=lambda f: f.get('name').lower())
 
 
 @user_api.route("/whoami/", methods=["GET"])
