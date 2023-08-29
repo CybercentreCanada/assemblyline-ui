@@ -9,6 +9,7 @@ from assemblyline.common.security import (check_password_requirements, get_passw
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
+from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -45,6 +46,13 @@ def parse_external_links(external_links: List[ExternalLinks]):
             })
 
     return out
+
+
+def parse_favorites(favorites: List[Favorite]):
+    favorites = {f.get('name'): f for f in favorites if Favorite(f)}
+    favorites = [v for k, v in favorites.items()]
+    favorites.sort(key=lambda f: f.get('name').lower())
+    return favorites
 
 
 @user_api.route("/whoami/", methods=["GET"])
@@ -539,9 +547,9 @@ def set_user_avatar(username, **kwargs):
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
-def add_to_user_favorite(username, favorite_type, **kwargs):
+def save_to_user_favorite(username, favorite_type, **kwargs):
     """
-    Add an entry to the user's favorites
+    Save an entry to the user's favorites
 
     Variables:
     username      => Name of the user you want to add a favorite to
@@ -583,6 +591,8 @@ def add_to_user_favorite(username, favorite_type, **kwargs):
         favorites.update(res_favorites)
 
     favorites[favorite_type].append(data)
+
+    favorites[favorite_type] = parse_favorites(favorites[favorite_type])
 
     return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
@@ -725,7 +735,10 @@ def set_user_favorites(username, **kwargs):
             return make_api_response("", err="Invalid favorite type (%s)" % key, status_code=400)
 
     favorites.update(data)
-    return make_api_response({"success": STORAGE.user_favorites.save(username, data)})
+
+    favorites = {k: parse_favorites(v) for k, v in favorites.items()}
+
+    return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
 
 ######################################################
