@@ -256,6 +256,7 @@ def list_alerts(**kwargs):
     no_delay          => Do not delay alerts
     offset            => Offset at which we start giving alerts
     rows              => Numbers of alerts to return
+    sort              => Field / Direction to sort alert with
     tc_start          => Time offset at which we start the time constraint
     tc                => Time constraint applied to the API
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
@@ -291,9 +292,15 @@ def list_alerts(**kwargs):
     if timming_filter:
         filters.append(timming_filter)
 
+    sort = request.args.get('sort', None)
+    if sort:
+        sort = ", ".join([sort, "reporting_ts desc"])
+    else:
+        sort = "reporting_ts desc"
+
     try:
         return make_api_response(STORAGE.alert.search(
-            query, offset=offset, rows=rows, fl="*", sort="reporting_ts desc",
+            query, offset=offset, rows=rows, fl="*", sort=sort,
             access_control=user['access_control'],
             filters=filters, as_obj=False, track_total_hits=track_total_hits))
     except SearchException as e:
@@ -315,6 +322,7 @@ def list_grouped_alerts(field, **kwargs):
     no_delay          => Do not delay alerts
     offset            => Offset at which we start giving alerts
     rows              => Numbers of alerts to return
+    sort              => Field / Direction to sort alert with
     tc_start          => Time offset at which we start the time constraint
     tc                => Time constraint applied to the API
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
@@ -365,9 +373,15 @@ def list_grouped_alerts(field, **kwargs):
         filters.append(timming_filter)
     filters.append(f"{field}:*")
 
+    sort = request.args.get('sort', None)
+    if sort:
+        sort = ", ".join([sort, "reporting_ts desc"])
+    else:
+        sort = "reporting_ts desc"
+
     try:
-        res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
-                                           group_sort="reporting_ts desc", access_control=user['access_control'],
+        res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort=sort,
+                                           group_sort=sort, access_control=user['access_control'],
                                            filters=filters, fl="*", as_obj=False, track_total_hits=track_total_hits)
         alerts = []
         hash_list = []
@@ -466,7 +480,7 @@ def run_workflow(**kwargs):
     operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
-        })
+    })
 
 
 @alert_api.route("/all/batch/", methods=["POST"])
@@ -525,7 +539,7 @@ def run_workflow_by_batch(**kwargs):
     operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
-        })
+    })
 
 
 @alert_api.route("/label/<alert_id>/", methods=["POST"])
@@ -568,7 +582,7 @@ def add_labels(alert_id, **kwargs):
     if label_diff:
         return make_api_response({
             "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], labels=label_diff))
-            })
+        })
     else:
         return make_api_response({"success": True})
 
@@ -617,7 +631,7 @@ def add_labels_by_batch(**kwargs):
     operations = get_alert_update_ops(user['uname'], labels=labels)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
-        })
+    })
 
 
 @alert_api.route("/priority/<alert_id>/", methods=["POST"])
@@ -663,7 +677,7 @@ def change_priority(alert_id, **kwargs):
     if priority != alert.get('priority', None):
         return make_api_response({
             "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], priority=priority))
-            })
+        })
     else:
         return make_api_response({"success": True})
 
@@ -715,7 +729,7 @@ def change_priority_by_batch(**kwargs):
     operations = get_alert_update_ops(user['uname'], priority=priority)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
-        })
+    })
 
 
 @alert_api.route("/status/<alert_id>/", methods=["POST"])
@@ -761,7 +775,7 @@ def change_status(alert_id, **kwargs):
     if status != alert.get('status', None):
         return make_api_response({
             "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], status=status))
-            })
+        })
     else:
         return make_api_response({"success": True})
 
@@ -813,7 +827,7 @@ def change_status_by_batch(**kwargs):
     operations = get_alert_update_ops(user['uname'], status=status)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
-        })
+    })
 
 
 @alert_api.route("/ownership/<alert_id>/", methods=["GET"])
