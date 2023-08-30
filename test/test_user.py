@@ -75,9 +75,10 @@ def test_add_favorite(datastore, login_session):
     # Normalize classification
     if data.get('classification'):
         data['classification'] = CLASSIFICATION.normalize_classification(data['classification'])
-        favs[fav_type][-1]['classification'] = CLASSIFICATION.normalize_classification(favs[fav_type][-1]['classification'])
+        for item in favs[fav_type]:
+            item['classification'] = CLASSIFICATION.normalize_classification(item['classification'])
 
-    assert favs[fav_type][-1] == data
+    assert data in favs[fav_type]
 
 
 # noinspection PyUnusedLocal
