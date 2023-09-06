@@ -5,6 +5,7 @@ import random
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
+from assemblyline_ui.api.v4.user import parse_favorites
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
@@ -72,12 +73,15 @@ def test_add_favorite(datastore, login_session):
 
     favs = datastore.user_favorites.get(username, as_obj=False)
 
+    index = next(i for (i, f) in enumerate(favs[fav_type]) if data.get('name', None) == f.get('name', None))
+
     # Normalize classification
     if data.get('classification'):
         data['classification'] = CLASSIFICATION.normalize_classification(data['classification'])
-        favs[fav_type][-1]['classification'] = CLASSIFICATION.normalize_classification(favs[fav_type][-1]['classification'])
+        favs[fav_type][index]['classification'] = CLASSIFICATION.normalize_classification(
+            favs[fav_type][index]['classification'])
 
-    assert favs[fav_type][-1] == data
+    assert favs[fav_type][index] == data
 
 
 # noinspection PyUnusedLocal
@@ -265,7 +269,7 @@ def test_set_user_favorites(datastore, login_session):
     # Normalize classification
     [fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
         for fav_type in list(user_favs.keys())
-        for fav in user_favs[fav_type]]
+        for fav in parse_favorites(user_favs[fav_type])]
 
     assert favs == user_favs
 
