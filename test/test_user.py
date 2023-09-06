@@ -268,10 +268,10 @@ def test_set_user_favorites(datastore, login_session):
         for fav_type in list(user_favs.keys())
         for fav in user_favs[fav_type]]
 
-    for fav_type in list(favs.keys()):
-        for fav in favs[fav_type]:
-            fav['classification'] = CLASSIFICATION.normalize_classification(fav['classification'])
-            assert fav in user_favs[fav_type]
+    favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in favs.items()}
+    user_favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in user_favs.items()}
+
+    assert favs == user_favs
 
 
 # noinspection PyUnusedLocal
