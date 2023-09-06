@@ -271,10 +271,11 @@ def test_set_user_favorites(datastore, login_session):
         for fav_type in list(user_favs.keys())
         for fav in user_favs[fav_type]]
 
-    favs = [
-        parse_favorites(
-            [f.update({'classification': CLASSIFICATION.normalize_classification(f['classification'])})
-             for f in favs[t]]) for t in list(favs.keys())]
+    [f.update({'classification': CLASSIFICATION.normalize_classification(f['classification'])})
+        for t in list(favs.keys())
+        for f in favs[t]]
+
+    favs = {t: parse_favorites(favs[t]) for t in favs}
 
     assert favs == user_favs
 
