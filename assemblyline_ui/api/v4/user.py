@@ -166,9 +166,13 @@ def who_am_i(**kwargs):
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
             "external_sources": [
-                x.name for x in getattr(config.ui, "external_sources", [])
-                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+                {
+                    "name": x.name,
+                    "max_classification": x.max_classification or x.classification or CLASSIFICATION.UNRESTRICTED
+                }
+                for x in getattr(config.ui, "external_sources", [])
+                if CLASSIFICATION.is_accessible(
+                    kwargs['user']['classification'], x.classification or CLASSIFICATION.UNRESTRICTED)
             ],
             "external_source_tags": external_source_tags,
             "read_only": config.ui.read_only,

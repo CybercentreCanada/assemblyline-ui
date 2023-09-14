@@ -179,7 +179,10 @@ def query_external(
     if status_code == 404 or status_code == 422:
         result["error"] = "Not Found"
     elif status_code != 200:
-        err_msg = rsp.json()["api_error_message"]
+        try:
+            err_msg = rsp.json()["api_error_message"]
+        except exceptions.JSONDecodeError:
+            err_msg = f"{source.name}-proxy experienced an unknown error"
         err_id = log_error(f"Error from {source.name}", err_msg, status_code)
         result["error"] = f"{err_msg}. Error ID: {err_id}"
     else:
