@@ -67,12 +67,12 @@ def test_tag_found(test_client, mocker):
     url = "https://a.bad.url/contains+and/a space/in-path"
     quoted = ul.quote(url)
     rsp = test_client.get(f"/search/network.dynamic.uri/{quoted}/")
-    double_quoted = ul.quote(ul.quote(url, safe=''), safe='')
+    rsp_encoded_tag = ul.quote(ul.quote(url, safe=""), safe="")
     expected = {
         "api_error_message": "",
         "api_response": {
             "classification": "TLP:CLEAR",
-            "link": f"https://www.virustotal.com/gui/search/{double_quoted}",
+            "link": f"https://www.virustotal.com/gui/search/{rsp_encoded_tag}",
             "count": 1,
         },
         "api_status_code": 200,
