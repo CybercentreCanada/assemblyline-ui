@@ -1,4 +1,5 @@
 from copy import copy
+from typing import Any, Optional
 from assemblyline_ui.config import CLASSIFICATION, config, SERVICE_LIST
 from assemblyline.odm.models.submission import DEFAULT_SRV_SEL
 
@@ -69,7 +70,7 @@ def simplify_service_spec(service_spec):
     return params
 
 
-def ui_to_submission_params(params):
+def ui_to_submission_params(params) -> Optional[dict[str, Any]]:
     if params is None:
         return params
 

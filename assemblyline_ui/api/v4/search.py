@@ -20,7 +20,8 @@ ROLE_INDEX_MAP = {
     "submission": ROLES.submission_view,
     "signature": ROLES.signature_view,
     "safelist": ROLES.safelist_view,
-    "workflow": ROLES.workflow_view
+    "workflow": ROLES.workflow_view,
+    "retrohunt": ROLES.retrohunt_view,
 }
 
 
@@ -32,7 +33,7 @@ def check_role_for_index(index, user):
 
 @search_api.route("/<index>/", methods=["GET", "POST"])
 @api_login(require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
-                         "workflow_view"])
+                         "workflow_view", "retrohunt_view"])
 def search(index, **kwargs):
     """
     Search through specified index for a given query.
@@ -122,7 +123,7 @@ def search(index, **kwargs):
 
 @search_api.route("/grouped/<index>/<group_field>/", methods=["GET", "POST"])
 @api_login(require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
-                         "workflow_view"])
+                         "workflow_view", "retrohunt_view"])
 def group_search(index, group_field, **kwargs):
     """
     Search through all relevant indexs for a given query and
@@ -197,8 +198,9 @@ def group_search(index, group_field, **kwargs):
 
 # noinspection PyUnusedLocal
 @search_api.route("/fields/<index>/", methods=["GET"])
-@api_login(audit=False, require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view",
-                                      "submission_view", "workflow_view"])
+
+@api_login(audit=False, require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
+                                      "workflow_view", "retrohunt_view"])
 def list_index_fields(index, **kwargs):
     """
     List all available fields for a given index
@@ -237,7 +239,7 @@ def list_index_fields(index, **kwargs):
 
 @search_api.route("/facet/<index>/<field>/", methods=["GET", "POST"])
 @api_login(require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
-                         "workflow_view"])
+                         "workflow_view", "retrohunt_view"])
 def facet(index, field, **kwargs):
     """
     Perform field analysis on the selected field. (Also known as facetting in lucene)
@@ -299,7 +301,7 @@ def facet(index, field, **kwargs):
 
 @search_api.route("/histogram/<index>/<field>/", methods=["GET", "POST"])
 @api_login(require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
-                         "workflow_view"])
+                         "workflow_view", "retrohunt_view"])
 def histogram(index, field, **kwargs):
     """
     Generate an histogram based on a time or and int field using a specific gap size
@@ -386,7 +388,7 @@ def histogram(index, field, **kwargs):
 
 @search_api.route("/stats/<index>/<int_field>/", methods=["GET", "POST"])
 @api_login(require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
-                         "workflow_view"])
+                         "workflow_view", "retrohunt_view"])
 def stats(index, int_field, **kwargs):
     """
     Perform statistical analysis of an integer field to get its min, max, average and count values
