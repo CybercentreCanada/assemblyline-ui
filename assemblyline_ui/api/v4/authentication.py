@@ -11,7 +11,7 @@ from flask import session as flsk_session
 from io import BytesIO
 from passlib.hash import bcrypt
 from urllib.parse import urlparse
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
@@ -295,7 +295,7 @@ def get_reset_link(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     email = data.get('email', None)
@@ -343,7 +343,7 @@ def login(**_):
     """
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     user = data.get('user', None)
@@ -563,63 +563,68 @@ def oauth_validate(**_):
                 if user_data:
                     data = parse_profile(user_data, oauth_provider_config)
                     has_access = data.pop('access', False)
-                    if has_access and data['email'] is not None:
-                        oauth_avatar = data.pop('avatar', None)
 
-                        # Find if user already exists
-                        users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
-                        if users:
-                            cur_user = users[0]
-                            # Do not update username and password from the current user
-                            data['uname'] = cur_user.get('uname', data['uname'])
-                            data['password'] = cur_user.get('password', data['password'])
-                        else:
-                            if data['uname'] != data['email']:
-                                # Username was computed using a regular expression, lets make sure we don't
-                                # assign the same username to two users
-                                res = STORAGE.user.search(f"uname:{data['uname']}", rows=0, as_obj=False)
-                                if res['total'] > 0:
-                                    cnt = res['total']
-                                    new_uname = f"{data['uname']}{cnt}"
-                                    while STORAGE.user.get(new_uname) is not None:
-                                        cnt += 1
-                                        new_uname = f"{data['uname']}{cnt}"
-                                    data['uname'] = new_uname
-                            cur_user = {}
+                    if data['email'] is None:
+                        return make_api_response({"err_code": 4}, err="Could not find an email address for the user",
+                                                 status_code=403)
 
-                        username = data['uname']
-                        email_adr = data['email']
-
-                        # Add add dynamic classification group
-                        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
-
-                        # Make sure the user exists in AL and is in sync
-                        if (not cur_user and oauth_provider_config.auto_create) or \
-                                (cur_user and oauth_provider_config.auto_sync):
-
-                            # Update the current user
-                            cur_user.update(data)
-
-                            # Save avatar
-                            if oauth_avatar:
-                                avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
-                                if avatar:
-                                    STORAGE.user_avatar.save(username, avatar)
-
-                            # Save updated user
-                            STORAGE.user.save(username, cur_user)
-
-                        if cur_user:
-                            if avatar is None:
-                                avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-                            oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
-                            get_token_store(username).add(oauth_token_id)
-                        else:
-                            return make_api_response({"err_code": 3},
-                                                     err="User auto-creation is disabled",
-                                                     status_code=403)
-                    else:
+                    if not has_access:
                         return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
+                                                 status_code=403)
+
+                    oauth_avatar = data.pop('avatar', None)
+
+                    # Find if user already exists
+                    users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
+                    if users:
+                        cur_user = users[0]
+                        # Do not update username and password from the current user
+                        data['uname'] = cur_user.get('uname', data['uname'])
+                        data['password'] = cur_user.get('password', data['password'])
+                    else:
+                        if data['uname'] != data['email']:
+                            # Username was computed using a regular expression, lets make sure we don't
+                            # assign the same username to two users
+                            res = STORAGE.user.search(f"uname:{data['uname']}", rows=0, as_obj=False)
+                            if res['total'] > 0:
+                                cnt = res['total']
+                                new_uname = f"{data['uname']}{cnt}"
+                                while STORAGE.user.get(new_uname) is not None:
+                                    cnt += 1
+                                    new_uname = f"{data['uname']}{cnt}"
+                                data['uname'] = new_uname
+                        cur_user = {}
+
+                    username = data['uname']
+                    email_adr = data['email']
+
+                    # Add add dynamic classification group
+                    data['classification'] = get_dynamic_classification(data['classification'], data)
+
+                    # Make sure the user exists in AL and is in sync
+                    if (not cur_user and oauth_provider_config.auto_create) or \
+                            (cur_user and oauth_provider_config.auto_sync):
+
+                        # Update the current user
+                        cur_user.update(data)
+
+                        # Save avatar
+                        if oauth_avatar:
+                            avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
+                            if avatar:
+                                STORAGE.user_avatar.save(username, avatar)
+
+                        # Save updated user
+                        STORAGE.user.save(username, cur_user)
+
+                    if cur_user:
+                        if avatar is None:
+                            avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
+                        oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+                        get_token_store(username).add(oauth_token_id)
+                    else:
+                        return make_api_response({"err_code": 3},
+                                                 err="User auto-creation is disabled",
                                                  status_code=403)
 
             except OAuthError as err:
@@ -671,7 +676,7 @@ def reset_pwd(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     reset_id = data.get('reset_id', None)
@@ -786,7 +791,7 @@ def signup(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     uname = data.get('user', None)
@@ -842,7 +847,7 @@ def signup(**_):
             "uname": uname,
             "password": password,
             "email": email,
-            "groups": ['USERS'],
+            "groups": [],
             "name": uname
         })
     except Exception as e:
@@ -879,7 +884,7 @@ def signup_validate(**_):
 
     try:
         data = request.json
-    except BadRequest:
+    except (BadRequest, UnsupportedMediaType):
         data = request.values
 
     registration_key = data.get('registration_key', None)
@@ -894,7 +899,7 @@ def signup_validate(**_):
 
                 # Add dynamic classification group
                 user_info['classification'] = get_dynamic_classification(
-                    user_info.get('classification', Classification.UNRESTRICTED), user_info['email'])
+                    user_info.get('classification', Classification.UNRESTRICTED), user_info)
 
                 user = User(user_info)
                 username = user.uname

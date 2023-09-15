@@ -74,7 +74,7 @@ def _merge_safe_hashes(new, old):
 
 
 @safelist_api.route("/", methods=["PUT", "POST"])
-@api_login(require_role=[ROLES.safelist_manage], allow_readonly=False)
+@api_login(audit=False, require_role=[ROLES.safelist_manage], allow_readonly=False)
 def add_or_update_hash(**kwargs):
     """
     Add a hash in the safelist if it does not exist or update its list of sources if it does
@@ -84,7 +84,7 @@ def add_or_update_hash(**kwargs):
 
     Data Block:
     {
-     "classification": "TLP:W",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+     "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
      "enabled": true,              # Is the safe hash enabled or not
      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
@@ -96,14 +96,14 @@ def add_or_update_hash(**kwargs):
        "sha1": "1234...4321",          # SHA1 hash of the safe hash
        "sha256": "12345....54321",     # SHA256 of the safe hash
      "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
-       {"classification": "TLP:W",     # Classification of the source (default: TLP:W) - Optional
+       {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
         "name": "NSRL",                # Name of external source or user who safelisted it - Required
         "reason": [                    # List of reasons why the source is safelisted - Required
           "Found as test.txt on default windows 10 CD",
           "Found as install.txt on default windows XP CD"
         ],
         "type": "external"},           # Type or source (external or user) - Required
-       {"classification": "TLP:W",
+       {"classification": "TLP:C",
         "name": "admin",
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}
@@ -205,7 +205,7 @@ def add_or_update_hash(**kwargs):
 
 
 @safelist_api.route("/add_update_many/", methods=["POST", "PUT"])
-@api_login(audit=False,            allow_readonly=False, require_role=[ROLES.safelist_manage])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.safelist_manage])
 def add_update_many_hashes(**_):
     """
     Add or Update a list of the safe hashes
@@ -219,7 +219,7 @@ def add_update_many_hashes(**_):
     Data Block (REQUIRED):
     [                             # List of Safe hash blocks
      {
-      "classification": "TLP:W",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+      "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
       "enabled": true,              # Is the safe hash enabled or not
       "file": {                     # Information about the file  - Only used in file mode
         "name": ["file.txt"]            # Possible names for the file
@@ -231,14 +231,14 @@ def add_update_many_hashes(**_):
         "sha1": "1234...4321",          # SHA1 hash of the safe hash
         "sha256": "12345....54321",     # SHA256 of the safe hash
       "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
-        {"classification": "TLP:W",     # Classification of the source (default: TLP:W) - Optional
+        {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
          "name": "NSRL",                # Name of external source or user who safelisted it - Required
          "reason": [                    # List of reasons why the source is safelisted - Required
            "Found as test.txt on default windows 10 CD",
            "Found as install.txt on default windows XP CD"
          ],
           "type": "external"},          # Type or source (external or user) - Required
-        {"classification": "TLP:W",
+        {"classification": "TLP:C",
          "name": "admin",
          "reason": ["We've seen this file many times and it leads to False positives"],
          "type": "user"}
@@ -331,7 +331,7 @@ def check_hash_exists(qhash, **kwargs):
 
     Result example:
     {
-     "classification": "TLP:W",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+     "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
      "enabled": true,              # Is the safe hash enabled or not
      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
@@ -343,14 +343,14 @@ def check_hash_exists(qhash, **kwargs):
        "sha1": "1234...4321",          # SHA1 hash of the safe hash
        "sha256": "12345....54321",     # SHA256 of the safe hash
      "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
-       {"classification": "TLP:W",     # Classification of the source (default: TLP:W) - Optional
+       {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
         "name": "NSRL",                # Name of external source or user who safelisted it - Required
         "reason": [                    # List of reasons why the source is safelisted - Required
           "Found as test.txt on default windows 10 CD",
           "Found as install.txt on default windows XP CD"
         ],
         "type": "external"},           # Type or source (external or user) - Required
-       {"classification": "TLP:W",
+       {"classification": "TLP:C",
         "name": "admin",
         "reason": ["We've seen this file many times and it leads to False positives"],
         "type": "user"}

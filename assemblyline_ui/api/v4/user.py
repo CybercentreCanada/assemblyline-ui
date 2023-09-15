@@ -1,3 +1,5 @@
+from typing import List
+from assemblyline.odm.models.config import ExternalLinks
 from flask import request
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
@@ -7,6 +9,7 @@ from assemblyline.common.security import (check_password_requirements, get_passw
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
+from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -15,12 +18,40 @@ from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_s
                                          save_user_settings, API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
+from .federated_lookup import filtered_tag_names
+
+
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
 user_api._doc = "Manage the different users of the system"
 
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
+
+
+def parse_external_links(external_links: List[ExternalLinks]):
+    out = {}
+
+    for link in external_links:
+        for target in link.targets:
+            out.setdefault(target.type, {})
+            out[target.type].setdefault(target.key, [])
+            out[target.type][target.key].append({
+                "allow_bypass": link.allow_bypass,
+                "double_encode": link.double_encode,
+                "name": link.name,
+                "replace_pattern": link.replace_pattern,
+                "url": link.url,
+                "max_classification": link.max_classification,
+            })
+
+    return out
+
+
+def parse_favorites(favorites: List[Favorite]):
+    return sorted(
+        [v for k, v in {f.get('name'): f for f in favorites if Favorite(f)}.items()],
+        key=lambda f: f.get('name').lower())
 
 
 @user_api.route("/whoami/", methods=["GET"])
@@ -43,7 +74,7 @@ def who_am_i(**kwargs):
      "agrees_with_tos": None,                   # Date the user agreed with TOS
      "avatar": "data:image/jpg...",             # Avatar data block
      "c12nDef": {},                             # Classification definition block
-     "classification": "TLP:W",                 # Classification of the user
+     "classification": "TLP:C",                 # Classification of the user
      "configuration": {                         # Configuration block
        "auth": {                                  # Authentication Configuration
          "allow_2fa": True,                         # Is 2fa Allowed for the user
@@ -115,6 +146,11 @@ def who_am_i(**kwargs):
 
     # System configuration
     user_data['c12nDef'] = classification_definition
+    # create tag-to-source lookup mapping
+    external_source_tags = {}
+    for source_name, tag_names in filtered_tag_names(kwargs['user']).items():
+        for tname in tag_names:
+            external_source_tags.setdefault(tname, []).append(source_name)
     user_data['configuration'] = {
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
@@ -167,6 +203,17 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "external_links": parse_external_links([
+                x for x in config.ui.external_links
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ]),
+            "external_sources": [
+                x.name for x in config.ui.external_sources
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ],
+            "external_source_tags": external_source_tags,
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
             "services_feed": config.ui.services_feed,
@@ -243,7 +290,7 @@ def add_user_account(username, **_):
             data['name'] = data['uname']
 
         # Add add dynamic classification group
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
@@ -408,7 +455,7 @@ def set_user_account(username, **kwargs):
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         # Apply dynamic classification
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
@@ -509,9 +556,9 @@ def set_user_avatar(username, **kwargs):
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
-def add_to_user_favorite(username, favorite_type, **kwargs):
+def save_to_user_favorite(username, favorite_type, **kwargs):
     """
-    Add an entry to the user's favorites
+    Save an entry to the user's favorites
 
     Variables:
     username      => Name of the user you want to add a favorite to
@@ -553,6 +600,8 @@ def add_to_user_favorite(username, favorite_type, **kwargs):
         favorites.update(res_favorites)
 
     favorites[favorite_type].append(data)
+
+    favorites[favorite_type] = parse_favorites(favorites[favorite_type])
 
     return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
@@ -695,7 +744,10 @@ def set_user_favorites(username, **kwargs):
             return make_api_response("", err="Invalid favorite type (%s)" % key, status_code=400)
 
     favorites.update(data)
-    return make_api_response({"success": STORAGE.user_favorites.save(username, data)})
+
+    favorites = {k: parse_favorites(v) for k, v in favorites.items()}
+
+    return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
 
 ######################################################
@@ -713,7 +765,7 @@ def list_users(**_):
     None
 
     Arguments:
-    offset        =>  Offset in the user bucket
+    offset        =>  Offset in the user index
     query         =>  Filter to apply to the user list
     rows          =>  Max number of user returned
     sort          =>  Sort order
@@ -734,7 +786,7 @@ def list_users(**_):
        "groups": ["TEST"]          # Groups the user is member of
        }, ...],
      "total": 10,                # Total number of users
-     "offset": 0                 # Offset in the user bucket
+     "offset": 0                 # Offset in the user index
     }
     """
     offset = int(request.args.get('offset', 0))

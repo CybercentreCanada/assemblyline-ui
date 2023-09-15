@@ -88,6 +88,11 @@ def handle_404(_):
     return make_api_response("", "Api does not exist (%s)" % request.path, 404)
 
 
+@errors.app_errorhandler(415)
+def handle_415(e):
+    return make_api_response("", str(e))
+
+
 @errors.app_errorhandler(500)
 def handle_500(e):
     if isinstance(e.original_exception, AccessDeniedException):

@@ -54,7 +54,7 @@ setup(
     extras_require={
         'test': [
             'pytest',
-            'pytest-cov',
+            'pytest-mock',
             'cart'
         ],
         'socketio': [

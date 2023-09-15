@@ -202,7 +202,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
-@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis
@@ -313,13 +313,17 @@ def submit(**kwargs):
 
         s_params.update(data.get("params", {}))
         if 'groups' not in s_params:
-            s_params['groups'] = user['groups']
+            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
 
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']
 
         if not s_params['description']:
             s_params['description'] = default_description
+
+        # Set max extracted/supplementary if missing from request
+        s_params['max_extracted'] = s_params.get('max_extracted', config.submission.default_max_extracted)
+        s_params['max_supplementary'] = s_params.get('max_supplementary', config.submission.default_max_supplementary)
 
         # Check if external submit is allowed
         default_external_sources = s_params.pop('default_external_sources', [])
