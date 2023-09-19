@@ -67,8 +67,6 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     metadata = {}
     try:
         copy_sid = request.args.get('copy_sid', None)
-        name = safe_str(request.args.get('name', sha256))
-
         if copy_sid:
             submission = STORAGE.submission.get(copy_sid, as_obj=False)
         else:
@@ -106,13 +104,19 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
                 return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
                                          % sha256, status_code=404)
 
+        if (file_info["type"].startswith("uri/") and "uri_info" in file_info and "uri" in file_info["uri_info"]):
+            name = safe_str(file_info["uri_info"]["uri"])
+            submission_params['description'] = f"Resubmit {file_info['uri_info']['uri']} for Dynamic Analysis"
+        else:
+            name = safe_str(request.args.get('name', sha256))
+            submission_params['description'] = f"Resubmit {name} for Dynamic Analysis"
+
         files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
 
         submission_params['submitter'] = user['uname']
         submission_params['quota_item'] = True
         if 'priority' not in submission_params:
             submission_params['priority'] = 500
-        submission_params['description'] = "Resubmit %s for Dynamic Analysis" % name
         if "Dynamic Analysis" not in submission_params['services']['selected']:
             submission_params['services']['selected'].append("Dynamic Analysis")
 
@@ -318,9 +322,6 @@ def submit(**kwargs):
         s_params['quota_item'] = True
         s_params['submitter'] = user['uname']
 
-        if not s_params['description']:
-            s_params['description'] = default_description
-
         # Set max extracted/supplementary if missing from request
         s_params['max_extracted'] = s_params.get('max_extracted', config.submission.default_max_extracted)
         s_params['max_supplementary'] = s_params.get('max_supplementary', config.submission.default_max_supplementary)
@@ -366,13 +367,19 @@ def submit(**kwargs):
                             s_params['classification'] = Classification.max_classification(s_params['classification'],
                                                                                            fileinfo['classification'])
 
+                            if (
+                                fileinfo["type"].startswith("uri/")
+                                and "uri_info" in fileinfo
+                                and "uri" in fileinfo["uri_info"]
+                            ):
+                                default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
+
                 if not found and default_external_sources:
                     # File is not found still, and we have external sources
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
-                                         if Classification.is_accessible(user['classification'],
-                                                                         x.classification) and
-                                         x.name in default_external_sources]
+                                         if Classification.is_accessible(user['classification'], x.classification)
+                                         and x.name in default_external_sources]
                     try:
                         for source in available_sources:
                             src_url = source.url.replace(source.replace_pattern, sha256)
@@ -431,6 +438,9 @@ def submit(**kwargs):
         else:
             with open(out_file, "wb") as my_file:
                 my_file.write(binary.read())
+
+        if not s_params['description']:
+            s_params['description'] = default_description
 
         try:
             metadata = flatten(data.get('metadata', {}))
