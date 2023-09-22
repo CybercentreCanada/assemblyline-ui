@@ -96,56 +96,6 @@ def lookup_tag(tag_name: str, tag: str, timeout: float):
     return rsp.json().get("data", {})
 
 
-@app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
-def search_tag(tag_name: str, tag: str) -> Response:
-    """Search for tags on VirusTotal.
-
-    Tags submitted must be URL encoded (not url_plus quoted).
-
-    Arguments:(optional)
-    max_timeout => Maximum execution time for the call in seconds
-    limit       => limit the amount of returned results per source
-
-
-    This method should return an api_response containing:
-
-        {
-            "link": <url to search results in external system>,
-            "count": <count of results from the external system>,
-            "classification": $CLASSIFICATION",
-        }
-    """
-    tn = TAG_MAPPING.get(tag_name)
-    if tn is None:
-        return make_api_response(
-            None,
-            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
-            422,
-        )
-    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT)
-    # noinspection PyBroadException
-    try:
-        max_timeout = float(max_timeout)
-    except Exception:
-        max_timeout = MAX_TIMEOUT
-
-    data = lookup_tag(tag_name=tn, tag=tag, timeout=max_timeout)
-    if isinstance(data, Response):
-        return data
-
-    # ensure there is a result before returning the link, as if you submit a url search
-    # to vt that it hasn't seen before, it will start a new scan of that url
-    # note: tag must be double url encoded, and include encoding of `/` for URLs to search correctly.
-    search_encoded_tag = ul.quote(ul.quote(tag, safe=""), safe="")
-    return make_api_response(
-        {
-            "link": f"{FRONTEND_URL}/{search_encoded_tag}",
-            "count": 1,  # url/domain/file/ip searches only return a single result/report
-            "classification": CLASSIFICATION,
-        }
-    )
-
-
 @app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
 def tag_details(tag_name: str, tag: str) -> Response:
     """Get detailed lookup results from VirusTotal
@@ -166,7 +116,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
             "link": <url to search results in external system>,
             "count": <count of results from the external system>,
             "enrichment": [
-                {"group": <group>, "classification": <classification>,
+                {"group": <group>,
                  "name": <name>, "name_description": <description>,
                  "value": <value>, "value_description": <description>,
                 },
@@ -211,7 +161,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
         if threats:
             label = threats.get("suggested_threat_label")
             if label:
-                threat_info.append(f"It was identifed as {label}")
+                threat_info.append(f"It was identified as {label}")
             categories = threats.get("popular_threat_category", [])
             if categories:
                 cats = ", ".join(cat["value"] for cat in categories)
