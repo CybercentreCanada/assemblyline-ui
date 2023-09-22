@@ -96,7 +96,7 @@ def filtered_tag_names(user):
     return available_tags
 
 
-def parse_qp(request, limit: int = 100, timeout: float = 3.0):
+def parse_qp(request, limit: int = 100, timeout: float = 5.0):
     """Parse the standard query params."""
     query_sources = request.args.get("sources")
     if query_sources:
@@ -234,98 +234,6 @@ def get_tag_names(**kwargs):
     return make_api_response(filtered_tag_names(user))
 
 
-@federated_lookup_api.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
-@api_login(require_role=[ROLES.external_query])
-def search_tags(tag_name: str, tag: str, **kwargs):
-    """Search AL tags across all configured external sources/systems.
-
-    Variables:
-    tag_name => Tag to look up in the external system.
-    tag => Tag value to lookup. Must be URL encoded.
-
-    Arguments: (optional)
-    classification  => Classification of the tag [Default: minimum configured classification]
-    sources         => | separated list of data sources. If empty, all configured sources are used.
-    max_timeout     => Maximum execution time for the call in seconds
-    limit           => limit the amount of returned results counted per source
-
-    Data Block:
-    None
-
-    API call examples:
-    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/
-    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=virustotal|malware_bazar
-
-    Returns:
-    A dictionary of sources with links to found samples.
-
-    Result example:
-    {                           # Dictionary of:
-        <source_name>: {
-            "link": <https link to results>,
-            "count": <number of hits from search>,
-            "classification": <classification of search>,
-        },
-        ...,
-    }
-    """
-    user = kwargs["user"]
-    qp = parse_qp(request=request)
-    query_sources = qp["query_sources"]
-
-    # validate what sources the user is allowed to submit requests to.
-    # this must first be checked against what systems the user is allowed to see
-    # additional tag level checking is then done later to provide feedback to user
-    available_sources = [
-        x for x in getattr(config.ui, "external_sources", [])
-        if Classification.is_accessible(user["classification"], x.classification)
-    ]
-
-    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:
-        # create searches for external sources
-        future_searches = {
-            executor.submit(
-                query_external,
-                query_type="search",
-                user=user,
-                source=source,
-                tag_name=tag_name,
-                tag=tag,
-                tag_classification=qp["tag_classification"],
-                limit=qp["limit"],
-                timeout=qp["max_timeout"]
-            ): source.name
-            for source in available_sources
-            if not query_sources or source.name in query_sources
-        }
-
-        results = {
-            future_searches[future]: future.result()
-            for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])
-            if future.result() is not None
-        }
-
-    links = {}
-    errors = {}
-    # format to expected structure
-    for sname, res in results.items():
-        items = res["items"]
-        if items:
-            links[sname] = items[0]  # search only returns a single item
-
-        # Not found is skipped
-        err = res["error"]
-        if err and err != "Not Found":
-            errors[sname] = err
-
-    status_code = 200
-    if not links:
-        status_code = 404
-        if errors:
-            status_code = 500
-    return make_api_response(links, err=errors, status_code=status_code)
-
-
 @federated_lookup_api.route("/enrich/<tag_name>/<path:tag>/", methods=["GET"])
 @api_login(require_role=[ROLES.external_query])
 def enrich_tags(tag_name: str, tag: str, **kwargs):
@@ -363,7 +271,7 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
                     "malicious": false,                                  # Is the file found malicious or not
                     "enrichment": [                                      # Semi structured details about the tag
                         {
-                            "group": "yara_hits", "classification": "TLP:C",
+                            "group": "yara_hits",
                             "name": "https://github.com/my/yararules", "name_description": "source of rule",
                             "value": "Base64_encoded_url", "value_description": "detects presence of b64 encoded URIs",
                         }
@@ -406,10 +314,20 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
         }
 
         # results = {src: {"error": str, "items": list}}
-        results = {
-            future_searches[future]: future.result()
-            for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])
-            if future.result() is not None
-        }
+        try:
+            results = {
+                future_searches[future]: future.result()
+                for future in concurrent.futures.as_completed(future_searches, timeout=qp["max_timeout"])
+                if future.result() is not None
+            }
+        except concurrent.futures.TimeoutError:
+            # TimeoutError is raised after set time, not after the task is finished.
+            # This means tasks that have not completed are still running, they are not killed due to timeout.
+
+            # save results for anything that has finished
+            results = {}
+            for f, name in future_searches.items():
+                if f.done:
+                    results[name] = f.result()
 
     return make_api_response(results)
