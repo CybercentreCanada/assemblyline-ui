@@ -46,35 +46,6 @@ def get_tag_names() -> Response:
     return make_api_response(sorted(TAG_MAPPING))
 
 
-@app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
-def search_tag(tag_name: str, tag: str) -> Response:
-    """Define how to lookup a tag in the external system.
-
-    Query Params:
-    max_timeout => Maximum execution time for the call in seconds
-    limit       => Maximum number of items to return
-
-    This method should return an api_response containing:
-
-        {
-            "link": <url to search results in external system>,
-            "count": <count of results from the external system>,
-            "classification": <access control of the document linked to>,  # Optional
-        }
-    """
-    # Invalid tags must either be ignored, or return a 422
-    tn = TAG_MAPPING.get(tag_name)
-    if tn is None:
-        return make_api_response(
-            None,
-            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
-            422,
-        )
-    limit = min(request.args.get("limit", MAX_LIMIT, type=int), MAX_LIMIT)
-    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT, type=float)
-    raise NotImplementedError("Not Implemented.")
-
-
 @app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
 def tag_details(tag_name: str, tag: str) -> Response:
     """Define how to search for detailed tag results.
@@ -82,18 +53,25 @@ def tag_details(tag_name: str, tag: str) -> Response:
     Query Params:
     max_timeout => Maximum execution time for the call in seconds
     limit       => Maximum number of items to return
-    enrich      => If specified, return semi structured Key:Value pairs of additional metadata under "enrichment"
+    nodata      => If specified, do not return the enrichment data
 
-    Result output should conform to the following:
+    Returns:
     # List of:
     [
         {
             "description": "",                     # Description of the findings
             "malicious": <bool>,                   # Is the file found malicious or not
             "confirmed": <bool>,                   # Is the maliciousness attribution confirmed or not
-            "data": {...},                         # Additional Raw data
             "classification": <access control>,    # [Optional] Classification of the returned data
-            "enrichment": [{name: <name>, value: <value>}, ...}   # [Optional] list of pairs of additional metadata
+            "link": <url to search results in external system>,
+            "count": <count of results from the external system>,
+            "enrichment": [
+                {"group": <group>,
+                 "name": <name>, "name_description": <description>,
+                 "value": <value>, "value_description": <description>,
+                },
+                ...,
+            ]   # [Optional] ordered groupings of additional metadata
         },
         ...,
     ]
@@ -107,9 +85,13 @@ def tag_details(tag_name: str, tag: str) -> Response:
             422,
         )
 
-    limit = min(request.args.get("limit", MAX_LIMIT, type=int), MAX_LIMIT)
-    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT, type=float)
-    enrich = request.args.get("enrich", "false").lower() in ("true", "1")
+    enrich = not request.args.get("nodata", "false").lower() in ("true", "1")
+    max_timeout = request.args.get("max_timeout", MAX_TIMEOUT)
+    # noinspection PyBroadException
+    try:
+        max_timeout = float(max_timeout)
+    except Exception:
+        max_timeout = MAX_TIMEOUT
 
     raise NotImplementedError("Not Implemented.")
 
