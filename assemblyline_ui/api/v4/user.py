@@ -170,9 +170,9 @@ def who_am_i(**kwargs):
                     "name": x.name,
                     "max_classification": x.max_classification or x.classification or CLASSIFICATION.UNRESTRICTED
                 }
-                for x in getattr(config.ui, "external_sources", [])
-                if CLASSIFICATION.is_accessible(
-                    kwargs['user']['classification'], x.classification or CLASSIFICATION.UNRESTRICTED)
+                for x in config.ui.external_sources
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
             ],
             "external_source_tags": external_source_tags,
             "read_only": config.ui.read_only,
