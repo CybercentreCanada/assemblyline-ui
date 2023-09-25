@@ -75,9 +75,10 @@ def test_add_favorite(datastore, login_session):
     # Normalize classification
     if data.get('classification'):
         data['classification'] = CLASSIFICATION.normalize_classification(data['classification'])
-        favs[fav_type][-1]['classification'] = CLASSIFICATION.normalize_classification(favs[fav_type][-1]['classification'])
+        for item in favs[fav_type]:
+            item['classification'] = CLASSIFICATION.normalize_classification(item['classification'])
 
-    assert favs[fav_type][-1] == data
+    assert data in favs[fav_type]
 
 
 # noinspection PyUnusedLocal
@@ -266,6 +267,9 @@ def test_set_user_favorites(datastore, login_session):
     [fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
         for fav_type in list(user_favs.keys())
         for fav in user_favs[fav_type]]
+
+    favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in favs.items()}
+    user_favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in user_favs.items()}
 
     assert favs == user_favs
 

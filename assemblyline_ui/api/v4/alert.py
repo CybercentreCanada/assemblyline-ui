@@ -5,6 +5,7 @@ from flask import request
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.alert import Event as AlertEvent
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -14,6 +15,29 @@ SUB_API = 'alert'
 
 alert_api = make_subapi_blueprint(SUB_API, api_version=4)
 alert_api._doc = "Perform operations on alerts"
+
+
+def get_alert_update_ops(user_id: str, status: str = None, priority: str = None, labels=[]) -> dict:
+    operations = []
+    if status:
+        operations.append((STORAGE.alert.UPDATE_SET, 'status', status))
+    if priority:
+        operations.append((STORAGE.alert.UPDATE_SET, 'priority', priority))
+    for label in labels:
+        operations.append((STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', label))
+
+    # Make sure operations get audited
+    if operations:
+        operations.append((STORAGE.alert.UPDATE_APPEND, 'events', AlertEvent({
+            'entity_type': 'user',
+            'entity_id': user_id,
+            'entity_name': STORAGE.user.get(user_id).name,
+            'status': status,
+            'priority': priority,
+            'labels': labels or None,
+        })))
+
+    return operations
 
 
 def get_timming_filter(tc_start, tc):
@@ -232,6 +256,7 @@ def list_alerts(**kwargs):
     no_delay          => Do not delay alerts
     offset            => Offset at which we start giving alerts
     rows              => Numbers of alerts to return
+    sort              => Field / Direction to sort alert with
     tc_start          => Time offset at which we start the time constraint
     tc                => Time constraint applied to the API
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
@@ -267,9 +292,15 @@ def list_alerts(**kwargs):
     if timming_filter:
         filters.append(timming_filter)
 
+    sort = request.args.get('sort', None)
+    if sort:
+        sort = ", ".join([sort, "reporting_ts desc"])
+    else:
+        sort = "reporting_ts desc"
+
     try:
         return make_api_response(STORAGE.alert.search(
-            query, offset=offset, rows=rows, fl="*", sort="reporting_ts desc",
+            query, offset=offset, rows=rows, fl="*", sort=sort,
             access_control=user['access_control'],
             filters=filters, as_obj=False, track_total_hits=track_total_hits))
     except SearchException as e:
@@ -291,6 +322,7 @@ def list_grouped_alerts(field, **kwargs):
     no_delay          => Do not delay alerts
     offset            => Offset at which we start giving alerts
     rows              => Numbers of alerts to return
+    sort              => Field / Direction to sort alert with
     tc_start          => Time offset at which we start the time constraint
     tc                => Time constraint applied to the API
     track_total_hits  => Track the total number of item that match the query (Default: 10 000)
@@ -341,9 +373,15 @@ def list_grouped_alerts(field, **kwargs):
         filters.append(timming_filter)
     filters.append(f"{field}:*")
 
+    sort = request.args.get('sort', None)
+    if sort:
+        sort = ", ".join([sort, "reporting_ts desc"])
+    else:
+        sort = "reporting_ts desc"
+
     try:
-        res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort="reporting_ts desc",
-                                           group_sort="reporting_ts desc", access_control=user['access_control'],
+        res = STORAGE.alert.grouped_search(field, query=query, offset=offset, rows=rows, sort=sort,
+                                           group_sort=sort, access_control=user['access_control'],
                                            filters=filters, fl="*", as_obj=False, track_total_hits=track_total_hits)
         alerts = []
         hash_list = []
@@ -386,6 +424,124 @@ def list_grouped_alerts(field, **kwargs):
         return make_api_response("", f"SearchException: {e}", 400)
 
 
+@alert_api.route("/all/<alert_id>/", methods=["POST"])
+@api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
+def run_workflow(**kwargs):
+    """
+    Apply one-time workflow to specified alert
+
+    Variables:
+    alert_id                         => ID of the alert to add the label to
+
+    Arguments:
+    q                                => Main query to filter the data [REQUIRED]
+    tc_start                         => Time offset at which we start the time constraint
+    tc                               => Time constraint applied to the API
+    fq                               => Filter query applied to the data
+
+    Data Block:
+    {
+        "priority": "HIGH"           => New priority for the alert
+        "status": "MALICIOUS"        => New status for the alert
+        "labels": ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+    }
+
+    API call example:
+    /api/v4/alert/label/batch/?q=protocol:SMTP
+
+    Result example:
+    { "success": true }
+    """
+    user = kwargs['user']
+    try:
+        labels = set(request.json.get('labels', []))
+        priority = request.json.get('priority')
+        priority = priority.upper() if priority else None
+        if priority not in PRIORITIES:
+            raise ValueError(f"Priority {priority} not in priorities")
+        status = request.json.get('status')
+        status = status.upper() if status else None
+        if status not in STATUSES:
+            raise ValueError(f"Status '{status}' not in statuses")
+    except ValueError as e:
+        return make_api_response({"success": False}, err=str(e), status_code=400)
+
+    query = request.args.get('q', "alert_id:*") or "alert_id:*"
+    tc_start = request.args.get('tc_start', None)
+    tc = request.args.get('tc', None)
+    if tc and config.ui.read_only:
+        tc += config.ui.read_only_offset
+    timming_filter = get_timming_filter(tc_start, tc)
+
+    filters = [x for x in request.args.getlist("fq") if x != ""]
+    if timming_filter:
+        filters.append(timming_filter)
+
+    operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
+    return make_api_response({
+        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+    })
+
+
+@alert_api.route("/all/batch/", methods=["POST"])
+@api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
+def run_workflow_by_batch(**kwargs):
+    """
+    Apply one-time workflow to all alerts matching the given filters
+
+    Variables:
+    None
+
+    Arguments:
+    q                                 =>  Main query to filter the data [REQUIRED]
+    tc_start                          => Time offset at which we start the time constraint
+    tc                                => Time constraint applied to the API
+    fq                                =>  Filter query applied to the data
+
+    Data Block:
+    {
+        "priority": "HIGH"           => New priority for the alert
+        "status": "MALICIOUS"        => New status for the alert
+        "labels": ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+    }
+
+    API call example:
+    /api/v4/alert/label/batch/?q=protocol:SMTP
+
+    Result example:
+    { "success": true }
+    """
+    user = kwargs['user']
+    try:
+        labels = set(request.json.get('labels', []))
+        priority = request.json.get('priority')
+        priority = priority.upper() if priority else None
+        if priority not in PRIORITIES:
+            raise ValueError(f"Priority {priority} not in priorities")
+        status = request.json.get('status')
+        status = status.upper() if status else None
+        if status not in STATUSES:
+            raise ValueError(f"Status '{status}' not in statuses")
+    except ValueError as e:
+        return make_api_response({"success": False}, err=str(e), status_code=400)
+
+    query = request.args.get('q', "alert_id:*") or "alert_id:*"
+    tc_start = request.args.get('tc_start', None)
+    tc = request.args.get('tc', None)
+    if tc and config.ui.read_only:
+        tc += config.ui.read_only_offset
+    timming_filter = get_timming_filter(tc_start, tc)
+
+    filters = [x for x in request.args.getlist("fq") if x != ""]
+    if timming_filter:
+        filters.append(timming_filter)
+
+    operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
+    return make_api_response({
+        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+    })
+
+
 @alert_api.route("/label/<alert_id>/", methods=["POST"])
 @api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
 def add_labels(alert_id, **kwargs):
@@ -425,8 +581,8 @@ def add_labels(alert_id, **kwargs):
     label_diff = labels.difference(labels.intersection(cur_label))
     if label_diff:
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
-                                                       for lbl in label_diff])})
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], labels=label_diff))
+        })
     else:
         return make_api_response({"success": True})
 
@@ -472,10 +628,10 @@ def add_labels_by_batch(**kwargs):
     if timming_filter:
         filters.append(timming_filter)
 
+    operations = get_alert_update_ops(user['uname'], labels=labels)
     return make_api_response({
-        "success": STORAGE.alert.update_by_query(query, [(STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', lbl)
-                                                         for lbl in labels],
-                                                 filters, access_control=user['access_control'])})
+        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+    })
 
 
 @alert_api.route("/priority/<alert_id>/", methods=["POST"])
@@ -520,7 +676,8 @@ def change_priority(alert_id, **kwargs):
 
     if priority != alert.get('priority', None):
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_SET, 'priority', priority)])})
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], priority=priority))
+        })
     else:
         return make_api_response({"success": True})
 
@@ -569,9 +726,10 @@ def change_priority_by_batch(**kwargs):
     if timming_filter:
         filters.append(timming_filter)
 
+    operations = get_alert_update_ops(user['uname'], priority=priority)
     return make_api_response({
-        "success": STORAGE.alert.update_by_query(query, [(STORAGE.alert.UPDATE_SET, 'priority', priority)],
-                                                 filters, access_control=user['access_control'])})
+        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+    })
 
 
 @alert_api.route("/status/<alert_id>/", methods=["POST"])
@@ -616,7 +774,8 @@ def change_status(alert_id, **kwargs):
 
     if status != alert.get('status', None):
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_SET, 'status', status)])})
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], status=status))
+        })
     else:
         return make_api_response({"success": True})
 
@@ -665,9 +824,10 @@ def change_status_by_batch(**kwargs):
     if timming_filter:
         filters.append(timming_filter)
 
+    operations = get_alert_update_ops(user['uname'], status=status)
     return make_api_response({
-        "success": STORAGE.alert.update_by_query(query, [(STORAGE.alert.UPDATE_SET, 'status', status)],
-                                                 filters, access_control=user['access_control'])})
+        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+    })
 
 
 @alert_api.route("/ownership/<alert_id>/", methods=["GET"])

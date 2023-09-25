@@ -39,8 +39,8 @@ setup(
     install_requires=[
         'assemblyline',
         'assemblyline-core',
-        'werkzeug==2.2.3',
-        'flask==2.2.3',
+        'werkzeug',
+        'flask',
         'pyqrcode',
         'markdown',
         'python-ldap',
