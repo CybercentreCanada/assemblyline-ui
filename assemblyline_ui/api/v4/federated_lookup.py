@@ -254,8 +254,8 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
     None
 
     API call examples:
-    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/
-    /api/v4/federated_lookup/search/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=vt|malware_bazar
+    /api/v4/federated_lookup/enrich/url/http%3A%2F%2Fmalicious.domain%2Fbad/
+    /api/v4/federated_lookup/enrich/url/http%3A%2F%2Fmalicious.domain%2Fbad/?sources=vt|malware_bazar
 
     Result example:
     {                           # Dictionary of data source queried
