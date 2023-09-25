@@ -200,7 +200,7 @@ def test_remove_user_favorite(datastore, login_session):
     _, session, host = login_session
     username = random.choice(user_list)
     fav_type = random.choice(FAV_TYPES)
-    to_be_removed = f"test_{random.randint(1, 10)}"
+    to_be_removed = f"test_{random.randint(1, NUM_FAVS)}"
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                         method="DELETE", data=json.dumps(to_be_removed))
