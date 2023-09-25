@@ -262,7 +262,7 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
         And the given hash exists in both sources
 
     When a user requests an external hash search of the given hash
-        And no filter is applied
+        And all sources are specified
 
     Then the user should receive a result from each source
     """
@@ -273,7 +273,7 @@ def test_external_hash_multi_hit(datastore, user_login_session, mock_get, mock_l
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/{digest}/")
+    rsp = client.get(f"/api/v4/hash_search/{digest}/?db=al|alert|x.malware_bazaar|x.virustotal")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -386,7 +386,7 @@ def test_external_hash_multi_source_single_hit(
         And the given hash exists only in Malware Bazaar
 
     When a user requests a lookup of a given hash
-        And no filter is applied
+        And all sources are specified
 
     Then the user should receive results from both Malware Bazaar and Virustotal with no error
     But the Virustotal items should be empty
@@ -402,7 +402,7 @@ def test_external_hash_multi_source_single_hit(
     mock_get.side_effect = mock_return
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/{'a' * 32}/")
+    rsp = client.get(f"/api/v4/hash_search/{'a' * 32}/?db=al|alert|x.malware_bazaar|x.virustotal")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -439,7 +439,7 @@ def test_external_hash_multi_source_invalid_single(
         And two entities in Malware Bazaar have the given `tlsh`
 
     When a user requests a lookup of the `tlsh` hash
-        And no filter is applied
+        And only external sources are specified
 
     Then the user should receive a result from only Malware Bazaar with two items
         AND invalid tag error message logged to error
@@ -469,7 +469,7 @@ def test_external_hash_multi_source_invalid_single(
 
     # User requests a lookup with no filter
     tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
-    rsp = client.get(f"/api/v4/hash_search/{tlsh}/")
+    rsp = client.get(f"/api/v4/hash_search/{tlsh}/?db=x.malware_bazaar|x.virustotal")
 
     # A query for only sources where hash type is valid should be called
     assert mock_get.call_count == 1
@@ -477,8 +477,6 @@ def test_external_hash_multi_source_invalid_single(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "al": {"error": None, "items": []},
-        "alert": {"error": None, "items": []},
         "x.virustotal": {"error": "Unsupported hash type.", "items": []},
         "x.malware_bazaar": {
             "error": None,
@@ -512,7 +510,7 @@ def test_external_hash_multi_source_invalid_all(
         And `customhash` hash type is not valid for Malware Bazaar or Virustotal
 
     When a user requests a lookup of `customhash`
-        And no filter is applied
+        And all sources are specified
 
     Then the user should receive a not supported response
     """
@@ -526,7 +524,7 @@ def test_external_hash_multi_source_invalid_all(
 
     # User requests a lookup with no filter
     customhash = "QWERTY:ABCDABCD"
-    rsp = client.get(f"/api/v4/hash_search/{customhash}/")
+    rsp = client.get(f"/api/v4/hash_search/{customhash}/?db=al|alert|x.malware_bazaar|x.virustotal")
 
     # A query for only sources where hash type is valid should be called
     assert mock_get.call_count == 0
@@ -588,7 +586,7 @@ def test_access_control_source_filtering(
         And Assemblyline is a restricted classification
 
     When a user requests a lookup of a hash
-        And no filter is applied
+        And all sources are specified
         And the user only has access to UNRESTRICTED results
 
     Then the user should receive only results from malware bazaar
@@ -604,7 +602,7 @@ def test_access_control_source_filtering(
     mock_get.return_value = mock_lookup_success_response(source=None)
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/hash_search/{'a' * 32}/")
+    rsp = client.get(f"/api/v4/hash_search/{'a' * 32}/?db=al|alert|x.malware_bazaar|x.virustotal")
 
     # Only queries to access allowed sources should go through
     assert mock_get.call_count == 1
@@ -634,7 +632,6 @@ def test_access_control_result_filtering(
     """With multiple configured sources ensure access control filtering is applied at the result level.
 
     Given an external lookup for both "InternalSource" and Assembline is configured
-        And local lookups for `al` and `alert` are configured
         And the given hash exists in both sources
         And both sources are UNRESTRICTED
         And one result returned from Assemblyline is RESTRICTED
@@ -642,7 +639,7 @@ def test_access_control_result_filtering(
         And one result returned from InternalSource is RESTRICTED
 
     When a user requests a lookup of a hash
-        And no filter is applied
+        And all sources are specified
         And the user only has access to UNRESTRICTED results
 
     Then the user should receive only ONE result from Assemblyline
@@ -678,7 +675,7 @@ def test_access_control_result_filtering(
 
     # User requests a lookup with no filter
     tlsh = "T18114B8804B6514724B577E2A6B30A4A6DABE0E7482CD5A8BF45F7260F7DE6CCCCD1720"
-    rsp = client.get(f"/api/v4/hash_search/{tlsh}/")
+    rsp = client.get(f"/api/v4/hash_search/{tlsh}/?db=x.assemblyline|x.internal_source")
 
     # All queries should be made
     assert mock_get.call_count == 2
@@ -687,8 +684,6 @@ def test_access_control_result_filtering(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "al": {"error": None, "items": []},
-        "alert": {"error": None, "items": []},
         "x.internal_source": {"error": None, "items": []},
         "x.assemblyline": {
             "error": None,
