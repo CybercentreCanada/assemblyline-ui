@@ -304,7 +304,7 @@ def get_ontology_for_file(sha256, **kwargs):
                                                               access_control=user["access_control"], as_obj=False)]
     else:
         service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id', filters=filters,
-                                                     sort="created desc", access_control=user["access_control"],
+                                                     group_sort="created desc", access_control=user["access_control"],
                                                      as_obj=False)
 
         keys = [k for service in service_resp['items'] for k in service['items'][0].values()]
