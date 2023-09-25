@@ -157,6 +157,7 @@ def get_external_details(
 def search_hash(file_hash, *args, **kwargs):
     """
     Search for a hash in multiple data sources as configured in the seed.
+    External sources must be specified manually and will not be automatically selected if `db` is left blank.
 
     Variables:
     file_hash   => Hash to search in the multiple data sources
@@ -219,7 +220,8 @@ def search_hash(file_hash, *args, **kwargs):
                 db_list.append(s)
     else:
         db_list = sources.keys()
-        ext_list = [f"x.{s.name}" for s in external_sources]
+        # external sources are only included if manually selected
+        ext_list = []
 
     # validate what sources the user is allowed to submit requests to.
     # this must first be checked against what systems the user is allowed to see
