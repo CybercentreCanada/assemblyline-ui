@@ -38,7 +38,7 @@ def test_tag_found(test_client, mocker):
         "api_error_message": "",
         "api_response": {
             "classification": "TLP:CLEAR",
-            "link": f"https://www.virustotal.com/gui/search?query={digest}",
+            "link": f"https://www.virustotal.com/gui/search/{digest}",
             "count": 1,
         },
         "api_status_code": 200,
@@ -54,7 +54,7 @@ def test_tag_found(test_client, mocker):
         "api_error_message": "",
         "api_response": {
             "classification": "TLP:CLEAR",
-            "link": f"https://www.virustotal.com/gui/search?query={ip_address}",
+            "link": f"https://www.virustotal.com/gui/search/{ip_address}",
             "count": 1,
         },
         "api_status_code": 200,
@@ -67,11 +67,12 @@ def test_tag_found(test_client, mocker):
     url = "https://a.bad.url/contains+and/a space/in-path"
     quoted = ul.quote(url)
     rsp = test_client.get(f"/search/network.dynamic.uri/{quoted}/")
+    rsp_encoded_tag = ul.quote(ul.quote(url, safe=""), safe="")
     expected = {
         "api_error_message": "",
         "api_response": {
             "classification": "TLP:CLEAR",
-            "link": f"https://www.virustotal.com/gui/search?query={quoted}",
+            "link": f"https://www.virustotal.com/gui/search/{rsp_encoded_tag}",
             "count": 1,
         },
         "api_status_code": 200,
@@ -87,7 +88,7 @@ def test_tag_found(test_client, mocker):
         "api_error_message": "",
         "api_response": {
             "classification": "TLP:CLEAR",
-            "link": f"https://www.virustotal.com/gui/search?query={domain}",
+            "link": f"https://www.virustotal.com/gui/search/{domain}",
             "count": 1,
         },
         "api_status_code": 200,
