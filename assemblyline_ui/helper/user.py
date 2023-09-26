@@ -129,7 +129,8 @@ def save_user_account(username, data, user):
 
 
 def get_dynamic_classification(current_c12n, user_info):
-    new_c12n = Classification.normalize_classification(current_c12n, skip_auto_select=True, get_dynamic_groups=False)
+    new_c12n = Classification.normalize_classification(
+        current_c12n, skip_auto_select=True, get_dynamic_groups=False, ignore_unused=True)
 
     if Classification.dynamic_groups:
         email = user_info.get('email', None)
