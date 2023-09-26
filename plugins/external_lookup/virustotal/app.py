@@ -328,8 +328,21 @@ class Enricher():
             self._add("crowdsourced_context", name, value=context['details'])
 
         # Config extraction
+        # The VT API docs are out of date and don't reflect what actually comes back.
+        # We can only parse cases that we have seen examples of.
         for k, v in self.data.get("malware_config", {}).items():
-            self._add("configuration_extraction", k, value=v)
+            # families = list of dicts
+            if k == "families":
+                for fdetails in v:
+                    if fname := fdetails.get("family"):
+                        self._add("configuration_extraction", name="family", value=fname)
+                    for conf in fdetails.get("configs", []):
+                        for txt_conf in conf.get("txt_configs", []):
+                            for key, value in txt_conf.items():
+                                self._add("configuration_extraction", name=key, value=v)
+            else:
+                # rely on out dated API docs... this will probably results in a dict being returned...
+                self._add("configuration_extraction", k, value=v)
 
         # Networking
         self._add("networking", "infrastructure", key="network_infrastructure")
@@ -364,15 +377,20 @@ class Enricher():
 
         # IDS details
         for results in self.data.get("crowdsourced_ids_results", []):
-            name = f"{results['alert_severity']}::{results['rule_category']}::{results['rule_msg']}"
             for context in results.get("alert_context", []):
                 for k, v in context.items():
-                    self._add("ids_alerts", name, value=f"{k}: {v}")
+                    self._add(
+                        f"ids_alerts_{results['alert_severity']}",
+                        name=results["rule_msg"],
+                        name_description=results["rule_category"],
+                        value=f"{k}: {v}")
 
         # AI results
         for r in self.data.get("crowdsourced_ai_results", []):
-            name = f"{r['source']}::{r['category']}"
-            self._add("ai_analysis", key="crowdsourced_ai_results", name=name, value_key="analysis")
+            grp = "ai_analysis"
+            if r["category"]:
+                grp = f"_{r['category']}"
+            self._add(grp, key="crowdsourced_ai_results", name=r['source'], value_key="analysis")
 
         # DNS details
         self._add("dns_records", "last_updated", key="last_dns_record_date", is_timestamp=True)
