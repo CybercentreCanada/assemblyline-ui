@@ -339,7 +339,7 @@ class Enricher():
                     for conf in fdetails.get("configs", []):
                         for txt_conf in conf.get("txt_configs", []):
                             for key, value in json.loads(txt_conf).items():
-                                self._add("configuration_extraction", name=key, value=v)
+                                self._add("configuration_extraction", name=key, value=value)
             else:
                 # rely on out dated API docs... this will probably results in a dict being returned...
                 self._add("configuration_extraction", k, value=v)
