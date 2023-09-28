@@ -66,6 +66,34 @@ def search_tag(tag_name: str, tag: str) -> Response:
     raise NotImplementedError("Not Implemented.")
 
 
+@app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
+def tag_details(tag_name: str, tag: str) -> Response:
+    """Define how to search for detailed tag results.
+
+    Result output should conform to the following:
+    # List of:
+    [
+        {
+            "description": "",                     # Description of the findings
+            "malicious": <bool>,                   # Is the file found malicious or not
+            "confirmed": <bool>,                   # Is the maliciousness attribution confirmed or not
+            "data": {...},                         # Additional Raw data
+            "classification": <access control>,    # [Optional] Classification of the returned data
+        },
+        ...,
+    ]
+    """
+    # Invalid tags must either be ignored, or return a 422
+    tn = TAG_MAPPING.get(tag_name)
+    if tn is None:
+        return make_api_response(
+            None,
+            f"Invalid tag name: {tag_name}. [valid tags: {', '.join(TAG_MAPPING.keys())}]",
+            422,
+        )
+    raise NotImplementedError("Not Implemented.")
+
+
 def main():
     app.run(host="0.0.0.0", port=8000, debug=False)
 

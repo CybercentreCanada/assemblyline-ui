@@ -199,7 +199,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], {})
-                    current_htype = output["tags"][t['type']].get(t['value'], None)
+                    current_htype, _, _ = output["tags"][t['type']].get(t['value'], (None, None, None))
                     tag_htype = h_type
                     if current_htype:
                         if 'malicous' in (current_htype, h_type):
