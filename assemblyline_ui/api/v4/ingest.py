@@ -280,9 +280,8 @@ def ingest_single_file(**kwargs):
                     # File is not found still, and we have external sources
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
-                                         if Classification.is_accessible(user['classification'],
-                                                                         x.classification) and
-                                         x.name in default_external_sources]
+                                         if Classification.is_accessible(user['classification'], x.classification)
+                                         and x.name in default_external_sources]
                     try:
                         for source in available_sources:
                             src_url = source.url.replace(source.replace_pattern, sha256)
@@ -389,6 +388,9 @@ def ingest_single_file(**kwargs):
             if extracted_path:
                 out_file = extracted_path
 
+        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+            al_meta["name"] = fileinfo["uri_info"]["uri"]
+
         # Alter filename and classification based on CaRT output
         meta_classification = al_meta.pop('classification', s_params['classification'])
         if meta_classification != s_params['classification']:
@@ -434,6 +436,8 @@ def ingest_single_file(**kwargs):
         metadata.update(extra_meta)
 
         # Set description if it does not exists
+        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+            default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
         # Create submission object
         try:
