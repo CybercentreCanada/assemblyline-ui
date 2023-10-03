@@ -82,6 +82,11 @@ def who_am_i(**kwargs):
          "allow_extended_apikeys": True,            # Allow user to generate extended access API Keys
          "allow_security_tokens": True,             # Are Security tokens allowed for the user
        },
+       "retrohunt": {                            # Retrohunt Configuration
+         "enabled": False,                          # Is the retrohunt functionnality enabled
+         "dtl": 10,                                 # Default number of days retrohunt job stay in the system
+         "max_dtl": 30,                             # Maximum number of days retrohunt job stay in the system
+       },
        "submission": {                            # Submission Configuration
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
@@ -157,6 +162,11 @@ def who_am_i(**kwargs):
             "archive": {
                 "enabled": config.datastore.archive.enabled
             }
+        },
+        "retrohunt": {
+            "enabled": config.retrohunt.enabled,
+            "dtl": config.retrohunt.dtl,
+            "max_dtl": config.retrohunt.max_dtl,
         },
         "submission": {
             "dtl": config.submission.dtl,
