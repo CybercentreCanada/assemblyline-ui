@@ -143,6 +143,8 @@ def group_search(index, group_field, **kwargs):
     rows         =>   Max number of results
     sort         =>   How to sort the results
     fl           =>   List of fields to return
+    use_archive    =>   Allow access to the malware archive (Default: False)
+    archive_only   =>   Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {"group_sort": "score desc",
@@ -170,6 +172,7 @@ def group_search(index, group_field, **kwargs):
 
     fields = ["group_sort", "limit", "query", "offset", "rows", "sort", "fl", "timeout"]
     multi_fields = ['filters']
+    boolean_fields = ['use_archive', 'archive_only']
 
     if request.method == "POST":
         req_data = request.json
@@ -180,6 +183,19 @@ def group_search(index, group_field, **kwargs):
         req_data = request.args
         params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
+                   for k in boolean_fields
+                   if req_data.get(k, None) is not None})
+
+    use_archive = params.pop('use_archive', False)
+    archive_only = params.pop('archive_only', False)
+    if archive_only:
+        params['index_type'] = Index.ARCHIVE
+    elif use_archive:
+        params['index_type'] = Index.HOT_AND_ARCHIVE
+    else:
+        params['index_type'] = Index.HOT
 
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
@@ -198,7 +214,6 @@ def group_search(index, group_field, **kwargs):
 
 # noinspection PyUnusedLocal
 @search_api.route("/fields/<index>/", methods=["GET"])
-
 @api_login(audit=False, require_role=["alert_view", "heuristic_view",  "safelist_view", "signature_view", "submission_view",
                                       "workflow_view", "retrohunt_view"])
 def list_index_fields(index, **kwargs):
@@ -254,6 +269,8 @@ def facet(index, field, **kwargs):
     query        =>   Query to search for
     mincount    =>   Minimum item count for the fieldvalue to be returned
     filters      =>   Additional query to limit to output
+    use_archive    =>   Allow access to the malware archive (Default: False)
+    archive_only   =>   Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {"query": "id:*",
@@ -279,6 +296,7 @@ def facet(index, field, **kwargs):
 
     fields = ["query", "mincount"]
     multi_fields = ['filters']
+    boolean_fields = ['use_archive', 'archive_only']
 
     if request.method == "POST":
         req_data = request.json
@@ -289,6 +307,19 @@ def facet(index, field, **kwargs):
         req_data = request.args
         params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
+                   for k in boolean_fields
+                   if req_data.get(k, None) is not None})
+
+    use_archive = params.pop('use_archive', False)
+    archive_only = params.pop('archive_only', False)
+    if archive_only:
+        params['index_type'] = Index.ARCHIVE
+    elif use_archive:
+        params['index_type'] = Index.HOT_AND_ARCHIVE
+    else:
+        params['index_type'] = Index.HOT
 
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
@@ -320,6 +351,8 @@ def histogram(index, field, **kwargs):
                        * Defaults: 2000 or now
     gap          =>   Size of each step in the histogram
                        * Defaults: 100 or +1h
+    use_archive    =>   Allow access to the malware archive (Default: False)
+    archive_only   =>   Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {"query": "id:*",
@@ -338,6 +371,7 @@ def histogram(index, field, **kwargs):
     """
     fields = ["query", "mincount", "start", "end", "gap"]
     multi_fields = ['filters']
+    boolean_fields = ['use_archive', 'archive_only']
     user = kwargs['user']
     check_role_for_index(index, user)
 
@@ -368,13 +402,27 @@ def histogram(index, field, **kwargs):
     # Load API variables
     if request.method == "POST":
         req_data = request.json
-        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+        # params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
         params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     else:
         req_data = request.args
-        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+        # params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+    params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
+                   for k in boolean_fields
+                   if req_data.get(k, None) is not None})
+
+    use_archive = params.pop('use_archive', False)
+    archive_only = params.pop('archive_only', False)
+    if archive_only:
+        params['index_type'] = Index.ARCHIVE
+    elif use_archive:
+        params['index_type'] = Index.HOT_AND_ARCHIVE
+    else:
+        params['index_type'] = Index.HOT
 
     # Make sure access control is enforced
     if has_access_control(index):
@@ -400,6 +448,8 @@ def stats(index, int_field, **kwargs):
     Optional Arguments:
     query        =>   Query to search for
     filters      =>   Additional query to limit to output
+    use_archive    =>   Allow access to the malware archive (Default: False)
+    archive_only   =>   Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {"query": "id:*",
@@ -429,16 +479,31 @@ def stats(index, int_field, **kwargs):
 
     fields = ["query"]
     multi_fields = ['filters']
+    boolean_fields = ['use_archive', 'archive_only']
 
     if request.method == "POST":
         req_data = request.json
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
-        params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        # params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
     else:
         req_data = request.args
-        params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
-        params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        # params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
+        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+    params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
+                   for k in boolean_fields
+                   if req_data.get(k, None) is not None})
+
+    use_archive = params.pop('use_archive', False)
+    archive_only = params.pop('archive_only', False)
+    if archive_only:
+        params['index_type'] = Index.ARCHIVE
+    elif use_archive:
+        params['index_type'] = Index.HOT_AND_ARCHIVE
+    else:
+        params['index_type'] = Index.HOT
 
     if has_access_control(index):
         params.update({'access_control': user['access_control']})

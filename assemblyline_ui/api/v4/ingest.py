@@ -137,6 +137,7 @@ def ingest_single_file(**kwargs):
 
      //OPTIONAL VALUES
      "name": "file.exe",             # Name of the file
+     "proxy": "CA"                   # Name of proxy to egress from for URL-based submissions
 
      "metadata": {                   # Submission Metadata
          "key": val,                    # Key/Value pair for metadata parameters
@@ -279,9 +280,8 @@ def ingest_single_file(**kwargs):
                     # File is not found still, and we have external sources
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
-                                         if Classification.is_accessible(user['classification'],
-                                                                         x.classification) and
-                                         x.name in default_external_sources]
+                                         if Classification.is_accessible(user['classification'], x.classification)
+                                         and x.name in default_external_sources]
                     try:
                         for source in available_sources:
                             src_url = source.url.replace(source.replace_pattern, sha256)
@@ -317,8 +317,12 @@ def ingest_single_file(**kwargs):
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
                 try:
+                    proxies = config.ui.url_submission_proxies
+                    if config.ui.url_egress_proxies:
+                        proxy_name = data.get("proxy", None)
+                        proxies = config.ui.url_egress_proxies.get(proxy_name).proxies or proxies
                     url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                                    proxies=config.ui.url_submission_proxies,
+                                                    proxies=proxies,
                                                     timeout=config.ui.url_submission_timeout, verify=False,
                                                     ignore_size=s_params.get('ignore_size', False))
                     if url_history is None:
@@ -384,6 +388,9 @@ def ingest_single_file(**kwargs):
             if extracted_path:
                 out_file = extracted_path
 
+        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+            al_meta["name"] = fileinfo["uri_info"]["uri"]
+
         # Alter filename and classification based on CaRT output
         meta_classification = al_meta.pop('classification', s_params['classification'])
         if meta_classification != s_params['classification']:
@@ -429,6 +436,8 @@ def ingest_single_file(**kwargs):
         metadata.update(extra_meta)
 
         # Set description if it does not exists
+        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+            default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
         # Create submission object
         try:

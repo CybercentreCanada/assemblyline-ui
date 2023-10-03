@@ -35,7 +35,7 @@ def ext_config():
             "network.static.ip": CLASSIFICATION.UNRESTRICTED,
             "network.dynamic.uri": CLASSIFICATION.UNRESTRICTED,
             "network.static.uri": CLASSIFICATION.UNRESTRICTED,
-        }
+        },
     }
     # ensure local cache is always fresh for tests
     federated_lookup.all_supported_tags = t.all_supported_tags
@@ -188,11 +188,32 @@ def mock_mb_hash_response(mocker, digest_sha256):
     mock_mb_response.status_code = 200
     mock_mb_response.json.return_value = {
         "api_error_message": "",
-        "api_response": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
-            "count": 1,
-        },
+        "api_response": [
+            {
+                "description": "description",
+                "malicious": True,
+                "confirmed": False,
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+                "count": 1,
+                "enrichment": [
+                    {
+                        "group": "group1",
+                        "name": "name1",
+                        "name_description": "",
+                        "value": "value1",
+                        "value_description": "value1 description",
+                    },
+                    {
+                        "group": "group2",
+                        "name": "name2",
+                        "name_description": "name2 description",
+                        "value": "value2",
+                        "value_description": "",
+                    },
+                ],
+            }
+        ],
         "api_status_code": 200,
     }
     return mock_mb_response
@@ -205,11 +226,32 @@ def mock_mb_imphash_response(mocker, imphash):
     mock_mb_response.status_code = 200
     mock_mb_response.json.return_value = {
         "api_error_message": "",
-        "api_response": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=imphash%3A{imphash}",
-            "count": 2,
-        },
+        "api_response": [
+            {
+                "description": "description",
+                "malicious": True,
+                "confirmed": False,
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "link": f"https://bazaar.abuse.ch/browse.php?search=imphash%3A{imphash}",
+                "count": 2,
+                "enrichment": [
+                    {
+                        "group": "group1",
+                        "name": "name1",
+                        "name_description": "",
+                        "value": "value1",
+                        "value_description": "value1 description",
+                    },
+                    {
+                        "group": "group2",
+                        "name": "name2",
+                        "name_description": "name2 description",
+                        "value": "value2",
+                        "value_description": "",
+                    },
+                ],
+            }
+        ],
         "api_status_code": 200,
     }
     return mock_mb_response
@@ -222,11 +264,32 @@ def mock_vt_hash_response(mocker, digest_sha256):
     mock_vt_response.status_code = 200
     mock_vt_response.json.return_value = {
         "api_error_message": "",
-        "api_response": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
-            "count": 1,
-        },
+        "api_response": [
+            {
+                "description": "description",
+                "malicious": True,
+                "confirmed": False,
+                "classification": CLASSIFICATION.UNRESTRICTED,
+                "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
+                "count": 1,
+                "enrichment": [
+                    {
+                        "group": "group1",
+                        "name": "name1",
+                        "name_description": "",
+                        "value": "value1",
+                        "value_description": "value1 description",
+                    },
+                    {
+                        "group": "group2",
+                        "name": "name2",
+                        "name_description": "name2 description",
+                        "value": "value2",
+                        "value_description": "",
+                    },
+                ],
+            }
+        ],
         "api_status_code": 200,
     }
     return mock_vt_response
@@ -241,7 +304,8 @@ def mock_get(mocker):
 
 
 def test_lookup_tag_multi_hit(
-        datastore, user_login_session, mock_get, mock_vt_hash_response, mock_mb_hash_response, digest_sha256):
+    datastore, user_login_session, mock_get, mock_vt_hash_response, mock_mb_hash_response, digest_sha256
+):
     """Lookup a valid tag type with multiple configured sources.
 
     Given an external lookups for both Malware Bazaar and Virustoal are configured
@@ -260,7 +324,7 @@ def test_lookup_tag_multi_hit(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
+    rsp = client.get(f"/api/v4/federated_lookup/enrich/sha256/{digest_sha256}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -270,21 +334,68 @@ def test_lookup_tag_multi_hit(
     data = rsp.json["api_response"]
     expected = {
         "malware_bazaar": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
-            "count": 1,
+            "error": "",
+            "items": [
+                {
+                    "description": "description",
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+                    "count": 1,
+                    "confirmed": False,
+                    "malicious": True,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                },
+            ],
         },
         "virustotal": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
-            "count": 1,
+            "error": "",
+            "items": [
+                {
+                    "description": "description",
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
+                    "count": 1,
+                    "confirmed": False,
+                    "malicious": True,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                },
+            ],
         },
     }
     assert data == expected
 
 
-def test_lookup_tag_multi_hit_filter(
-        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256):
+def test_lookup_tag_multi_hit_filter(datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256):
     """Lookup a valid tag type with multiple configured sources but place a filter.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -301,8 +412,7 @@ def test_lookup_tag_multi_hit_filter(
 
     # User requests a lookup with filter
     rsp = client.get(
-        f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/",
-        query_string={"sources": "malware_bazaar"}
+        f"/api/v4/federated_lookup/enrich/sha256/{digest_sha256}/", query_string={"sources": "malware_bazaar"}
     )
 
     # A query for each source should be sent
@@ -313,16 +423,41 @@ def test_lookup_tag_multi_hit_filter(
     data = rsp.json["api_response"]
     expected = {
         "malware_bazaar": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
-            "count": 1,
+            "error": "",
+            "items": [
+                {
+                    "description": "description",
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+                    "count": 1,
+                    "confirmed": False,
+                    "malicious": True,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                },
+            ],
         },
     }
     assert data == expected
 
 
 def test_lookup_tag_multi_source_single_hit(
-        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256, mock_404_response):
+    datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256, mock_404_response
+):
     """Lookup a valid tag type with multiple configured sources but found in only one source.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -341,7 +476,7 @@ def test_lookup_tag_multi_source_single_hit(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
+    rsp = client.get(f"/api/v4/federated_lookup/enrich/sha256/{digest_sha256}/")
 
     # A query for each source should be sent
     assert mock_get.call_count == 2
@@ -350,17 +485,43 @@ def test_lookup_tag_multi_source_single_hit(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
+        "virustotal": {"error": "Not Found", "items": []},
         "malware_bazaar": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
-            "count": 1,
+            "error": "",
+            "items": [
+                {
+                    "description": "description",
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+                    "count": 1,
+                    "confirmed": False,
+                    "malicious": True,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                },
+            ],
         },
     }
     assert data == expected
 
 
 def test_lookup_tag_multi_source_invalid_single(
-        datastore, user_login_session, mock_get, mock_mb_imphash_response, imphash, mock_400_response):
+    datastore, user_login_session, mock_get, mock_mb_imphash_response, imphash, mock_400_response
+):
     """With multiple configured sources look up a tag that is valid in only one of those sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -381,7 +542,7 @@ def test_lookup_tag_multi_source_invalid_single(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/search/file.pe.imports.imphash/{imphash}/")
+    rsp = client.get(f"/api/v4/federated_lookup/enrich/file.pe.imports.imphash/{imphash}/")
 
     # Only a query to malware bazaar should be sent as the tag is not valid for vt
     assert mock_get.call_count == 1
@@ -391,16 +552,39 @@ def test_lookup_tag_multi_source_invalid_single(
     data = rsp.json["api_response"]
     expected = {
         "malware_bazaar": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=imphash%3A{imphash}",
-            "count": 2,
-        },
+            "error": "",
+            "items": [
+                {
+                    "description": "description",
+                    "malicious": True,
+                    "confirmed": False,
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://bazaar.abuse.ch/browse.php?search=imphash%3A{imphash}",
+                    "count": 2,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                }
+            ],
+        }
     }
     assert data == expected
 
 
-def test_lookup_tag_multi_source_invalid_all(
-        datastore, user_login_session, mock_get, mock_422_response):
+def test_lookup_tag_multi_source_invalid_all(datastore, user_login_session, mock_get, mock_422_response):
     """With multiple configured sources look up a tag that is not valid in any of the sources.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -409,7 +593,7 @@ def test_lookup_tag_multi_source_invalid_all(
     When a user requests a lookup of `not_a_tag`
         And no filter is applied
 
-    Then the user should receive a not found response
+    Then the user should receive a 200 SUCCESS with no results found
     """
     _, client = user_login_session
 
@@ -419,21 +603,22 @@ def test_lookup_tag_multi_source_invalid_all(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get("/api/v4/federated_lookup/search/not_a_tag/invalid/")
+    rsp = client.get("/api/v4/federated_lookup/enrich/not_a_tag/invalid/")
 
     # no queries should be sent to external sources
     assert mock_get.call_count == 0
 
     # Expect correctly formatted mocked reponse
-    assert rsp.status_code == 404
+    assert rsp.status_code == 200
     success = rsp.json["api_response"]
     assert success == {}
     error = rsp.json["api_error_message"]
-    assert error == {}
+    assert error == ""
 
 
 def test_access_control_source_filtering(
-        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256):
+    datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256
+):
     """With multiple configured sources ensure access control filtering is applied at the source level.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -455,7 +640,7 @@ def test_access_control_source_filtering(
     mock_get.return_value = mock_mb_hash_response
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
+    rsp = client.get(f"/api/v4/federated_lookup/enrich/sha256/{digest_sha256}/")
 
     # Only queries to access allowed sources should go through
     assert mock_get.call_count == 1
@@ -465,16 +650,41 @@ def test_access_control_source_filtering(
     data = rsp.json["api_response"]
     expected = {
         "malware_bazaar": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
-            "count": 1,
-        },
+            "error": "",
+            "items": [
+                {
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+                    "count": 1,
+                    "description": "description",
+                    "malicious": True,
+                    "confirmed": False,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                }
+            ],
+        }
     }
     assert data == expected
 
 
 def test_access_control_tag_filtering(
-        datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256, mocker):
+    datastore, user_login_session, mock_get, mock_mb_hash_response, digest_sha256, mocker
+):
     """With multiple configured sources ensure access control filtering is applied at the tag level.
 
     Given an external lookup for both Malware Bazaar and Virustoal is configured
@@ -494,11 +704,17 @@ def test_access_control_tag_filtering(
     mock_vt_response.status_code = 200
     mock_vt_response.json.return_value = {
         "api_error_message": "",
-        "api_response": {
-            "classification": CLASSIFICATION.RESTRICTED,
-            "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
-            "count": 1,
-        },
+        "api_response": [
+            {
+                "classification": CLASSIFICATION.RESTRICTED,
+                "link": f"https://www.virustotal.com/gui/search?query={digest_sha256}",
+                "count": 1,
+                "description": "description",
+                "malicious": True,
+                "confirmed": False,
+                "enrichment": [],
+            }
+        ],
         "api_status_code": 200,
     }
     mock_get.side_effect = [
@@ -507,7 +723,7 @@ def test_access_control_tag_filtering(
     ]
 
     # User requests a lookup with no filter
-    rsp = client.get(f"/api/v4/federated_lookup/search/sha256/{digest_sha256}/")
+    rsp = client.get(f"/api/v4/federated_lookup/enrich/sha256/{digest_sha256}/")
 
     # All queries should be made
     assert mock_get.call_count == 2
@@ -516,17 +732,41 @@ def test_access_control_tag_filtering(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
+        "virustotal": {"error": "", "items": []},
         "malware_bazaar": {
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
-            "count": 1,
+            "error": "",
+            "items": [
+                {
+                    "classification": CLASSIFICATION.UNRESTRICTED,
+                    "link": f"https://bazaar.abuse.ch/browse.php?search=sha256%3A{digest_sha256}",
+                    "count": 1,
+                    "description": "description",
+                    "malicious": True,
+                    "confirmed": False,
+                    "enrichment": [
+                        {
+                            "group": "group1",
+                            "name": "name1",
+                            "name_description": "",
+                            "value": "value1",
+                            "value_description": "value1 description",
+                        },
+                        {
+                            "group": "group2",
+                            "name": "name2",
+                            "name_description": "name2 description",
+                            "value": "value2",
+                            "value_description": "",
+                        },
+                    ],
+                }
+            ],
         },
     }
     assert data == expected
 
 
-def test_access_control_tag_max_classification(
-        datastore, admin_login_session, mock_get, imphash, mocker):
+def test_access_control_tag_max_classification(datastore, admin_login_session, mock_get, imphash, mocker):
     """With multiple configured sources ensure access controls are applied to tags before searching.
 
     Given an external lookup for both Malware Bazaar and Assemblyline is configured
@@ -553,7 +793,7 @@ def test_access_control_tag_max_classification(
         },
         "assemblyline": {
             "file.pe.imports.imphash": CLASSIFICATION.UNRESTRICTED,
-        }
+        },
     }
     federated_lookup.all_supported_tags = t.all_supported_tags
 
@@ -561,21 +801,27 @@ def test_access_control_tag_max_classification(
 
     mock_al_response = mocker.MagicMock(spec=Response)
     mock_al_response.status_code = 200
-    al_lookup = {
-        "classification": CLASSIFICATION.RESTRICTED,
-        "link": f'https://assemblyline-ui/search/result?query=result.sections.tags.file.pe.imports.imphash:"{imphash}"',
-        "count": 2,
-    }
+    al_lookup = [
+        {
+            "classification": CLASSIFICATION.RESTRICTED,
+            "link": f'https://assemblyline-ui/search/result?query=result.sections.tags.file.pe.imports.imphash:"{imphash}"',
+            "count": 2,
+            "description": "description",
+            "malicious": True,
+            "confirmed": False,
+            "enrichment": [],
+        }
+    ]
     mock_al_response.json.return_value = {
-        "api_error_message": "",
         "api_response": al_lookup,
+        "api_error_message": "",
         "api_status_code": 200,
     }
     mock_get.return_value = mock_al_response
 
     # User requests a lookup with no filter
     clsf = ul.quote(CLASSIFICATION.RESTRICTED)
-    rsp = client.get(f"/api/v4/federated_lookup/search/file.pe.imports.imphash/{imphash}/?classification={clsf}")
+    rsp = client.get(f"/api/v4/federated_lookup/enrich/file.pe.imports.imphash/{imphash}/?classification={clsf}")
 
     # Only the query to AL should be made
     assert mock_get.call_count == 1
@@ -584,13 +830,19 @@ def test_access_control_tag_max_classification(
     assert rsp.status_code == 200
     data = rsp.json["api_response"]
     expected = {
-        "assemblyline": al_lookup,
+        "malware_bazaar": {
+            "error": "Tag classification exceeds max classification of source: malware_bazaar.",
+            "items": [],
+        },
+        "assemblyline": {
+            "error": "",
+            "items": al_lookup,
+        },
     }
     assert data == expected
 
 
-def test_get_tag_names(
-        datastore, ext_config, user_login_session, mock_get):
+def test_get_tag_names(datastore, ext_config, user_login_session, mock_get):
     """Lookup the valid tag names from all sources.
 
     Given external lookups for both Malware Bazaar and Virustoal are configured
@@ -622,13 +874,12 @@ def test_get_tag_names(
             "network.static.ip",
             "network.dynamic.uri",
             "network.static.uri",
-        ]
+        ],
     }
     assert data == expected_data
 
 
-def test_get_tag_names_access_control(
-        datastore, ext_config, user_login_session, mock_get):
+def test_get_tag_names_access_control(datastore, ext_config, user_login_session, mock_get):
     """Lookup the valid tag names with some sources restricted.
 
     Given external lookups for both Malware Bazaar and Virustoal are configured

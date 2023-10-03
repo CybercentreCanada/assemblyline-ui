@@ -209,7 +209,11 @@ def who_am_i(**kwargs):
                                                 x.classification or CLASSIFICATION.UNRESTRICTED)
             ]),
             "external_sources": [
-                x.name for x in config.ui.external_sources
+                {
+                    "name": x.name,
+                    "max_classification": x.max_classification or x.classification or CLASSIFICATION.UNRESTRICTED,
+                }
+                for x in config.ui.external_sources
                 if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
                                                 x.classification or CLASSIFICATION.UNRESTRICTED)
             ],
@@ -219,7 +223,9 @@ def who_am_i(**kwargs):
             "services_feed": config.ui.services_feed,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
-            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
+            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []],
+            "url_egress_proxies": [k for k, v in config.ui.url_egress_proxies.items()
+                                   if CLASSIFICATION.is_accessible(user_data['classification'], v.classification)] if config.ui.url_egress_proxies else []
         },
         "user": {
             "api_priv_map": API_PRIV_MAP,
