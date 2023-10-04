@@ -824,6 +824,7 @@ def get_user_settings(username, **kwargs):
     {
      "profile": true,               # Should submissions be profiled
      "classification": "",          # Default classification for this user sumbissions
+     "demo": false,                 # Default value to hide sensitive information for demonstration purposes
      "description": "",             # Default description for this user's submissions
      "download_encoding": "blah",   # Default encoding for downloaded files
      "expand_min_score": 100,       # Default minimum score to auto-expand sections
@@ -863,6 +864,7 @@ def set_user_settings(username, **kwargs):
      "profile": true,                       # Should submissions be profiled
      "classification": "",                  # Default classification for this user sumbissions
      "default_zip_password": "zippy"        # Default password used for protected file downloads
+     "demo": false,                         # Default value to hide sensitive information for demonstration purposes
      "description": "",                     # Default description for this user's submissions
      "download_encoding": "blah",           # Default encoding for downloaded files
      "expand_min_score": 100,               # Default minimum score to auto-expand sections

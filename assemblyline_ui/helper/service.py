@@ -88,6 +88,7 @@ def ui_to_submission_params(params) -> Optional[dict[str, Any]]:
 
     # Remove UI specific params
     params.pop('default_zip_password', None)
+    params.pop('demo', None)
     params.pop('download_encoding', None)
     params.pop('expand_min_score', None)
     params.pop('submission_view', None)

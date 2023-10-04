@@ -150,7 +150,7 @@ def test_get_user_settings(datastore, login_session):
     username = random.choice(user_list)
 
     resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/")
-    assert {'deep_scan', 'download_encoding', 'ignore_cache'}.issubset(set(resp.keys()))
+    assert {'deep_scan', 'demo', 'download_encoding', 'ignore_cache'}.issubset(set(resp.keys()))
 
 
 # noinspection PyUnusedLocal
@@ -281,6 +281,7 @@ def test_set_user_settings(datastore, login_session):
 
     uset = load_user_settings({'uname': username})
     uset['expand_min_score'] = 111
+    uset['demo'] = True
     uset['priority'] = 111
 
     resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
