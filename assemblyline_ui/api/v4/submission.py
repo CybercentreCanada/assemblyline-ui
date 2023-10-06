@@ -806,8 +806,7 @@ def list_submissions_for_user(username, **kwargs):
     else:
         index_type = Index.HOT
 
-    account = STORAGE.user.get(username)
-    if not account:
+    if not STORAGE.user.exists(username):
         return make_api_response("", "User %s does not exists." % username, 404)
 
     try:
