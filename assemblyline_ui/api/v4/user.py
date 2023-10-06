@@ -279,7 +279,7 @@ def add_user_account(username, **_):
     if "{" in username or "}" in username:
         return make_api_response({"success": False}, "You can't use '{}' in the username", 412)
 
-    if not STORAGE.user.get(username):
+    if not STORAGE.user.exists(username):
         new_pass = data.pop('new_pass', None)
         if new_pass:
             password_requirements = config.auth.internal.password_requirements.as_primitives()
@@ -390,8 +390,7 @@ def remove_user_account(username, **_):
     }
     """
 
-    user_data = STORAGE.user.get(username)
-    if user_data:
+    if STORAGE.user.exists(username):
         user_deleted = STORAGE.user.delete(username)
         avatar_deleted = STORAGE.user_avatar.delete(username)
         favorites_deleted = STORAGE.user_favorites.delete(username)
@@ -982,20 +981,20 @@ def agree_with_tos(username, **kwargs):
     if logged_in_user['uname'] != username:
         raise AccessDeniedException("You can't agree to Terms Of Service on behalf of someone else!")
 
-    user = STORAGE.user.get(username)
+    user = STORAGE.user.get(username, as_obj=False)
 
     if not user:
         return make_api_response({"success": False}, "User %s does not exist." % username, 403)
     else:
-        user.agrees_with_tos = now_as_iso()
+        user['agrees_with_tos'] = now_as_iso()
         if config.ui.tos_lockout:
-            user.is_active = False
+            user['is_active'] = False
 
         if config.ui.tos_lockout and config.ui.tos_lockout_notify:
             # noinspection PyBroadException
             try:
                 for adr in config.ui.tos_lockout_notify:
-                    send_authorize_email(adr, username, user.email or "")
+                    send_authorize_email(adr, username, user['email'] or "")
             except Exception as e:
                 LOGGER.error(f"An error occurred while sending confirmation emails: {str(e)}")
                 return make_api_response({"success": False}, "The system was unable to send confirmation emails "
