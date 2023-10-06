@@ -118,8 +118,8 @@ def delete_apikey(name, **kwargs):
     }
     """
     user = kwargs['user']
-    user_data = STORAGE.user.get(user['uname'])
-    user_data.apikeys.pop(name)
+    user_data = STORAGE.user.get(user['uname'], as_obj=False)
+    user_data['apikeys'].pop(name)
     STORAGE.user.save(user['uname'], user_data)
 
     return make_api_response({"success": True})
@@ -175,9 +175,9 @@ def disable_otp(**kwargs):
     }
     """
     uname = kwargs['user']['uname']
-    user_data = STORAGE.user.get(uname)
-    user_data.otp_sk = None
-    user_data.security_tokens = {}
+    user_data = STORAGE.user.get(uname, as_obj=False)
+    user_data['otp_sk'] = None
+    user_data['security_tokens'] = {}
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
 
@@ -589,7 +589,7 @@ def oauth_validate(**_):
                             if res['total'] > 0:
                                 cnt = res['total']
                                 new_uname = f"{data['uname']}{cnt}"
-                                while STORAGE.user.get(new_uname) is not None:
+                                while STORAGE.user.exists(new_uname):
                                     cnt += 1
                                     new_uname = f"{data['uname']}{cnt}"
                                 data['uname'] = new_uname
@@ -740,8 +740,8 @@ def setup_otp(**kwargs):
     """
     uname = kwargs['user']['uname']
 
-    user_data = STORAGE.user.get(uname)
-    if user_data.otp_sk is not None:
+    user_data = STORAGE.user.get(uname, as_obj=False)
+    if user_data['otp_sk'] is not None:
         return make_api_response("", err="OTP already set for this user", status_code=400)
 
     secret_key = generate_random_secret()
@@ -802,7 +802,7 @@ def signup(**_):
     if not uname or not password or not password_confirm or not email:
         return make_api_response({"success": False}, "Not enough information to proceed with user creation", 400)
 
-    if STORAGE.user.get(uname) or len(uname) < 3:
+    if STORAGE.user.exists(uname) or len(uname) < 3:
         return make_api_response({"success": False},
                                  "There is already a user registered with this name",
                                  460)
@@ -936,7 +936,7 @@ def validate_otp(token, **kwargs):
     }
     """
     uname = kwargs['user']['uname']
-    user_data = STORAGE.user.get(uname)
+    user_data = STORAGE.user.get(uname, as_obj=False)
 
     try:
         token = int(token)
@@ -945,7 +945,7 @@ def validate_otp(token, **kwargs):
 
     secret_key = flsk_session.pop('temp_otp_sk', None)
     if secret_key and get_totp_token(secret_key) == token:
-        user_data.otp_sk = secret_key
+        user_data['otp_sk'] = secret_key
         STORAGE.user.save(uname, user_data)
         return make_api_response({'success': True})
     else:
