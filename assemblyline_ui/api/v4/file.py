@@ -577,6 +577,7 @@ def get_file_results(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         max_c12n = file_obj['classification']
         output = {
+            "classification": Classification.UNRESTRICTED,
             "file_info": file_obj,
             "results": [],
             "tags": {},
@@ -664,7 +665,7 @@ def get_file_results(sha256, **kwargs):
 
         output['signatures'] = list(output['signatures'])
 
-        output['file_info']['classification'] = max_c12n
+        output['classification'] = max_c12n
         return make_api_response(output)
     else:
         return make_api_response({}, "You are not allowed to view this file", 403)
