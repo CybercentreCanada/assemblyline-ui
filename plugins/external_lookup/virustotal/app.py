@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 
 API_KEY = os.environ.get("VT_API_KEY", "")
-VERIFY = os.environ.get("VT_VERIFY", False)
+VERIFY = os.environ.get("VT_VERIFY", True)
 MAX_TIMEOUT = float(os.environ.get("MAX_TIMEOUT", 3))
 CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")  # Classification of this service
 API_URL = os.environ.get("API_URL", "https://www.virustotal.com/api/v3")  # override in case of mirror

@@ -98,6 +98,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
         # Prepare output
         output = {
+            "classification": Classification.UNRESTRICTED,
             "file_info": {},
             "results": [],
             "tags": {},
@@ -215,7 +216,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
         output['signatures'] = list(output['signatures'])
 
-        output['file_info']['classification'] = max_c12n
+        output['classification'] = max_c12n
         return make_api_response(output)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
