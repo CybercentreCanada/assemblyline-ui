@@ -11,6 +11,8 @@ To allow for extended use by non-AL systems, these tag mappings should also be c
 import json
 import os
 
+from urllib import parse as ul
+
 from flask import Flask, Response, jsonify, make_response, request
 
 app = Flask(__name__)
@@ -46,9 +48,13 @@ def get_tag_names() -> Response:
     return make_api_response(sorted(TAG_MAPPING))
 
 
-@app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
+@app.route("/details/<tag_name>/<tag>/", methods=["GET"])
 def tag_details(tag_name: str, tag: str) -> Response:
     """Define how to search for detailed tag results.
+
+    Variables:
+    tag_name => Tag to look up in the external system.
+    tag => Tag value to lookup. *Must be double URL encoded.*
 
     Query Params:
     max_timeout => Maximum execution time for the call in seconds
@@ -76,6 +82,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
         ...,
     ]
     """
+    tag = ul.unquote(ul.unquote(tag))
     # Invalid tags must either be ignored, or return a 422
     tn = TAG_MAPPING.get(tag_name)
     if tn is None:

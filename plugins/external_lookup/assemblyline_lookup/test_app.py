@@ -6,6 +6,10 @@ import requests
 from . import app as server
 
 
+def dquote(tag):
+    """Double encode the tag."""
+    return ul.quote(ul.quote(tag, safe=""), safe="")
+
 @pytest.fixture()
 def test_client():
     """generate a test client."""
@@ -113,7 +117,7 @@ def test_hash_found(test_client, mock_lookup_success):
     digest = data["items"][0]["id"]
 
     # sha256 can use the result index
-    rsp = test_client.get(f"/search/sha256/{digest}/")
+    rsp = test_client.get(f"/search/sha256/{dquote(digest)}/")
     expected = {
         "api_error_message": "",
         "api_response": {
@@ -129,7 +133,7 @@ def test_hash_found(test_client, mock_lookup_success):
 
     # other hashes must use file index
     digest = "a" * 32
-    rsp = test_client.get(f"/search/md5/{digest}/")
+    rsp = test_client.get(f"/search/md5/{dquote(digest)}/")
     expected = {
         "api_error_message": "",
         "api_response": {
@@ -148,7 +152,7 @@ def test_hash_dne(test_client, mock_lookup_success):
     """Validate respone for a hash that does not exists."""
     mock_lookup_success(items=[])
 
-    rsp = test_client.get(f"/search/md5/{'a' * 32}/")
+    rsp = test_client.get(f"/search/md5/{dquote('a' * 32)}/")
     expected = {
         "api_error_message": "No items found",
         "api_response": "",
@@ -171,7 +175,7 @@ def test_hash_dne(test_client, mock_lookup_success):
 def test_error_conditions(test_client, mock_lookup_error):
     """Validate error handling."""
     mock_lookup_error()
-    rsp = test_client.get(f"/search/md5/{'a' * 32}/")
+    rsp = test_client.get(f"/search/md5/{dquote('a' * 32)}/")
     expected = {
         "api_error_message": "A generic server error",
         "api_response": "",
@@ -190,7 +194,7 @@ def test_detailed_malicious(test_client, mock_lookup_success):
     """Test getting details for a valid tag that is found and is malicious."""
     data = mock_lookup_success()
 
-    url = ul.quote("https://a.bad.url/contains+and/a space/in-path")
+    url = dquote("https://a.bad.url/contains+and/a space/in-path")
     rsp = test_client.get(f"/details/network.static.uri/{url}/")
     expected = {
         "api_error_message": "",
@@ -220,7 +224,7 @@ def test_detailed_not_malicious(test_client, mock_lookup_success):
         }]
     )
 
-    url = ul.quote("https://a.bad.url/contains+and/a space/in-path")
+    url = dquote("https://a.bad.url/contains+and/a space/in-path")
     rsp = test_client.get(f"/details/network.static.uri/{url}/")
     expected = {
         "api_error_message": "",
@@ -273,7 +277,7 @@ def test_detailed_hash_lookup(test_client, mocker, mock_lookup_success):
     )
     assert "result" not in data["items"][0]
 
-    rsp = test_client.get(f"/details/md5/{'a' * 32}/")
+    rsp = test_client.get(f"/details/md5/{dquote('a' * 32)}/")
     expected = {
         "api_error_message": "",
         "api_response": [{
