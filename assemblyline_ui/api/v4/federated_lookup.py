@@ -10,6 +10,7 @@ import os
 import uuid
 
 from typing import TypedDict
+from urllib import parse as ul
 
 from flask import request
 from requests import Session, exceptions
@@ -172,7 +173,7 @@ def query_external(
     if query_type != "details":
         params["nodata"] = True
 
-    url = f"{source.url}/{query_type}/{tag_name}/{tag}"
+    url = f"{source.url}/{query_type}/{tag_name}/{tag}/"
     rsp = session.get(url, params=params, headers=headers)
 
     status_code = rsp.status_code
@@ -234,14 +235,14 @@ def get_tag_names(**kwargs):
     return make_api_response(filtered_tag_names(user))
 
 
-@federated_lookup_api.route("/enrich/<tag_name>/<path:tag>/", methods=["GET"])
+@federated_lookup_api.route("/enrich/<tag_name>/<tag>/", methods=["GET"])
 @api_login(require_role=[ROLES.external_query])
 def enrich_tags(tag_name: str, tag: str, **kwargs):
     """Search other services for additional information to enrich AL.
 
     Variables:
     tag_name => Tag to look up in the external system.
-    tag => Tag value to lookup. Must be URL encoded.
+    tag => Tag value to lookup. *Must be double URL encoded.*
 
     Arguments: (optional)
     classification  => Classification of the tag [Default: minimum configured classification]
@@ -283,6 +284,8 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
         ...,
     }
     """
+    # re-encode the tag after being decoded going through flask/wsgi route
+    tag = ul.quote(tag, safe="")
     user = kwargs["user"]
     qp = parse_qp(request=request)
     query_sources = qp["query_sources"]

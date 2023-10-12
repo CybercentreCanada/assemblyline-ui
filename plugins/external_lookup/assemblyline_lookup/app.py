@@ -5,6 +5,8 @@ import concurrent.futures
 import json
 import os
 
+from urllib import parse as ul
+
 import requests
 
 from flask import Flask, Response, jsonify, make_response, request
@@ -99,10 +101,13 @@ def lookup_tag(tag_name: str, tag: str, limit: int = 25, timeout: float = 3.0):
     return rsp_json["api_response"]
 
 
-@app.route("/search/<tag_name>/<path:tag>/", methods=["GET"])
+@app.route("/search/<tag_name>/<tag>/", methods=["GET"])
 def search_tag(tag_name: str, tag: str):
     """Lookup tags from upstream/downstream assemblyline
 
+    Variables:
+    tag_name => Tag to look up in the external system.
+    tag => Tag value to lookup. *Must be double URL encoded.*
     Tag values submitted must be URL encoded.
 
     Arguments: (optional)
@@ -117,6 +122,7 @@ def search_tag(tag_name: str, tag: str):
             "classification": <classification of search>,  # Should this be the max
         }
     """
+    tag = ul.unquote(ul.unquote(tag))
     tn = TAG_MAPPING.get(tag_name)
     if tn is None:
         return make_api_response(

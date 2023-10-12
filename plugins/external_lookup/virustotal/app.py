@@ -96,9 +96,13 @@ def lookup_tag(tag_name: str, tag: str, timeout: float):
     return rsp.json().get("data", {})
 
 
-@app.route("/details/<tag_name>/<path:tag>/", methods=["GET"])
+@app.route("/details/<tag_name>/<tag>/", methods=["GET"])
 def tag_details(tag_name: str, tag: str) -> Response:
     """Get detailed lookup results from VirusTotal
+
+    Variables:
+    tag_name => Tag to look up in the external system.
+    tag => Tag value to lookup. *Must be double URL encoded.*
 
     Query Params:
     max_timeout => Maximum execution time for the call in seconds
@@ -126,6 +130,7 @@ def tag_details(tag_name: str, tag: str) -> Response:
         ...,
     ]
     """
+    tag = ul.unquote(ul.unquote(tag))
     # Invalid tags must either be ignored, or return a 422
     tn = TAG_MAPPING.get(tag_name)
     if tn is None:

@@ -6,6 +6,10 @@ import requests
 from . import app as server
 
 
+def dquote(tag):
+    """Double encode the tag."""
+    return ul.quote(ul.quote(tag, safe=""), safe="")
+
 @pytest.fixture()
 def test_client():
     """generate a test client."""
@@ -73,7 +77,7 @@ def test_tag_found(test_client, mock_lookup_exists):
     mock_lookup_exists()
     # hash
     digest = "a" * 64
-    rsp = test_client.get(f"/details/sha1/{digest}/", query_string={"nodata": True})
+    rsp = test_client.get(f"/details/sha1/{dquote(digest)}/", query_string={"nodata": True})
     expected = {
         "api_error_message": "",
         "api_response": [
@@ -94,7 +98,7 @@ def test_tag_found(test_client, mock_lookup_exists):
 
     # ip ioc
     ip_address = "127.0.0.1"
-    rsp = test_client.get(f"/details/network.dynamic.ip/{ip_address}/", query_string={"nodata": True})
+    rsp = test_client.get(f"/details/network.dynamic.ip/{dquote(ip_address)}/", query_string={"nodata": True})
     expected = {
         "api_error_message": "",
         "api_response": [
@@ -115,8 +119,7 @@ def test_tag_found(test_client, mock_lookup_exists):
 
     # url ioc - quoted
     url = "https://a.bad.url/contains+and/a space/in-path"
-    quoted = ul.quote(url)
-    rsp = test_client.get(f"/details/network.dynamic.uri/{quoted}/", query_string={"nodata": True})
+    rsp = test_client.get(f"/details/network.dynamic.uri/{dquote(url)}/", query_string={"nodata": True})
     rsp_encoded_tag = ul.quote(ul.quote(url, safe=""), safe="")
     expected = {
         "api_error_message": "",
@@ -138,7 +141,7 @@ def test_tag_found(test_client, mock_lookup_exists):
 
     # domain ioc
     domain = "bad.domain"
-    rsp = test_client.get(f"/details/network.static.domain/{domain}/", query_string={"nodata": True})
+    rsp = test_client.get(f"/details/network.static.domain/{dquote(domain)}/", query_string={"nodata": True})
     expected = {
         "api_error_message": "",
         "api_response": [
@@ -168,7 +171,7 @@ def test_tag_dne(test_client, mocker):
     mock_session = mocker.patch.object(requests, "Session", autospec=True)
     mock_session.return_value.get.return_value = mock_response
 
-    rsp = test_client.get(f"/details/md5/{digest}/", query_string={"nodata": True})
+    rsp = test_client.get(f"/details/md5/{dquote(digest)}/", query_string={"nodata": True})
     expected = {
         "api_error_message": "No results.",
         "api_response": None,
@@ -188,7 +191,7 @@ def test_error_conditions(test_client, mocker):
     mock_session = mocker.patch.object(requests, "Session", autospec=True)
     mock_session.return_value.get.return_value = mock_response
 
-    rsp = test_client.get(f"/details/md5/{'a' * 32}/", query_string={"nodata": True})
+    rsp = test_client.get(f"/details/md5/{dquote('a' * 32)}/", query_string={"nodata": True})
     expected = {
         "api_error_message": "Error submitting data to upstream.",
         "api_response": "Some bad response",
@@ -240,7 +243,7 @@ def test_detailed_malicious(test_client, mock_lookup_exists):
     }
     mock_lookup_exists(additional_attrs=additional_attrs)
 
-    rsp = test_client.get(f"/details/sha256/{'a' * 64}/")
+    rsp = test_client.get(f"/details/sha256/{dquote('a' * 64)}/")
     expected = {
         "api_error_message": "",
         "api_response": [
@@ -344,7 +347,7 @@ def test_detailed_not_malicious(test_client, mock_lookup_exists):
         }
     )
 
-    rsp = test_client.get(f"/details/sha256/{'a' * 64}/")
+    rsp = test_client.get(f"/details/sha256/{dquote('a' * 64)}/")
     expected = {
         "api_error_message": "",
         "api_response": [
@@ -443,7 +446,7 @@ def test_detailed_enrich(test_client, mock_lookup_exists):
     }
     mock_lookup_exists(additional_attrs=additional_attrs)
 
-    rsp = test_client.get(f"/details/sha256/{'a' * 64}/")
+    rsp = test_client.get(f"/details/sha256/{dquote('a' * 64)}/")
     expected = {
         "api_error_message": "",
         "api_response": [

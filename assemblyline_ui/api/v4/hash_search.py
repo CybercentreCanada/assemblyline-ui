@@ -2,6 +2,8 @@ import concurrent.futures
 import os
 import re
 
+from urllib import parse as ul
+
 from flask import request
 from requests import Session
 
@@ -126,7 +128,8 @@ def get_external_details(
         return result
 
     # perform the lookup, ensuring access controls are applied
-    url = f"{source.url}/details/{hash_type}/{file_hash}"
+    encoded = ul.quote(ul.quote(file_hash, safe=""), safe="")
+    url = f"{source.url}/details/{hash_type}/{encoded}/"
     rsp = session.get(url, params=params, headers=headers)
 
     status_code = rsp.status_code
