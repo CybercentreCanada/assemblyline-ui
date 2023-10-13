@@ -584,32 +584,40 @@ def set_labels(sha256, **kwargs):
     """
     user = kwargs['user']
     categories = ['attribution', 'technique', 'info']
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+
+    if not file_obj:
+        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
+
+    if not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response("", "You are not allowed to see this file...", 403)
+
     try:
-        data = {k: v for k, v in request.json.items() if k in categories}
+        json_categories = {k: v for k, v in request.json.items() if k in categories}
+        json_labels = {x for v in json_categories.values() for x in v}
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    file = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
-
-    if not file:
-        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], file['classification']):
-        return make_api_response("", "You are not allowed to see this file...", 403)
-
-    labels = [label for category in data.values() for label in category]
-    update_data = [(STORAGE.file.UPDATE_SET, 'labels', labels)]
+    update_data = []
     for category in categories:
-        data.setdefault(category, [])
-        update_data += [(STORAGE.file.UPDATE_SET, f'label_categories.{category}', data[category])]
+        for value in set(json_categories[category]) - set(file_obj['label_categories'][category]):
+            update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, f'label_categories.{category}', value)]
+        for value in set(file_obj['label_categories'][category]) - set(json_categories[category]):
+            update_data += [(STORAGE.file.UPDATE_REMOVE, f'label_categories.{category}', value)]
 
-    if update_data:
-        STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
-        STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
+    for value in set(json_labels) - set(file_obj['labels']):
+        update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, 'labels', value)]
+    for value in set(file_obj['labels']) - set(json_labels):
+        update_data += [(STORAGE.file.UPDATE_REMOVE, 'labels', value)]
+
+    STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
+    STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
+    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
 
     return make_api_response(
-        {"success": True, "response": dict(labels=labels,
-                                           label_categories=data)})
+        {"success": True, "response": dict(labels=values['labels'],
+                                           label_categories=values['label_categories'])})
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
