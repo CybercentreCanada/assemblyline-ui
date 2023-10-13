@@ -36,4 +36,10 @@ COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.loc
 # Switch back to assemblyline and run the app
 USER assemblyline
 
+# Make sure base required UI directory are present
+RUN mkdir -p /var/lib/assemblyline/bundling
+RUN mkdir -p /var/lib/assemblyline/flowjs
+RUN mkdir -p /var/lib/assemblyline/submit
+
+# Run the API server
 CMD ["gunicorn", "assemblyline_ui.patched:app", "--config=python:assemblyline_ui.gunicorn_config", "--worker-class", "gevent"]
