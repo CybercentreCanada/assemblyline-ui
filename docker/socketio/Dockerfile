@@ -35,4 +35,11 @@ COPY --chown=assemblyline:assemblyline --from=builder /var/lib/assemblyline/.loc
 
 # Switch back to assemblyline and run the app
 USER assemblyline
+
+# Make sure base required UI directory are present
+RUN mkdir -p /var/lib/assemblyline/bundling
+RUN mkdir -p /var/lib/assemblyline/flowjs
+RUN mkdir -p /var/lib/assemblyline/submit
+
+# Run the socket IO server
 CMD ["gunicorn", "-b", ":5002", "-w", "1", "--config=python:assemblyline_ui.gunicorn_config_socketio", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "assemblyline_ui.socketsrv:app"]
