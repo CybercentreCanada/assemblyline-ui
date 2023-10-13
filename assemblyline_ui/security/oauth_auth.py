@@ -64,7 +64,7 @@ def validate_oauth_token(oauth_token, oauth_provider):
                 # Get user from it's email
                 users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False)['items']
                 if users:
-                    return users[0]['uname'], load_roles_form_acls(["R", "W"])
+                    return users[0]['uname'], load_roles_form_acls(["R", "W"], [])
 
         raise AuthenticationException("Invalid token")
 
