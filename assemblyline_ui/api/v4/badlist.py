@@ -86,15 +86,26 @@ def add_or_update_hash(**kwargs):
     {
      "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
      "enabled": true,              # Is the bad hash enabled or not
-     "file": {                     # Information about the file  - Only used in file mode
+     "attribution": {              # Attributions associated to the hash  (Optional section)
+        "actor": [...],                 # Associated actors
+        "campaign": [...],              # Associated campaign
+        "category": [...],              # Associated category
+        "exploit": [...],               # Associated exploit
+        "implant": [...],               # Associated implant
+        "family": [...],                # Associated family
+        "network": [...]                # Associated network
+      },
+      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
        "size": 12345,                  # Size of the file
        "type": "document/text"},       # Type of the file
      },
      "hashes": {                   # Information about the bad hash - At least one hash required
-       "md5": "123...321",             # MD5 hash of the bad hash
-       "sha1": "1234...4321",          # SHA1 hash of the bad hash
+       "md5": "123...321",             # MD5 of the bad hash
+       "sha1": "1234...4321",          # SHA1 of the bad hash
        "sha256": "12345....54321",     # SHA256 of the bad hash
+       "ssdeep": "12345....54321",     # SSDeep of the bad hash
+       "tlsh": "12345....54321",       # TLSH of the bad hash
      "sources": [                  # List of sources for why the file is badlisted, dedupped on name - Required
        {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
         "name": "NSRL",                # Name of external source or user who badlisted it - Required
@@ -204,15 +215,26 @@ def add_update_many_hashes(**_):
      {
       "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
       "enabled": true,              # Is the bad hash enabled or not
+      "attribution": {              # Attributions associated to the hash  (Optional section)
+        "actor": [...],                 # Associated actors
+        "campaign": [...],              # Associated campaign
+        "category": [...],              # Associated category
+        "exploit": [...],               # Associated exploit
+        "implant": [...],               # Associated implant
+        "family": [...],                # Associated family
+        "network": [...]                # Associated network
+      },
       "file": {                     # Information about the file  - Only used in file mode
         "name": ["file.txt"]            # Possible names for the file
         "size": 12345,                  # Size of the file
         "type": "document/text"},       # Type of the file
       },
       "hashes": {                   # Information about the bad hash - At least one hash required
-        "md5": "123...321",             # MD5 hash of the bad hash
-        "sha1": "1234...4321",          # SHA1 hash of the bad hash
+        "md5": "123...321",             # MD5 of the bad hash
+        "sha1": "1234...4321",          # SHA1 of the bad hash
         "sha256": "12345....54321",     # SHA256 of the bad hash
+       "ssdeep": "12345....54321",     # SSDeep of the bad hash
+       "tlsh": "12345....54321",       # TLSH of the bad hash
       "sources": [                  # List of sources for why the file is badlisted, dedupped on name - Required
         {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
          "name": "NSRL",                # Name of external source or user who badlisted it - Required
@@ -308,7 +330,16 @@ def check_hash_exists(qhash, **kwargs):
     {
      "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
      "enabled": true,              # Is the bad hash enabled or not
-     "file": {                     # Information about the file  - Only used in file mode
+     "attribution": {              # Attributions associated to the hash  (Optional section)
+        "actor": [...],                 # Associated actors
+        "campaign": [...],              # Associated campaign
+        "category": [...],              # Associated category
+        "exploit": [...],               # Associated exploit
+        "implant": [...],               # Associated implant
+        "family": [...],                # Associated family
+        "network": [...]                # Associated network
+      },
+      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
        "size": 12345,                  # Size of the file
        "type": "document/text"},       # Type of the file
@@ -317,6 +348,8 @@ def check_hash_exists(qhash, **kwargs):
        "md5": "123...321",             # MD5 hash of the bad hash
        "sha1": "1234...4321",          # SHA1 hash of the bad hash
        "sha256": "12345....54321",     # SHA256 of the bad hash
+       "ssdeep": "12345....54321",     # SSDeep of the bad hash
+       "tlsh": "12345....54321",       # TLSH of the bad hash
      "sources": [                  # List of sources for why the file is badlisted, dedupped on name - Required
        {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
         "name": "NSRL",                # Name of external source or user who badlisted it - Required
