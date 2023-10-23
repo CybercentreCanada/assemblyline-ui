@@ -18,11 +18,18 @@ app = Flask(__name__)
 
 
 API_KEY = os.environ.get("API_KEY", "")
-VERIFY = os.environ.get("VERIFY", True)
 MAX_LIMIT = int(os.environ.get("MAX_LIMIT", 100))
 MAX_TIMEOUT = float(os.environ.get("MAX_TIMEOUT", 3))
 CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")
 URL_BASE = os.environ.get("QUERY_URL", "https://assemblyline-ui")
+
+# verify can be boolean or path to CA file
+verify = str(os.environ.get("VERIFY", "true")).lower()
+if verify in ("true", "1"):
+    verify = True
+elif verify in ("false", "0"):
+    verify = False
+VERIFY = verify
 
 # Mapping of AL tag names to external systems "tag" names
 TAG_MAPPING = os.environ.get(
