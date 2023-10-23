@@ -19,11 +19,18 @@ app = Flask(__name__)
 
 
 API_KEY = os.environ.get("VT_API_KEY", "")
-VERIFY = os.environ.get("VT_VERIFY", True)
 MAX_TIMEOUT = float(os.environ.get("MAX_TIMEOUT", 3))
 CLASSIFICATION = os.environ.get("CLASSIFICATION", "TLP:CLEAR")  # Classification of this service
 API_URL = os.environ.get("API_URL", "https://www.virustotal.com/api/v3")  # override in case of mirror
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://www.virustotal.com/gui/search")  # override in case of mirror
+
+# verify can be boolean or path to CA file
+verify = str(os.environ.get("VT_VERIFY", "true")).lower()
+if verify in ("true", "1"):
+    verify = True
+elif verify in ("false", "0"):
+    verify = False
+VERIFY = verify
 
 # Mapping of AL tag names to external systems "tag" names
 TAG_MAPPING = os.environ.get(
