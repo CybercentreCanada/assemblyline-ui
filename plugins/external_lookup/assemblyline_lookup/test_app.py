@@ -45,7 +45,7 @@ def mock_lookup_error(mocker):
         mock_response.json.return_value = r
 
         mock_session = mocker.patch.object(requests, "Session", autospec=True)
-        mock_session.return_value.get.return_value = mock_response
+        mock_session.return_value.post.return_value = mock_response
         return r
 
     return _mock_lookup_error
@@ -66,10 +66,15 @@ def mock_lookup_success(mocker):
         if items is None:
             items = [{
                 "classification": "TLP:CLEAR",
-                "id": "a" * 64,
+                "id": f"{'a' * 64}.service.version.id",
                 "result": {
                     "score": 1000,
                 },
+                "response": {
+                    "service_name": "ConfigExtractor",
+                    "service_tool_version": "1b095b7"
+                },
+                "type": "executable/windows/pe32",
             }]
         if rows is None:
             rows = len(items)
@@ -95,9 +100,9 @@ def mock_lookup_success(mocker):
 
         # setup mock response for a valid hash lookup
         mock_session = mocker.patch.object(requests, "Session", autospec=True)
-        mock_session.return_value.get.return_value = mock_response
+        mock_session.return_value.post.return_value = mock_response
         if side_effect:
-            mock_session.return_value.get.side_effect = side_effect
+            mock_session.return_value.post.side_effect = side_effect
         return r["api_response"]
 
     return _mock_lookup_exists
@@ -114,33 +119,20 @@ def test_get_mappings(test_client):
 def test_hash_found(test_client, mock_lookup_success):
     """Validate respone for a hash that exists."""
     data = mock_lookup_success()
-    digest = data["items"][0]["id"]
+    digest = data["items"][0]["id"].split(".", 1)[0]
 
     # sha256 can use the result index
-    rsp = test_client.get(f"/search/sha256/{dquote(digest)}/")
+    rsp = test_client.get(f"/details/sha256/{dquote(digest)}/", query_string={"nodata": True})
     expected = {
         "api_error_message": "",
-        "api_response": {
+        "api_response": [{
             "classification": "TLP:CLEAR",
-            "link": f'{server.URL_BASE}/search/result?query=sha256:"{digest}"',
+            "link": f"{server.URL_BASE}/file/detail/{digest}",
             "count": 1,
-        },
-        "api_status_code": 200,
-    }
-
-    assert rsp.status_code == 200, rsp.json["api_error_message"]
-    assert rsp.json == expected
-
-    # other hashes must use file index
-    digest = "a" * 32
-    rsp = test_client.get(f"/search/md5/{dquote(digest)}/")
-    expected = {
-        "api_error_message": "",
-        "api_response": {
-            "classification": "TLP:CLEAR",
-            "link": f'{server.URL_BASE}/search/file?query=md5:"{digest}"',
-            "count": 1,
-        },
+            "description": "Filetype: executable/windows/pe32. Service: ConfigExtractor.",
+            "confirmed": False,
+            "malicious": True,
+        }],
         "api_status_code": 200,
     }
 
@@ -152,30 +144,30 @@ def test_hash_dne(test_client, mock_lookup_success):
     """Validate respone for a hash that does not exists."""
     mock_lookup_success(items=[])
 
-    rsp = test_client.get(f"/search/md5/{dquote('a' * 32)}/")
+    rsp = test_client.get(f"/details/md5/{dquote('a' * 32)}/", query_string={"nodata": True})
     expected = {
-        "api_error_message": "No items found",
-        "api_response": "",
-        "api_status_code": 404,
+        "api_error_message": "No results",
+        "api_response": None,
+        "api_status_code": 200,
     }
-    assert rsp.status_code == 404
+    assert rsp.status_code == 200
     assert rsp.json == expected
 
     # invalid hashes will not raise an error and will just not be found
-    rsp = test_client.get("/search/md5/abc}/")
+    rsp = test_client.get("/details/md5/abc}/", query_string={"nodata": True})
     expected = {
-        "api_error_message": "No items found",
-        "api_response": "",
-        "api_status_code": 404,
+        "api_error_message": "No results",
+        "api_response": None,
+        "api_status_code": 200,
     }
-    assert rsp.status_code == 404
+    assert rsp.status_code == 200
     assert rsp.json == expected
 
 
 def test_error_conditions(test_client, mock_lookup_error):
     """Validate error handling."""
     mock_lookup_error()
-    rsp = test_client.get(f"/search/md5/{dquote('a' * 32)}/")
+    rsp = test_client.get(f"/details/md5/{dquote('a' * 32)}/")
     expected = {
         "api_error_message": "A generic server error",
         "api_response": "",
@@ -185,7 +177,7 @@ def test_error_conditions(test_client, mock_lookup_error):
     assert rsp.json == expected
 
     # invalid indicator name
-    rsp = test_client.get("/search/abc/abc}/")
+    rsp = test_client.get("/details/abc/abc}/")
     assert rsp.status_code == 422
     assert rsp.json["api_error_message"].startswith("Invalid tag name: ")
 
@@ -193,6 +185,7 @@ def test_error_conditions(test_client, mock_lookup_error):
 def test_detailed_malicious(test_client, mock_lookup_success):
     """Test getting details for a valid tag that is found and is malicious."""
     data = mock_lookup_success()
+    digest = data["items"][0]["id"].split(".", 1)[0]
 
     url = dquote("https://a.bad.url/contains+and/a space/in-path")
     rsp = test_client.get(f"/details/network.static.uri/{url}/")
@@ -200,10 +193,12 @@ def test_detailed_malicious(test_client, mock_lookup_success):
         "api_error_message": "",
         "api_response": [{
             "classification": "TLP:CLEAR",
-            "description": data["items"][0]["id"],
             "confirmed": False,
             "malicious": True,
-            "data": data["items"][0],
+            "description": "Filetype: executable/windows/pe32. Service: ConfigExtractor.",
+            "link": f"{server.URL_BASE}/file/detail/{digest}",
+            "count": 1,
+            "enrichment": [],
         }],
         "api_status_code": 200,
     }
@@ -217,12 +212,18 @@ def test_detailed_not_malicious(test_client, mock_lookup_success):
     data = mock_lookup_success(
         items=[{
             "classification": "TLP:CLEAR",
-            "id": "a" * 64,
+            "id": f"{'a' * 64}.service.version.id",
             "result": {
                 "score": 700,
             },
+            "response": {
+                "service_name": "ConfigExtractor",
+                "service_tool_version": "1b095b7"
+            },
+            "type": "executable/windows/pe32",
         }]
     )
+    digest = data["items"][0]["id"].split(".", 1)[0]
 
     url = dquote("https://a.bad.url/contains+and/a space/in-path")
     rsp = test_client.get(f"/details/network.static.uri/{url}/")
@@ -230,10 +231,12 @@ def test_detailed_not_malicious(test_client, mock_lookup_success):
         "api_error_message": "",
         "api_response": [{
             "classification": "TLP:CLEAR",
-            "description": data["items"][0]["id"],
             "confirmed": False,
             "malicious": False,
-            "data": data["items"][0],
+            "description": "Filetype: executable/windows/pe32. Service: ConfigExtractor.",
+            "link": f"{server.URL_BASE}/file/detail/{digest}",
+            "count": 1,
+            "enrichment": [],
         }],
         "api_status_code": 200,
     }
@@ -250,10 +253,15 @@ def test_detailed_hash_lookup(test_client, mocker, mock_lookup_success):
         "api_response": {
             "items": [{
                 "classification": "TLP:CLEAR",
-                "id": "a" * 64,
+                "id": f"{'a' * 64}.service.version.id",
                 "result": {
                     "score": 1000,
                 },
+                "response": {
+                    "service_name": "ConfigExtractor",
+                    "service_tool_version": "1b095b7"
+                },
+                "type": "executable/windows/pe32",
             }],
             "offset": 0,
             "rows": 25,
@@ -282,10 +290,12 @@ def test_detailed_hash_lookup(test_client, mocker, mock_lookup_success):
         "api_error_message": "",
         "api_response": [{
             "classification": "TLP:CLEAR",
-            "description": r["api_response"]["items"][0]["id"],
             "confirmed": False,
             "malicious": True,
-            "data": r["api_response"]["items"][0],
+            "description": "Filetype: executable/windows/pe32. Service: ConfigExtractor.",
+            "link": f"{server.URL_BASE}/file/detail/{'a' * 64}",
+            "count": 1,
+            "enrichment": [],
         }],
         "api_status_code": 200,
     }
