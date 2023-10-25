@@ -249,7 +249,9 @@ def start_ui_submission(ui_sid, **kwargs):
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})
 
+            allow_description_overwrite = False
             if not ui_params['description']:
+                allow_description_overwrite = True
                 ui_params['description'] = f"Inspection of file: {fname}"
 
             # Submit to dispatcher
@@ -271,8 +273,12 @@ def start_ui_submission(ui_sid, **kwargs):
 
             try:
                 submit_result = SubmissionClient(
-                    datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY).submit(
-                        submission_obj, local_files=[(fname, submitted_file)])
+                    datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY
+                ).submit(
+                    submission_obj,
+                    local_files=[(fname, submitted_file)],
+                    allow_description_overwrite=allow_description_overwrite
+                )
                 submission_received(submission_obj)
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
