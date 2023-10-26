@@ -53,9 +53,8 @@ def _merge_bad_hashes(new, old):
 
         old_src_map = {x['name']: x for x in old['sources']}
         for name, src in src_map.items():
-            src_cl = src.get('classification', None)
-            if src_cl:
-                old['classification'] = CLASSIFICATION.max_classification(old['classification'], src_cl)
+            old['classification'] = CLASSIFICATION.max_classification(
+                old['classification'], src.get('classification', None))
 
             if name not in old_src_map:
                 old_src_map[name] = src
@@ -174,9 +173,9 @@ def add_or_update_hash(**kwargs):
                 return make_api_response(
                     {}, "You do not have sufficient priviledges to add an external source.", 403)
 
-        src_cl = src.get('classification', None)
-        if src_cl:
-            data['classification'] = CLASSIFICATION.max_classification(data['classification'], src_cl)
+        # Find the highest classification of all sources
+        data['classification'] = CLASSIFICATION.max_classification(
+            data['classification'], src.get('classification', None))
 
         src_map[src['name']] = src
 
