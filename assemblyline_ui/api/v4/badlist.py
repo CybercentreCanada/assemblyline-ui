@@ -34,14 +34,15 @@ def _merge_bad_hashes(new, old):
 
         # Merge attributions
         if not old['attribution']:
-            old['attribution'] = new['attribution']
+            old['attribution'] = new.get('attribution', None)
         elif new['attribution']:
             for key in ["actor", 'campaign', 'category', 'exploit', 'implant', 'family', 'network']:
                 old_value = old['attribution'].get(key, []) or []
                 new_value = new['attribution'].get(key, []) or []
                 old['attribution'][key] = list(set(old_value + new_value)) or None
 
-        old['attribution'] = {key: value for key, value in old['attribution'].items() if value}
+        if old['attribution'] is not None:
+            old['attribution'] = {key: value for key, value in old['attribution'].items() if value}
 
         # Update type specific info
         if old['type'] == 'file':
@@ -83,7 +84,7 @@ def _merge_bad_hashes(new, old):
         raise InvalidBadhash(f"Invalid data provided: {str(e)}")
 
 
-@badlist_api.route("/", methods=["PUT", "POST"])
+@badlist_api.route("/", methods=["POST", "PUT"])
 @api_login(audit=False, require_role=[ROLES.badlist_manage], allow_readonly=False)
 def add_or_update_hash(**kwargs):
     """
@@ -388,6 +389,149 @@ def check_hash_exists(qhash, **kwargs):
         return make_api_response(badlist)
 
     return make_api_response(None, "The hash was not found in the badlist.", 404)
+
+
+@badlist_api.route("/tlsh/<qhash>/", methods=["GET"])
+@api_login(require_role=[ROLES.badlist_view])
+def find_similar_tlsh(qhash, **kwargs):
+    """
+    Check if a file exists with a similar tlsh.
+
+    Variables:
+    qhash       => TLSH hash to query for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    GET /api/v1/badlist/tlsh/123456...654321/
+
+    Result example:
+    [
+      {
+        "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
+        "enabled": true,              # Is the bad hash enabled or not
+        "attribution": {              # Attributions associated to the hash  (Optional section)
+            "actor": [...],                 # Associated actors
+            "campaign": [...],              # Associated campaign
+            "category": [...],              # Associated category
+            "exploit": [...],               # Associated exploit
+            "implant": [...],               # Associated implant
+            "family": [...],                # Associated family
+            "network": [...]                # Associated network
+        },
+        "file": {                     # Information about the file  - Only used in file mode
+        "name": ["file.txt"]            # Possible names for the file
+        "size": 12345,                  # Size of the file
+        "type": "document/text"},       # Type of the file
+        },
+        "hashes": {                   # Information about the bad hash - At least one hash required
+        "md5": "123...321",             # MD5 hash of the bad hash
+        "sha1": "1234...4321",          # SHA1 hash of the bad hash
+        "sha256": "12345....54321",     # SHA256 of the bad hash
+        "ssdeep": "12345....54321",     # SSDeep of the bad hash
+        "tlsh": "12345....54321",       # TLSH of the bad hash
+        "sources": [                  # List of sources for why the file is badlisted, dedupped on name - Required
+        {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
+            "name": "NSRL",                # Name of external source or user who badlisted it - Required
+            "reason": [                    # List of reasons why the source is badlisted - Required
+            "Found as test.txt on default windows 10 CD",
+            "Found as install.txt on default windows XP CD"
+            ],
+            "type": "external"},           # Type or source (external or user) - Required
+        {"classification": "TLP:C",
+            "name": "admin",
+            "reason": ["We've seen this file many times and it leads to False positives"],
+            "type": "user"}
+        ],
+        "tag": {                     # Tag information  - Only used in tag mode
+            "type": "network.url",       # Type of tag
+            "value": "google.ca"         # Value of the tag
+        },
+        "type": "tag"                # Type of badlist hash (tag or file)
+      },
+    ...]
+    """
+    user = kwargs['user']
+    return make_api_response(STORAGE.badlist.search(
+        f"hashes.tlsh:{qhash}", fl="*", as_obj=False, access_control=user['access_control'])['items'])
+
+
+@badlist_api.route("/ssdeep/<path:qhash>/", methods=["GET"])
+@api_login(require_role=[ROLES.badlist_view])
+def find_similar_ssdeep(qhash, **kwargs):
+    """
+    Check if a file exists with a similar ssdeep.
+
+    Variables:
+    qhash       => SSDEEP hash to query for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    GET /api/v1/badlist/ssdeep/123:ABCDEFG:ABDC/
+
+    Result example:
+    [
+      {
+        "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
+        "enabled": true,              # Is the bad hash enabled or not
+        "attribution": {              # Attributions associated to the hash  (Optional section)
+            "actor": [...],                 # Associated actors
+            "campaign": [...],              # Associated campaign
+            "category": [...],              # Associated category
+            "exploit": [...],               # Associated exploit
+            "implant": [...],               # Associated implant
+            "family": [...],                # Associated family
+            "network": [...]                # Associated network
+        },
+        "file": {                     # Information about the file  - Only used in file mode
+        "name": ["file.txt"]            # Possible names for the file
+        "size": 12345,                  # Size of the file
+        "type": "document/text"},       # Type of the file
+        },
+        "hashes": {                   # Information about the bad hash - At least one hash required
+        "md5": "123...321",             # MD5 hash of the bad hash
+        "sha1": "1234...4321",          # SHA1 hash of the bad hash
+        "sha256": "12345....54321",     # SHA256 of the bad hash
+        "ssdeep": "12345....54321",     # SSDeep of the bad hash
+        "tlsh": "12345....54321",       # TLSH of the bad hash
+        "sources": [                  # List of sources for why the file is badlisted, dedupped on name - Required
+        {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
+            "name": "NSRL",                # Name of external source or user who badlisted it - Required
+            "reason": [                    # List of reasons why the source is badlisted - Required
+            "Found as test.txt on default windows 10 CD",
+            "Found as install.txt on default windows XP CD"
+            ],
+            "type": "external"},           # Type or source (external or user) - Required
+        {"classification": "TLP:C",
+            "name": "admin",
+            "reason": ["We've seen this file many times and it leads to False positives"],
+            "type": "user"}
+        ],
+        "tag": {                     # Tag information  - Only used in tag mode
+            "type": "network.url",       # Type of tag
+            "value": "google.ca"         # Value of the tag
+        },
+        "type": "tag"                # Type of badlist hash (tag or file)
+      },
+    ...]
+    """
+    user = kwargs['user']
+    try:
+        _, long, _ = qhash.replace('/', '\\/').split(":")
+    except ValueError:
+        return make_api_response(None, f"Invalid SSDEEP hash provided: {qhash}", 400)
+    return make_api_response(STORAGE.badlist.search(
+        f"hashes.ssdeep:{long}~", fl="*", access_control=user['access_control'],
+        as_obj=False)['items'])
 
 
 @badlist_api.route("/enable/<qhash>/", methods=["PUT"])

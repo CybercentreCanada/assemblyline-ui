@@ -69,9 +69,12 @@ def test_badlist_add_file(datastore, login_session):
 
     # Generate a random badlist
     sl_data = {
+        'attribution': None,
         'hashes': {'md5': get_random_hash(32),
                    'sha1': get_random_hash(40),
-                   'sha256': add_hash_file},
+                   'sha256': add_hash_file,
+                   'ssdeep': None,
+                   'tlsh': None},
         'file': {'name': ['file.txt'],
                  'size': random.randint(128, 4096),
                  'type': 'document/text'},
@@ -118,9 +121,20 @@ def test_badlist_add_tag(datastore, login_session):
 
     # Generate a random badlist
     sl_data = {
+        'attribution': {
+            'actor': ["SOMEONE!"],
+            'campaign': None,
+            'category': None,
+            'exploit': None,
+            'implant': None,
+            'family': None,
+            'network': None
+        },
         'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
                    'sha1': hashlib.sha1(hashed_value).hexdigest(),
-                   'sha256': hashlib.sha256(hashed_value).hexdigest()},
+                   'sha256': hashlib.sha256(hashed_value).hexdigest(),
+                   'ssdeep': None,
+                   'tlsh': None},
         'tag': {'type': tag_type,
                 'value': tag_value},
         'sources': [BAD_SOURCE, ADMIN_SOURCE],
@@ -179,9 +193,19 @@ def test_badlist_update(datastore, login_session):
 
     # Generate a random badlist
     sl_data = {
+        'attribution': {
+            'actor': None,
+            'campaign': None,
+            'category': None,
+            'exploit': None,
+            'implant': ['BAD'],
+            'family': None,
+            'network': None},
         'hashes': {'md5': get_random_hash(32),
                    'sha1': get_random_hash(40),
-                   'sha256': update_hash},
+                   'sha256': update_hash,
+                   'ssdeep': None,
+                   'tlsh': None},
         'file': {'name': [],
                  'size': random.randint(128, 4096),
                  'type': 'document/text'},
@@ -202,8 +226,9 @@ def test_badlist_update(datastore, login_session):
             if k not in ['added', 'updated', 'classification', 'enabled', 'tag']} == sl_data
 
     u_data = {
+        'attribution': {'implant': ['TEST'], 'actor': ['TEST']},
         'classification': cl_eng.RESTRICTED,
-        'hashes': {'sha256': update_hash},
+        'hashes': {'sha256': update_hash, 'tlsh': 'faketlsh'},
         'sources': [BAD2_SOURCE],
         'type': 'file'
     }
@@ -222,6 +247,10 @@ def test_badlist_update(datastore, login_session):
     assert len(ds_u['sources']) == 2
     assert BAD2_SOURCE in ds_u['sources']
     assert BAD_SOURCE in ds_u['sources']
+    assert 'TEST' in ds_u['attribution']['implant']
+    assert 'BAD' in ds_u['attribution']['implant']
+    assert 'TEST' in ds_u['attribution']['actor']
+    assert 'faketlsh' in ds_u['hashes']['tlsh']
 
 
 def test_badlist_update_conflict(datastore, login_session):
@@ -273,3 +302,23 @@ def test_badlist_missing(datastore, login_session):
         get_api_data(session, f"{host}/api/v4/badlist/{missing_hash}/")
 
     assert 'not found' in missing_exc.value.args[0]
+
+
+def test_badlist_similar_ssdeep(datastore, login_session):
+    _, session, host = login_session
+
+    hash = random.choice(datastore.badlist.search("type:file AND hashes.ssdeep:*", fl='hashes.ssdeep',
+                         rows=100, as_obj=False)['items'])['hashes']['ssdeep']
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/ssdeep/{hash}/")
+    assert len(resp) > 0
+
+
+def test_badlist_similar_tlsh(datastore, login_session):
+    _, session, host = login_session
+
+    hash = random.choice(datastore.badlist.search("type:file AND hashes.tlsh:*", fl='hashes.tlsh',
+                         rows=100, as_obj=False)['items'])['hashes']['tlsh']
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/tlsh/{hash}/")
+    assert len(resp) > 0
