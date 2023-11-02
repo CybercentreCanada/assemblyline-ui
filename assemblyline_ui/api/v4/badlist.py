@@ -32,6 +32,17 @@ def _merge_bad_hashes(new, old):
         # Update hashes
         old['hashes'].update(new['hashes'])
 
+        # Merge attributions
+        if not old['attribution']:
+            old['attribution'] = new['attribution']
+        elif new['attribution']:
+            for key in ["actor", 'campaign', 'category', 'exploit', 'implant', 'family', 'network']:
+                old_value = old['attribution'].get(key, []) or []
+                new_value = new['attribution'].get(key, []) or []
+                old['attribution'][key] = list(set(old_value + new_value)) or None
+
+        old['attribution'] = {key: value for key, value in old['attribution'].items() if value}
+
         # Update type specific info
         if old['type'] == 'file':
             old.setdefault('file', {})
