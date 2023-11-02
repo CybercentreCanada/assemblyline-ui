@@ -23,6 +23,8 @@ from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FIL
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
+LABEL_CATEGORIES = ['attribution', 'technique', 'info']
+
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
 SUB_API = 'file'
@@ -549,9 +551,158 @@ def get_file_hex(sha256, **kwargs):
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
 
+@file_api.route("/label/", methods=["GET", "POST"])
+@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+def get_label_suggestions(**kwargs):
+    """
+    Get the suggestions based on the labels of all the files
+
+    Optional Arguments:
+    input           =>  Input value of the label to search for
+    query           =>  Query to filter the searched documents
+    filters         =>  Additional query to limit to output
+    count           =>  Maximum number of items returned
+    use_archive     =>  Allow access to the malware archive (Default: False)
+    archive_only    =>  Only access the Malware archive (Default: False)
+
+    Data Block (POST ONLY):
+    {
+        "input": "label",
+        "query": "*",
+        "filters": ['fq'],
+        "count": 10,
+        "use_archive": False,
+        "archive_only": False
+    }
+
+    Result example:
+    [
+        {
+            "category": "attribution",
+            "label": "test label",
+            "total": 0
+        },
+        {...}
+    ]
+    """
+    user = kwargs['user']
+
+    args = []
+    filters = [user['access_control']]
+
+    if request.method == "POST":
+        req_data = request.json
+        if req_data.get('filters', None):
+            filters.append(req_data.get('filters', None))
+
+    else:
+        req_data = request.args
+        if req_data.getlist('filters', None):
+            filters.append(req_data.getlist('filters', None))
+
+    args = [
+        ('query', req_data.get('query', '*')),
+        ('filters', filters),
+        ('facet_active', True),
+        ('facet_fields', [f"label_categories.{category}" for category in LABEL_CATEGORIES]),
+        ('facet_mincount', 1),
+        ('facet_size', 10000),
+        ('facet_include', f".*{req_data.get('input', '')}.*"),
+        ('rows', 0),
+        ('df', STORAGE.file.DEFAULT_SEARCH_FIELD)
+    ]
+
+    if req_data.get('archive_only', False):
+        index_type = Index.ARCHIVE
+    elif req_data.get('use_archive', False):
+        index_type = Index.HOT_AND_ARCHIVE
+    else:
+        index_type = Index.HOT
+
+    try:
+        result = STORAGE.file._search(args, index_type=index_type)
+        result = [
+            {"category": category, "label": row.get('key_as_string', row['key']),
+             "total": row['doc_count']}
+            for category in LABEL_CATEGORIES for row in result['aggregations'][f"label_categories.{category}"]
+            ['buckets']]
+        result.sort(key=lambda value: value['total'], reverse=True)
+        return make_api_response(result[0:req_data.get('count', 10)])
+    except ValueError:
+        return make_api_response({"success": False}, err="Error fetching the list of labels.", status_code=400)
+
+
 @file_api.route("/label/<sha256>/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
+@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
 def set_labels(sha256, **kwargs):
+    """
+    Set the labels of a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:     => Dict of list of unique labels to update as comma separated string
+    {
+        "attribution": ["Qakbot"],
+        "technique": ["Downloader"],
+        "info": ["ARM"]
+    }
+
+    API call example:
+    /api/v4/file/labels/123456...654321/
+
+    Result example:
+    {
+        "success": true
+        "labels": ["Qakbot", "Downloader", "ARM"],
+        "label_categories": {
+            "attribution": ["Qakbot"],
+            "technique": ["Downloader"],
+            "info": ["ARM"]
+        }
+    }
+    """
+    user = kwargs['user']
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+
+    if not file_obj:
+        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
+
+    if not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response("", "You are not allowed to change this file's labels...", 403)
+
+    try:
+        json_categories = {k: v for k, v in request.json.items() if k in LABEL_CATEGORIES}
+        json_labels = {x for v in json_categories.values() for x in v}
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+
+    update_data = []
+    for category in LABEL_CATEGORIES:
+        for value in set(json_categories[category]) - set(file_obj['label_categories'][category]):
+            update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, f'label_categories.{category}', value)]
+        for value in set(file_obj['label_categories'][category]) - set(json_categories[category]):
+            update_data += [(STORAGE.file.UPDATE_REMOVE, f'label_categories.{category}', value)]
+
+    for value in set(json_labels) - set(file_obj['labels']):
+        update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, 'labels', value)]
+    for value in set(file_obj['labels']) - set(json_labels):
+        update_data += [(STORAGE.file.UPDATE_REMOVE, 'labels', value)]
+
+    STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
+    STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
+    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+
+    return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
+
+
+@file_api.route("/label/<sha256>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+def add_labels(sha256, **kwargs):
     """
     Add one or multiple labels to a given file
 
@@ -583,7 +734,6 @@ def set_labels(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    categories = ['attribution', 'technique', 'info']
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
 
@@ -591,33 +741,85 @@ def set_labels(sha256, **kwargs):
         return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
 
     if not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response("", "You are not allowed to see this file...", 403)
-
-    try:
-        json_categories = {k: v for k, v in request.json.items() if k in categories}
-        json_labels = {x for v in json_categories.values() for x in v}
-    except ValueError:
-        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+        return make_api_response("", "You are not allowed to add labels to this file...", 403)
 
     update_data = []
-    for category in categories:
-        for value in set(json_categories[category]) - set(file_obj['label_categories'][category]):
-            update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, f'label_categories.{category}', value)]
-        for value in set(file_obj['label_categories'][category]) - set(json_categories[category]):
-            update_data += [(STORAGE.file.UPDATE_REMOVE, f'label_categories.{category}', value)]
-
-    for value in set(json_labels) - set(file_obj['labels']):
-        update_data += [(STORAGE.file.UPDATE_APPEND_IF_MISSING, 'labels', value)]
-    for value in set(file_obj['labels']) - set(json_labels):
-        update_data += [(STORAGE.file.UPDATE_REMOVE, 'labels', value)]
+    try:
+        update_data += [
+            (STORAGE.file.UPDATE_APPEND_IF_MISSING, f'label_categories.{category}', value) for category,
+            values in request.json.items() if category in LABEL_CATEGORIES for value in values]
+        update_data += [
+            (STORAGE.file.UPDATE_APPEND_IF_MISSING, f'labels', value) for category,
+            values in request.json.items() if category in LABEL_CATEGORIES for value in values]
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
     STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
     STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
     values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
 
-    return make_api_response(
-        {"success": True, "response": dict(labels=values['labels'],
-                                           label_categories=values['label_categories'])})
+    return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
+
+
+@file_api.route("/label/<sha256>/", methods=["DELETE"])
+@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+def remove_labels(sha256, **kwargs):
+    """
+    Remove one or multiple labels to a given file
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:     => Dict of list of unique labels to update as comma separated string
+    {
+        "attribution": ["Qakbot"],
+        "technique": ["Downloader"],
+        "info": ["ARM"]
+    }
+
+    API call example:
+    /api/v4/file/labels/123456...654321/
+
+    Result example:
+    {
+        "success": true
+        "labels": ["Qakbot", "Downloader", "ARM"],
+        "label_categories": {
+            "attribution": ["Qakbot"],
+            "technique": ["Downloader"],
+            "info": ["ARM"]
+        }
+    }
+    """
+    user = kwargs['user']
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+
+    if not file_obj:
+        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
+
+    if not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response("", "You are not allowed to remove labels from this file...", 403)
+
+    update_data = []
+    try:
+        update_data += [
+            (STORAGE.file.UPDATE_REMOVE, f'label_categories.{category}', value) for category,
+            values in request.json.items() if category in LABEL_CATEGORIES for value in values]
+        update_data += [
+            (STORAGE.file.UPDATE_REMOVE, f'labels', value) for category,
+            values in request.json.items() if category in LABEL_CATEGORIES for value in values]
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+
+    STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
+    STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
+    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+
+    return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
 
 
 @file_api.route("/image/<sha256>/", methods=["GET"])
