@@ -29,6 +29,7 @@ ADMIN_INDEX_ORDER_MAP = {
 
 INDEX_MAP = {
     'alert': STORAGE.alert,
+    'badlist': STORAGE.badlist,
     'file': STORAGE.file,
     'heuristic': STORAGE.heuristic,
     'result': STORAGE.result,
@@ -41,6 +42,7 @@ INDEX_MAP = {
 
 INDEX_ORDER_MAP = {
     'alert': "reporting_ts desc",
+    'badlist': "added desc",
     'file': "seen.last desc",
     'heuristic': "heur_id asc",
     'result': "created desc",

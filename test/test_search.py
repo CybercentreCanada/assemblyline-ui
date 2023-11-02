@@ -6,6 +6,7 @@ from assemblyline.odm.models.heuristic import Heuristic
 from conftest import get_api_data
 
 from assemblyline.odm.models.alert import Alert
+from assemblyline.odm.models.badlist import Badlist
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.submission import Submission
@@ -15,7 +16,7 @@ from assemblyline.odm.randomizer import get_random_hash, random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users, create_signatures
 
 TEST_SIZE = 10
-collections = ['alert', 'file', 'heuristic', 'result', 'signature', 'submission', 'safelist', 'workflow']
+collections = ['alert', 'badlist', 'file', 'heuristic', 'result', 'signature', 'submission', 'safelist', 'workflow']
 
 file_list = []
 signatures = []
@@ -40,6 +41,12 @@ def datastore(datastore_connection):
             a.file.sha256 = file_list[x]
             ds.alert.save(a.alert_id, a)
         ds.alert.commit()
+
+        for _ in range(TEST_SIZE):
+            w_id = "0"+get_random_hash(63)
+            w = random_model_obj(Badlist)
+            ds.badlist.save(w_id, w)
+        ds.badlist.commit()
 
         for x in range(TEST_SIZE):
             r = random_model_obj(Result)
@@ -75,6 +82,7 @@ def datastore(datastore_connection):
         yield ds
     finally:
         ds.alert.wipe()
+        ds.badlist.wipe()
         ds.file.wipe()
         ds.result.wipe()
         ds.signature.wipe()
@@ -133,6 +141,7 @@ def test_histogram_search(datastore, login_session):
 
     date_hist_map = {
         'alert': 'ts',
+        'badlist': 'added',
         'file': 'seen.first',
         'heuristic': False,
         'signature': 'last_modified',
@@ -152,6 +161,7 @@ def test_histogram_search(datastore, login_session):
 
     int_hist_map = {
         'alert': 'al.score',
+        'badlist': False,
         'file': 'seen.count',
         'result': 'result.score',
         'signature': 'order',
@@ -196,6 +206,7 @@ def test_stats_search(datastore, login_session):
 
     int_map = {
         'alert': 'al.score',
+        'badlist': False,
         'file': 'seen.count',
         'result': 'result.score',
         'signature': 'order',
