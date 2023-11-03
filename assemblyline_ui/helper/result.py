@@ -4,10 +4,12 @@ from assemblyline.common.dict_utils import flatten
 from assemblyline_ui.config import CLASSIFICATION, LOGGER
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.tagging import tag_dict_to_list
+from assemblyline.odm.models.result import BODY_FORMAT
 
 
-JSON_SECTIONS = ["GRAPH_DATA", "URL", "JSON", "KEY_VALUE", "PROCESS_TREE",
-                 "TABLE", "IMAGE", "MULTI", "ORDERED_KEY_VALUE", "TIMELINE"]
+JSON_SECTIONS = [BODY_FORMAT.GRAPH_DATA, BODY_FORMAT.URL, BODY_FORMAT.JSON, BODY_FORMAT.KEY_VALUE,
+                 BODY_FORMAT.PROCESS_TREE, BODY_FORMAT.TABLE, BODY_FORMAT.IMAGE, BODY_FORMAT.MULTI,
+                 BODY_FORMAT.ORDERED_KEY_VALUE, BODY_FORMAT.TIMELINE]
 
 
 class InvalidSectionList(Exception):
@@ -87,7 +89,7 @@ def filter_sections(sections, user_classification, min_classification):
             classification=CLASSIFICATION.UNRESTRICTED,
             tags=[],
             heuristic=None,
-            body_format="TEXT"
+            body_format=BODY_FORMAT.TEXT
         )
         final_sections.insert(0, hidden_section)
 
