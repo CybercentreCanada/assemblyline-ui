@@ -1,13 +1,14 @@
 import json
 import os
 import shutil
+import tempfile
 
 from flask import request
-from requests.exceptions import ConnectTimeout
 
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
+from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
@@ -18,8 +19,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, \
-    InvalidUrlException, ForbiddenLocation, submission_received
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received
 from assemblyline_ui.helper.user import load_user_settings
 
 
@@ -315,25 +315,8 @@ def ingest_single_file(**kwargs):
                 if not config.ui.allow_url_submissions:
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
-                try:
-                    url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                                    proxies=config.ui.url_submission_proxies,
-                                                    timeout=config.ui.url_submission_timeout, verify=False,
-                                                    ignore_size=s_params.get('ignore_size', False))
-                    if url_history is None:
-                        return make_api_response({}, "Submitted URL cannot be found.", 400)
-
-                    extra_meta['submitted_url'] = url
-                    for h_id, h_url in enumerate(url_history):
-                        extra_meta[f'url_redirect_{h_id}'] = h_url
-                except FileTooBigException:
-                    return make_api_response({}, "File too big to be scanned.", 400)
-                except InvalidUrlException:
-                    return make_api_response({}, "Url provided is invalid.", 400)
-                except ForbiddenLocation:
-                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
-                except ConnectTimeout:
-                    return make_api_response({}, 'Connection timeout has occurred while fetching data.', 400)
+                with tempfile.TemporaryDirectory() as dir_path:
+                    shutil.move(make_uri_file(dir_path, url), out_file)
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
