@@ -1,12 +1,10 @@
 
-from assemblyline.datastore.collection import Index
+from flask import request
+
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVE_MANAGER
-from assemblyline_ui.config import CLASSIFICATION as Classification
-from assemblyline_ui.config import STORAGE, config
-from flask import request
+from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classification, ARCHIVE_MANAGER
 
 SUB_API = 'archive'
 
