@@ -99,7 +99,7 @@ def test_submit_url(datastore, login_session, scheduler):
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert isinstance(resp['sid'], str)
     for f in resp['files']:
-        assert f['name'] == data['name']
+        assert f['name'] == data['url']  # The name is overwritten for URIs
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
