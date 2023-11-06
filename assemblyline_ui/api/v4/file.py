@@ -606,7 +606,7 @@ def get_label_suggestions(**kwargs):
         ('facet_active', True),
         ('facet_fields', [f"label_categories.{category}" for category in LABEL_CATEGORIES]),
         ('facet_mincount', 1),
-        ('facet_size', 10000),
+        ('facet_size', 10),
         ('facet_include', f".*{req_data.get('input', '')}.*"),
         ('rows', 0),
         ('df', STORAGE.file.DEFAULT_SEARCH_FIELD)
