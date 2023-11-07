@@ -1,6 +1,7 @@
 
 from flask import request
 
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -59,30 +60,41 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, err=str(se), status_code=400)
 
 
-@archive_api.route("/details/<sha256>/", methods=["GET"])
+@archive_api.route("/details/<sha256>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.submission_view])
 def get_additional_details(sha256, **kwargs):
     """
     Get additional details in the archive file details
 
     Variables:
-    sha256         => A resource locator for the file (SHA256)
+    sha256                  => A resource locator for the file (SHA256)
 
     Arguments:
-    None
+    offset                  => Offset at which we start giving files
+    rows                    => Numbers of files to return
+    sort                    => How to sort the results (not available in deep paging)
 
     Data Block:
-    None
+    {
+        "offset": 0,        # Offset in the results
+        "rows": 100,        # Max number of results
+        "sort": "field asc",# How to sort the results
+    }
 
     API call example:
     /api/v4/file/result/123456...654321/
 
     Result example:
     {
-        "tlsh": {},             # List of files related by their tlsh
-        "ssdeep1": {},          # List of files related by the first part of their ssdeep
-        "ssdeep2": {},          # List of files related by the second part of their ssdeep
-        "vector": {}            # List of files related by their vector
+        "tlsh": {           # List of files related by their tlsh
+            "items": []     # List of files hash
+            "count": 100,   # Number of files returned
+            "offset": 0,    # Offset in the file list
+            "total": 201,   # Total files found
+        },
+        "ssdeep1": {...},   # List of files related by the first part of their ssdeep
+        "ssdeep2": {...},   # List of files related by the second part of their ssdeep
+        "vector": {...}     # List of files related by their vector
     }
     """
     user = kwargs['user']
@@ -96,36 +108,44 @@ def get_additional_details(sha256, **kwargs):
 
     # Set the default search parameters
     params = {}
-    # params.setdefault('offset', 0)
-    # params.setdefault('rows', 10)
-    # params.setdefault('sort', 'seen.last desc')
+    params.setdefault('offset', 0)
+    params.setdefault('rows', 10)
+    params.setdefault('sort', 'seen.last desc')
     params.setdefault('fl', 'type,sha256')
     params.setdefault('filters', [f'NOT(sha256:"{sha256}")'])
     params.setdefault('access_control', user['access_control'])
     params.setdefault('as_obj', False)
     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-    # params.setdefault('track_total_hits', True)
+
+    fields = ["offset", "rows", "sort"]
+
+    req_data = None
+    if request.method == "POST":
+        req_data = request.json
+    else:
+        req_data = request.args
+
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
     output = {'tlsh': {}, 'ssdeep1': {}, 'ssdeep2': {}, 'vector': {}}
 
     # Process tlsh
     try:
         tlsh = file_obj['tlsh'].replace('/', '\\/')
-        output['tlsh'] = {result['sha256']: result
-                          for result in STORAGE.file.stream_search(query=f"tlsh:{tlsh}~", **params)}
-    except Exception:
-        output['tlsh'] = {}
+        output['tlsh'] = STORAGE.file.search(query=f"tlsh:{tlsh}", **params)
+    except Exception as e:
+        output['tlsh'] = f"SearchException: {e}"
 
     # Process ssdeep
     try:
         ssdeep = file_obj.get('ssdeep', '').replace('/', '\\/').split(':')
-        output['ssdeep1'] = {result['sha256']: result
-                             for result in STORAGE.file.stream_search(query=f"ssdeep:{ssdeep[1]}~", **params)}
-        output['ssdeep2'] = {result['sha256']: result
-                             for result in STORAGE.file.stream_search(query=f"ssdeep:{ssdeep[2]}~", **params)}
-    except Exception:
-        output['ssdeep1'] = {}
-        output['ssdeep2'] = {}
+        output['ssdeep1'] = STORAGE.file.search(query=f"ssdeep:{ssdeep[1]}~", **params)
+        output['ssdeep2'] = STORAGE.file.search(query=f"ssdeep:{ssdeep[2]}~", **params)
+    except Exception as e:
+        output['ssdeep1'] = f"SearchException: {e}"
+        output['ssdeep2'] = f"SearchException: {e}"
+
+
 
     # Process vector
     try:
@@ -144,8 +164,8 @@ def get_additional_details(sha256, **kwargs):
         results = STORAGE.result.search(query=query, as_obj=False)
         ids = set([x['id'].split('.')[0] for x in STORAGE.result.stream_search(query=query, fl="id", as_obj=False)])
         query = ' OR '.join(f"sha256:{id}" for id in ids)
-        output['vector'] = {result['sha256']: result for result in STORAGE.file.stream_search(query=query, **params)}
-    except Exception:
-        output['vector'] = {}
+        output['vector'] = STORAGE.file.search(query=query, **params)
+    except Exception as e:
+        output['vector'] = f"SearchException: {e}"
 
     return make_api_response(output)
