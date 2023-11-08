@@ -188,7 +188,7 @@ def ingest_single_file(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or os.path.basename(url) or None
+            name = data.get("name", None) or sha256 or url or None
             default_description = f"Inspection of {name}"
             if sha256:
                 default_description = f"Inspection of file: {sha256}"
