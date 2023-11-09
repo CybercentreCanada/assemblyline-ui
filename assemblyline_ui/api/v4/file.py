@@ -616,7 +616,8 @@ def get_label_suggestions(**kwargs):
 
     try:
         result = STORAGE.file.facet(**params)
-        result = [{"category": category, "label": b, "count": c} for category in LABEL_CATEGORIES for b, c in result[f"label_categories.{category}"].items()]
+        result = [{"category": category, "label": b, "count": c}
+                  for category in LABEL_CATEGORIES for b, c in result[f"label_categories.{category}"].items()]
         result.sort(key=lambda value: value['count'], reverse=True)
         return make_api_response(result[0:req_data.get('count', 10)])
     except ValueError:
