@@ -109,20 +109,22 @@ def who_am_i(**kwargs):
             "subject": [],                            # List of metadata fields where to fetch email subject
             "url": []                                 # List of metadata fields where to fetch URLS
          },
-         "allow_malicious_hinting": True,           # Are users allowed to set the malicious flag before processing
-         "allow_raw_downloads": True,               # Are users allowed to download files in their raw format?
-         "allow_zip_downloads": True,               # Are users allowed to download files as password-protected ZIPs?
-         "allow_replay": False,                     # Are users allowed to continue submissions on another server
-         "allow_url_submissions": True,             # Are URL submissions allowed
-         "apps": [],                                # List of apps shown in the apps switcher
-         "banner": None,                            # Banner displayed on the submit page
-         "banner_level": True,                      # Banner color (info, success, warning, error)
-         "read_only": False,                        # Is the interface to be displayed in read-only mode
-         "rss_feeds": [],                           # List of RSS feeds
-         "services_feed": "",                       # Feed of all the services available
-         "tos": True,                               # Are terms of service set in the system
-         "tos_lockout": False,                      # Will agreeing to TOS lockout the user
-         "tos_lockout_notify": False                # Will admin be auto-notified when a user is locked out
+         "allow_malicious_hinting": True,             # Are users allowed to set the malicious flag before processing
+         "allow_raw_downloads": True,                 # Are users allowed to download files in their raw format?
+         "allow_zip_downloads": True,                 # Are users allowed to download files as password-protected ZIPs?
+         "allow_replay": False,                       # Are users allowed to continue submissions on another server
+         "allow_url_submissions": True,               # Are URL submissions allowed
+         "apps": [],                                  # List of apps shown in the apps switcher
+         "banner": None,                              # Banner displayed on the submit page
+         "banner_level": True,                        # Banner color (info, success, warning, error)
+         "read_only": False,                          # Is the interface to be displayed in read-only mode
+         "rss_feeds": [],                             # List of RSS feeds
+         "services_feed": "",                         # Feed of all the services available
+         "tos": True,                                 # Are terms of service set in the system
+         "tos_lockout": False,                        # Will agreeing to TOS lockout the user
+         "tos_lockout_notify": False                  # Will admin be auto-notified when a user is locked out
+         "url_submission_auto_service_selection": []  # List of service name that will be auto selected by the UI
+                                                      #  during URL submissions
        }
      },
      "email": "basic.user@assemblyline.local",  # Email of the user
@@ -223,7 +225,8 @@ def who_am_i(**kwargs):
             "services_feed": config.ui.services_feed,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
-            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
+            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []],
+            "url_submission_auto_service_selection": config.ui.url_submission_auto_service_selection
         },
         "user": {
             "api_priv_map": API_PRIV_MAP,
