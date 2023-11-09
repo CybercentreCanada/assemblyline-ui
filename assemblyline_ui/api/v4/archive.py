@@ -111,7 +111,7 @@ def get_additional_details(sha256, **kwargs):
     params.setdefault('offset', 0)
     params.setdefault('rows', 10)
     params.setdefault('sort', 'seen.last desc')
-    params.setdefault('fl', 'type,sha256')
+    params.setdefault('fl', 'type,sha256,seen.last')
     params.setdefault('filters', [f'NOT(sha256:"{sha256}")'])
     params.setdefault('access_control', user['access_control'])
     params.setdefault('as_obj', False)
