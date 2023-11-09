@@ -237,7 +237,6 @@ def submit(**kwargs):
 
       // OPTIONAL VALUES
       "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
-      "proxy": "CA"               # Name of proxy to egress from for URL-based submissions
 
       "metadata": {               # Submission metadata
         "key": val,                 # Key/Value pair metadata values
