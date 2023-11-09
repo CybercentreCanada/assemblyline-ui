@@ -558,19 +558,21 @@ def get_label_suggestions(**kwargs):
     Get the suggestions based on the labels of all the files
 
     Optional Arguments:
-    input           =>  Input value of the label to search for
+    include         =>  Input value of the label to search for
     query           =>  Query to filter the searched documents
+    mincount        =>  Minimum item count for the fieldvalue to be returned
     filters         =>  Additional query to limit to output
-    count           =>  Maximum number of items returned
+    size            =>  Maximum number of items returned
     use_archive     =>  Allow access to the malware archive (Default: False)
     archive_only    =>  Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {
-        "input": "label",
+        "include": "label",
         "query": "*",
+        "mincount": 1,
         "filters": ['fq'],
-        "count": 10,
+        "size": 10,
         "use_archive": False,
         "archive_only": False
     }
@@ -586,47 +588,36 @@ def get_label_suggestions(**kwargs):
     ]
     """
     user = kwargs['user']
-
-    args = []
-    filters = [user['access_control']]
+    fields = ["query", "mincount", "size"]
+    params = {}
+    filters = []
 
     if request.method == "POST":
         req_data = request.json
         if req_data.get('filters', None):
             filters.append(req_data.get('filters', None))
-
     else:
         req_data = request.args
         if req_data.getlist('filters', None):
             filters.append(req_data.getlist('filters', None))
 
-    args = [
-        ('query', req_data.get('query', '*')),
-        ('filters', filters),
-        ('facet_active', True),
-        ('facet_fields', [f"label_categories.{category}" for category in LABEL_CATEGORIES]),
-        ('facet_mincount', 1),
-        ('facet_size', 10),
-        ('facet_include', f".*{req_data.get('input', '')}.*"),
-        ('rows', 0),
-        ('df', STORAGE.file.DEFAULT_SEARCH_FIELD)
-    ]
+    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+    params.update({'field': [f"label_categories.{category}" for category in LABEL_CATEGORIES]})
+    params.update({'include': f".*{req_data.get('include', '')}.*" if req_data.get('include', None) else None})
+    params.update({'filters': filters})
+    params.update({'access_control': user['access_control']})
 
     if req_data.get('archive_only', False):
-        index_type = Index.ARCHIVE
+        params.update({'index_type': Index.ARCHIVE})
     elif req_data.get('use_archive', False):
-        index_type = Index.HOT_AND_ARCHIVE
+        params.update({'index_type': Index.HOT_AND_ARCHIVE})
     else:
-        index_type = Index.HOT
+        params.update({'index_type': Index.HOT})
 
     try:
-        result = STORAGE.file._search(args, index_type=index_type)
-        result = [
-            {"category": category, "label": row.get('key_as_string', row['key']),
-             "total": row['doc_count']}
-            for category in LABEL_CATEGORIES for row in result['aggregations'][f"label_categories.{category}"]
-            ['buckets']]
-        result.sort(key=lambda value: value['total'], reverse=True)
+        result = STORAGE.file.facet(**params)
+        result = [{"category": category, "label": b, "count": c} for category in LABEL_CATEGORIES for b, c in result[f"label_categories.{category}"].items()]
+        result.sort(key=lambda value: value['count'], reverse=True)
         return make_api_response(result[0:req_data.get('count', 10)])
     except ValueError:
         return make_api_response({"success": False}, err="Error fetching the list of labels.", status_code=400)
