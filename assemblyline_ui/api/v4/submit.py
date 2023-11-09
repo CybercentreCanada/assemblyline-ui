@@ -280,33 +280,23 @@ def submit(**kwargs):
             else:
                 data = {}
             binary = request.files['bin']
-            name = data.get("name", binary.filename)
+            name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
             sha256 = None
             url = None
-            default_description = f"Inspection of file: {name}"
         elif 'application/json' in request.content_type:
             data = request.json
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or url or None
-            default_description = f"Inspection of {name}"
-            if sha256:
-                default_description = f"Inspection of file: {sha256}"
-            elif url:
-                default_description = f"Inspection of URL: {url}"
+            name = url or safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
-        if data is None:
-            return make_api_response({}, "Missing data block", 400)
+        # Get default description
+        default_description = f"Inspection of {'URL' if url else 'file'}: {name}"
 
         if not name:
             return make_api_response({}, "Filename missing", 400)
-
-        name = safe_str(os.path.basename(name))
-        if not name:
-            return make_api_response({}, "Invalid filename", 400)
 
         # Create task object
         if "ui_params" in data:
