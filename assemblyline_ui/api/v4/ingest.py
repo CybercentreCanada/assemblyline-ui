@@ -137,7 +137,6 @@ def ingest_single_file(**kwargs):
 
      //OPTIONAL VALUES
      "name": "file.exe",             # Name of the file
-     "proxy": "CA"                   # Name of proxy to egress from for URL-based submissions
 
      "metadata": {                   # Submission Metadata
          "key": val,                    # Key/Value pair for metadata parameters
