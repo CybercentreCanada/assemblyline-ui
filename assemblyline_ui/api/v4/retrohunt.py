@@ -21,7 +21,6 @@ if config.retrohunt:
     haunted_house_client = hauntedhouse.Client(
         address=config.retrohunt.url,
         api_key=config.retrohunt.api_key,
-        classification=CLASSIFICATION.original_definition,
         verify=config.retrohunt.tls_verify
     )
 
@@ -101,6 +100,9 @@ def create_retrohunt_job(**kwargs):
     Response Fields:    => It should always be the same as polling the details of the search
     """
     user = kwargs['user']
+    body = request.get_json()
+    if not body:
+        return make_api_response({}, err="Malformed request body", status_code=400)
 
     # Make sure retrohunt is configured
     if haunted_house_client is None:
@@ -108,10 +110,10 @@ def create_retrohunt_job(**kwargs):
 
     # Parse the input document
     try:
-        signature = str(request.json['yara_signature'])
-        description = str(request.json['description'])
-        archive_only = bool(request.json['archive_only'])
-        classification = str(request.json['classification'])
+        signature = str(body['yara_signature'])
+        description = str(body['description'])
+        archive_only = bool(body['archive_only'])
+        classification = str(body['classification'])
     except KeyError as err:
         return make_api_response({}, err=f"Missing required argument: {err}", status_code=400)
 
@@ -124,14 +126,13 @@ def create_retrohunt_job(**kwargs):
     status = dict(haunted_house_client.start_search_sync(
         yara_rule=signature,
         access_control=classification,
-        group=user['uname'],
         archive_only=archive_only
     ))
 
     # Enforce maximum DTL
     max_expiry = None
     if config.retrohunt.dtl:
-        max_expiry = int(request.json['ttl']) if request.json['ttl'] else config.retrohunt.dtl
+        max_expiry = int(body['ttl']) if body['ttl'] else config.retrohunt.dtl
         if max_expiry and config.retrohunt.max_dtl > 0:
             max_expiry = min(max_expiry, config.retrohunt.max_dtl)
         max_expiry = now_as_iso(max_expiry * SECONDS_PER_DAY)
