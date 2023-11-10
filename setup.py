@@ -40,7 +40,7 @@ setup(
         'assemblyline',
         'assemblyline-core',
         'werkzeug',
-        'flask==2.1.3',
+        'flask',
         'pyqrcode',
         'markdown',
         'python-ldap',
