@@ -49,7 +49,7 @@ setup(
         'PyJWT',
         'gunicorn',
         'gevent',
-        'hauntedhouse==0.0.23',
+        'hauntedhouse==0.0.24',
     ],
     extras_require={
         'test': [
