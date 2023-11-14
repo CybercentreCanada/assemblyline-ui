@@ -147,7 +147,7 @@ def create_retrohunt_job(**kwargs):
         'expiry_ts': max_expiry,
         'finished': False,
         'hits': [],
-        'raw_query': hauntedhouse.client.query_from_yara(signature),
+        'raw_query': status.get('query', ''),
         'tags': {},
         'total_errors': 0,
         'total_hits': 0,
