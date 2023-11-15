@@ -381,6 +381,70 @@ def update_comment(sha256, cid, **kwargs):
     return make_api_response({"success": True})
 
 
+@archive_api.route("/comment/<sha256>/<cid>/", methods=["DELETE"])
+@api_login(require_role=[ROLES.file_detail])
+def delete_comment(sha256, cid, **kwargs):
+    """
+    Delete the comment <cid> in a given file
+
+    Variables:
+    sha256          => A resource locator for the file (sha256)
+    cid             => ID of the comment
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/comment/123456...654321/123...321/
+
+    Result example: => Comment has been successfully deleted
+    {
+        "success": True
+    }
+    """
+    data = request.json
+
+    text = data.get('text', None)
+    if not isinstance(text, str):
+        return make_api_response({"success": False}, err="Invalid text property", status_code=400)
+
+    while True:
+        try:
+            file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
+            if not file_obj:
+                return make_api_response({"success": False}, "The file was not found in the system.", 404)
+
+            user = kwargs['user']
+            if not Classification.is_accessible(user['classification'], file_obj['classification']):
+                return make_api_response(
+                    {"success": False},
+                    "You are not allowed to modify a comment on this file...", 403)
+
+            file_obj.setdefault('comments', [])
+            index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
+            if index is None:
+                return make_api_response({"success": False}, "The comment was not found within the file.", 404)
+
+            if (file_obj['comments'][index]['uname'] != user['uname']):
+                return make_api_response({"success": False}, "Another user's comment cannot be deleted.", 403)
+
+            file_obj['comments'].pop(index)
+            STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
+            break
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
+
+        except DataStoreException as e:
+            return make_api_response({"success": False}, err=str(e), status_code=400)
+
+    q = CommsQueue('file_comments', private=True)
+    q.publish({'sha256': sha256})
+    return make_api_response({"success": True})
+
+
 @archive_api.route("/reaction/<sha256>/<cid>/<icon>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.file_detail])
 def toggle_reaction(sha256, cid, icon, **kwargs):
@@ -402,9 +466,15 @@ def toggle_reaction(sha256, cid, icon, **kwargs):
     /api/v4/file/reaction/123456...654321/123456...654321/like/
 
     Result example:
-    {
-        "success": true
-    }
+    [
+        {
+            "uname":    "admin",
+            "icon":     "thumbs_up"
+        },
+        {
+            ...
+        }
+    ]
     """
     while True:
         try:
@@ -447,72 +517,6 @@ def toggle_reaction(sha256, cid, icon, **kwargs):
     return make_api_response(file_obj['comments'][c_index]['reactions'])
 
 
-@archive_api.route("/comment/<sha256>/<cid>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.file_detail])
-def delete_comment(sha256, cid, **kwargs):
-    """
-    Delete the comment <cid> in a given file
-
-    Variables:
-    sha256          => A resource locator for the file (sha256)
-    cid             => ID of the comment
-
-    Arguments:
-    None
-
-    Data Block:
-    None
-
-    API call example:
-    /api/v4/file/comment/123456...654321/123...321/
-
-    Result example: => Comment has been successfully deleted
-    {
-        "success": True
-    }
-    """
-    data = request.json
-
-    # Get the comment from the data block
-    text = data.get('text', None)
-    if not isinstance(text, str):
-        return make_api_response({"success": False}, err="Invalid text property", status_code=400)
-
-    while True:
-        try:
-            # Get the current file data
-            file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
-            if not file_obj:
-                return make_api_response({"success": False}, "The file was not found in the system.", 404)
-
-            user = kwargs['user']
-            if not Classification.is_accessible(user['classification'], file_obj['classification']):
-                return make_api_response(
-                    {"success": False},
-                    "You are not allowed to modify a comment on this file...", 403)
-
-            file_obj.setdefault('comments', [])
-            index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
-            if index is None:
-                return make_api_response({"success": False}, "The comment was not found within the file.", 404)
-
-            if (file_obj['comments'][index]['uname'] != user['uname']):
-                return make_api_response({"success": False}, "Another user's comment cannot be deleted.", 403)
-
-            file_obj['comments'].pop(index)
-            STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
-            break
-        except VersionConflictException as vce:
-            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
-
-        except DataStoreException as e:
-            return make_api_response({"success": False}, err=str(e), status_code=400)
-
-    q = CommsQueue('file_comments', private=True)
-    q.publish({'sha256': sha256})
-    return make_api_response({"success": True})
-
-
 @archive_api.route("/label/", methods=["GET", "POST"])
 @api_login(allow_readonly=False, require_role=[ROLES.file_detail])
 def get_label_suggestions(**kwargs):
@@ -525,8 +529,6 @@ def get_label_suggestions(**kwargs):
     mincount        =>  Minimum item count for the fieldvalue to be returned
     filters         =>  Additional query to limit to output
     size            =>  Maximum number of items returned
-    use_archive     =>  Allow access to the malware archive (Default: False)
-    archive_only    =>  Only access the Malware archive (Default: False)
 
     Data Block (POST ONLY):
     {
@@ -534,9 +536,7 @@ def get_label_suggestions(**kwargs):
         "query": "*",
         "mincount": 1,
         "filters": ['fq'],
-        "size": 10,
-        "use_archive": False,
-        "archive_only": False
+        "size": 10
     }
 
     Result example:
@@ -568,13 +568,7 @@ def get_label_suggestions(**kwargs):
     params.update({'include': f".*{req_data.get('include', '')}.*" if req_data.get('include', None) else None})
     params.update({'filters': filters})
     params.update({'access_control': user['access_control']})
-
-    if req_data.get('archive_only', False):
-        params.update({'index_type': Index.ARCHIVE})
-    elif req_data.get('use_archive', False):
-        params.update({'index_type': Index.HOT_AND_ARCHIVE})
-    else:
-        params.update({'index_type': Index.HOT})
+    params.update({'index_type': Index.ARCHIVE})
 
     try:
         result = STORAGE.file.facet(**params)
@@ -621,7 +615,7 @@ def set_labels(sha256, **kwargs):
     """
     user = kwargs['user']
 
-    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     if not file_obj:
         return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
@@ -647,9 +641,8 @@ def set_labels(sha256, **kwargs):
     for value in set(file_obj['labels']) - set(json_labels):
         update_data += [(STORAGE.file.UPDATE_REMOVE, 'labels', value)]
 
-    STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
     STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
-    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
 
@@ -689,7 +682,7 @@ def add_labels(sha256, **kwargs):
     """
     user = kwargs['user']
 
-    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     if not file_obj:
         return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
@@ -708,9 +701,8 @@ def add_labels(sha256, **kwargs):
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
     STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
-    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
 
@@ -750,7 +742,7 @@ def remove_labels(sha256, **kwargs):
     """
     user = kwargs['user']
 
-    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     if not file_obj:
         return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
@@ -769,8 +761,7 @@ def remove_labels(sha256, **kwargs):
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
-    STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
     STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
-    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+    values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
