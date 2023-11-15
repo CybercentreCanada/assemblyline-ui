@@ -1,13 +1,14 @@
 import json
 import os
 import shutil
+import tempfile
 
 from flask import request
-from requests.exceptions import ConnectTimeout
 
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
+from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
@@ -18,8 +19,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, \
-    InvalidUrlException, ForbiddenLocation, submission_received
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received
 from assemblyline_ui.helper.user import load_user_settings
 
 
@@ -178,41 +178,30 @@ def ingest_single_file(**kwargs):
             else:
                 data = {}
             binary = request.files['bin']
-            name = data.get("name", binary.filename)
+            name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
             sha256 = None
             url = None
-            default_description = f"Inspection of file: {name}"
         elif 'application/json' in request.content_type:
             data = request.json
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
-            name = data.get("name", None) or sha256 or os.path.basename(url) or None
-            default_description = f"Inspection of {name}"
-            if sha256:
-                default_description = f"Inspection of file: {sha256}"
-            elif url:
-                default_description = f"Inspection of URL: {url}"
-
+            name = url or safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
-        if not data:
-            return make_api_response({}, "Missing data block", 400)
+        # Get default description
+        default_description = f"Inspection of {'URL' if url else 'file'}: {name}"
+
+        # Get file name
+        if not name:
+            return make_api_response({}, "Filename missing", 400)
 
         # Get notification queue parameters
         notification_queue = data.get('notification_queue', None)
         notification_threshold = data.get('notification_threshold', None)
         if not isinstance(notification_threshold, int) and notification_threshold:
             return make_api_response({}, "notification_threshold should be and int", 400)
-
-        # Get file name
-        if not name:
-            return make_api_response({}, "Filename missing", 400)
-
-        name = safe_str(os.path.basename(name))
-        if not name:
-            return make_api_response({}, "Invalid filename", 400)
 
         try:
             os.makedirs(out_dir)
@@ -279,9 +268,8 @@ def ingest_single_file(**kwargs):
                     # File is not found still, and we have external sources
                     dl_from = None
                     available_sources = [x for x in config.submission.sha256_sources
-                                         if Classification.is_accessible(user['classification'],
-                                                                         x.classification) and
-                                         x.name in default_external_sources]
+                                         if Classification.is_accessible(user['classification'], x.classification)
+                                         and x.name in default_external_sources]
                     try:
                         for source in available_sources:
                             src_url = source.url.replace(source.replace_pattern, sha256)
@@ -316,25 +304,8 @@ def ingest_single_file(**kwargs):
                 if not config.ui.allow_url_submissions:
                     return make_api_response({}, "URL submissions are disabled in this system", 400)
 
-                try:
-                    url_history = download_from_url(url, out_file, headers=config.ui.url_submission_headers,
-                                                    proxies=config.ui.url_submission_proxies,
-                                                    timeout=config.ui.url_submission_timeout, verify=False,
-                                                    ignore_size=s_params.get('ignore_size', False))
-                    if url_history is None:
-                        return make_api_response({}, "Submitted URL cannot be found.", 400)
-
-                    extra_meta['submitted_url'] = url
-                    for h_id, h_url in enumerate(url_history):
-                        extra_meta[f'url_redirect_{h_id}'] = h_url
-                except FileTooBigException:
-                    return make_api_response({}, "File too big to be scanned.", 400)
-                except InvalidUrlException:
-                    return make_api_response({}, "Url provided is invalid.", 400)
-                except ForbiddenLocation:
-                    return make_api_response({}, "Hostname in this URL cannot be resolved.", 400)
-                except ConnectTimeout:
-                    return make_api_response({}, 'Connection timeout has occurred while fetching data.', 400)
+                with tempfile.TemporaryDirectory() as dir_path:
+                    shutil.move(make_uri_file(dir_path, url), out_file)
             else:
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
@@ -345,7 +316,7 @@ def ingest_single_file(**kwargs):
 
         # Apply group params if not specified
         if 'groups' not in s_params:
-            s_params['groups'] = user['groups']
+            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
 
         # Get generate alert parameter
         generate_alert = data.get('generate_alert', s_params.get('generate_alert', False))
@@ -383,6 +354,9 @@ def ingest_single_file(**kwargs):
             extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
             if extracted_path:
                 out_file = extracted_path
+
+        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+            al_meta["name"] = fileinfo["uri_info"]["uri"]
 
         # Alter filename and classification based on CaRT output
         meta_classification = al_meta.pop('classification', s_params['classification'])
@@ -429,6 +403,8 @@ def ingest_single_file(**kwargs):
         metadata.update(extra_meta)
 
         # Set description if it does not exists
+        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+            default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
         # Create submission object
         try:

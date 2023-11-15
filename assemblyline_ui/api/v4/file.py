@@ -269,6 +269,40 @@ def download_file(sha256, **kwargs):
         return make_api_response({}, "You are not allowed to download this file.", 403)
 
 
+@file_api.route("/filestore/<sha256>/", methods=["DELETE"])
+@api_login(check_xsrf_token=True, require_role=[ROLES.file_purge])
+def delete_file_from_filestore(sha256, **kwargs):
+    """
+    Delete a file from the filestore without deleting the file record
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    DELETE /api/v4/file/filestore/123456...654321/
+
+    Result example:
+    {"success": True}
+    """
+    user = kwargs['user']
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+        FILESTORE.delete(sha256)
+        return make_api_response({"success": True})
+    else:
+        return make_api_response({}, "You are not allowed to delete this file from the filestore.", 403)
+
+
 @file_api.route("/hex/<sha256>/", methods=["GET"])
 @api_login(require_role=[ROLES.file_detail])
 def get_file_hex(sha256, **kwargs):
@@ -579,6 +613,7 @@ def get_file_results(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         max_c12n = file_obj['classification']
         output = {
+            "classification": Classification.UNRESTRICTED,
             "file_info": file_obj,
             "results": [],
             "tags": {},
@@ -660,13 +695,13 @@ def get_file_results(sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
-                    t_item = (t['value'], h_type, t['safelisted'])
+                    t_item = (t['value'], h_type, t['safelisted'], sec['classification'])
                     if t_item not in output["tags"][t['type']]:
                         output["tags"][t['type']].append(t_item)
 
         output['signatures'] = list(output['signatures'])
 
-        output['file_info']['classification'] = max_c12n
+        output['classification'] = max_c12n
         return make_api_response(output)
     else:
         return make_api_response({}, "You are not allowed to view this file", 403)

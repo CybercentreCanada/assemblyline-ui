@@ -14,6 +14,7 @@ from assemblyline_ui.api.v4.archive import archive_api
 from assemblyline_ui.api.v4.authentication import auth_api
 from assemblyline_ui.api.v4.bundle import bundle_api
 from assemblyline_ui.api.v4.error import error_api
+from assemblyline_ui.api.v4.federated_lookup import federated_lookup_api
 from assemblyline_ui.api.v4.file import file_api
 from assemblyline_ui.api.v4.hash_search import hash_search_api
 from assemblyline_ui.api.v4.help import help_api
@@ -23,6 +24,7 @@ from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.ontology import ontology_api
 from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.replay import replay_api
+from assemblyline_ui.api.v4.retrohunt import retrohunt_api
 from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.search import search_api
 from assemblyline_ui.api.v4.service import service_api
@@ -76,6 +78,7 @@ app.register_blueprint(auth_api)
 app.register_blueprint(bundle_api)
 app.register_blueprint(errors)
 app.register_blueprint(error_api)
+app.register_blueprint(federated_lookup_api)
 app.register_blueprint(file_api)
 app.register_blueprint(hash_search_api)
 app.register_blueprint(help_api)
@@ -85,6 +88,7 @@ app.register_blueprint(live_api)
 app.register_blueprint(ontology_api)
 app.register_blueprint(result_api)
 app.register_blueprint(replay_api)
+app.register_blueprint(retrohunt_api)
 app.register_blueprint(search_api)
 app.register_blueprint(service_api)
 app.register_blueprint(signature_api)

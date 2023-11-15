@@ -40,7 +40,7 @@ setup(
         'assemblyline',
         'assemblyline-core',
         'werkzeug',
-        'flask',
+        'flask<3.0.0',
         'pyqrcode',
         'markdown',
         'python-ldap',
@@ -49,10 +49,12 @@ setup(
         'PyJWT',
         'gunicorn',
         'gevent',
+        'hauntedhouse==0.0.23',
     ],
     extras_require={
         'test': [
             'pytest',
+            'pytest-mock',
             'cart'
         ],
         'socketio': [

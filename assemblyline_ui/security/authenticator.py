@@ -78,8 +78,8 @@ class BaseSecurityRenderer(object):
         session_id = flsk_session.get("session_id", None)
 
         if not session_id:
-            if current_app.session_cookie_name in request.cookies:
-                session = request.cookies.get(current_app.session_cookie_name)
+            if current_app.config['SESSION_COOKIE_NAME'] in request.cookies:
+                session = request.cookies.get(current_app.config['SESSION_COOKIE_NAME'])
 
                 # Try to load the session by hand to check why is rejected
                 try:

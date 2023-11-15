@@ -1,3 +1,5 @@
+from typing import List
+from assemblyline.odm.models.config import ExternalLinks
 from flask import request
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
@@ -7,6 +9,7 @@ from assemblyline.common.security import (check_password_requirements, get_passw
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
+from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
 from assemblyline_ui.helper.search import list_all_fields
@@ -15,12 +18,40 @@ from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_s
                                          save_user_settings, API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
+from .federated_lookup import filtered_tag_names
+
+
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
 user_api._doc = "Manage the different users of the system"
 
 ALLOWED_FAVORITE_TYPE = ["alert", "search", "submission", "signature", "error"]
 classification_definition = CLASSIFICATION.get_parsed_classification_definition()
+
+
+def parse_external_links(external_links: List[ExternalLinks]):
+    out = {}
+
+    for link in external_links:
+        for target in link.targets:
+            out.setdefault(target.type, {})
+            out[target.type].setdefault(target.key, [])
+            out[target.type][target.key].append({
+                "allow_bypass": link.allow_bypass,
+                "double_encode": link.double_encode,
+                "name": link.name,
+                "replace_pattern": link.replace_pattern,
+                "url": link.url,
+                "max_classification": link.max_classification,
+            })
+
+    return out
+
+
+def parse_favorites(favorites: List[Favorite]):
+    return sorted(
+        [v for k, v in {f.get('name'): f for f in favorites if Favorite(f)}.items()],
+        key=lambda f: f.get('name').lower())
 
 
 @user_api.route("/whoami/", methods=["GET"])
@@ -51,6 +82,11 @@ def who_am_i(**kwargs):
          "allow_extended_apikeys": True,            # Allow user to generate extended access API Keys
          "allow_security_tokens": True,             # Are Security tokens allowed for the user
        },
+       "retrohunt": {                            # Retrohunt Configuration
+         "enabled": False,                          # Is the retrohunt functionnality enabled
+         "dtl": 10,                                 # Default number of days retrohunt job stay in the system
+         "max_dtl": 30,                             # Maximum number of days retrohunt job stay in the system
+       },
        "submission": {                            # Submission Configuration
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
@@ -73,20 +109,22 @@ def who_am_i(**kwargs):
             "subject": [],                            # List of metadata fields where to fetch email subject
             "url": []                                 # List of metadata fields where to fetch URLS
          },
-         "allow_malicious_hinting": True,           # Are users allowed to set the malicious flag before processing
-         "allow_raw_downloads": True,               # Are users allowed to download files in their raw format?
-         "allow_zip_downloads": True,               # Are users allowed to download files as password-protected ZIPs?
-         "allow_replay": False,                     # Are users allowed to continue submissions on another server
-         "allow_url_submissions": True,             # Are URL submissions allowed
-         "apps": [],                                # List of apps shown in the apps switcher
-         "banner": None,                            # Banner displayed on the submit page
-         "banner_level": True,                      # Banner color (info, success, warning, error)
-         "read_only": False,                        # Is the interface to be displayed in read-only mode
-         "rss_feeds": [],                           # List of RSS feeds
-         "services_feed": "",                       # Feed of all the services available
-         "tos": True,                               # Are terms of service set in the system
-         "tos_lockout": False,                      # Will agreeing to TOS lockout the user
-         "tos_lockout_notify": False                # Will admin be auto-notified when a user is locked out
+         "allow_malicious_hinting": True,             # Are users allowed to set the malicious flag before processing
+         "allow_raw_downloads": True,                 # Are users allowed to download files in their raw format?
+         "allow_zip_downloads": True,                 # Are users allowed to download files as password-protected ZIPs?
+         "allow_replay": False,                       # Are users allowed to continue submissions on another server
+         "allow_url_submissions": True,               # Are URL submissions allowed
+         "apps": [],                                  # List of apps shown in the apps switcher
+         "banner": None,                              # Banner displayed on the submit page
+         "banner_level": True,                        # Banner color (info, success, warning, error)
+         "read_only": False,                          # Is the interface to be displayed in read-only mode
+         "rss_feeds": [],                             # List of RSS feeds
+         "services_feed": "",                         # Feed of all the services available
+         "tos": True,                                 # Are terms of service set in the system
+         "tos_lockout": False,                        # Will agreeing to TOS lockout the user
+         "tos_lockout_notify": False                  # Will admin be auto-notified when a user is locked out
+         "url_submission_auto_service_selection": []  # List of service name that will be auto selected by the UI
+                                                      #  during URL submissions
        }
      },
      "email": "basic.user@assemblyline.local",  # Email of the user
@@ -110,6 +148,11 @@ def who_am_i(**kwargs):
 
     # System configuration
     user_data['c12nDef'] = classification_definition
+    # create tag-to-source lookup mapping
+    external_source_tags = {}
+    for source_name, tag_names in filtered_tag_names(kwargs['user']).items():
+        for tname in tag_names:
+            external_source_tags.setdefault(tname, []).append(source_name)
     user_data['configuration'] = {
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
@@ -121,6 +164,11 @@ def who_am_i(**kwargs):
             "archive": {
                 "enabled": config.datastore.archive.enabled
             }
+        },
+        "retrohunt": {
+            "enabled": config.retrohunt.enabled,
+            "dtl": config.retrohunt.dtl,
+            "max_dtl": config.retrohunt.max_dtl,
         },
         "submission": {
             "dtl": config.submission.dtl,
@@ -157,12 +205,28 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "external_links": parse_external_links([
+                x for x in config.ui.external_links
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ]),
+            "external_sources": [
+                {
+                    "name": x.name,
+                    "max_classification": x.max_classification or x.classification or CLASSIFICATION.UNRESTRICTED,
+                }
+                for x in config.ui.external_sources
+                if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
+                                                x.classification or CLASSIFICATION.UNRESTRICTED)
+            ],
+            "external_source_tags": external_source_tags,
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
             "services_feed": config.ui.services_feed,
             "tos": config.ui.tos not in [None, ""],
             "tos_lockout": config.ui.tos_lockout,
-            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []]
+            "tos_lockout_notify": config.ui.tos_lockout_notify not in [None, []],
+            "url_submission_auto_service_selection": config.ui.url_submission_auto_service_selection
         },
         "user": {
             "api_priv_map": API_PRIV_MAP,
@@ -216,7 +280,7 @@ def add_user_account(username, **_):
     if "{" in username or "}" in username:
         return make_api_response({"success": False}, "You can't use '{}' in the username", 412)
 
-    if not STORAGE.user.get(username):
+    if not STORAGE.user.exists(username):
         new_pass = data.pop('new_pass', None)
         if new_pass:
             password_requirements = config.auth.internal.password_requirements.as_primitives()
@@ -233,7 +297,7 @@ def add_user_account(username, **_):
             data['name'] = data['uname']
 
         # Add add dynamic classification group
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
@@ -327,8 +391,7 @@ def remove_user_account(username, **_):
     }
     """
 
-    user_data = STORAGE.user.get(username)
-    if user_data:
+    if STORAGE.user.exists(username):
         user_deleted = STORAGE.user.delete(username)
         avatar_deleted = STORAGE.user_avatar.delete(username)
         favorites_deleted = STORAGE.user_favorites.delete(username)
@@ -398,7 +461,7 @@ def set_user_account(username, **kwargs):
             data['password'] = old_user.get('password', "__NO_PASSWORD__") or "__NO_PASSWORD__"
 
         # Apply dynamic classification
-        data['classification'] = get_dynamic_classification(data['classification'], data['email'])
+        data['classification'] = get_dynamic_classification(data['classification'], data)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
@@ -499,9 +562,9 @@ def set_user_avatar(username, **kwargs):
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
-def add_to_user_favorite(username, favorite_type, **kwargs):
+def save_to_user_favorite(username, favorite_type, **kwargs):
     """
-    Add an entry to the user's favorites
+    Save an entry to the user's favorites
 
     Variables:
     username      => Name of the user you want to add a favorite to
@@ -543,6 +606,8 @@ def add_to_user_favorite(username, favorite_type, **kwargs):
         favorites.update(res_favorites)
 
     favorites[favorite_type].append(data)
+
+    favorites[favorite_type] = parse_favorites(favorites[favorite_type])
 
     return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
@@ -685,7 +750,10 @@ def set_user_favorites(username, **kwargs):
             return make_api_response("", err="Invalid favorite type (%s)" % key, status_code=400)
 
     favorites.update(data)
-    return make_api_response({"success": STORAGE.user_favorites.save(username, data)})
+
+    favorites = {k: parse_favorites(v) for k, v in favorites.items()}
+
+    return make_api_response({"success": STORAGE.user_favorites.save(username, favorites)})
 
 
 ######################################################
@@ -703,7 +771,7 @@ def list_users(**_):
     None
 
     Arguments:
-    offset        =>  Offset in the user bucket
+    offset        =>  Offset in the user index
     query         =>  Filter to apply to the user list
     rows          =>  Max number of user returned
     sort          =>  Sort order
@@ -724,7 +792,7 @@ def list_users(**_):
        "groups": ["TEST"]          # Groups the user is member of
        }, ...],
      "total": 10,                # Total number of users
-     "offset": 0                 # Offset in the user bucket
+     "offset": 0                 # Offset in the user index
     }
     """
     offset = int(request.args.get('offset', 0))
@@ -914,20 +982,20 @@ def agree_with_tos(username, **kwargs):
     if logged_in_user['uname'] != username:
         raise AccessDeniedException("You can't agree to Terms Of Service on behalf of someone else!")
 
-    user = STORAGE.user.get(username)
+    user = STORAGE.user.get(username, as_obj=False)
 
     if not user:
         return make_api_response({"success": False}, "User %s does not exist." % username, 403)
     else:
-        user.agrees_with_tos = now_as_iso()
+        user['agrees_with_tos'] = now_as_iso()
         if config.ui.tos_lockout:
-            user.is_active = False
+            user['is_active'] = False
 
         if config.ui.tos_lockout and config.ui.tos_lockout_notify:
             # noinspection PyBroadException
             try:
                 for adr in config.ui.tos_lockout_notify:
-                    send_authorize_email(adr, username, user.email or "")
+                    send_authorize_email(adr, username, user['email'] or "")
             except Exception as e:
                 LOGGER.error(f"An error occurred while sending confirmation emails: {str(e)}")
                 return make_api_response({"success": False}, "The system was unable to send confirmation emails "

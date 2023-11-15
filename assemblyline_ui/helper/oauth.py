@@ -19,7 +19,11 @@ def reorder_name(name):
 
 def parse_profile(profile, provider):
     # Find email address and normalize it for further processing
-    email_adr = profile.get('email', profile.get('emails', profile.get('preferred_username', profile.get('upn', None))))
+    email_adr = None
+    for email_key in provider.email_fields:
+        email_adr = profile.get(email_key, None)
+        if email_adr:
+            break
 
     if isinstance(email_adr, list):
         email_adr = email_adr[0]
@@ -38,7 +42,7 @@ def parse_profile(profile, provider):
         uname = random_user(digits=provider.uid_randomize_digits, delimiter=provider.uid_randomize_delimiter)
     else:
         # Generate it from email address
-        uname = profile.get('uname', email_adr)
+        uname = profile.get(provider.username_field, email_adr)
 
         # 1. Use provided regex matcher
         if uname is not None and uname == email_adr and provider.uid_regex:
@@ -71,15 +75,18 @@ def parse_profile(profile, provider):
 
     # Compute access, user_type, roles and classification using auto_properties
     access = True
+    access_set = False
     user_type = []
     roles = []
+    groups = []
     remove_roles = set()
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
-            if auto_prop.type == "access":
+            if auto_prop.type == "access" and not access_set:
                 # Set default access value for access pattern
-                access = auto_prop.value.lower() != "true"
+                access = auto_prop.value[0].lower() != "true"
+                access_set = True
 
             # Get values for field
             field_data = profile.get(auto_prop.field, None)
@@ -95,38 +102,50 @@ def parse_profile(profile, provider):
                 # Check access
                 if auto_prop.type == "access":
                     if re.match(auto_prop.pattern, value) is not None:
-                        access = auto_prop.value.lower() == "true"
+                        access = auto_prop.value[0].lower() == "true"
                         break
 
                 # Append user type from matching patterns
                 elif auto_prop.type == "type":
                     if re.match(auto_prop.pattern, value):
-                        user_type = [auto_prop.value]
+                        user_type.extend(auto_prop.value)
                         break
 
                 # Append roles from matching patterns
                 elif auto_prop.type == "role":
                     if re.match(auto_prop.pattern, value):
-                        # Did we just put an account type in the roles field?
-                        if auto_prop.value in USER_TYPE_DEP:
-                            # Support of legacy configurations
-                            user_type = [auto_prop.value]
-                            roles = list(set(roles).union(USER_TYPE_DEP[auto_prop.value]))
-                        else:
-                            roles.append(auto_prop.value)
+                        for ap_val in auto_prop.value:
+                            # Did we just put an account type in the roles field?
+                            if ap_val in USER_TYPE_DEP:
+                                # Support of legacy configurations
+                                user_type.append(ap_val)
+                                roles = list(set(roles).union(USER_TYPE_DEP[ap_val]))
+                            else:
+                                roles.append(ap_val)
                         break
 
-                # Append roles from matching patterns
+                # Remove roles from matching patterns
                 elif auto_prop.type == "remove_role":
                     if re.match(auto_prop.pattern, value):
-                        remove_roles.add(auto_prop.value)
+                        for ap_val in auto_prop.value:
+                            remove_roles.add(ap_val)
                         break
 
                 # Compute classification from matching patterns
                 elif auto_prop.type == "classification":
                     if re.match(auto_prop.pattern, value):
-                        classification = cl_engine.build_user_classification(classification, auto_prop.value)
+                        for ap_val in auto_prop.value:
+                            classification = cl_engine.build_user_classification(classification, ap_val)
                         break
+
+                # Append groups from matching patterns
+                elif auto_prop.type == "group":
+                    group_match = re.match(auto_prop.pattern, value)
+                    if group_match:
+                        for group_value in auto_prop.value:
+                            for index, gm_value in enumerate(group_match.groups()):
+                                group_value = group_value.replace(f"${index+1}", gm_value)
+                            groups.append(group_value)
 
     # if not user type was assigned
     if not user_type:
@@ -148,6 +167,7 @@ def parse_profile(profile, provider):
         access=access,
         type=user_type,
         roles=roles,
+        groups=groups,
         classification=classification,
         uname=uname,
         name=name,

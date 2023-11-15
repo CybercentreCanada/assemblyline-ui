@@ -44,7 +44,7 @@ def test_resubmit(datastore, login_session, scheduler):
     for f in resp['files']:
         assert f['sha256'] in submission_files
 
-    msg = SubmissionTask(scheduler=scheduler, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -62,7 +62,7 @@ def test_resubmit_dynamic(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
     assert 'Dynamic Analysis' in resp['params']['services']['selected']
 
-    msg = SubmissionTask(scheduler=scheduler, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -82,7 +82,7 @@ def test_submit_hash(datastore, login_session, scheduler):
         assert f['sha256'] == data['sha256']
         assert f['name'] == data['name']
 
-    msg = SubmissionTask(scheduler=scheduler, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -99,9 +99,9 @@ def test_submit_url(datastore, login_session, scheduler):
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert isinstance(resp['sid'], str)
     for f in resp['files']:
-        assert f['name'] == data['name']
+        assert f['name'] == data['url']  # The name is overwritten for URIs
 
-    msg = SubmissionTask(scheduler=scheduler, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -131,7 +131,7 @@ def test_submit_binary(datastore, login_session, scheduler):
             assert f['sha256'] == sha256
             assert f['name'] == json_data['name']
 
-        msg = SubmissionTask(scheduler=scheduler, **sq.pop(blocking=False))
+        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
         assert msg.submission.sid == resp['sid']
 
     finally:

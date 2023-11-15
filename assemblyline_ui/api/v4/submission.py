@@ -98,6 +98,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
         # Prepare output
         output = {
+            "classification": Classification.UNRESTRICTED,
             "file_info": {},
             "results": [],
             "tags": {},
@@ -199,23 +200,23 @@ def get_file_submission_results(sid, sha256, **kwargs):
                 # Process tags
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], {})
-                    current_htype = output["tags"][t['type']].get(t['value'], None)
-                    if not current_htype:
-                        output["tags"][t['type']][t['value']] = (h_type, t['safelisted'])
-                    else:
-                        if current_htype == 'malicious' or h_type == 'malicious':
-                            output["tags"][t['type']][t['value']] = ('malicious', t['safelisted'])
-                        elif current_htype == 'suspicious' or h_type == 'suspicious':
-                            output["tags"][t['type']][t['value']] = ('suspicious', t['safelisted'])
+                    current_htype, _, _ = output["tags"][t['type']].get(t['value'], (None, None, None))
+                    tag_htype = h_type
+                    if current_htype:
+                        if 'malicous' in (current_htype, h_type):
+                            tag_htype = 'malicious'
+                        elif 'suspicious' in (current_htype, h_type):
+                            tag_htype = 'suspicious'
                         else:
-                            output["tags"][t['type']][t['value']] = ('info', t['safelisted'])
+                            tag_htype = 'info'
+                    output["tags"][t['type']][t['value']] = (tag_htype, t['safelisted'], sec['classification'])
 
         for t_type in output["tags"]:
-            output["tags"][t_type] = [(k, v[0], v[1]) for k, v in output['tags'][t_type].items()]
+            output["tags"][t_type] = [(k, v[0], v[1], v[2]) for k, v in output['tags'][t_type].items()]
 
         output['signatures'] = list(output['signatures'])
 
-        output['file_info']['classification'] = max_c12n
+        output['classification'] = max_c12n
         return make_api_response(output)
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
@@ -641,16 +642,19 @@ def get_summary(sid, **kwargs):
                 output['map'][sha256].append(tag_key)
 
             # Tags
-            output['tags'][summary_type].setdefault(t['type'], {})
-            current_htype = output['tags'][summary_type][t['type']].get(t['value'], None)
+            stype = output['tags'][summary_type]
+            current_htype = stype.setdefault(t['type'], {}).get(t['value'], None)
             if not current_htype:
-                output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
+                stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], t['classification'])
             elif HEUR_RANK_MAP[current_htype[0]] < HEUR_RANK_MAP[t['h_type']]:
-                output['tags'][summary_type][t['type']][t['value']] = (t['h_type'], t['safelisted'])
+                # When returning tag classification without context, the least restrictive should be used
+                current_clsf = current_htype[2]
+                min_clsf = Classification.min_classification(current_clsf, t['classification'])
+                stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], min_clsf)
 
         for summary_type in output['tags']:
             for t_type in output['tags'][summary_type]:
-                output['tags'][summary_type][t_type] = [(k, v[0], v[1])
+                output['tags'][summary_type][t_type] = [(k, v[0], v[1], v[2])
                                                         for k, v in output['tags'][summary_type][t_type].items()]
 
         return make_api_response(output)
@@ -803,8 +807,7 @@ def list_submissions_for_user(username, **kwargs):
     else:
         index_type = Index.HOT
 
-    account = STORAGE.user.get(username)
-    if not account:
+    if not STORAGE.user.exists(username):
         return make_api_response("", "User %s does not exists." % username, 404)
 
     try:
@@ -817,7 +820,7 @@ def list_submissions_for_user(username, **kwargs):
 
 
 @submission_api.route("/report/<submission_id>/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False, require_role=[ROLES.submission_view])
+@api_login(check_xsrf_token=False, require_role=[ROLES.submission_view])
 def get_report(submission_id, **kwargs):
     """
     Create a report for a submission based on its ID.

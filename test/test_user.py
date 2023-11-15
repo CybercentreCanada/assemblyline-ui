@@ -4,12 +4,14 @@ import random
 
 from conftest import APIError, get_api_data
 
+from assemblyline.common.forge import get_classification
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
+CLASSIFICATION = get_classification()
 AVATAR = "AVATAR!"
 NUM_FAVS = 10
 NUM_USERS = 5
@@ -69,7 +71,14 @@ def test_add_favorite(datastore, login_session):
     datastore.user_favorites.commit()
 
     favs = datastore.user_favorites.get(username, as_obj=False)
-    assert favs[fav_type][-1] == data
+
+    # Normalize classification
+    if data.get('classification'):
+        data['classification'] = CLASSIFICATION.normalize_classification(data['classification'])
+        for item in favs[fav_type]:
+            item['classification'] = CLASSIFICATION.normalize_classification(item['classification'])
+
+    assert data in favs[fav_type]
 
 
 # noinspection PyUnusedLocal
@@ -191,7 +200,7 @@ def test_remove_user_favorite(datastore, login_session):
     _, session, host = login_session
     username = random.choice(user_list)
     fav_type = random.choice(FAV_TYPES)
-    to_be_removed = f"test_{random.randint(1, 10)}"
+    to_be_removed = f"test_{random.randint(1, NUM_FAVS)}"
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                         method="DELETE", data=json.dumps(to_be_removed))
@@ -221,6 +230,10 @@ def test_set_user(datastore, login_session):
         u.pop(k)
         new_user.pop(k)
 
+    # Normalize classification
+    new_user['classification'] = CLASSIFICATION.normalize_classification(new_user['classification'])
+    u['classification'] = CLASSIFICATION.normalize_classification(u['classification'])
+
     for k in u.keys():
         assert u[k] == new_user[k]
 
@@ -248,7 +261,17 @@ def test_set_user_favorites(datastore, login_session):
     assert resp['success']
 
     datastore.user_favorites.commit()
-    assert favs == datastore.user_favorites.get(username, as_obj=False)
+    user_favs = datastore.user_favorites.get(username, as_obj=False)
+
+    # Normalize classification
+    [fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
+        for fav_type in list(user_favs.keys())
+        for fav in user_favs[fav_type]]
+
+    favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in favs.items()}
+    user_favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in user_favs.items()}
+
+    assert favs == user_favs
 
 
 # noinspection PyUnusedLocal
