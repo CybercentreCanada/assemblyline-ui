@@ -1,13 +1,12 @@
+from flask import request
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
-from assemblyline.datastore.exceptions import DataStoreException, VersionConflictException
-from assemblyline.odm.models.file import REACTIONS_TYPES, Comment
-from assemblyline.remote.datatypes.queues.comms import CommsQueue
-from flask import request
-
 from assemblyline.datastore.collection import Index
+from assemblyline.datastore.exceptions import DataStoreException, VersionConflictException
+from assemblyline.odm.models.file import REACTIONS_TYPES
 from assemblyline.odm.models.user import ROLES
+from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification, ARCHIVE_MANAGER
