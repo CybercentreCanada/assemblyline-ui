@@ -2,8 +2,8 @@
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.datastore.exceptions import DataStoreException, VersionConflictException
-from assemblyline.odm.models.file import Comment
-from assemblyline_ui.api.v4.file import LABEL_CATEGORIES
+from assemblyline.odm.models.file import REACTIONS_TYPES, Comment
+from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from flask import request
 
 from assemblyline.datastore.collection import Index
@@ -13,6 +13,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification, ARCHIVE_MANAGER
 
 SUB_API = 'archive'
+LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 
 archive_api = make_subapi_blueprint(SUB_API, api_version=4)
 archive_api._doc = "Perform operations on archived submissions"
@@ -103,13 +104,13 @@ def get_additional_details(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
 
     if not file_obj:
-        return make_api_response({}, "This file does not exists", 404)
+        return make_api_response({"success": False}, "This file does not exists", 404)
 
     if not user or not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response({}, "You are not allowed to view this file", 403)
+        return make_api_response({"success": False}, "You are not allowed to view this file", 403)
 
     # Set the default search parameters
     params = {}
@@ -210,25 +211,36 @@ def get_comments(sha256, **kwargs):
         }]
     }
     """
-    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
     if not file_obj:
-        return make_api_response({}, "The file was not found in the system.", 404)
+        return make_api_response({"success": False}, "The file was not found in the system.", 404)
+
+    user = kwargs['user']
+    if not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({"success": False}, "You are not allowed to make a reaction to this file...", 403)
 
     try:
-        comments = file_obj.get("comments", [])
-        authors = dict([comment.get('uname', None), {}] for comment in comments)
+        comments = file_obj.get("comments", {})
+        authors = {}
+        authors.update({comment.get('uname', None): {} for comment in comments})
+        authors.update({reaction.get('uname', None): {} for comment in comments
+                        for reaction in comment.get('reactions', []) if reaction.get('uname', None) is not None})
 
-        def parse_author(user, avatar):
-            return {
-                "uname": user['uname'],
-                "name": user['name'],
-                "avatar": avatar,
-                "email": user['email'],
-            }
+        for author in authors:
+            user = STORAGE.user.get_if_exists(author, as_obj=False)
+            if user is None:
+                authors[author] = None
+            else:
+                authors[author].update({
+                    "uname": user.get('uname', None),
+                    "name": user.get('name', None),
+                    "email": user.get('email', None)
+                })
+                avatar = STORAGE.user_avatar.get_if_exists(author, as_obj=False)
+                if avatar is not None:
+                    authors[author].update({"avatar": avatar})
 
-        authors = dict([author, parse_author(STORAGE.user.get(author), STORAGE.user_avatar.get(author))]
-                       for author in authors)
-
+        authors = {author: authors[author] for author in authors if authors[author] is not None}
         return make_api_response({"authors": authors, "comments": comments})
     except (ValueError, DataStoreException) as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
@@ -263,20 +275,30 @@ def add_comment(sha256, **kwargs):
     }
     """
     data = request.json
+    user = kwargs['user']
 
     # Get the comment from the data block
     text = data.get('text', None)
-    if not text:
-        return make_api_response({"success": False}, err="Text field is required", status_code=400)
+    if not isinstance(text, str):
+        return make_api_response({"success": False}, err="Invalid text property", status_code=400)
 
     # Create the new comment
-    new_comment = {'uname': kwargs['user']['uname'], 'text': text, 'cid': get_random_id(), 'date': now_as_iso()}
+    new_comment = {
+        'cid': get_random_id(),
+        'date': now_as_iso(),
+        'text': text,
+        'uname': user['uname'],
+        'reactions': []
+    }
 
     while True:
         # Get the current file data
         file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
         if not file_obj:
-            return make_api_response({}, "The file was not found in the system.", 404)
+            return make_api_response({"success": False}, "The file was not found in the system.", 404)
+
+        if not Classification.is_accessible(user['classification'], file_obj['classification']):
+            return make_api_response({"success": False}, "You are not allowed to add a comment to this file...", 403)
 
         # Add the comment to the file
         try:
@@ -287,6 +309,8 @@ def add_comment(sha256, **kwargs):
         except VersionConflictException as vce:
             LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
 
+    q = CommsQueue('file_comments', private=True)
+    q.publish({'sha256': sha256})
     return make_api_response(new_comment)
 
 
@@ -312,36 +336,116 @@ def update_comment(sha256, cid, **kwargs):
     /api/v4/file/comment/123456...654321/123...321/
 
     Result example: => Comment has been successfully updated
-    { "success": True }
+    {
+        "success": True
+    }
     """
     data = request.json
+
     text = data.get('text', None)
-    if not text:
-        return make_api_response({"success": False}, err="Text field is required", status_code=400)
+    if not isinstance(text, str):
+        return make_api_response({"success": False}, err="Invalid text property", status_code=400)
 
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
-    if not file_obj:
-        return make_api_response({"success": False}, "The file was not found in the system.", 404)
+    while True:
+        try:
+            file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
+            if not file_obj:
+                return make_api_response({"success": False}, "The file was not found in the system.", 404)
 
-    comments = file_obj.get('comments', [])
-    prev_comment = next(filter(lambda c: c.get('cid', None) == cid, comments), None)
-    if (prev_comment is None):
-        return make_api_response({"success": False}, "The comment was not found within the file.", 404)
+            user = kwargs['user']
+            if not Classification.is_accessible(user['classification'], file_obj['classification']):
+                return make_api_response(
+                    {"success": False},
+                    "You are not allowed to modify a comment on this file...", 403)
 
-    user = kwargs['user']
-    if (prev_comment['uname'] != user['uname']):
-        return make_api_response({"success": False}, "Another user's comment cannot be updated.", 403)
+            file_obj.setdefault('comments', [])
+            index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
+            if index is None:
+                return make_api_response(
+                    {"success": False},
+                    f"No comment with an id of \"{cid}\" was found in this file", status_code=404)
 
-    try:
-        next_comment = Comment(prev_comment).as_primitives()
-        next_comment['text'] = text
-        update_data = [(STORAGE.file.UPDATE_MODIFY, 'comments', {'prev': prev_comment, 'next': next_comment})]
-        STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
-        STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
-    except DataStoreException as e:
-        return make_api_response({"success": False}, err=str(e), status_code=400)
+            if (file_obj['comments'][index]['uname'] != user['uname']):
+                return make_api_response({"success": False}, "Another user's comment cannot be updated.", 403)
 
+            file_obj['comments'][index].update({'text': text})
+            STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
+            break
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
+
+        except DataStoreException as e:
+            return make_api_response({"success": False}, err=str(e), status_code=400)
+
+    q = CommsQueue('file_comments', private=True)
+    q.publish({'sha256': sha256})
     return make_api_response({"success": True})
+
+
+@archive_api.route("/reaction/<sha256>/<cid>/<icon>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+def toggle_reaction(sha256, cid, icon, **kwargs):
+    """
+    Add or remove a reaction made on a comment to a given file
+
+    Variables:
+    sha256      => A resource locator for the file (sha256)
+    cid         => A resource locator for the comment (cid)
+    icon        => Type of reaction made (icon)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/reaction/123456...654321/123456...654321/like/
+
+    Result example:
+    {
+        "success": true
+    }
+    """
+    while True:
+        try:
+            if icon not in REACTIONS_TYPES:
+                return make_api_response({"success": False}, err="Invalid text property", status_code=400)
+
+            file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
+            if not file_obj:
+                return make_api_response({"success": False}, "The file was not found in the system.", status_code=404)
+
+            user = kwargs['user']
+            if not Classification.is_accessible(user['classification'], file_obj['classification']):
+                return make_api_response("", "You are not allowed to make a reaction to this file...", 403)
+
+            file_obj.setdefault('comments', [])
+            c_index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
+            if c_index is None:
+                return make_api_response(
+                    {"success": False},
+                    f"No comment with an id of \"{cid}\" was found in this file", status_code=404)
+
+            r_index = next((i for i, r in enumerate(file_obj['comments'][c_index]['reactions']) if r.get(
+                'uname', None) == user['uname'] and r.get('icon', None) == icon), None)
+
+            if r_index is None:
+                file_obj['comments'][c_index]['reactions'].append({'uname': user['uname'], 'icon': icon})
+            else:
+                file_obj['comments'][c_index]['reactions'].pop(r_index)
+
+            STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
+            break
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying saving reactions due to version conflict: {str(vce)}")
+
+        except DataStoreException as e:
+            return make_api_response({"success": False}, err=str(e), status_code=400)
+
+    q = CommsQueue('file_comments', private=True)
+    q.publish({'sha256': sha256})
+    return make_api_response(file_obj['comments'][c_index]['reactions'])
 
 
 @archive_api.route("/comment/<sha256>/<cid>/", methods=["DELETE"])
@@ -351,8 +455,8 @@ def delete_comment(sha256, cid, **kwargs):
     Delete the comment <cid> in a given file
 
     Variables:
-    sha256       => A resource locator for the file (sha256)
-    cid          => ID of the comment
+    sha256          => A resource locator for the file (sha256)
+    cid             => ID of the comment
 
     Arguments:
     None
@@ -363,29 +467,50 @@ def delete_comment(sha256, cid, **kwargs):
     API call example:
     /api/v4/file/comment/123456...654321/123...321/
 
-    Result example:
-    {"success": True}   # Has the comment been successfully deleted
+    Result example: => Comment has been successfully deleted
+    {
+        "success": True
+    }
     """
-    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
-    if not file_obj:
-        return make_api_response({"success": False}, "The file was not found in the system.", 404)
+    data = request.json
 
-    comments = file_obj.get('comments', [])
-    comment = next((comment for comment in comments if comment.get("cid", None) == cid), None)
-    if (comment is None):
-        return make_api_response({"success": False}, "The comment was not found within the file.", 404)
+    # Get the comment from the data block
+    text = data.get('text', None)
+    if not isinstance(text, str):
+        return make_api_response({"success": False}, err="Invalid text property", status_code=400)
 
-    user = kwargs['user']
-    if (comment['uname'] != user['uname']):
-        return make_api_response({"success": False}, "Another user's comment cannot be deleted.", 403)
+    while True:
+        try:
+            # Get the current file data
+            file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
+            if not file_obj:
+                return make_api_response({"success": False}, "The file was not found in the system.", 404)
 
-    try:
-        update_data = [(STORAGE.file.UPDATE_REMOVE, 'comments', comment)]
-        STORAGE.file.update(sha256, update_data, index_type=Index.HOT)
-        STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
-    except DataStoreException as e:
-        return make_api_response({"success": False}, err=str(e), status_code=400)
+            user = kwargs['user']
+            if not Classification.is_accessible(user['classification'], file_obj['classification']):
+                return make_api_response(
+                    {"success": False},
+                    "You are not allowed to modify a comment on this file...", 403)
 
+            file_obj.setdefault('comments', [])
+            index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
+            if index is None:
+                return make_api_response({"success": False}, "The comment was not found within the file.", 404)
+
+            if (file_obj['comments'][index]['uname'] != user['uname']):
+                return make_api_response({"success": False}, "Another user's comment cannot be deleted.", 403)
+
+            file_obj['comments'].pop(index)
+            STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
+            break
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
+
+        except DataStoreException as e:
+            return make_api_response({"success": False}, err=str(e), status_code=400)
+
+    q = CommsQueue('file_comments', private=True)
+    q.publish({'sha256': sha256})
     return make_api_response({"success": True})
 
 
