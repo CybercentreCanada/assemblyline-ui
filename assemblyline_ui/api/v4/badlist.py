@@ -281,13 +281,26 @@ def add_update_many_hashes(**_):
     for hash_data in data:
         # Set a classification if None
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
+        hash_data.setdefault('hashes', {})
+
         if hash_data['type'] == 'tag':
+            tag_data = hash_data.get('tag', None)
+            if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
+                return make_api_response(None, f"Invalid or missing tag data. ({hash_data})", 400)
+
+            hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
+            hash_data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
+            hash_data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
+            hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
             hash_data.pop('file', None)
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
+        else:
+            return make_api_response("", f"Invalid hash type: {hash_data['type']}", 400)
 
         # Find the hash used for the key
-        key = hash_data['hashes'].get('sha256', hash_data['hashes'].get('sha1', hash_data['hashes'].get('md5', None)))
+        hashes = hash_data.get('hashes', {})
+        key = hashes.get('sha256', hashes.get('sha1', hashes.get('md5', None)))
         if not key:
             return make_api_response("", f"Invalid hash block: {str(hash_data)}", 400)
 
@@ -302,7 +315,7 @@ def add_update_many_hashes(**_):
     plan = STORAGE.badlist.get_bulk_plan()
     for key, val in new_data.items():
         # Use maximum classification
-        old_val = old_data.get(key, {'classification': CLASSIFICATION.UNRESTRICTED,
+        old_val = old_data.get(key, {'classification': CLASSIFICATION.UNRESTRICTED, 'attribution': {},
                                      'hashes': {}, 'sources': [], 'type': val['type']})
 
         # Add upsert operation
