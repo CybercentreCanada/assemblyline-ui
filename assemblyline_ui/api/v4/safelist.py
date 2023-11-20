@@ -268,18 +268,37 @@ def add_update_many_hashes(**_):
     for hash_data in data:
         # Set a classification if None
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
+        hash_data.setdefault('hashes', {})
+
         if hash_data['type'] == 'tag':
+            tag_data = hash_data.get('tag', None)
+            if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
+                return make_api_response(None, "Tag data not found", 400)
+
+            hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
+            hash_data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
+            hash_data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
+            hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
             hash_data.pop('file', None)
             hash_data.pop('signature', None)
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
             hash_data.pop('signature', None)
         elif hash_data['type'] == 'signature':
+            sig_data = hash_data.get('signature', None)
+            if sig_data is None or 'name' not in sig_data:
+                return make_api_response(None, "Signature data not found", 400)
+
+            hashed_value = f"signature: {sig_data['name']}".encode('utf8')
+            hash_data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
+            hash_data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
+            hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
             hash_data.pop('tag', None)
             hash_data.pop('file', None)
 
         # Find the hash used for the key
-        key = hash_data['hashes'].get('sha256', hash_data['hashes'].get('sha1', hash_data['hashes'].get('md5', None)))
+        hashes = hash_data.get('hashes', {})
+        key = hashes.get('sha256', hashes.get('sha1', hashes.get('md5', None)))
         if not key:
             return make_api_response("", f"Invalid hash block: {str(hash_data)}", 400)
 
