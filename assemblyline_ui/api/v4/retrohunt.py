@@ -42,7 +42,6 @@ def get_job_details(code: str, user, fl=None):
 
     # If the datastore document is finished, there no need to get the latest information.
     if not doc.get('finished', None):
-        status: typing.Optional[hauntedhouse.SearchStatus] = None
         status = dict(haunted_house_client.search_status_sync(code=code, access=user['classification']))
 
         # If the retrohunt job is finished, update the datastore to the latest values
