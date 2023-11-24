@@ -90,6 +90,10 @@ def test_safelist_add_file(datastore, login_session):
     # Test dates
     added = ds_sl.pop('added', None)
     updated = ds_sl.pop('updated', None)
+
+    # File item will live forever
+    assert ds_sl.pop('expiry_ts', None) is None
+
     assert added == updated
     assert added is not None and updated is not None
 
@@ -140,6 +144,10 @@ def test_safelist_add_tag(datastore, login_session):
     # Test dates
     added = ds_sl.pop('added', None)
     updated = ds_sl.pop('updated', None)
+
+    # Tag item will live up to a certain date
+    assert ds_sl.pop('expiry_ts', None) is not None
+
     assert added == updated
     assert added is not None and updated is not None
 
@@ -188,6 +196,10 @@ def test_safelist_add_signature(datastore, login_session):
     # Test dates
     added = ds_sl.pop('added', None)
     updated = ds_sl.pop('updated', None)
+
+    # Signature item will live forever
+    assert ds_sl.pop('expiry_ts', None) is None
+
     assert added == updated
     assert added is not None and updated is not None
 
@@ -251,7 +263,7 @@ def test_safelist_update(datastore, login_session):
 
     # Test rest
     assert {k: v for k, v in ds_sl.items()
-            if k not in ['added', 'updated', 'classification', 'enabled', 'tag', 'signature']} == sl_data
+            if k not in ['added', 'updated', 'expiry_ts', 'classification', 'enabled', 'tag', 'signature']} == sl_data
 
     u_data = {
         'classification': cl_eng.RESTRICTED,
