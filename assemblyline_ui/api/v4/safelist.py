@@ -6,7 +6,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, STORAGE
+from assemblyline_ui.config import CLASSIFICATION, STORAGE, DEFAULT_SAFELIST_TAG_EXPIRY
 
 SUB_API = 'safelist'
 safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -142,6 +142,9 @@ def add_or_update_hash(**kwargs):
         data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
         data.pop('file', None)
         data.pop('signature', None)
+
+        # Ensure expiry_ts is set on tag-related items
+        data['expiry_ts'] = data.get('expiry_ts', now_as_iso(DEFAULT_SAFELIST_TAG_EXPIRY))
 
     elif data['type'] == 'signature':
         sig_data = data.get('signature', None)
@@ -281,6 +284,8 @@ def add_update_many_hashes(**_):
             hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
             hash_data.pop('file', None)
             hash_data.pop('signature', None)
+            # Ensure expiry_ts is set on tag-related items
+            hash_data['expiry_ts'] = hash_data.get('expiry_ts', now_as_iso(DEFAULT_SAFELIST_TAG_EXPIRY))
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
             hash_data.pop('signature', None)
