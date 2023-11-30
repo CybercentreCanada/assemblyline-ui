@@ -28,7 +28,12 @@ def datastore(request, datastore_connection, filestore):
 
     test_alert = random_model_obj(Alert)
     test_alert.sid = test_submission.sid
-    test_alert.file.sha256 = test_submission.files[0].sha256
+    # Assign a file that actually has a related ontology file
+    file_sha256 = ds.result.search("response.supplementary.name:*.ontology", rows=1, fl="id",
+                                   key_space=test_submission.results, as_obj=False)['items'][0]['id'][:64]
+
+    test_submission.files[0].sha256 = file_sha256
+    test_alert.file.sha256 = file_sha256
     ds.alert.save(test_alert.alert_id, test_alert)
     ds.alert.commit()
 
