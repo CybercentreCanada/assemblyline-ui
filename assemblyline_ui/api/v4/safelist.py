@@ -87,6 +87,7 @@ def add_or_update_hash(**kwargs):
     {
      "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
      "enabled": true,              # Is the safe hash enabled or not
+     "dtl": 0,                     # Days to live for the safelist item (0: forever)
      "file": {                     # Information about the file  - Only used in file mode
        "name": ["file.txt"]            # Possible names for the file
        "size": 12345,                  # Size of the file
@@ -229,6 +230,7 @@ def add_update_many_hashes(**_):
      {
       "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
       "enabled": true,              # Is the safe hash enabled or not
+      "dtl": 0,                     # Days to live for the safelist item (0: forever)
       "file": {                     # Information about the file  - Only used in file mode
         "name": ["file.txt"]            # Possible names for the file
         "size": 12345,                  # Size of the file

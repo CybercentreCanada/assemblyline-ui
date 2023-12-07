@@ -98,6 +98,7 @@ def add_or_update_hash(**kwargs):
     {
      "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
      "enabled": true,              # Is the bad hash enabled or not
+     "dtl": 0,                     # Days to live for the badlist item (0: forever)
      "attribution": {              # Attributions associated to the hash  (Optional section)
         "actor": [...],                 # Associated actors
         "campaign": [...],              # Associated campaign
@@ -234,6 +235,7 @@ def add_update_many_hashes(**_):
      {
       "classification": "TLP:C",    # Classification of the bad hash (Computed for the mix of sources) - Optional
       "enabled": true,              # Is the bad hash enabled or not
+      "dtl": 0,                     # Days to live for the badlist item (0: forever)
       "attribution": {              # Attributions associated to the hash  (Optional section)
         "actor": [...],                 # Associated actors
         "campaign": [...],              # Associated campaign
