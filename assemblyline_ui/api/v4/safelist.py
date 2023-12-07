@@ -27,7 +27,7 @@ def _merge_safe_hashes(new, old):
         old['classification'] = CLASSIFICATION.max_classification(old['classification'], new['classification'])
 
         # Update updated time
-        old['updated'] = now_as_iso()
+        old['updated'] = new.get('updated', now_as_iso())
 
         # Update hashes
         old['hashes'].update(new['hashes'])
@@ -68,6 +68,7 @@ def _merge_safe_hashes(new, old):
                     if reason not in old_src['reason']:
                         old_src['reason'].append(reason)
         old['sources'] = old_src_map.values()
+        old['expiry_ts'] = new.get('expiry_ts', None)
         return old
     except Exception as e:
         raise InvalidSafehash(f"Invalid data provided: {str(e)}")
@@ -131,6 +132,7 @@ def add_or_update_hash(**kwargs):
     # Set defaults
     data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
     data.setdefault('hashes', {})
+    data.setdefault('expiry_ts', None)
     if data['type'] == 'tag':
         tag_data = data.get('tag', None)
         if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
@@ -142,10 +144,6 @@ def add_or_update_hash(**kwargs):
         data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
         data.pop('file', None)
         data.pop('signature', None)
-
-        # Ensure expiry_ts is set on tag-related items
-        data['expiry_ts'] = data.get('expiry_ts', now_as_iso(DEFAULT_SAFELIST_TAG_EXPIRY)
-                                     if DEFAULT_SAFELIST_TAG_EXPIRY else None)
 
     elif data['type'] == 'signature':
         sig_data = data.get('signature', None)
@@ -164,6 +162,12 @@ def add_or_update_hash(**kwargs):
         data.pop('signature', None)
         data.setdefault('file', {})
 
+    # Ensure expiry_ts is set on tag-related items
+    dtl = data.pop('dtl', None) or DEFAULT_SAFELIST_TAG_EXPIRY
+    if dtl:
+        data['expiry_ts'] = now_as_iso(dtl)
+
+    # Set last updated
     data['added'] = data['updated'] = now_as_iso()
 
     # Find the best hash to use for the key
@@ -273,6 +277,7 @@ def add_update_many_hashes(**_):
         # Set a classification if None
         hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
         hash_data.setdefault('hashes', {})
+        hash_data.setdefault('expiry_ts', None)
 
         if hash_data['type'] == 'tag':
             tag_data = hash_data.get('tag', None)
@@ -285,8 +290,6 @@ def add_update_many_hashes(**_):
             hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
             hash_data.pop('file', None)
             hash_data.pop('signature', None)
-            # Ensure expiry_ts is set on tag-related items
-            hash_data['expiry_ts'] = hash_data.get('expiry_ts', now_as_iso(DEFAULT_SAFELIST_TAG_EXPIRY))
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
             hash_data.pop('signature', None)
@@ -301,6 +304,14 @@ def add_update_many_hashes(**_):
             hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
             hash_data.pop('tag', None)
             hash_data.pop('file', None)
+
+        # Ensure expiry_ts is set on tag-related items
+        dtl = hash_data.pop('dtl', None) or DEFAULT_SAFELIST_TAG_EXPIRY
+        if dtl:
+            hash_data['expiry_ts'] = now_as_iso(dtl)
+
+        # Set last updated
+        hash_data['added'] = hash_data['updated'] = now_as_iso()
 
         # Find the hash used for the key
         hashes = hash_data.get('hashes', {})
