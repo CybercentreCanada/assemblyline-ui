@@ -144,7 +144,8 @@ def add_or_update_hash(**kwargs):
         data.pop('signature', None)
 
         # Ensure expiry_ts is set on tag-related items
-        data['expiry_ts'] = data.get('expiry_ts', now_as_iso(DEFAULT_SAFELIST_TAG_EXPIRY))
+        data['expiry_ts'] = data.get('expiry_ts', now_as_iso(DEFAULT_SAFELIST_TAG_EXPIRY)
+                                     if DEFAULT_SAFELIST_TAG_EXPIRY else None)
 
     elif data['type'] == 'signature':
         sig_data = data.get('signature', None)

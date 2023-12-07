@@ -162,7 +162,8 @@ def add_or_update_hash(**kwargs):
         data.pop('file', None)
 
         # Ensure expiry_ts is set on tag-related items
-        data['expiry_ts'] = data.get('expiry_ts', now_as_iso(DEFAULT_BADLIST_TAG_EXPIRY))
+        data['expiry_ts'] = data.get('expiry_ts', now_as_iso(DEFAULT_BADLIST_TAG_EXPIRY)
+                                     if DEFAULT_BADLIST_TAG_EXPIRY else None)
 
     elif data['type'] == 'file':
         data.pop('tag', None)
