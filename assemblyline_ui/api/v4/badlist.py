@@ -1,16 +1,20 @@
 
 import hashlib
+import re
+from assemblyline.datastore.exceptions import VersionConflictException
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, STORAGE, DEFAULT_BADLIST_TAG_EXPIRY
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, DEFAULT_BADLIST_TAG_EXPIRY
 
 SUB_API = 'badlist'
 badlist_api = make_subapi_blueprint(SUB_API, api_version=4)
 badlist_api._doc = "Perform operations on badlisted hashes"
+
+ATTRIBUTION_TYPES = ['actor', 'campaign', 'category', 'exploit', 'implant', 'family', 'network']
 
 
 class InvalidBadhash(Exception):
@@ -571,7 +575,7 @@ def find_similar_ssdeep(qhash, **kwargs):
 
 @badlist_api.route("/enable/<qhash>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
-def set_hash_status(qhash, **kwargs):
+def set_hash_status(qhash):
     """
     Set the enabled status of a hash
 
@@ -587,17 +591,139 @@ def set_hash_status(qhash, **kwargs):
     Result example:
     {"success": True}
     """
-    user = kwargs['user']
     data = request.json
 
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
 
-    if ROLES.administration in user['roles'] or ROLES.signature_manage in user['roles']:
-        return make_api_response({'success': STORAGE.badlist.update(
-            qhash, [(STORAGE.badlist.UPDATE_SET, 'enabled', data)])})
+    return make_api_response({'success': STORAGE.badlist.update(
+        qhash, [(STORAGE.badlist.UPDATE_SET, 'enabled', data)])})
 
-    return make_api_response({}, "You are not allowed to change the status", 403)
+
+@badlist_api.route("/expiry/<qhash>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
+def set_expiry(qhash, **_):
+    """
+    Change the expiry date of a hash
+
+    Variables:
+    qhash       => Hash to change the expiry date
+
+    Arguments:
+    None
+
+    Data Block:
+    "2023-12-07T20:22:54.569242Z"
+
+    Result example:
+    {"success": True}
+    """
+    expiry = request.json
+
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    if not re.match(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z', expiry):
+        return make_api_response(
+            None, "Invalid date format, must match ISO9660 format (0000-00-00T00:00:00.000000Z)", 400)
+
+    return make_api_response({'success': STORAGE.badlist.update(
+        qhash, [(STORAGE.badlist.UPDATE_SET, 'expiry_ts', expiry)])})
+
+
+@badlist_api.route("/attribution/<qhash>/<attrib_type>/<value>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
+def add_attribution(qhash, attrib_type, value, **_):
+    """
+    Add an attribution to the coresponding hash
+
+    Variables:
+    qhash       => Hash to change
+    attrib_type => Type of attribution to add
+    value       => Value to add
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True}
+    """
+
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    if attrib_type not in ATTRIBUTION_TYPES:
+        return make_api_response(None, f"Invalid attribution type, must in : {ATTRIBUTION_TYPES}", 400)
+
+    while True:
+        current_badlist, version = STORAGE.badlist.get_if_exists(qhash, as_obj=False, version=True)
+        if not current_badlist:
+            return make_api_response({}, "The badlist item your are trying to modify does not exists", 404)
+
+        if current_badlist.get('attribution', None) is None:
+            current_badlist['attribution'] = {attrib_type: [value]}
+        elif current_badlist['attribution'].get(attrib_type, None) is None:
+            current_badlist['attribution'][attrib_type] = [value]
+        else:
+            current_badlist['attribution'][attrib_type].append(value)
+            current_badlist['attribution'][attrib_type] = list(set(current_badlist['attribution'][attrib_type]))
+
+        try:
+            return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
+
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying save or freshen due to version conflict: {str(vce)}")
+
+
+@badlist_api.route("/attribution/<qhash>/<attrib_type>/<value>/", methods=["DELETE"])
+@api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
+def remove_attribution(qhash, attrib_type, value, **_):
+    """
+    Delete an attribution to the coresponding hash
+
+    Variables:
+    qhash       => Hash to change
+    attrib_type => Type of attribution to delete
+    value       => Value to delete
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True}
+    """
+
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    if attrib_type not in ATTRIBUTION_TYPES:
+        return make_api_response(None, f"Invalid attribution type, must in : {ATTRIBUTION_TYPES}", 400)
+
+    while True:
+        current_badlist, version = STORAGE.badlist.get_if_exists(qhash, as_obj=False, version=True)
+        if not current_badlist:
+            return make_api_response({}, "The badlist ietm your are trying to modify does not exists", 404)
+
+        if 'attribution' not in current_badlist:
+            return make_api_response({'success': False})
+
+        if attrib_type not in current_badlist['attribution']:
+            return make_api_response({'success': False})
+
+        current = set(current_badlist['attribution'][attrib_type])
+        current_badlist['attribution'][attrib_type] = list(current.difference({value}))
+
+        try:
+            return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
+
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying save or freshen due to version conflict: {str(vce)}")
 
 
 @badlist_api.route("/<qhash>/", methods=["DELETE"])
