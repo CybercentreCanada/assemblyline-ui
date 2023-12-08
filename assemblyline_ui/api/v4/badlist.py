@@ -23,8 +23,8 @@ def _merge_bad_hashes(new, old):
         if new['type'] != old['type']:
             raise InvalidBadhash(f"Bad hash type mismatch: {new['type']} != {old['type']}")
 
-        # Use max classification
-        old['classification'] = CLASSIFICATION.max_classification(old['classification'], new['classification'])
+        # Use the new classification but we will recompute it later anyway
+        old['classification'] = new['classification']
 
         # Update updated time
         old['updated'] = new.get('updated', now_as_iso())
@@ -78,6 +78,7 @@ def _merge_bad_hashes(new, old):
                 for reason in src['reason']:
                     if reason not in old_src['reason']:
                         old_src['reason'].append(reason)
+                old_src['classification'] = src['classification']
         old['sources'] = old_src_map.values()
         old['expiry_ts'] = new.get('expiry_ts', None)
         return old
@@ -150,7 +151,7 @@ def add_or_update_hash(**kwargs):
     user = kwargs['user']
 
     # Set defaults
-    data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
+    data['classification'] = CLASSIFICATION.UNRESTRICTED
     data.setdefault('hashes', {})
     data.setdefault('expiry_ts', None)
     if data['type'] == 'tag':
