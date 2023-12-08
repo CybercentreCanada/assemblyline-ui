@@ -35,7 +35,7 @@ def _merge_bad_hashes(new, old):
         # Merge attributions
         if not old['attribution']:
             old['attribution'] = new.get('attribution', None)
-        elif new['attribution']:
+        elif new.get('attribution', None):
             for key in ["actor", 'campaign', 'category', 'exploit', 'implant', 'family', 'network']:
                 old_value = old['attribution'].get(key, []) or []
                 new_value = new['attribution'].get(key, []) or []
