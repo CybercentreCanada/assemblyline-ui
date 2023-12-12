@@ -358,8 +358,9 @@ def login(**_):
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
         provider = oauth.create_client(oauth_provider)
 
+        redirect_uri = config.auth.oauth.providers.get(oauth_provider).redirect_uri
         if provider:
-            redirect_uri = f'https://{request.host}/oauth/{oauth_provider}/'
+            redirect_uri = redirect_uri or f'https://{request.host}/oauth/{oauth_provider}/'
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
