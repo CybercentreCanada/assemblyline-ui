@@ -65,6 +65,7 @@ SUBMISSION_TRAFFIC = CommsQueue('submissions', host=redis)
 REPLAY_ALERT_QUEUE = NamedQueue("replay_alert", host=redis)
 REPLAY_FILE_QUEUE = NamedQueue("replay_file", host=redis)
 REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
+REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 
 
 def get_token_store(key):
