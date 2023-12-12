@@ -69,9 +69,6 @@ def _merge_bad_hashes(new, old):
 
         old_src_map = {x['name']: x for x in old['sources']}
         for name, src in src_map.items():
-            old['classification'] = CLASSIFICATION.max_classification(
-                old['classification'], src.get('classification', None))
-
             if name not in old_src_map:
                 old_src_map[name] = src
             else:
@@ -83,7 +80,14 @@ def _merge_bad_hashes(new, old):
                     if reason not in old_src['reason']:
                         old_src['reason'].append(reason)
                 old_src['classification'] = src['classification']
-        old['sources'] = old_src_map.values()
+        old['sources'] = list(old_src_map.values())
+
+        # Calculate the new classification
+        for src in old['sources']:
+            old['classification'] = CLASSIFICATION.max_classification(
+                old['classification'], src.get('classification', None))
+
+        # Set the expiry
         old['expiry_ts'] = new.get('expiry_ts', None)
         return old
     except Exception as e:
