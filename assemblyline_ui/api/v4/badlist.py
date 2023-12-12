@@ -663,6 +663,10 @@ def remove_source(qhash, source, stype, **kwargs):
             return make_api_response(
                 None, "You are not allowed to remove sources from this badlist item", 403)
 
+        if len(current_badlist['sources']) == 1:
+            return make_api_response(
+                None, "You are not allowed to remove the last source from this badlist item", 403)
+
         found = -1
         max_classification = CLASSIFICATION.UNRESTRICTED
         for (src_id, src) in enumerate(current_badlist['sources']):
