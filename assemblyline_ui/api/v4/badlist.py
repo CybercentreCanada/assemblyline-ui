@@ -597,7 +597,10 @@ def set_hash_status(qhash, **_):
         return make_api_response(None, "Invalid hash length", 400)
 
     return make_api_response({'success': STORAGE.badlist.update(
-        qhash, [(STORAGE.badlist.UPDATE_SET, 'enabled', data)])})
+        qhash, [
+            (STORAGE.badlist.UPDATE_SET, 'enabled', data),
+            (STORAGE.badlist.UPDATE_SET, 'updated', now_as_iso()),
+        ])})
 
 
 @badlist_api.route("/expiry/<qhash>/", methods=["DELETE"])
@@ -622,7 +625,10 @@ def clear_expiry(qhash, **_):
         return make_api_response(None, "Invalid hash length", 400)
 
     return make_api_response({'success': STORAGE.badlist.update(
-        qhash, [(STORAGE.badlist.UPDATE_SET, 'expiry_ts', None)])})
+        qhash, [
+            (STORAGE.badlist.UPDATE_SET, 'expiry_ts', None),
+            (STORAGE.badlist.UPDATE_SET, 'updated', now_as_iso())
+        ])})
 
 
 @badlist_api.route("/source/<qhash>/<source>/<stype>/", methods=["DELETE"])
@@ -681,6 +687,7 @@ def remove_source(qhash, source, stype, **kwargs):
             return make_api_response({}, "The specified source does not exist in the specified badlist item", 404)
 
         current_badlist['sources'].pop(found)
+        current_badlist['updated'] = now_as_iso()
 
         try:
             return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
@@ -748,6 +755,7 @@ def set_classification(qhash, source, stype, **kwargs):
             return make_api_response({}, "The specified source does not exist in the specified badlist item", 404)
 
         current_badlist['classification'] = max_classification
+        current_badlist['updated'] = now_as_iso()
 
         try:
             return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
@@ -784,7 +792,10 @@ def set_expiry(qhash, **_):
             None, "Invalid date format, must match ISO9660 format (0000-00-00T00:00:00.000000Z)", 400)
 
     return make_api_response({'success': STORAGE.badlist.update(
-        qhash, [(STORAGE.badlist.UPDATE_SET, 'expiry_ts', expiry)])})
+        qhash, [
+            (STORAGE.badlist.UPDATE_SET, 'expiry_ts', expiry),
+            (STORAGE.badlist.UPDATE_SET, 'updated', now_as_iso())
+        ])})
 
 
 @badlist_api.route("/attribution/<qhash>/<attrib_type>/<value>/", methods=["PUT"])
@@ -827,6 +838,7 @@ def add_attribution(qhash, attrib_type, value, **_):
             current_badlist['attribution'][attrib_type].append(value)
             current_badlist['attribution'][attrib_type] = list(set(current_badlist['attribution'][attrib_type]))
 
+        current_badlist['updated'] = now_as_iso()
         try:
             return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
 
@@ -874,6 +886,7 @@ def remove_attribution(qhash, attrib_type, value, **_):
 
         current = set(current_badlist['attribution'][attrib_type])
         current_badlist['attribution'][attrib_type] = list(current.difference({value}))
+        current_badlist['updated'] = now_as_iso()
 
         try:
             return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
