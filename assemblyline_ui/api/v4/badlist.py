@@ -575,7 +575,7 @@ def find_similar_ssdeep(qhash, **kwargs):
 
 @badlist_api.route("/enable/<qhash>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
-def set_hash_status(qhash):
+def set_hash_status(qhash, **_):
     """
     Set the enabled status of a hash
 
@@ -598,6 +598,98 @@ def set_hash_status(qhash):
 
     return make_api_response({'success': STORAGE.badlist.update(
         qhash, [(STORAGE.badlist.UPDATE_SET, 'enabled', data)])})
+
+
+@badlist_api.route("/expiry/<qhash>/", methods=["DELETE"])
+@api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
+def clear_expiry(qhash, **_):
+    """
+    Clear the expiry date of a hash
+
+    Variables:
+    qhash       => Hash to clear the expiry date from
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True}
+    """
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    return make_api_response({'success': STORAGE.badlist.update(
+        qhash, [(STORAGE.badlist.UPDATE_SET, 'expiry_ts', None)])})
+
+
+@badlist_api.route("/classification/<qhash>/<source>/<stype>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
+def set_classification(qhash, source, stype, **kwargs):
+    """
+    Change the classification of a badlist item source
+
+    Variables:
+    qhash       => Hash to change the classification of
+    source      => Source to change the classification of
+    stype       => Type of source to change the classification of
+
+    Arguments:
+    None
+
+    Data Block:
+    "TLP:CLEAR"
+
+    Result example:
+    {"success": True}
+    """
+    classification = request.json
+    user = kwargs['user']
+
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    if not CLASSIFICATION.is_valid(classification):
+        return make_api_response(None, f"Classification {classification} is not valid.", 400)
+
+    if not CLASSIFICATION.is_accessible(user['classification'], classification):
+        return make_api_response(None, "You cannot set a classification that you don't have access to", 403)
+
+    if (source != user['uname'] or stype != 'user') and ROLES.administration not in user['roles']:
+        return make_api_response(
+            None, "You are not allowed to change the classification for this badlist item", 403)
+
+    while True:
+        current_badlist, version = STORAGE.badlist.get_if_exists(qhash, as_obj=False, version=True)
+        if not current_badlist:
+            return make_api_response({}, "The badlist item your are trying to modify does not exists", 404)
+
+        if not CLASSIFICATION.is_accessible(user['classification'], current_badlist['classification']):
+            return make_api_response(
+                None, "You are not allowed to change the classification for this badlist item", 403)
+
+        found = False
+        max_classification = classification
+        for src in current_badlist['sources']:
+            if src['name'] == source and src['type'] == stype:
+                found = True
+                src['classification'] = classification
+
+            max_classification = CLASSIFICATION.max_classification(
+                classification, src.get('classification', classification))
+
+        if not found:
+            return make_api_response({}, "The specified source does not exist in the specified badlist item", 404)
+
+        current_badlist['classification'] = max_classification
+
+        try:
+            return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
+
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying save or freshen due to version conflict: {str(vce)}")
 
 
 @badlist_api.route("/expiry/<qhash>/", methods=["PUT"])
