@@ -625,6 +625,66 @@ def clear_expiry(qhash, **_):
         qhash, [(STORAGE.badlist.UPDATE_SET, 'expiry_ts', None)])})
 
 
+@badlist_api.route("/source/<qhash>/<source>/<stype>/", methods=["DELETE"])
+@api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
+def remove_source(qhash, source, stype, **kwargs):
+    """
+    Remove a source from the specified badlist item
+
+    Variables:
+    qhash       => Hash to remove the source from
+    source      => Name of the source to remove
+    stype       => Type of source to remove
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {"success": True}
+    """
+    user = kwargs['user']
+
+    if len(qhash) not in [64, 40, 32]:
+        return make_api_response(None, "Invalid hash length", 400)
+
+    if (source != user['uname'] or stype != 'user') and ROLES.administration not in user['roles']:
+        return make_api_response(
+            None, "You are not allowed to remove this source from this badlist item", 403)
+
+    while True:
+        current_badlist, version = STORAGE.badlist.get_if_exists(qhash, as_obj=False, version=True)
+        if not current_badlist:
+            return make_api_response({}, "The badlist item your are trying to modify does not exists", 404)
+
+        if not CLASSIFICATION.is_accessible(user['classification'], current_badlist['classification']):
+            return make_api_response(
+                None, "You are not allowed to remove sources from this badlist item", 403)
+
+        found = -1
+        max_classification = CLASSIFICATION.UNRESTRICTED
+        for (src_id, src) in enumerate(current_badlist['sources']):
+            if src['name'] == source and src['type'] == stype:
+                found = src_id
+            else:
+                max_classification = CLASSIFICATION.max_classification(
+                    max_classification, src.get('classification', max_classification))
+        current_badlist['classification'] = max_classification
+
+        if found == -1:
+            return make_api_response({}, "The specified source does not exist in the specified badlist item", 404)
+
+        current_badlist['sources'].pop(found)
+
+        try:
+            return make_api_response({'success': STORAGE.badlist.save(qhash, current_badlist, version=version)})
+
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying save or freshen due to version conflict: {str(vce)}")
+
+
 @badlist_api.route("/classification/<qhash>/<source>/<stype>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.badlist_manage])
 def set_classification(qhash, source, stype, **kwargs):
@@ -678,7 +738,7 @@ def set_classification(qhash, source, stype, **kwargs):
                 src['classification'] = classification
 
             max_classification = CLASSIFICATION.max_classification(
-                classification, src.get('classification', classification))
+                max_classification, src.get('classification', max_classification))
 
         if not found:
             return make_api_response({}, "The specified source does not exist in the specified badlist item", 404)
