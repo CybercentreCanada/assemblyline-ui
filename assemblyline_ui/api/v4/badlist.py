@@ -151,7 +151,8 @@ def add_or_update_hash(**kwargs):
     Result example:
     {
      "success": true,         # Was the hash successfully added
-     "op": "add"              # Was it added to the system or updated
+     "op": "add",             # Was it added to the system or updated
+     "hash": "1234...4321"    # Hash that was used to store the badlist item
     }
     """
     # Load data
@@ -215,14 +216,14 @@ def add_or_update_hash(**kwargs):
             try:
                 # Save data to the DB
                 STORAGE.badlist.save(qhash, _merge_bad_hashes(data, old))
-                return make_api_response({'success': True, "op": "update"})
+                return make_api_response({'success': True, "op": "update", 'hash': qhash})
             except InvalidBadhash as e:
                 return make_api_response({}, str(e), 400)
         else:
             try:
                 data['sources'] = src_map.values()
                 STORAGE.badlist.save(qhash, data)
-                return make_api_response({'success': True, "op": "add"})
+                return make_api_response({'success': True, "op": "add", 'hash': qhash})
             except Exception as e:
                 return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
 
