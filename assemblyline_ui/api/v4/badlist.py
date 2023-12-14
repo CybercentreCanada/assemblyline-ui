@@ -192,7 +192,11 @@ def add_or_update_hash(**kwargs):
     data['added'] = data['updated'] = now_as_iso()
 
     # Find the best hash to use for the key
-    qhash = data['hashes'].get('sha256', data['hashes'].get('sha1', data['hashes'].get('md5', None)))
+    for hash_key in ['sha256', 'sha1', 'md5']:
+        qhash = data['hashes'].get(hash_key, None)
+        if qhash:
+            break
+
     # Validate hash length
     if not qhash:
         return make_api_response(None, "No valid hash found", 400)
@@ -344,7 +348,11 @@ def add_update_many_hashes(**_):
 
         # Find the hash used for the key
         hashes = hash_data.get('hashes', {})
-        key = hashes.get('sha256', hashes.get('sha1', hashes.get('md5', None)))
+        for hash_key in ['sha256', 'sha1', 'md5']:
+            key = hashes.get(hash_key, None)
+            if key:
+                break
+
         if not key:
             return make_api_response("", f"Invalid hash block: {str(hash_data)}", 400)
 
