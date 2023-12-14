@@ -34,7 +34,7 @@ def _merge_bad_hashes(new, old):
         old['updated'] = new.get('updated', now_as_iso())
 
         # Update hashes
-        old['hashes'].update(new['hashes'])
+        old['hashes'].update({k: v for k, v in new['hashes'] if v is not None})
 
         # Merge attributions
         if not old['attribution']:
@@ -58,7 +58,7 @@ def _merge_bad_hashes(new, old):
                         old['file']['name'].append(name)
             elif new_names:
                 old['file']['name'] = new_names
-            old['file'].update(new.get('file', {}))
+            old['file'].update({k: v for k, v in new.get('file', {}) if v is not None})
         elif old['type'] == 'tag':
             old['tag'] = new['tag']
 
@@ -164,15 +164,20 @@ def add_or_update_hash(**kwargs):
     data.setdefault('hashes', {})
     data.setdefault('expiry_ts', None)
     if data['type'] == 'tag':
+        # Remove file related fields
+        data.pop('file', None)
+        data.pop('hashes', None)
+
         tag_data = data.get('tag', None)
         if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
             return make_api_response(None, "Tag data not found", 400)
 
         hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
-        data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
-        data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
-        data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
-        data.pop('file', None)
+        data['hashes'] = {
+            'md5': hashlib.md5(hashed_value).hexdigest(),
+            'sha1': hashlib.sha1(hashed_value).hexdigest(),
+            'sha256': hashlib.sha256(hashed_value).hexdigest()
+        }
 
     elif data['type'] == 'file':
         data.pop('tag', None)
@@ -305,19 +310,26 @@ def add_update_many_hashes(**_):
         hash_data.setdefault('expiry_ts', None)
 
         if hash_data['type'] == 'tag':
+            # Remove file related fields
+            hash_data.pop('file', None)
+            hash_data.pop('hashes', None)
+
             tag_data = hash_data.get('tag', None)
             if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
                 return make_api_response(None, f"Invalid or missing tag data. ({hash_data})", 400)
 
             hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
-            hash_data['hashes']['md5'] = hashlib.md5(hashed_value).hexdigest()
-            hash_data['hashes']['sha1'] = hashlib.sha1(hashed_value).hexdigest()
-            hash_data['hashes']['sha256'] = hashlib.sha256(hashed_value).hexdigest()
-            hash_data.pop('file', None)
+            hashed_value['hashes'] = {
+                'md5': hashlib.md5(hashed_value).hexdigest(),
+                'sha1': hashlib.sha1(hashed_value).hexdigest(),
+                'sha256': hashlib.sha256(hashed_value).hexdigest()
+            }
+
             # Ensure expiry_ts is set on tag-related items
             hash_data['expiry_ts'] = hash_data.get('expiry_ts', now_as_iso(DEFAULT_BADLIST_TAG_EXPIRY))
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
+            hash_data.setdefault('file', {})
         else:
             return make_api_response("", f"Invalid hash type: {hash_data['type']}", 400)
 
