@@ -34,7 +34,7 @@ def _merge_bad_hashes(new, old):
         old['updated'] = new.get('updated', now_as_iso())
 
         # Update hashes
-        old['hashes'].update({k: v for k, v in new['hashes'] if v is not None})
+        old['hashes'].update({k: v for k, v in new['hashes'].items() if v})
 
         # Merge attributions
         if not old['attribution']:
@@ -58,7 +58,7 @@ def _merge_bad_hashes(new, old):
                         old['file']['name'].append(name)
             elif new_names:
                 old['file']['name'] = new_names
-            old['file'].update({k: v for k, v in new.get('file', {}) if v is not None})
+            old['file'].update({k: v for k, v in new.get('file', {}).items() if v})
         elif old['type'] == 'tag':
             old['tag'] = new['tag']
 
