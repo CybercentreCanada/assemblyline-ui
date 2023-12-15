@@ -124,6 +124,7 @@ def test_safelist_add_tag(datastore, login_session):
 
     # Generate a random safelist
     sl_data = {
+        'dtl': 15,
         'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
                    'sha1': hashlib.sha1(hashed_value).hexdigest(),
                    'sha256': hashlib.sha256(hashed_value).hexdigest()},
@@ -165,7 +166,8 @@ def test_safelist_add_tag(datastore, login_session):
     enabled = ds_sl.pop('enabled', None)
     assert enabled
 
-    # Test rest
+    # Test rest, dtl should not exist anymore
+    sl_data.pop('dtl', None)
     assert ds_sl == sl_data
 
 
