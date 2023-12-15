@@ -293,7 +293,7 @@ def get_ontology_for_file(sha256, **kwargs):
         return make_api_response("", f"Your are not allowed get ontology files for this hash: {sha256}", 403)
 
     # Generate the queries to get the results
-    query = f"id:{sha256}* AND response.supplementary.name:*.ontology"
+    query = f"sha256:{sha256} AND response.supplementary.description:ontology"
     filters = []
     if services:
         filters.append(" OR ".join([f'response.service_name:{service}' for service in services]))
