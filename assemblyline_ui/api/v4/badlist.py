@@ -323,7 +323,7 @@ def add_update_many_hashes(**_):
                 return make_api_response(None, f"Invalid or missing tag data. ({hash_data})", 400)
 
             hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
-            hashed_value['hashes'] = {
+            hash_data['hashes'] = {
                 'md5': hashlib.md5(hashed_value).hexdigest(),
                 'sha1': hashlib.sha1(hashed_value).hexdigest(),
                 'sha256': hashlib.sha256(hashed_value).hexdigest()
