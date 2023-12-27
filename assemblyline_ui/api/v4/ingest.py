@@ -19,7 +19,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received, refang_url
 from assemblyline_ui.helper.user import load_user_settings
 
 
@@ -186,6 +186,8 @@ def ingest_single_file(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
+            if url:
+                url = refang_url(url)
             name = url or safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
