@@ -1,5 +1,6 @@
 import json
 
+from concurrent.futures import as_completed
 from flask import request
 from io import StringIO
 
@@ -43,7 +44,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
         file_scores[r['sha256']] += r["result"]["score"]
 
     # Use a threadpool to get ontology files
-    with APMAwareThreadPoolExecutor(max_workers=10) as executor:
+    with APMAwareThreadPoolExecutor(max_workers=5) as executor:
         # Start downloading all ontology files
         ontology_futures = []
         for r in results:
@@ -52,7 +53,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
                     ontology_futures.append(executor.submit(get_file_data, supp, user))
 
         # Process each ontology results
-        for future in ontology_futures:
+        for future in as_completed(ontology_futures):
             try:
                 # Get the result from the file download
                 ontology_data = future.result()
