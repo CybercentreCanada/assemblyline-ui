@@ -44,7 +44,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
         file_scores[r['sha256']] += r["result"]["score"]
 
     # Use a threadpool to get ontology files
-    with APMAwareThreadPoolExecutor(max_workers=5) as executor:
+    with APMAwareThreadPoolExecutor(max_workers=10) as executor:
         # Start downloading all ontology files
         ontology_futures = []
         for r in results:
