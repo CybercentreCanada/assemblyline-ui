@@ -1,11 +1,9 @@
 import json
 
-from concurrent.futures import as_completed
 from flask import request
 from io import StringIO
 
 from assemblyline.common.dict_utils import recursive_update
-from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
@@ -14,23 +12,6 @@ from assemblyline_ui.config import ARCHIVESTORE, STORAGE, LOGGER, FILESTORE, CLA
 SUB_API = 'ontology'
 ontology_api = make_subapi_blueprint(SUB_API, api_version=4)
 ontology_api._doc = "Download ontology results from the system"
-
-
-def get_file_data(supp, user):
-    # get ontology data
-    ontology_data = FILESTORE.get(supp['sha256'])
-    # Try to download from archive
-    if not ontology_data and \
-            ARCHIVESTORE is not None and \
-            ARCHIVESTORE != FILESTORE and \
-            ROLES.archive_download in user['roles']:
-        ontology_data = ARCHIVESTORE.get(supp['sha256'])
-
-    if not ontology_data:
-        # Could not download the ontology supplementary file
-        LOGGER.warning(f"Ontology file was not found filestores: {supp['name']} [{supp['sha256']}]")
-
-    return ontology_data
 
 
 def generate_ontology_file(results, user, updates={}, fnames={}):
@@ -43,53 +24,54 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
         file_scores.setdefault(r['sha256'], 0)
         file_scores[r['sha256']] += r["result"]["score"]
 
-    # Use a threadpool to get ontology files
-    with APMAwareThreadPoolExecutor(max_workers=10) as executor:
-        # Start downloading all ontology files
-        ontology_futures = []
-        for r in results:
-            for supp in r.get('response', {}).get('supplementary', {}):
-                if supp['name'].endswith('.ontology'):
-                    ontology_futures.append(executor.submit(get_file_data, supp, user))
+    # Start downloading all ontology files
+    for r in results:
+        for supp in r.get('response', {}).get('supplementary', {}):
+            if supp['name'].endswith('.ontology'):
 
-        # Process each ontology results
-        for future in as_completed(ontology_futures):
-            try:
-                # Get the result from the file download
-                ontology_data = future.result()
+                # get ontology data
+                ontology_data = FILESTORE.get(supp['sha256'])
+                # Try to download from archive
+                if not ontology_data and \
+                        ARCHIVESTORE is not None and \
+                        ARCHIVESTORE != FILESTORE and \
+                        ROLES.archive_download in user['roles']:
+                    ontology_data = ARCHIVESTORE.get(supp['sha256'])
 
                 if not ontology_data:
-                    # If the result is none, the ontology file did not exist anymore
+                    # Could not download the ontology supplementary file
+                    LOGGER.warning(f"Ontology file was not found filestores: {supp['name']} [{supp['sha256']}]")
                     continue
 
-                # Parse the ontology file
-                ontology = json.loads(ontology_data)
-                sha256 = ontology['file']['sha256']
-                c12n = ontology['classification']
-                if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
-                    # Recursively update the ontology with the live values
-                    ontology = recursive_update(ontology, updates)
+                try:
+                    # Parse the ontology file
+                    ontology = json.loads(ontology_data)
+                    sha256 = ontology['file']['sha256']
+                    c12n = ontology['classification']
+                    if sha256 == r['sha256'] and Classification.is_accessible(user['classification'], c12n):
+                        # Recursively update the ontology with the live values
+                        ontology = recursive_update(ontology, updates)
 
-                    # Set filenames if any
-                    if sha256 in fnames:
-                        ontology['file']['names'] = fnames[sha256]
-                    elif 'names' in ontology['file']:
-                        del ontology['file']['names']
+                        # Set filenames if any
+                        if sha256 in fnames:
+                            ontology['file']['names'] = fnames[sha256]
+                        elif 'names' in ontology['file']:
+                            del ontology['file']['names']
 
-                    # Make sure parent is not equal to current hash
-                    if 'parent' in ontology['file'] and ontology['file']['parent'] == sha256:
-                        del ontology['file']['parent']
+                        # Make sure parent is not equal to current hash
+                        if 'parent' in ontology['file'] and ontology['file']['parent'] == sha256:
+                            del ontology['file']['parent']
 
-                    # Ensure SHA256 is set in final output
-                    ontology['file']['sha256'] = sha256
+                        # Ensure SHA256 is set in final output
+                        ontology['file']['sha256'] = sha256
 
-                    # Aggregated file score related to the results
-                    ontology.setdefault('results', {})
-                    ontology['results']['score'] = file_scores[sha256]
+                        # Aggregated file score related to the results
+                        ontology.setdefault('results', {})
+                        ontology['results']['score'] = file_scores[sha256]
 
-                    sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
-            except Exception as e:
-                LOGGER.warning(f"An error occured while fetching parsing files: {str(e)}")
+                        sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
+                except Exception as e:
+                    LOGGER.warning(f"An error occured while fetching parsing files: {str(e)}")
 
     # Flush and reset buffer
     sio.flush()
