@@ -303,8 +303,11 @@ def get_ontology_for_file(sha256, **kwargs):
 
     # Get the result keys
     if all:
-        keys = [x['id'] for x in STORAGE.result.stream_search(query, fl="id", filters=filters,
-                                                              access_control=user["access_control"], as_obj=False)]
+        keys = [
+            x['id']
+            for x in STORAGE.result.stream_search(
+                query, fl="id", filters=filters, access_control=user["access_control"],
+                as_obj=False, item_buffer_size=1000)]
     else:
         service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id', filters=filters,
                                                      group_sort="created desc", access_control=user["access_control"],

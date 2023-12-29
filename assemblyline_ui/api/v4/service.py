@@ -93,7 +93,8 @@ def get_service_stats(service_name, version=None, max_docs=500):
     # Get default heuristic set
     heuristics = {
         h['heur_id']: 0
-        for h in STORAGE.heuristic.stream_search(f'heur_id:{service_name.upper()}.*', fl='heur_id', as_obj=False)}
+        for h in STORAGE.heuristic.stream_search(
+            f'heur_id:{service_name.upper()}.*', fl='heur_id', as_obj=False, item_buffer_size=1000)}
 
     # Get error type distribution
     errors = {k: 0 for k in ERROR_TYPES.keys()}
@@ -299,7 +300,8 @@ def add_service(**_):
         service = Service(service)
 
         # Ensure service classification is at a minimum the default_result_classification
-        service.classification = Classification.max_classification(service.classification, service.default_result_classification)
+        service.classification = Classification.max_classification(
+            service.classification, service.default_result_classification)
 
         # Fix service version, we don't want to see stable if it's a stable container
         service.version = service.version.replace("stable", "")
@@ -379,13 +381,14 @@ def backup(**_):
     """
     services = {'type': 'backup', 'server': config.ui.fqdn, 'data': {}}
 
-    for service in STORAGE.service_delta.stream_search("*:*", fl="id", as_obj=False):
+    for service in STORAGE.service_delta.stream_search("*:*", fl="id", as_obj=False, item_buffer_size=1000):
         name = service['id']
         service_output = {
             'config': STORAGE.service_delta.get(name, as_obj=False),
             'versions': {}
         }
-        for service_version in STORAGE.service.stream_search(f"name:{name}", fl="id", as_obj=False):
+        for service_version in STORAGE.service.stream_search(
+                f"name:{name}", fl="id", as_obj=False, item_buffer_size=1000):
             version_id = service_version['id']
             service_output['versions'][version_id] = STORAGE.service.get(version_id, as_obj=False)
 
