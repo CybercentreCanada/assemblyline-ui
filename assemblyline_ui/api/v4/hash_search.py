@@ -8,6 +8,7 @@ from flask import request
 from requests import Session
 
 from assemblyline.common.importing import load_module_by_path
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm import base
 from assemblyline.datasource.common import hash_type
@@ -235,7 +236,7 @@ def search_hash(file_hash, *args, **kwargs):
     ]
 
     total_sources = len(ext) + len(db_list)
-    with concurrent.futures.ThreadPoolExecutor(min(total_sources + 1, os.cpu_count() + 4)) as executor:
+    with APMAwareThreadPoolExecutor(min(total_sources + 1, os.cpu_count() + 4)) as executor:
         # create searches for external sources
         future_searches = {
             executor.submit(

@@ -176,7 +176,7 @@ def add_update_many_signature(**_):
     skip_list = []
     if dedup_name:
         for item in STORAGE.signature.stream_search(f"type: \"{sig_type}\" AND source:\"{source}\"",
-                                                    fl="id,name", as_obj=False):
+                                                    fl="id,name", as_obj=False, item_buffer_size=1000):
             lookup_id = names_map.get(item['name'], None)
             if lookup_id and lookup_id != item['id']:
                 skip_list.append(lookup_id)
@@ -534,7 +534,8 @@ def download_signatures(**kwargs):
 
             signature_list = sorted(
                 STORAGE.signature.stream_search(
-                    query, fl="signature_id,type,source,data,order", access_control=access, as_obj=False),
+                    query, fl="signature_id,type,source,data,order", access_control=access, as_obj=False,
+                    item_buffer_size=1000),
                 key=lambda x: x['order'])
 
             for sig in signature_list:
