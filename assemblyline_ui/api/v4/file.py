@@ -10,8 +10,8 @@ from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENC
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
-from assemblyline.common.str_utils import safe_str
 from assemblyline.common.threading import APMAwareThreadPoolExecutor
+from assemblyline.common.str_utils import safe_str
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
