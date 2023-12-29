@@ -1,5 +1,4 @@
 import base64
-import concurrent.futures
 import os
 import re
 import subprocess
@@ -12,6 +11,7 @@ from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
@@ -620,7 +620,7 @@ def get_file_results(sha256, **kwargs):
             "signatures": set()
         }
 
-        with concurrent.futures.ThreadPoolExecutor(4) as executor:
+        with APMAwareThreadPoolExecutor(4) as executor:
             res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
             res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
             res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
