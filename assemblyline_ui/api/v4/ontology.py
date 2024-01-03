@@ -71,7 +71,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
-                    LOGGER.warning(f"An error occured while fetching parsing files: {str(e)}")
+                    LOGGER.warning(f"An error occured while parsing ontology files: {str(e)}")
 
     # Flush and reset buffer
     sio.flush()
