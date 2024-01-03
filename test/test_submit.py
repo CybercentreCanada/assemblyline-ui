@@ -104,6 +104,25 @@ def test_submit_url(datastore, login_session, scheduler):
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
+# noinspection PyUnusedLocal
+def test_submit_defanged_url(datastore, login_session, scheduler):
+    _, session, host = login_session
+
+    sq.delete()
+    data = {
+        'url': 'hxxps://raw[.]githubusercontent[.]com/CybercentreCanada/assemblyline-ui/master/README[.]md',
+        'name': 'README.md',
+        'metadata': {'test': 'test_submit_url'}
+    }
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['sid'], str)
+    for f in resp['files']:
+        # The name is overwritten for URIs
+        assert f['name'] == 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md'
+
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    assert msg.submission.sid == resp['sid']
+
 
 # noinspection PyUnusedLocal
 def test_submit_binary(datastore, login_session, scheduler):
