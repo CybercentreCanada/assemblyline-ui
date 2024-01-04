@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import elasticapm
 import ldap
 import logging
 import re
@@ -266,6 +267,7 @@ def get_attribute(ldap_login_info, key, safe=True):
     return None
 
 
+@elasticapm.capture_span(span_type='validate_ldapuser')
 def validate_ldapuser(username, password, storage):
     if config.auth.ldap.enabled and username and password:
         ldap_obj = BasicLDAPWrapper(config.auth.ldap)

@@ -1,14 +1,16 @@
-from assemblyline.odm.models.user import load_roles_form_acls
+import elasticapm
 import jwt
 import requests
 
 from copy import copy
 
+from assemblyline.odm.models.user import load_roles_form_acls
 from assemblyline_ui.config import config, get_token_store, STORAGE
 from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
+@elasticapm.capture_span(span_type='validate_oauth_token_id')
 def validate_oauth_id(username, oauth_token_id):
     # This function identifies the user via a saved oauth_token_id in redis
     if config.auth.oauth.enabled and oauth_token_id:
@@ -20,6 +22,7 @@ def validate_oauth_id(username, oauth_token_id):
     return None
 
 
+@elasticapm.capture_span(span_type='validate_oauth_token')
 def validate_oauth_token(oauth_token, oauth_provider):
     # This function identifies the user via an externally provided oauth token
     if config.auth.oauth.enabled and oauth_token and oauth_provider:
