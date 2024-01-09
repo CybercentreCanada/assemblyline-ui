@@ -1,10 +1,11 @@
 
 import hashlib
 import re
-from assemblyline.datastore.exceptions import VersionConflictException
+
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
