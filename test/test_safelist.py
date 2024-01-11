@@ -6,7 +6,7 @@ import random
 import pytest
 
 from assemblyline.common.forge import get_classification
-from assemblyline.common.isotime import iso_to_epoch
+from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.odm.random_data import create_users, create_safelists, wipe_users, wipe_safelist
 from assemblyline.odm.randomizer import get_random_hash
 from assemblyline_ui.config import CLASSIFICATION
@@ -16,6 +16,7 @@ add_hash_file = "10" + get_random_hash(62)
 add_error_hash = "11" + get_random_hash(62)
 update_hash = "12" + get_random_hash(62)
 update_conflict_hash = "13" + get_random_hash(62)
+source_hash = "14" + get_random_hash(62)
 
 NSRL_SOURCE = {
     "classification": CLASSIFICATION.UNRESTRICTED,
@@ -50,6 +51,14 @@ USER_SOURCE = {
         "I just feel like it!",
     ],
     "type": "user"}
+
+CLASSIFIED_SOURCE = {
+    "classification": CLASSIFICATION.RESTRICTED,
+    "name": "Classified",
+    "reason": [
+        "This is a classified reason"
+    ],
+    "type": "external"}
 
 
 @pytest.fixture(scope="module")
@@ -268,9 +277,8 @@ def test_safelist_update(datastore, login_session):
             if k not in ['added', 'updated', 'expiry_ts', 'classification', 'enabled', 'tag', 'signature']} == sl_data
 
     u_data = {
-        'classification': cl_eng.RESTRICTED,
         'hashes': {'sha256': update_hash},
-        'sources': [NSRL2_SOURCE],
+        'sources': [CLASSIFIED_SOURCE],
         'type': 'file'
     }
 
@@ -286,7 +294,7 @@ def test_safelist_update(datastore, login_session):
     assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_sl['updated'])
     assert ds_u['classification'] == cl_eng.RESTRICTED
     assert len(ds_u['sources']) == 2
-    assert NSRL2_SOURCE in ds_u['sources']
+    assert CLASSIFIED_SOURCE in ds_u['sources']
     assert NSRL_SOURCE in ds_u['sources']
 
 
@@ -339,3 +347,62 @@ def test_safelist_missing(datastore, login_session):
         get_api_data(session, f"{host}/api/v4/safelist/{missing_hash}/")
 
     assert 'not found' in missing_exc.value.args[0]
+
+
+def test_safelist_delete_hash(datastore, login_session):
+    _, session, host = login_session
+
+    hash = random.choice(datastore.safelist.search("*", fl="id", rows=100, as_obj=False)['items'])['id']
+
+    resp = get_api_data(session, f"{host}/api/v4/safelist/{hash}/", method="DELETE")
+    assert resp['success']
+
+    assert datastore.safelist.get_if_exists(hash) is None
+
+
+def test_safelist_expiry(datastore, login_session):
+    _, session, host = login_session
+
+    hash = random.choice(datastore.safelist.search("*", fl="id", rows=100, as_obj=False)['items'])['id']
+
+    new_expiry = now_as_iso()
+
+    resp = get_api_data(session, f"{host}/api/v4/safelist/expiry/{hash}/", method="PUT", data=json.dumps(new_expiry))
+    assert resp['success']
+
+    assert new_expiry[:26] == datastore.safelist.get_if_exists(hash, as_obj=False)['expiry_ts'][:26]
+
+    resp = get_api_data(session, f"{host}/api/v4/safelist/expiry/{hash}/", method="DELETE")
+    assert resp['success']
+
+    assert datastore.safelist.get_if_exists(hash, as_obj=False)['expiry_ts'] is None
+
+
+def test_safelist_source_remove(datastore, login_session):
+    _, session, host = login_session
+
+    # Generate a random safelist
+    sl_data = {
+        'hashes': {
+            'md5': get_random_hash(32),
+            'sha1': get_random_hash(40),
+            'sha256': source_hash
+        },
+        'file': {'name': ['test.txt'],
+                 'size': random.randint(128, 4096),
+                 'type': 'document/text'},
+        'sources': [NSRL_SOURCE, NSRL2_SOURCE],
+        'type': 'file'
+    }
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/safelist/", method="PUT", data=json.dumps(sl_data))
+    assert resp['success']
+    assert resp['op'] == 'add'
+
+    assert NSRL2_SOURCE in datastore.safelist.get_if_exists(source_hash, as_obj=False)['sources']
+
+    resp = get_api_data(session, f"{host}/api/v4/safelist/source/{source_hash}/NSRL2/external/", method="DELETE")
+    assert resp['success']
+
+    assert NSRL2_SOURCE not in datastore.safelist.get_if_exists(source_hash, as_obj=False)['sources']
