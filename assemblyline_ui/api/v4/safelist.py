@@ -66,7 +66,7 @@ def _merge_safe_hashes(new, old):
                 for reason in src['reason']:
                     if reason not in old_src['reason']:
                         old_src['reason'].append(reason)
-                old_src['classification'] = src['classification']
+                old_src['classification'] = src.get('classification', old_src['classification'])
         old['sources'] = list(old_src_map.values())
 
         # Calculate the new classification
@@ -448,6 +448,116 @@ def check_hash_exists(qhash, **kwargs):
     """
     if len(qhash) not in [64, 40, 32]:
         return make_api_response(None, "Invalid hash length", 400)
+
+    safelist = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
+    if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
+        return make_api_response(safelist)
+
+    return make_api_response(None, "The hash was not found in the safelist.", 404)
+
+
+@safelist_api.route("/signature/<signature_name>/", methods=["GET"])
+@api_login(require_role=[ROLES.safelist_view])
+def check_signature_exists(signature_name, **kwargs):
+    """
+    Check if a signature exists in the safelist.
+
+    Variables:
+    signature_name      => Value of the tag to search for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    GET /api/v1/safelist/network.static.ip/1.1.1.1/
+
+    Result example:
+    {
+     "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+     "enabled": true,              # Is the safe hash enabled or not
+     "hashes": {                   # Information about the safe hash
+       "md5": "123...321",             # MD5 hash of the safe hash
+       "sha1": "1234...4321",          # SHA1 hash of the safe hash
+       "sha256": "12345....54321",     # SHA256 of the safe hash
+     "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
+       {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
+        "name": "NSRL",                # Name of external source or user who safelisted it - Required
+        "reason": [                    # List of reasons why the source is safelisted - Required
+          "Found as test.txt on default windows 10 CD",
+          "Found as install.txt on default windows XP CD"
+        ],
+        "type": "external"},           # Type or source (external or user) - Required
+       {"classification": "TLP:C",
+        "name": "admin",
+        "reason": ["We've seen this file many times and it leads to False positives"],
+        "type": "user"}
+     ],
+     "signature": {                 # Signature information
+         "name": "network.url",       # Name of the signature
+     },
+     "type": "signature"                # Type of safelist hash
+    }
+    """
+    qhash = hashlib.sha256(f"signature: {signature_name}".encode('utf8')).hexdigest()
+
+    safelist = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
+    if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
+        return make_api_response(safelist)
+
+    return make_api_response(None, "The hash was not found in the safelist.", 404)
+
+
+@safelist_api.route("/<tag_type>/<tag_value>/", methods=["GET"])
+@api_login(require_role=[ROLES.safelist_view])
+def check_tag_exists(tag_type, tag_value, **kwargs):
+    """
+    Check if a tag exists in the safelist.
+
+    Variables:
+    tag_type       => Type of tag to search for
+    tag_value      => Value of the tag to search for
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    GET /api/v1/safelist/network.static.ip/1.1.1.1/
+
+    Result example:
+    {
+     "classification": "TLP:C",    # Classification of the safe hash (Computed for the mix of sources) - Optional
+     "enabled": true,              # Is the safe hash enabled or not
+     "hashes": {                   # Information about the safe hash
+       "md5": "123...321",             # MD5 hash of the safe hash
+       "sha1": "1234...4321",          # SHA1 hash of the safe hash
+       "sha256": "12345....54321",     # SHA256 of the safe hash
+     "sources": [                  # List of sources for why the file is safelisted, dedupped on name - Required
+       {"classification": "TLP:C",     # Classification of the source (default: TLP:C) - Optional
+        "name": "NSRL",                # Name of external source or user who safelisted it - Required
+        "reason": [                    # List of reasons why the source is safelisted - Required
+          "Found as test.txt on default windows 10 CD",
+          "Found as install.txt on default windows XP CD"
+        ],
+        "type": "external"},           # Type or source (external or user) - Required
+       {"classification": "TLP:C",
+        "name": "admin",
+        "reason": ["We've seen this file many times and it leads to False positives"],
+        "type": "user"}
+     ],
+     "tag": {                     # Tag information  - Only used in tag mode
+         "type": "network.url",       # Type of tag
+         "value": "google.ca"         # Value of the tag
+     },
+     "type": "tag"                # Type of safelist hash (tag or file)
+    }
+    """
+    qhash = hashlib.sha256(f"{tag_type}: {tag_value}".encode('utf8')).hexdigest()
 
     safelist = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
     if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
