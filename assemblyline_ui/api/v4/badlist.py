@@ -1,6 +1,7 @@
 
 import hashlib
 import re
+from urllib.parse import unquote
 
 from flask import request
 
@@ -503,7 +504,7 @@ def check_tag_exists(tag_type, tag_value, **kwargs):
      "type": "tag"                # Type of badlist hash (tag or file)
     }
     """
-    qhash = hashlib.sha256(f"{tag_type}: {tag_value}".encode('utf8')).hexdigest()
+    qhash = hashlib.sha256(f"{tag_type}: {unquote(tag_value)}".encode('utf8')).hexdigest()
 
     badlist = STORAGE.badlist.get_if_exists(qhash, as_obj=False)
     if badlist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], badlist['classification']):

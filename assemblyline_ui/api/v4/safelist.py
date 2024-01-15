@@ -1,6 +1,7 @@
 
 import hashlib
 import re
+from urllib.parse import unquote
 
 from flask import request
 
@@ -501,7 +502,7 @@ def check_signature_exists(signature_name, **kwargs):
      "type": "signature"                # Type of safelist hash
     }
     """
-    qhash = hashlib.sha256(f"signature: {signature_name}".encode('utf8')).hexdigest()
+    qhash = hashlib.sha256(f"signature: {unquote(signature_name)}".encode('utf8')).hexdigest()
 
     safelist = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
     if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
@@ -557,7 +558,7 @@ def check_tag_exists(tag_type, tag_value, **kwargs):
      "type": "tag"                # Type of safelist hash (tag or file)
     }
     """
-    qhash = hashlib.sha256(f"{tag_type}: {tag_value}".encode('utf8')).hexdigest()
+    qhash = hashlib.sha256(f"{tag_type}: {unquote(tag_value)}".encode('utf8')).hexdigest()
 
     safelist = STORAGE.safelist.get_if_exists(qhash, as_obj=False)
     if safelist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], safelist['classification']):
