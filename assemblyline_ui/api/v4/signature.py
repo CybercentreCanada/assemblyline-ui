@@ -748,7 +748,8 @@ def update_signature_source(service, name, **_):
 
     new_sources = []
     found = False
-    classification_changed = uri_changed = False
+    classification_changed = False
+    uri_changed = False
     for source in current_sources:
         if data['name'] == source['name']:
             new_sources.append(data)
