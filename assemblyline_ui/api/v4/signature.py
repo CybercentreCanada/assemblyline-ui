@@ -750,11 +750,13 @@ def update_signature_source(service, name, **_):
     new_sources = []
     found = False
     classification_changed = False
+    uri_changed = False
     for source in current_sources:
         if data['name'] == source['name']:
             new_sources.append(data)
             found = True
             classification_changed = data['default_classification'] != source['default_classification']
+            uri_changed = data['uri'] != source['uri']
         else:
             new_sources.append(source)
 
@@ -775,6 +777,15 @@ def update_signature_source(service, name, **_):
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm),
                                                       ("SET", "last_modified", now_as_iso())])
+
+    # Has the URI changed?
+    if uri_changed:
+        # If so, we need to clear the caching value and trigger an update
+        service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
+                            config.core.redis.persistent.port)
+        service_updates.set(key=f'{data["name"]}.update_time', value=0)
+        service_updates.set(key=f'{data["name"]}.status',
+                            value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
 
     # Save the signature
     success = STORAGE.service_delta.save(service, service_delta)
