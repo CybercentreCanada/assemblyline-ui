@@ -1,6 +1,7 @@
 import time
 from assemblyline.datastore.collection import Index
 from assemblyline_core.dispatching.client import DispatchClient
+from assemblyline_ui.helper.ai import AiApiException, get_ai_summarized_report
 
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -11,6 +12,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
+import yaml
 
 SUB_API = 'submission'
 submission_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -482,7 +484,40 @@ def get_submission(sid, **kwargs):
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
 
-# noinspection PyTypeChecker,PyUnresolvedReferences
+@submission_api.route("/ai/<sid>/", methods=["GET"])
+@api_login(require_role=[ROLES.submission_view])
+def get_ai_summary(sid, **kwargs):
+    """
+    Have an AI LLM summarize the AssemblyLine output in plain english.
+
+    Variables:
+    sid         => Submission ID to summarize
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    < THE AI SUMMARY IN MARKDOWN FORMAT >
+
+    """
+    user = kwargs['user']
+    data = STORAGE.get_ai_formatted_submission_data(
+        sid, user_classification=user['classification'],
+        cl_engine=Classification)
+    if data is None:
+        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+
+    try:
+        # TODO: Caching maybe?
+        ai_summary = get_ai_summarized_report(data)
+        return make_api_response(ai_summary)
+    except AiApiException as e:
+        return make_api_response("", f"AI Backend is unresponsive: {e}")
+
+
 @submission_api.route("/summary/<sid>/", methods=["GET"])
 @api_login(require_role=[ROLES.submission_view])
 def get_summary(sid, **kwargs):
