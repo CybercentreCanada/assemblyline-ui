@@ -21,12 +21,6 @@ def _call_ai_backend(data, system_message, action):
     }
     data.update(config.ui.ai.options)
 
-    # Show request to AI Backend in debug mode
-    if config.ui.debug:
-        LOGGER.info(config.ui.ai.chat_url)
-        LOGGER.info(config.ui.ai.headers)
-        LOGGER.info(data)
-
     try:
         # Call API
         resp = requests.post(config.ui.ai.chat_url, headers=config.ui.ai.headers, json=data)
