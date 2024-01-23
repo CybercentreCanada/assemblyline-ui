@@ -17,7 +17,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
-from assemblyline_ui.helper.ai import AiApiException, summarize_code_snippet as ai_code
+from assemblyline_ui.helper.ai import AiApiException, summarize_code_snippet as ai_code, summarized_al_submission
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.datastore.collection import Index
@@ -37,7 +37,8 @@ def list_file_active_keys(sha256, access_control=None, index_type=None):
     query = f"id:{sha256}*"
 
     item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name,result.score",
-                                                         access_control=access_control, as_obj=False, index_type=index_type)]
+                                                         access_control=access_control, as_obj=False,
+                                                         index_type=index_type)]
 
     item_list.sort(key=lambda k: k["created"], reverse=True)
 
@@ -303,6 +304,42 @@ def delete_file_from_filestore(sha256, **kwargs):
         return make_api_response({"success": True})
     else:
         return make_api_response({}, "You are not allowed to delete this file from the filestore.", 403)
+
+
+@file_api.route("/ai/<sha256>/", methods=["GET"])
+@api_login(require_role=[ROLES.file_detail])
+def summarized_results(sha256, **kwargs):
+    """
+    Summarize AL results with AI for the given sha256
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/ai/123456...654321/
+
+    Result example:
+    <AI summary of the AL results>
+    """
+    user = kwargs['user']
+    data = STORAGE.get_ai_formatted_file_results_data(
+        sha256, user_classification=user['classification'],
+        user_access_control=user['access_control'], cl_engine=Classification)
+    if data is None:
+        return make_api_response("", "The file was not found in the system.", 404)
+
+    try:
+        # TODO: Caching maybe?
+        ai_summary = summarized_al_submission(data)
+        return make_api_response(ai_summary)
+    except AiApiException as e:
+        return make_api_response("", f"AI Backend is unresponsive: {e}")
 
 
 @file_api.route("/code_summary/<sha256>/", methods=["GET"])
@@ -698,9 +735,10 @@ def get_file_results(sha256, **kwargs):
         }
 
         with APMAwareThreadPoolExecutor(4) as executor:
-            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"], index_type=index_type)
-            res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
-            res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
+            res_ac = executor.submit(STORAGE.list_file_active_keys, sha256,
+                                     user["access_control"], index_type=index_type)
+            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"])
+            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"])
             res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,
                                        config.ui.statistics.submission, user["access_control"])
 
