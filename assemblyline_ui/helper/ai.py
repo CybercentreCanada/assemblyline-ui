@@ -1,3 +1,4 @@
+from assemblyline.common.str_utils import safe_str
 import requests
 import yaml
 
@@ -34,7 +35,13 @@ def _call_ai_backend(data, system_message, action):
         LOGGER.warning(message)
         raise AiApiException(message)
 
-    return resp.json()
+    # Get AI responses
+    responses = resp.json().get('choices', [])
+    if responses:
+        content = responses[0].get('message', {}).get('content', None)
+        return content or None
+
+    return None
 
 
 def summarized_al_submission(report):
@@ -42,4 +49,4 @@ def summarized_al_submission(report):
 
 
 def summarize_code_snippet(code):
-    return _call_ai_backend(code, config.ui.ai.code_system_message, "summarize code snippet")
+    return _call_ai_backend(safe_str(code), config.ui.ai.code_system_message, "summarize code snippet")
