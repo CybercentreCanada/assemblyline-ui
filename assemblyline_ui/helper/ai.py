@@ -31,7 +31,7 @@ def _call_ai_backend(data, system_message, action):
         # Call API
         resp = requests.post(config.ui.ai.chat_url, headers=config.ui.ai.headers, json=data)
     except Exception as e:
-        message = f"An exception occured while trying to {action} with AI on server ({config.ui.ai.chat_url}). [{e}]"
+        message = f"An exception occured while trying to {action} with AI on server {config.ui.ai.chat_url}. [{e}]"
         LOGGER.warning(message)
         raise AiApiException(message)
 
