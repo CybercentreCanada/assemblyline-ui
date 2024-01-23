@@ -17,6 +17,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
+from assemblyline_ui.helper.ai import AiApiException, summarize_code_snippet as ai_code
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.datastore.collection import Index
@@ -302,6 +303,70 @@ def delete_file_from_filestore(sha256, **kwargs):
         return make_api_response({"success": True})
     else:
         return make_api_response({}, "You are not allowed to delete this file from the filestore.", 403)
+
+
+@file_api.route("/code_summary/<sha256>/", methods=["GET"])
+@api_login(require_role=[ROLES.file_detail])
+def summarize_code_snippet(sha256, **kwargs):
+    """
+    Summarize with AI the code at the given sha256
+    If the file is not a code snippet, returns a 406 error code.
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/code_summary/123456...654321/
+
+    Result example:
+    <AI summary of the code snippet>
+    """
+    user = kwargs['user']
+    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
+    if not file_obj['type'].startswith("code/"):
+        return make_api_response({}, "This is not code, you cannot summarize it.", 406)
+
+    # TODO: We should calculate the tokens here
+    # if file_obj['size'] > API_MAX_SIZE:
+    #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
+
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+        try:
+            data = FILESTORE.get(sha256)
+        except FileStoreException:
+            data = None
+
+        # Try to download from archive
+        if not data and \
+                ARCHIVESTORE is not None and \
+                ARCHIVESTORE != FILESTORE and \
+                ROLES.archive_download in user['roles']:
+            try:
+                data = ARCHIVESTORE.get(sha256)
+            except FileStoreException:
+                data = None
+
+        if not data:
+            return make_api_response({}, "The file was not found in the system.", 404)
+
+        try:
+            # TODO: Caching maybe?
+            ai_summary = ai_code(data)
+            return make_api_response(ai_summary)
+        except AiApiException as e:
+            return make_api_response("", f"AI Backend is unresponsive: {e}")
+    else:
+        return make_api_response({}, "You are not allowed to view this file.", 403)
 
 
 @file_api.route("/hex/<sha256>/", methods=["GET"])
