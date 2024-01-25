@@ -1,8 +1,11 @@
+import elasticapm
+
 from assemblyline_ui.config import config
 from assemblyline.common.security import verify_password
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
+@elasticapm.capture_span(span_type='validate_userpass')
 def validate_userpass(username, password, storage):
     # This function uses the internal authenticator to identify the user
     # You can overload this to pass username/password to an LDAP server for exemple

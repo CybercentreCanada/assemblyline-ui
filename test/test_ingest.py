@@ -88,6 +88,29 @@ def test_ingest_url(datastore, login_session):
 
     msg = Submission(iq.pop(blocking=False))
     assert msg.metadata['ingest_id'] == resp['ingest_id']
+    for f in msg['files']:
+        # The name is overwritten for URIs
+        assert f['name'] == 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md'
+
+# noinspection PyUnusedLocal
+def test_ingest_defanged_url(datastore, login_session):
+    _, session, host = login_session
+
+    iq.delete()
+    data = {
+        'url': 'hxxps://raw[.]githubusercontent[.]com/CybercentreCanada/assemblyline-ui/master/README[.]md',
+        'name': 'README.md',
+        'metadata': {'test': 'ingest_url'},
+        'notification_queue': TEST_QUEUE
+    }
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['ingest_id'], str)
+
+    msg = Submission(iq.pop(blocking=False))
+    assert msg.metadata['ingest_id'] == resp['ingest_id']
+    for f in msg['files']:
+        # The name is overwritten for URIs
+        assert f['name'] == 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md'
 
 
 # noinspection PyUnusedLocal

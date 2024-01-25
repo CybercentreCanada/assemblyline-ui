@@ -1,9 +1,8 @@
 
-import concurrent.futures
-
 from flask import request
 
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.alert import Event as AlertEvent
 from assemblyline.odm.models.user import ROLES
@@ -65,7 +64,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
 
     try:
         if isinstance(fields, list):
-            with concurrent.futures.ThreadPoolExecutor(len(fields)) as executor:
+            with APMAwareThreadPoolExecutor(len(fields)) as executor:
                 res = {field: executor.submit(STORAGE.alert.facet,
                                               field,
                                               query=query,

@@ -17,7 +17,7 @@ retrohunt_api._doc = "Run yara signatures over all files."
 SECONDS_PER_DAY = 24 * 60 * 60
 
 haunted_house_client = None
-if config.retrohunt:
+if config.retrohunt.enabled:
     haunted_house_client = hauntedhouse.Client(
         address=config.retrohunt.url,
         api_key=config.retrohunt.api_key,
