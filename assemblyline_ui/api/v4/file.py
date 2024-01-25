@@ -327,6 +327,9 @@ def summarized_results(sha256, **kwargs):
     Result example:
     <AI summary of the AL results>
     """
+    if not config.ui.ai.enabled:
+        return make_api_response({}, "AI Support is disabled on this system.", 400)
+
     user = kwargs['user']
     data = STORAGE.get_ai_formatted_file_results_data(
         sha256, user_classification=user['classification'],
@@ -364,6 +367,9 @@ def summarize_code_snippet(sha256, **kwargs):
     Result example:
     <AI summary of the code snippet>
     """
+    if not config.ui.ai.enabled:
+        return make_api_response({}, "AI Support is disabled on this system.", 400)
+
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 

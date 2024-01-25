@@ -503,6 +503,9 @@ def get_ai_summary(sid, **kwargs):
     < THE AI SUMMARY IN MARKDOWN FORMAT >
 
     """
+    if not config.ui.ai.enabled:
+        return make_api_response({}, "AI Support is disabled on this system.", 400)
+
     user = kwargs['user']
     data = STORAGE.get_ai_formatted_submission_data(
         sid, user_classification=user['classification'],
