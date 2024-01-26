@@ -1,4 +1,5 @@
 from assemblyline.common.str_utils import safe_str
+from assemblyline.odm.models.config import AIQueryParams
 import requests
 import yaml
 
@@ -9,18 +10,18 @@ class AiApiException(Exception):
     pass
 
 
-def _call_ai_backend(data, system_message, action):
+def _call_ai_backend(data, params: AIQueryParams, action):
     # Build chat completions request
     data = {
-        "max_tokens": config.ui.ai.max_tokens,
+        "max_tokens": params.max_tokens,
         "messages": [
-            {"role": "system", "content": system_message},
+            {"role": "system", "content": params.system_message},
             {"role": "user", "content": data},
         ],
         "model": config.ui.ai.model_name,
         "stream": False
     }
-    data.update(config.ui.ai.options)
+    data.update(params.options)
 
     try:
         # Call API
@@ -46,9 +47,14 @@ def _call_ai_backend(data, system_message, action):
     return None
 
 
+def detailed_al_submission(report):
+    return _call_ai_backend(yaml.dump(report),
+                            config.ui.ai.detailed_report, "create detailed analysis of the AL report")
+
+
 def summarized_al_submission(report):
-    return _call_ai_backend(yaml.dump(report), config.ui.ai.report_system_message, "summarize the AL report")
+    return _call_ai_backend(yaml.dump(report), config.ui.ai.executive_summary, "summarize the AL report")
 
 
 def summarize_code_snippet(code):
-    return _call_ai_backend(safe_str(code), config.ui.ai.code_system_message, "summarize code snippet")
+    return _call_ai_backend(safe_str(code), config.ui.ai.code, "summarize code snippet")
