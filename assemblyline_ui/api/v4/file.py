@@ -342,7 +342,7 @@ def summarized_results(sha256, **kwargs):
         ai_summary = summarized_al_submission(data)
         return make_api_response(ai_summary)
     except AiApiException as e:
-        return make_api_response("", f"AI Backend is unresponsive: {e}")
+        return make_api_response("", str(e), 400)
 
 
 @file_api.route("/code_summary/<sha256>/", methods=["GET"])
@@ -407,7 +407,7 @@ def summarize_code_snippet(sha256, **kwargs):
             ai_summary = ai_code(data)
             return make_api_response(ai_summary)
         except AiApiException as e:
-            return make_api_response("", f"AI Backend is unresponsive: {e}")
+            return make_api_response("", str(e), 400)
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 

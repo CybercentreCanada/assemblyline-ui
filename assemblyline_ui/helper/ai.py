@@ -31,7 +31,9 @@ def _call_ai_backend(data, system_message, action):
         raise AiApiException(message)
 
     if not resp.ok:
-        message = f"The AI API denied the request to {action} with the following message: {resp.json()}"
+        msg_data = resp.json()
+        msg = msg_data.get('error', {}).get('message', None) or msg_data
+        message = f"The AI API denied the request to {action} with the following message: {msg}"
         LOGGER.warning(message)
         raise AiApiException(message)
 

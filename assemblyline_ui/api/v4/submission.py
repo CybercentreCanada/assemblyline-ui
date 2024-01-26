@@ -518,7 +518,7 @@ def get_ai_summary(sid, **kwargs):
         ai_summary = summarized_al_submission(data)
         return make_api_response(ai_summary)
     except AiApiException as e:
-        return make_api_response("", f"AI Backend is unresponsive: {e}")
+        return make_api_response("", str(e), 400)
 
 
 @submission_api.route("/summary/<sid>/", methods=["GET"])
