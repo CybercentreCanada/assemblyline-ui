@@ -17,7 +17,8 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
-from assemblyline_ui.helper.ai import AiApiException, summarize_code_snippet as ai_code, summarized_al_submission
+from assemblyline_ui.helper.ai import APIException, EmptyAIResponse, \
+    summarize_code_snippet as ai_code, summarized_al_submission
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.datastore.collection import Index
@@ -325,7 +326,10 @@ def summarized_results(sha256, **kwargs):
     /api/v4/file/ai/123456...654321/
 
     Result example:
-    <AI summary of the AL results>
+    {
+      "content": <AI summary of the AL results>,
+      "truncated": false
+    }
     """
     if not config.ui.ai.enabled:
         return make_api_response({}, "AI Support is disabled on this system.", 400)
@@ -341,7 +345,7 @@ def summarized_results(sha256, **kwargs):
         # TODO: Caching maybe?
         ai_summary = summarized_al_submission(data)
         return make_api_response(ai_summary)
-    except AiApiException as e:
+    except (APIException, EmptyAIResponse) as e:
         return make_api_response("", str(e), 400)
 
 
@@ -365,7 +369,10 @@ def summarize_code_snippet(sha256, **kwargs):
     /api/v4/file/code_summary/123456...654321/
 
     Result example:
-    <AI summary of the code snippet>
+    {
+      "content": <AI summary of the code snippet>,
+      "truncated": false
+    }
     """
     if not config.ui.ai.enabled:
         return make_api_response({}, "AI Support is disabled on this system.", 400)
@@ -406,7 +413,7 @@ def summarize_code_snippet(sha256, **kwargs):
             # TODO: Caching maybe?
             ai_summary = ai_code(data)
             return make_api_response(ai_summary)
-        except AiApiException as e:
+        except (APIException, EmptyAIResponse) as e:
             return make_api_response("", str(e), 400)
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)

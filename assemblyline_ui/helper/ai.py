@@ -6,7 +6,11 @@ import yaml
 from assemblyline_ui.config import config, LOGGER
 
 
-class AiApiException(Exception):
+class APIException(Exception):
+    pass
+
+
+class EmptyAIResponse(Exception):
     pass
 
 
@@ -30,22 +34,23 @@ def _call_ai_backend(data, params: AIQueryParams, action):
     except Exception as e:
         message = f"An exception occured while trying to {action} with AI on server {config.ui.ai.chat_url}. [{e}]"
         LOGGER.warning(message)
-        raise AiApiException(message)
+        raise APIException(message)
 
     if not resp.ok:
         msg_data = resp.json()
         msg = msg_data.get('error', {}).get('message', None) or msg_data
         message = f"The AI API denied the request to {action} with the following message: {msg}"
         LOGGER.warning(message)
-        raise AiApiException(message)
+        raise APIException(message)
 
     # Get AI responses
-    responses = resp.json().get('choices', [])
+    responses = resp.json()['choices']
     if responses:
-        content = responses[0].get('message', {}).get('content', None)
-        return content or None
+        content = responses[0]['message']['content']
+        reason = responses[0]['finish_reason']
+        return {'content': content, 'truncated': reason == 'length'}
 
-    return None
+    raise EmptyAIResponse("There was no response returned by the AI")
 
 
 def detailed_al_submission(report):

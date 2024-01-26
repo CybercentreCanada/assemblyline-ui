@@ -1,15 +1,15 @@
 import time
-from assemblyline.datastore.collection import Index
-from assemblyline_core.dispatching.client import DispatchClient
-from assemblyline_ui.helper.ai import AiApiException, summarized_al_submission
 
 from flask import request
 from werkzeug.exceptions import BadRequest
 
 from assemblyline.datastore.exceptions import MultiKeyError, SearchException
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
+from assemblyline_core.dispatching.client import DispatchClient
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
+from assemblyline_ui.helper.ai import EmptyAIResponse, APIException, summarized_al_submission
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
 
@@ -500,7 +500,11 @@ def get_ai_summary(sid, **kwargs):
     None
 
     Result example:
-    < THE AI SUMMARY IN MARKDOWN FORMAT >
+    {
+      "content": < THE AI SUMMARY IN MARKDOWN FORMAT >,
+      "truncated": false
+    }
+
 
     """
     if not config.ui.ai.enabled:
@@ -517,7 +521,7 @@ def get_ai_summary(sid, **kwargs):
         # TODO: Caching maybe?
         ai_summary = summarized_al_submission(data)
         return make_api_response(ai_summary)
-    except AiApiException as e:
+    except (APIException, EmptyAIResponse) as e:
         return make_api_response("", str(e), 400)
 
 
