@@ -9,7 +9,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_core.dispatching.client import DispatchClient
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
-from assemblyline_ui.helper.ai import EmptyAIResponse, APIException, summarized_al_submission
+from assemblyline_ui.helper.ai import EmptyAIResponse, APIException, detailed_al_submission, summarized_al_submission
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
 
@@ -494,7 +494,7 @@ def get_ai_summary(sid, **kwargs):
     sid         => Submission ID to summarize
 
     Arguments:
-    None
+    detailed   => Do you want the detailed output (Default: False)
 
     Data Block:
     None
@@ -507,6 +507,9 @@ def get_ai_summary(sid, **kwargs):
 
 
     """
+
+    detailed = request.args.get('detailed', 'false').lower() in ['true', '']
+
     if not config.ui.ai.enabled:
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
@@ -519,7 +522,10 @@ def get_ai_summary(sid, **kwargs):
 
     try:
         # TODO: Caching maybe?
-        ai_summary = summarized_al_submission(data)
+        if detailed:
+            ai_summary = detailed_al_submission(data)
+        else:
+            ai_summary = summarized_al_submission(data)
         return make_api_response(ai_summary)
     except (APIException, EmptyAIResponse) as e:
         return make_api_response("", str(e), 400)
