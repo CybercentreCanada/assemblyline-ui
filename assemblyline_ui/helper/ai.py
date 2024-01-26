@@ -16,6 +16,7 @@ def _call_ai_backend(data, params: AIQueryParams, action):
         "max_tokens": params.max_tokens,
         "messages": [
             {"role": "system", "content": params.system_message},
+            # TODO: we may have to do token detection and split the data in chunks...
             {"role": "user", "content": data},
         ],
         "model": config.ui.ai.model_name,
