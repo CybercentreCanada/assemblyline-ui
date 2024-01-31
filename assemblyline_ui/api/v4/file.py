@@ -35,11 +35,11 @@ file_api._doc = "Perform operations on files"
 API_MAX_SIZE = 10 * 1024 * 1024
 
 
-def list_file_active_keys(sha256, access_control=None):
+def list_file_active_keys(sha256, access_control=None, index_type=None):
     query = f"id:{sha256}*"
 
     item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name,result.score",
-                                                         access_control=access_control, as_obj=False)]
+                                                         access_control=access_control, as_obj=False, index_type=index_type)]
 
     item_list.sort(key=lambda k: k["created"], reverse=True)
 
@@ -1102,7 +1102,7 @@ def get_file_results(sha256, **kwargs):
     """
     user = kwargs['user']
 
-    if request.args.get('archive_only', False):
+    if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
         index_type = Index.ARCHIVE
     else:
         index_type = None
@@ -1125,7 +1125,7 @@ def get_file_results(sha256, **kwargs):
         }
 
         with APMAwareThreadPoolExecutor(4) as executor:
-            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
+            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"], index_type=index_type)
             res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
             res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
             res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,

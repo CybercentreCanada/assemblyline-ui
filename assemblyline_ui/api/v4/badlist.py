@@ -333,7 +333,6 @@ def add_update_many_hashes(**_):
 
             # Ensure expiry_ts is set on tag-related items
             hash_data['expiry_ts'] = hash_data.get('expiry_ts', now_as_iso(DEFAULT_BADLIST_TAG_EXPIRY))
-
         elif hash_data['type'] == 'file':
             hash_data.pop('tag', None)
             hash_data.setdefault('file', {})

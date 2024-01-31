@@ -404,12 +404,10 @@ def histogram(index, field, **kwargs):
     # Load API variables
     if request.method == "POST":
         req_data = request.json
-        # params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
         params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     else:
         req_data = request.args
-        # params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
         params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
 
     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
@@ -485,12 +483,10 @@ def stats(index, int_field, **kwargs):
 
     if request.method == "POST":
         req_data = request.json
-        # params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
     else:
         req_data = request.args
-        # params = {k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None}
         params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
