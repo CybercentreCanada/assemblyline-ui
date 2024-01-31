@@ -15,6 +15,7 @@ from urllib import parse as ul
 from flask import request
 from requests import Session, exceptions
 
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import config, CLASSIFICATION as Classification, LOGGER
@@ -298,7 +299,7 @@ def enrich_tags(tag_name: str, tag: str, **kwargs):
         if Classification.is_accessible(user["classification"], x.classification)
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:
+    with APMAwareThreadPoolExecutor(min(len(available_sources) + 1, os.cpu_count() + 4)) as executor:
         # create searches for external sources
         future_searches = {
             executor.submit(

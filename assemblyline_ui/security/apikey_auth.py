@@ -1,9 +1,12 @@
+import elasticapm
+
 from assemblyline.odm.models.user import load_roles_form_acls, ROLES, load_roles
 from assemblyline_ui.config import config
 from assemblyline.common.security import verify_password
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
+@elasticapm.capture_span(span_type='validate_apikey')
 def validate_apikey(username, apikey, storage):
     # This function identifies the user via the internal API key functionality
     #   NOTE: It is not recommended to overload this function but you can still do it

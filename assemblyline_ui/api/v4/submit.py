@@ -16,7 +16,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
     CLASSIFICATION as Classification, IDENTIFY
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received
+from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received, refang_url
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -288,6 +288,8 @@ def submit(**kwargs):
             binary = None
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
+            if url:
+                url = refang_url(url)
             name = url or safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
