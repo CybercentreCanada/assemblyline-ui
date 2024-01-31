@@ -22,6 +22,7 @@ from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FIL
     CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.datastore.collection import Index
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 
@@ -1077,6 +1078,9 @@ def get_file_results(sha256, **kwargs):
     Variables:
     sha256         => A resource locator for the file (SHA256)
 
+    Optional Arguments:
+    archive_only   =>   Only access the Malware archive (Default: False)
+
     Arguments:
     None
 
@@ -1097,7 +1101,13 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if request.args.get('archive_only', False):
+        index_type = Index.ARCHIVE
+    else:
+        index_type = None
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response({}, "This file does not exists", 404)
@@ -1128,7 +1138,7 @@ def get_file_results(sha256, **kwargs):
 
         output['results'] = []
         output['alternates'] = {}
-        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
+        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False, index_type=index_type)
         for r in res:
             res = format_result(user['classification'], r, file_obj['classification'], build_hierarchy=True)
             if res:

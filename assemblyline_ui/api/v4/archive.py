@@ -1,5 +1,3 @@
-from flask import request
-
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.datastore.collection import Index
@@ -9,7 +7,10 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification, ARCHIVE_MANAGER
+from assemblyline_ui.config import ARCHIVE_MANAGER
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import LOGGER, STORAGE, config
+from flask import request
 
 SUB_API = 'archive'
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
@@ -103,7 +104,7 @@ def get_additional_details(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False)
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     if not file_obj:
         return make_api_response({"success": False}, "This file does not exists", 404)
