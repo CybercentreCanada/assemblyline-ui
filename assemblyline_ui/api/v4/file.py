@@ -610,7 +610,7 @@ def get_file_results(sha256, **kwargs):
     """
     user = kwargs['user']
 
-    if request.args.get('archive_only', False):
+    if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
         index_type = Index.ARCHIVE
     else:
         index_type = None
