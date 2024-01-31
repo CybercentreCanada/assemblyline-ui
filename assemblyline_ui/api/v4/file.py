@@ -4,21 +4,23 @@ import os
 import re
 import subprocess
 import tempfile
+from pprint import pprint
 
-from flask import request
-
-from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
+from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
+from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
-    CLASSIFICATION as Classification, ARCHIVESTORE
+from assemblyline_ui.config import ALLOW_RAW_DOWNLOADS, ALLOW_ZIP_DOWNLOADS, ARCHIVESTORE
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import FILESTORE, STORAGE, config
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
+from flask import request
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 
@@ -585,6 +587,9 @@ def get_file_results(sha256, **kwargs):
     Variables:
     sha256         => A resource locator for the file (SHA256)
 
+    Optional Arguments:
+    archive_only   =>   Only access the Malware archive (Default: False)
+
     Arguments:
     None
 
@@ -605,7 +610,13 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if request.args.get('archive_only', False):
+        index_type = Index.ARCHIVE
+    else:
+        index_type = None
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response({}, "This file does not exists", 404)
@@ -636,7 +647,7 @@ def get_file_results(sha256, **kwargs):
 
         output['results'] = []
         output['alternates'] = {}
-        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
+        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False, index_type=index_type)
         for r in res:
             res = format_result(user['classification'], r, file_obj['classification'], build_hierarchy=True)
             if res:
