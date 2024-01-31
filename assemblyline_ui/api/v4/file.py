@@ -19,6 +19,7 @@ from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FIL
     CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.datastore.collection import Index
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 
