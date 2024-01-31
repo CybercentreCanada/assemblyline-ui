@@ -766,3 +766,4 @@ def remove_labels(sha256, **kwargs):
     values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
+
