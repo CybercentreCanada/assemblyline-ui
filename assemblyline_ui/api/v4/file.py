@@ -19,6 +19,9 @@ from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FIL
     CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.datastore.collection import Index
+
+LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
@@ -29,11 +32,11 @@ file_api._doc = "Perform operations on files"
 API_MAX_SIZE = 10 * 1024 * 1024
 
 
-def list_file_active_keys(sha256, access_control=None):
+def list_file_active_keys(sha256, access_control=None, index_type=None):
     query = f"id:{sha256}*"
 
     item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name,result.score",
-                                                         access_control=access_control, as_obj=False)]
+                                                         access_control=access_control, as_obj=False, index_type=index_type)]
 
     item_list.sort(key=lambda k: k["created"], reverse=True)
 
@@ -583,6 +586,9 @@ def get_file_results(sha256, **kwargs):
     Variables:
     sha256         => A resource locator for the file (SHA256)
 
+    Optional Arguments:
+    archive_only   =>   Only access the Malware archive (Default: False)
+
     Arguments:
     None
 
@@ -603,7 +609,13 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
+        index_type = Index.ARCHIVE
+    else:
+        index_type = None
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response({}, "This file does not exists", 404)
@@ -621,7 +633,7 @@ def get_file_results(sha256, **kwargs):
         }
 
         with APMAwareThreadPoolExecutor(4) as executor:
-            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
+            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"], index_type=index_type)
             res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
             res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
             res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,
@@ -634,7 +646,7 @@ def get_file_results(sha256, **kwargs):
 
         output['results'] = []
         output['alternates'] = {}
-        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
+        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False, index_type=index_type)
         for r in res:
             res = format_result(user['classification'], r, file_obj['classification'], build_hierarchy=True)
             if res:
