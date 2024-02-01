@@ -34,67 +34,6 @@ file_api._doc = "Perform operations on files"
 API_MAX_SIZE = 10 * 1024 * 1024
 
 
-def list_file_active_keys(sha256, access_control=None, index_type=None):
-    query = f"id:{sha256}*"
-
-    item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name,result.score",
-                                                         access_control=access_control, as_obj=False,
-                                                         index_type=index_type)]
-
-    item_list.sort(key=lambda k: k["created"], reverse=True)
-
-    active_found = set()
-    active_keys = []
-    alternates = []
-    for item in item_list:
-        if item['response']['service_name'] not in active_found:
-            active_keys.append(item['id'])
-            active_found.add(item['response']['service_name'])
-        else:
-            alternates.append(item)
-
-    return active_keys, alternates
-
-
-def list_file_childrens(sha256, access_control=None):
-    query = f'id:{sha256}* AND response.extracted.sha256:*'
-    service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='*',
-                                                 sort="created desc", access_control=access_control,
-                                                 as_obj=False)
-
-    output = []
-    processed_sha256 = []
-    for r in service_resp['items']:
-        for extracted in r['items'][0]['response']['extracted']:
-            if extracted['sha256'] not in processed_sha256:
-                processed_sha256.append(extracted['sha256'])
-                output.append({
-                    'name': extracted['name'],
-                    'sha256': extracted['sha256']
-                })
-    return output
-
-
-def list_file_parents(sha256, access_control=None):
-    query = f"response.extracted.sha256:{sha256}"
-    processed_sha256 = []
-    output = []
-
-    response = STORAGE.result.search(query, fl='id', sort="created desc",
-                                     access_control=access_control, as_obj=False)
-    for p in response['items']:
-        key = p['id']
-        sha256 = key[:64]
-        if sha256 not in processed_sha256:
-            output.append(key)
-            processed_sha256.append(sha256)
-
-        if len(processed_sha256) >= 10:
-            break
-
-    return output
-
-
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
 @api_login(require_role=[ROLES.file_detail])
 def get_file_ascii(sha256, **kwargs):
