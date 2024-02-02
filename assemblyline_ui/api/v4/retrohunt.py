@@ -233,21 +233,33 @@ def search_retrohunt_jobs(**kwargs):
     try:
         result = STORAGE.retrohunt.search(**params)
         items = result.get('items', [])
-        result['items'] = [get_job_details(item.get('code', None), user, fl=params.get(
-            'fl', None)) if item.get('finished', True) is False else item for item in items]
+
+        query = [item['key'] for item in items if item.get('key', None) is not None]
+        query = f"search:({' OR '.join([item['key'] for item in items if item.get('key', None) is not None])})"
+
+        facet_params = {
+            'field': 'search',
+            'query': query,
+            'access_control':  user['access_control'],
+            'index_type':  Index.HOT_AND_ARCHIVE,
+            'size': len(items)
+        }
+
+        hits = STORAGE.retrohunt_hit.facet(**facet_params)
+        result['items'] = [{**item, 'total_hits': hits[item['key']] if item['key'] in hits else 0} for item in items]
         return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@retrohunt_api.route("/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/<id>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def get_retrohunt_job_detail(code, **kwargs):
+def get_retrohunt_job_detail(id, **kwargs):
     """
     Get the details of a completed or an in progress retrohunt job.
 
     Variables:
-        code                => Search code of the retrohunt job to be retrieved
+        id                => ID of the retrohunt job to be retrieved
 
     Response Fields:
     {
@@ -284,27 +296,27 @@ def get_retrohunt_job_detail(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc: dict = get_job_details(code, user)
-
-    if doc is None:
-        return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+    doc = STORAGE.retrohunt.get(id, as_obj=False)
+    if not doc:
+        return make_api_response({}, "This retrohunt job does not exist...", 404)
+    
+    if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
 
-    doc.pop('hits', None)
+    doc['total_errors'] = len(doc['errors'])
+    doc.pop('warnings', None)
     doc.pop('errors', None)
     return make_api_response(doc)
 
 
-@retrohunt_api.route("/hits/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/hits/<id>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def get_retrohunt_job_hits(code, **kwargs):
+def get_retrohunt_job_hits(id, **kwargs):
     """
     Get hit results of a retrohunt job completed or in progress.
 
     Variables:
-        code                    =>  Search code of the retrohunt job to be retrieved
+        id                    =>  ID of the retrohunt job to be retrieved
 
     Optional Arguments:
         query                   =>  Query to filter the file list
@@ -367,40 +379,50 @@ def get_retrohunt_job_hits(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc: dict = get_job_details(code, user)
+    doc = STORAGE.retrohunt.get(id, as_obj=False)
+    if not doc:
+        return make_api_response({}, "This retrohunt job does not exist...", 404)
 
-    # Make sure the user has the right classification to access this retrohunt job
-    if doc is None:
-        return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+    if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-
-    # Get the request parameters and apply the multi_field parameter to it
-    multi_fields = ['filters']
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-    else:
-        req_data = request.args
-        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-
-    # Set the default search parameters
-    params.setdefault('query', '*')
-    params.setdefault('offset', '0')
-    params.setdefault('rows', '10')
-    params.setdefault('sort', 'seen.last desc')
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('as_obj', False)
-    params.setdefault('key_space', doc['hits'])
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-    params.setdefault('track_total_hits', True)
-
-    # Append the other request parameters
-    fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
-
+    
     try:
+        params = {
+            'query': f"search:{id}",
+            'offset': 0,
+            'rows': 10000,
+            'fl': 'sha256',
+            'as_obj': False,
+            'index_type': Index.HOT_AND_ARCHIVE,
+            'track_total_hits': True
+        }
+
+        hits = STORAGE.retrohunt_hit.search(**params)
+        key_space = [item['sha256'] for item in hits['items']]
+
+        params = {
+            'query': '*',
+            'offset': 0,
+            'rows': 10,
+            'sort': 'seen.last desc',
+            'access_control': user['access_control'],
+            'as_obj': False,
+            'index_type': Index.HOT_AND_ARCHIVE,
+            'track_total_hits': True,
+            'key_space': key_space
+        }
+
+        multi_fields = ['filters']
+        if request.method == "POST":
+            req_data = request.json
+            params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        else:
+            req_data = request.args
+            params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+            
+        fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
+        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+
         return make_api_response(STORAGE.file.search(**params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
@@ -485,9 +507,9 @@ def get_retrohunt_job_errors(code, **kwargs):
     })
 
 
-@retrohunt_api.route("/types/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/types/<id>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def get_retrohunt_job_types(code, **kwargs):
+def get_retrohunt_job_types(id, **kwargs):
     """
     Get types distribution of a retrohunt job completed or in progress.
 
@@ -519,35 +541,46 @@ def get_retrohunt_job_types(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc: dict = get_job_details(code, user)
-
-    # Make sure the user has the right classification to access this retrohunt job
+    doc = STORAGE.retrohunt.get(id, as_obj=False)
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+    
+    if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-
-    # Get the request parameters and apply the multi_field parameter to it
-    multi_fields = ['filters']
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-    else:
-        req_data = request.args
-        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-
-    # Set the default search parameters
-    params.setdefault('query', '*')
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('key_space', doc['hits'])
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-
-    # Append the other request parameters
-    fields = ["query", "mincount"]
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
-
+    
     try:
+        params = {
+            'query': f"search:{id}",
+            'offset': 0,
+            'rows': 10000,
+            'fl': 'sha256',
+            'as_obj': False,
+            'index_type': Index.HOT_AND_ARCHIVE,
+            'track_total_hits': True
+        }
+
+        hits = STORAGE.retrohunt_hit.search(**params)
+        key_space = [item['sha256'] for item in hits['items']]
+
+        params = {
+            'query': '*',
+            'access_control': user['access_control'],
+            'index_type': Index.HOT_AND_ARCHIVE,
+            'key_space': key_space,
+            'mincount': 1
+        }
+
+        multi_fields = ['filters']
+        if request.method == "POST":
+            req_data = request.json
+            params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        else:
+            req_data = request.args
+            params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+        fields = ["query", "mincount"]
+        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+
         return make_api_response(STORAGE.file.facet('type', **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
