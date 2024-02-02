@@ -18,7 +18,7 @@ from assemblyline.datastore.exceptions import DataStoreException
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
+from assemblyline_ui.config import AI_CACHE, ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
 from assemblyline_ui.helper.ai import APIException, EmptyAIResponse, \
     summarize_code_snippet as ai_code, summarized_al_submission
@@ -477,7 +477,8 @@ def summarized_results(sha256, **kwargs):
     sha256       => A resource locator for the file (sha256)
 
     Arguments:
-    None
+    archive_only   => Only use the archive data to generate the summary
+    no_cache       => Caching for the output of this API will be disabled
 
     Data Block:
     None
@@ -494,19 +495,40 @@ def summarized_results(sha256, **kwargs):
     if not config.ui.ai.enabled:
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
-    user = kwargs['user']
-    data = STORAGE.get_ai_formatted_file_results_data(
-        sha256, user_classification=user['classification'],
-        user_access_control=user['access_control'], cl_engine=Classification)
-    if data is None:
-        return make_api_response("", "The file was not found in the system.", 404)
+    archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
+    no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
 
-    try:
-        # TODO: Caching maybe?
-        ai_summary = summarized_al_submission(data)
-        return make_api_response(ai_summary)
-    except (APIException, EmptyAIResponse) as e:
-        return make_api_response("", str(e), 400)
+    index_type = None
+    if archive_only:
+        if not config.datastore.archive.enabled:
+            return make_api_response({}, "Archive Support is disabled on this system.", 400)
+        index_type = Index.ARCHIVE
+
+    user = kwargs['user']
+
+    # Create the cache key
+    cache_key = AI_CACHE.create_key(sha256, user['classification'], index_type, archive_only, "file")
+    ai_summary = None
+    if (not no_cache):
+        # Get the summary from cache
+        ai_summary = AI_CACHE.get(cache_key)
+
+    if not ai_summary:
+        data = STORAGE.get_ai_formatted_file_results_data(
+            sha256, user_classification=user['classification'],
+            user_access_control=user['access_control'], cl_engine=Classification, index_type=index_type)
+        if data is None:
+            return make_api_response("", "The file was not found in the system.", 404)
+
+        try:
+            ai_summary = summarized_al_submission(data)
+
+            # Save to cache
+            AI_CACHE.set(cache_key, ai_summary)
+        except (APIException, EmptyAIResponse) as e:
+            return make_api_response("", str(e), 400)
+
+    return make_api_response(ai_summary)
 
 
 @file_api.route("/code_summary/<sha256>/", methods=["GET"])
@@ -520,7 +542,7 @@ def summarize_code_snippet(sha256, **kwargs):
     sha256       => A resource locator for the file (sha256)
 
     Arguments:
-    None
+    no_cache       => Caching for the output of this API will be disabled
 
     Data Block:
     None
@@ -537,46 +559,60 @@ def summarize_code_snippet(sha256, **kwargs):
     if not config.ui.ai.enabled:
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
+    no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    if not file_obj:
-        return make_api_response({}, "The file was not found in the system.", 404)
+    # Create the cache key
+    cache_key = AI_CACHE.create_key(sha256, user['classification'], "code")
+    ai_summary = None
+    if (not no_cache):
+        # Get the summary from cache
+        ai_summary = AI_CACHE.get(cache_key)
 
-    if not file_obj['type'].startswith("code/"):
-        return make_api_response({}, "This is not code, you cannot summarize it.", 406)
+    if not ai_summary:
+        file_obj = STORAGE.file.get(sha256, as_obj=False)
 
-    # TODO: We should calculate the tokens here
-    # if file_obj['size'] > API_MAX_SIZE:
-    #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
+        if not file_obj:
+            return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        try:
-            data = FILESTORE.get(sha256)
-        except FileStoreException:
-            data = None
+        if not file_obj['type'].startswith("code/"):
+            return make_api_response({}, "This is not code, you cannot summarize it.", 406)
 
-        # Try to download from archive
-        if not data and \
-                ARCHIVESTORE is not None and \
-                ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles']:
+        # TODO: We should calculate the tokens here
+        # if file_obj['size'] > API_MAX_SIZE:
+        #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
+
+        if user and Classification.is_accessible(user['classification'], file_obj['classification']):
             try:
-                data = ARCHIVESTORE.get(sha256)
+                data = FILESTORE.get(sha256)
             except FileStoreException:
                 data = None
 
-        if not data:
-            return make_api_response({}, "The file was not found in the system.", 404)
+            # Try to download from archive
+            if not data and \
+                    ARCHIVESTORE is not None and \
+                    ARCHIVESTORE != FILESTORE and \
+                    ROLES.archive_download in user['roles']:
+                try:
+                    data = ARCHIVESTORE.get(sha256)
+                except FileStoreException:
+                    data = None
 
-        try:
-            # TODO: Caching maybe?
-            ai_summary = ai_code(data)
-            return make_api_response(ai_summary)
-        except (APIException, EmptyAIResponse) as e:
-            return make_api_response("", str(e), 400)
-    else:
-        return make_api_response({}, "You are not allowed to view this file.", 403)
+            if not data:
+                return make_api_response({}, "The file was not found in the system.", 404)
+
+            try:
+                ai_summary = ai_code(data)
+
+                # Save to cache
+                AI_CACHE.set(cache_key, ai_summary)
+            except (APIException, EmptyAIResponse) as e:
+                return make_api_response("", str(e), 400)
+        else:
+            return make_api_response({}, "You are not allowed to view this file.", 403)
+
+    return make_api_response(ai_summary)
 
 
 @file_api.route("/hex/<sha256>/", methods=["GET"])
