@@ -6,6 +6,10 @@ pr: ["*"]
 pool:
   vmImage: "ubuntu-20.04"
 
+variables:
+  # Try to checkout the matching branch, if the command fails, don't care.
+  BRANCH_NAME: $[coalesce(variables['System.PullRequest.SourceBranch'], replace(variables['Build.SourceBranch'], 'refs/heads/', ''))]
+
 resources:
   containers:
     - container: redis
@@ -79,15 +83,11 @@ jobs:
         displayName: Setup Environment
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
-          # Try to checkout the matching branch, if the command fails, don't care.
-          export BRANCH_NAME=$(sed -r "s/refs\/\w+\///" <<< "$BUILD_SOURCEBRANCH")
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
           sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
         displayName: Install assemblyline
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
       - script: |
-          # Try to checkout the matching branch, if the command fails, don't care.
-          export BRANCH_NAME=$(sed -r "s/refs\/\w+\///" <<< "$BUILD_SOURCEBRANCH")
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
           sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
         displayName: Install assemblyline-core
