@@ -11,75 +11,11 @@ from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, DEFAULT_SAFELIST_TAG_EXPIRY
+from assemblyline_core.safelist_client import SafelistClient, InvalidSafehash
 
 SUB_API = 'safelist'
 safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
 safelist_api._doc = "Perform operations on safelisted hashes"
-
-
-class InvalidSafehash(Exception):
-    pass
-
-
-def _merge_safe_hashes(new, old):
-    try:
-        # Check if hash types match
-        if new['type'] != old['type']:
-            raise InvalidSafehash(f"Safe hash type mismatch: {new['type']} != {old['type']}")
-
-        # Use the new classification but we will recompute it later anyway
-        old['classification'] = new['classification']
-
-        # Update updated time
-        old['updated'] = new.get('updated', now_as_iso())
-
-        # Update hashes
-        old['hashes'].update({k: v for k, v in new['hashes'].items() if v})
-
-        # Update type specific info
-        if old['type'] == 'file':
-            old.setdefault('file', {})
-            new_names = new.get('file', {}).pop('name', [])
-            if 'name' in old['file']:
-                for name in new_names:
-                    if name not in old['file']['name']:
-                        old['file']['name'].append(name)
-            elif new_names:
-                old['file']['name'] = new_names
-            old['file'].update({k: v for k, v in new.get('file', {}).items() if v})
-        elif old['type'] == 'tag':
-            old['tag'] = new['tag']
-
-        # Merge sources
-        src_map = {x['name']: x for x in new['sources']}
-        if not src_map:
-            raise InvalidSafehash("No valid source found")
-
-        old_src_map = {x['name']: x for x in old['sources']}
-        for name, src in src_map.items():
-            if name not in old_src_map:
-                old_src_map[name] = src
-            else:
-                old_src = old_src_map[name]
-                if old_src['type'] != src['type']:
-                    raise InvalidSafehash(f"Source {name} has a type conflict: {old_src['type']} != {src['type']}")
-
-                for reason in src['reason']:
-                    if reason not in old_src['reason']:
-                        old_src['reason'].append(reason)
-                old_src['classification'] = src.get('classification', old_src['classification'])
-        old['sources'] = list(old_src_map.values())
-
-        # Calculate the new classification
-        for src in old['sources']:
-            old['classification'] = CLASSIFICATION.max_classification(
-                old['classification'], src.get('classification', None))
-
-        # Set the expiry
-        old['expiry_ts'] = new.get('expiry_ts', None)
-        return old
-    except Exception as e:
-        raise InvalidSafehash(f"Invalid data provided: {str(e)}")
 
 
 @safelist_api.route("/", methods=["POST", "PUT"])
@@ -223,7 +159,7 @@ def add_or_update_hash(**kwargs):
         if old:
             try:
                 # Save data to the DB
-                STORAGE.safelist.save(qhash, _merge_safe_hashes(data, old))
+                STORAGE.safelist.save(qhash, SafelistClient._merge_hashes(data, old))
                 return make_api_response({'success': True, "op": "update", 'hash': qhash})
             except InvalidSafehash as e:
                 return make_api_response({}, str(e), 400)
@@ -381,7 +317,7 @@ def add_update_many_hashes(**_):
 
         # Add upsert operation
         try:
-            plan.add_upsert_operation(key, _merge_safe_hashes(val, old_val))
+            plan.add_upsert_operation(key, SafelistClient._merge_hashes(val, old_val))
         except InvalidSafehash as e:
             return make_api_response("", str(e), 400)
 
