@@ -17,6 +17,7 @@ from assemblyline_ui.sio.file import FileCommentNamespace
 from assemblyline_ui.sio.live_submission import LiveSubmissionNamespace
 from assemblyline_ui.sio.status import SystemStatusNamespace
 from assemblyline_ui.sio.submission import SubmissionMonitoringNamespace
+from assemblyline_ui.sio.retrohunt import RetrohuntNamespace
 
 CERT_BUNDLE = (
     os.environ.get('SIO_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/sio/tls.crt'),
@@ -49,6 +50,7 @@ socketio.on_namespace(AlertMonitoringNamespace('/alerts'))
 socketio.on_namespace(FileCommentNamespace('/file_comments'))
 socketio.on_namespace(LiveSubmissionNamespace('/live_submission'))
 socketio.on_namespace(SubmissionMonitoringNamespace('/submissions'))
+socketio.on_namespace(RetrohuntNamespace('/retrohunt'))
 socketio.on_namespace(SystemStatusNamespace('/status'))
 
 
