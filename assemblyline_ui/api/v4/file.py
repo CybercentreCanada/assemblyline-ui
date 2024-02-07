@@ -15,10 +15,15 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
+from assemblyline_ui.config import AI_CACHE, ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
     CLASSIFICATION as Classification, ARCHIVESTORE
+from assemblyline_ui.helper.ai import APIException, EmptyAIResponse, \
+    summarize_code_snippet as ai_code, summarized_al_submission
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.datastore.collection import Index
+
+LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
@@ -27,66 +32,6 @@ file_api = make_subapi_blueprint(SUB_API, api_version=4)
 file_api._doc = "Perform operations on files"
 
 API_MAX_SIZE = 10 * 1024 * 1024
-
-
-def list_file_active_keys(sha256, access_control=None):
-    query = f"id:{sha256}*"
-
-    item_list = [x for x in STORAGE.result.stream_search(query, fl="id,created,response.service_name,result.score",
-                                                         access_control=access_control, as_obj=False)]
-
-    item_list.sort(key=lambda k: k["created"], reverse=True)
-
-    active_found = set()
-    active_keys = []
-    alternates = []
-    for item in item_list:
-        if item['response']['service_name'] not in active_found:
-            active_keys.append(item['id'])
-            active_found.add(item['response']['service_name'])
-        else:
-            alternates.append(item)
-
-    return active_keys, alternates
-
-
-def list_file_childrens(sha256, access_control=None):
-    query = f'id:{sha256}* AND response.extracted.sha256:*'
-    service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='*',
-                                                 sort="created desc", access_control=access_control,
-                                                 as_obj=False)
-
-    output = []
-    processed_sha256 = []
-    for r in service_resp['items']:
-        for extracted in r['items'][0]['response']['extracted']:
-            if extracted['sha256'] not in processed_sha256:
-                processed_sha256.append(extracted['sha256'])
-                output.append({
-                    'name': extracted['name'],
-                    'sha256': extracted['sha256']
-                })
-    return output
-
-
-def list_file_parents(sha256, access_control=None):
-    query = f"response.extracted.sha256:{sha256}"
-    processed_sha256 = []
-    output = []
-
-    response = STORAGE.result.search(query, fl='id', sort="created desc",
-                                     access_control=access_control, as_obj=False)
-    for p in response['items']:
-        key = p['id']
-        sha256 = key[:64]
-        if sha256 not in processed_sha256:
-            output.append(key)
-            processed_sha256.append(sha256)
-
-        if len(processed_sha256) >= 10:
-            break
-
-    return output
 
 
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
@@ -299,6 +244,154 @@ def delete_file_from_filestore(sha256, **kwargs):
         return make_api_response({"success": True})
     else:
         return make_api_response({}, "You are not allowed to delete this file from the filestore.", 403)
+
+
+@file_api.route("/ai/<sha256>/", methods=["GET"])
+@api_login(require_role=[ROLES.file_detail])
+def summarized_results(sha256, **kwargs):
+    """
+    Summarize AL results with AI for the given sha256
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    archive_only   => Only use the archive data to generate the summary
+    no_cache       => Caching for the output of this API will be disabled
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/ai/123456...654321/
+
+    Result example:
+    {
+      "content": <AI summary of the AL results>,
+      "truncated": false
+    }
+    """
+    if not config.ui.ai.enabled:
+        return make_api_response({}, "AI Support is disabled on this system.", 400)
+
+    archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
+    no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+
+    index_type = None
+    if archive_only:
+        if not config.datastore.archive.enabled:
+            return make_api_response({}, "Archive Support is disabled on this system.", 400)
+        index_type = Index.ARCHIVE
+
+    user = kwargs['user']
+
+    # Create the cache key
+    cache_key = AI_CACHE.create_key(sha256, user['classification'], index_type, archive_only, "file")
+    ai_summary = None
+    if (not no_cache):
+        # Get the summary from cache
+        ai_summary = AI_CACHE.get(cache_key)
+
+    if not ai_summary:
+        data = STORAGE.get_ai_formatted_file_results_data(
+            sha256, user_classification=user['classification'],
+            user_access_control=user['access_control'], cl_engine=Classification, index_type=index_type)
+        if data is None:
+            return make_api_response("", "The file was not found in the system.", 404)
+
+        try:
+            ai_summary = summarized_al_submission(data)
+
+            # Save to cache
+            AI_CACHE.set(cache_key, ai_summary)
+        except (APIException, EmptyAIResponse) as e:
+            return make_api_response("", str(e), 400)
+
+    return make_api_response(ai_summary)
+
+
+@file_api.route("/code_summary/<sha256>/", methods=["GET"])
+@api_login(require_role=[ROLES.file_detail])
+def summarize_code_snippet(sha256, **kwargs):
+    """
+    Summarize with AI the code at the given sha256
+    If the file is not a code snippet, returns a 406 error code.
+
+    Variables:
+    sha256       => A resource locator for the file (sha256)
+
+    Arguments:
+    no_cache       => Caching for the output of this API will be disabled
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/file/code_summary/123456...654321/
+
+    Result example:
+    {
+      "content": <AI summary of the code snippet>,
+      "truncated": false
+    }
+    """
+    if not config.ui.ai.enabled:
+        return make_api_response({}, "AI Support is disabled on this system.", 400)
+
+    no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+
+    user = kwargs['user']
+
+    # Create the cache key
+    cache_key = AI_CACHE.create_key(sha256, user['classification'], "code")
+    ai_summary = None
+    if (not no_cache):
+        # Get the summary from cache
+        ai_summary = AI_CACHE.get(cache_key)
+
+    if not ai_summary:
+        file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+        if not file_obj:
+            return make_api_response({}, "The file was not found in the system.", 404)
+
+        if not file_obj['type'].startswith("code/"):
+            return make_api_response({}, "This is not code, you cannot summarize it.", 406)
+
+        # TODO: We should calculate the tokens here
+        # if file_obj['size'] > API_MAX_SIZE:
+        #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
+
+        if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+            try:
+                data = FILESTORE.get(sha256)
+            except FileStoreException:
+                data = None
+
+            # Try to download from archive
+            if not data and \
+                    ARCHIVESTORE is not None and \
+                    ARCHIVESTORE != FILESTORE and \
+                    ROLES.archive_download in user['roles']:
+                try:
+                    data = ARCHIVESTORE.get(sha256)
+                except FileStoreException:
+                    data = None
+
+            if not data:
+                return make_api_response({}, "The file was not found in the system.", 404)
+
+            try:
+                ai_summary = ai_code(data)
+
+                # Save to cache
+                AI_CACHE.set(cache_key, ai_summary)
+            except (APIException, EmptyAIResponse) as e:
+                return make_api_response("", str(e), 400)
+        else:
+            return make_api_response({}, "You are not allowed to view this file.", 403)
+
+    return make_api_response(ai_summary)
 
 
 @file_api.route("/hex/<sha256>/", methods=["GET"])
@@ -583,6 +676,9 @@ def get_file_results(sha256, **kwargs):
     Variables:
     sha256         => A resource locator for the file (SHA256)
 
+    Optional Arguments:
+    archive_only   =>   Only access the Malware archive (Default: False)
+
     Arguments:
     None
 
@@ -603,7 +699,13 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
+        index_type = Index.ARCHIVE
+    else:
+        index_type = None
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response({}, "This file does not exists", 404)
@@ -621,9 +723,10 @@ def get_file_results(sha256, **kwargs):
         }
 
         with APMAwareThreadPoolExecutor(4) as executor:
-            res_ac = executor.submit(list_file_active_keys, sha256, user["access_control"])
-            res_parents = executor.submit(list_file_parents, sha256, user["access_control"])
-            res_children = executor.submit(list_file_childrens, sha256, user["access_control"])
+            res_ac = executor.submit(STORAGE.list_file_active_keys, sha256,
+                                     user["access_control"], index_type=index_type)
+            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"])
+            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"])
             res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,
                                        config.ui.statistics.submission, user["access_control"])
 
@@ -634,7 +737,7 @@ def get_file_results(sha256, **kwargs):
 
         output['results'] = []
         output['alternates'] = {}
-        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False)
+        res = STORAGE.result.multiget(active_keys, as_dictionary=False, as_obj=False, index_type=index_type)
         for r in res:
             res = format_result(user['classification'], r, file_obj['classification'], build_hierarchy=True)
             if res:

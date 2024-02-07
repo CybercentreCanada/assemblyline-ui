@@ -13,6 +13,7 @@ from flask_socketio import SocketIO
 from assemblyline.common import forge, log as al_log
 from assemblyline_ui.healthz import healthz
 from assemblyline_ui.sio.alert import AlertMonitoringNamespace
+from assemblyline_ui.sio.file import FileCommentNamespace
 from assemblyline_ui.sio.live_submission import LiveSubmissionNamespace
 from assemblyline_ui.sio.status import SystemStatusNamespace
 from assemblyline_ui.sio.submission import SubmissionMonitoringNamespace
@@ -46,6 +47,7 @@ socketio = SocketIO(app, async_mode=os.environ.get('ASYNC_MODE', 'gevent'), cors
 
 # Loading the different namespaces
 socketio.on_namespace(AlertMonitoringNamespace('/alerts'))
+socketio.on_namespace(FileCommentNamespace('/file_comments'))
 socketio.on_namespace(LiveSubmissionNamespace('/live_submission'))
 socketio.on_namespace(SubmissionMonitoringNamespace('/submissions'))
 socketio.on_namespace(RetrohuntNamespace('/retrohunt'))
