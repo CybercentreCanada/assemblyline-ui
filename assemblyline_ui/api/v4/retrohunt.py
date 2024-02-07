@@ -8,7 +8,7 @@ from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION, STORAGE, config
-from flask import request
+from flask import request, Response
 
 SUB_API = 'retrohunt'
 retrohunt_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -162,7 +162,7 @@ def repeat_retrohunt_job(**kwargs):
 
 @retrohunt_api.route("/", methods=["GET", "POST"])
 @api_login(require_role=["retrohunt_view"])
-def search_retrohunt_jobs(**kwargs):
+def search_retrohunt_jobs(**kwargs) -> Response:
     """
     Search through the retrohunt index for a given query.
     Uses lucene search syntax for query.
@@ -201,6 +201,7 @@ def search_retrohunt_jobs(**kwargs):
 
     # Get the request parameters and apply the multi_field parameter to it
     multi_fields = ['filters']
+    params: dict[str, typing.Any]
     if request.method == "POST":
         req_data = request.json
         params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
