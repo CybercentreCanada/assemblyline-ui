@@ -1,16 +1,18 @@
 import time
-from assemblyline.datastore.collection import Index
-from assemblyline_core.dispatching.client import DispatchClient
 
 from flask import request
 from werkzeug.exceptions import BadRequest
 
 from assemblyline.datastore.exceptions import MultiKeyError, SearchException
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
+from assemblyline_core.dispatching.client import DispatchClient
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification, AI_CACHE
+from assemblyline_ui.helper.ai import EmptyAIResponse, APIException, detailed_al_submission, summarized_al_submission
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
+
 
 SUB_API = 'submission'
 submission_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -482,7 +484,74 @@ def get_submission(sid, **kwargs):
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
 
-# noinspection PyTypeChecker,PyUnresolvedReferences
+@submission_api.route("/ai/<sid>/", methods=["GET"])
+@api_login(require_role=[ROLES.submission_view])
+def get_ai_summary(sid, **kwargs):
+    """
+    Have an AI LLM summarize the AssemblyLine output in plain english.
+
+    Variables:
+    sid         => Submission ID to summarize
+
+    Arguments:
+    archive_only   => Only use the archive data to generate the summary
+    detailed       => Do you want the detailed output (Default: False)
+    no_cache       => Caching for the output of this API will be disabled
+
+    Data Block:
+    None
+
+    Result example:
+    {
+      "content": < THE AI SUMMARY IN MARKDOWN FORMAT >,
+      "truncated": false
+    }
+
+
+    """
+    if not config.ui.ai.enabled:
+        return make_api_response({}, "AI Support is disabled on this system.", 400)
+
+    archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
+    detailed = request.args.get('detailed', 'false').lower() in ['true', '']
+    no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+
+    index_type = None
+    if archive_only:
+        if not config.datastore.archive.enabled:
+            return make_api_response({}, "Archive Support is disabled on this system.", 400)
+        index_type = Index.ARCHIVE
+
+    user = kwargs['user']
+
+    # Create the cache key
+    cache_key = AI_CACHE.create_key(sid, user['classification'], index_type, archive_only, detailed, "submission")
+    ai_summary = None
+    if (not no_cache):
+        # Get the summary from cache
+        ai_summary = AI_CACHE.get(cache_key)
+
+    if not ai_summary:
+        data = STORAGE.get_ai_formatted_submission_data(
+            sid, user_classification=user['classification'],
+            cl_engine=Classification, index_type=index_type)
+        if data is None:
+            return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+
+        try:
+            if detailed:
+                ai_summary = detailed_al_submission(data)
+            else:
+                ai_summary = summarized_al_submission(data)
+
+            # Save to cache
+            AI_CACHE.set(cache_key, ai_summary)
+        except (APIException, EmptyAIResponse) as e:
+            return make_api_response("", str(e), 400)
+
+    return make_api_response(ai_summary)
+
+
 @submission_api.route("/summary/<sid>/", methods=["GET"])
 @api_login(require_role=[ROLES.submission_view])
 def get_summary(sid, **kwargs):

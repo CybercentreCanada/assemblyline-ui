@@ -104,6 +104,9 @@ def who_am_i(**kwargs):
          "version": "4.1"                           # Assemblyline version
        },
        "ui": {                                    # UI Configuration
+         "ai": {                                    # AI support block
+            "enabled": True                           # Is AI Support enabled or not
+         }
          "alerting_meta": {                         # Alert metadata configuration
             "important": [],                          # List of metadata fields that should always be displayed
             "subject": [],                            # List of metadata fields where to fetch email subject
@@ -189,6 +192,9 @@ def who_am_i(**kwargs):
             "version": VERSION
         },
         "ui": {
+            "ai": {
+                "enabled": config.ui.ai.enabled
+            },
             "alerting_meta": {
                 "important": config.ui.alerting_meta.important,
                 "subject": config.ui.alerting_meta.subject,
