@@ -24,55 +24,6 @@ if config.retrohunt.enabled:
         verify=config.retrohunt.tls_verify
     )
 
-# def get_job_details(code: str, user, fl=None):
-
-#     # Fetch the retrohunt job from elasticsearch
-#     doc = STORAGE.retrohunt.get(code, as_obj=False)
-#     if doc is None:
-#         return None
-
-#     # If the datastore document is finished, there no need to get the latest information.
-#     if not doc.get('finished', None):
-#         status = dict(haunted_house_client.search_status_sync(code=code, access=user['classification']))
-
-#         # If the retrohunt job is finished, update the datastore to the latest values
-#         if is_finished(status):
-#             doc.update({
-#                 'errors': status.get('errors', []),
-#                 'finished': True,
-#                 'hits': status.get('hits', []),
-#                 'total_errors': len(status.get('errors', [])),
-#                 'total_hits': len(status.get('hits', [])),
-#                 'truncated': status.get('truncated', False)
-#             })
-#             STORAGE.retrohunt.save(code, doc)
-
-#         # If the retrohunt job is not finished, get the current state values
-#         elif status is not None:
-#             value_fields = ['errors', 'finished', 'hits', 'phase', 'progress', 'truncated']
-#             doc.update({k: status.get(k, None) for k in value_fields if status.get(k, None) is not None})
-
-#             percentage = 100
-#             if status.get('phase', None) == 'filtering':
-#                 progress = status.get('progress', (1, 1))
-#                 percentage = 100 * progress[0] / progress[1]
-#             elif status.get('phase', None) == 'yara':
-#                 progress = status.get('progress', (1, 1))
-#                 percentage = 100 * (progress[0] - progress[1]) / progress[0]
-
-#             doc.update({
-#                 'percentage': round(percentage),
-#                 'total_errors': len(status.get('errors', doc['errors'])),
-#                 'total_hits': len(status.get('hits', doc['hits'])),
-#             })
-
-#     # filter the fields
-#     if fl and isinstance(fl, str) and fl != "":
-#         fields = fl.replace(" ", "").split(',')
-#         doc = dict({key: doc[key] for key in doc if key in fields})
-
-#     return doc
-
 
 @retrohunt_api.route("/", methods=["PUT"])
 @api_login(require_role=[ROLES.retrohunt_run])
@@ -276,7 +227,7 @@ def search_retrohunt_jobs(**kwargs):
         items = result.get('items', [])
 
         with APMAwareThreadPoolExecutor(len(items)) as executor:
-            res = {item['key']: { **item, 'query': f'search:"{item["key"]}"'} for item in items}
+            res = {item['key']: {**item, 'query': f'search:"{item["key"]}"'} for item in items}
             res = {k: executor.submit(STORAGE.retrohunt_hit.search, query=f"search:{item['key']}", offset=0, rows=10000, fl='sha256', access_control=user['access_control'], as_obj=False) for k, item in res.items()}
             res = {k: [result['sha256'] for result in item.result()['items']] for k, item in res.items()}
             res = {k: executor.submit(STORAGE.file.search, query='*', rows=0, key_space=key_space, access_control=user['access_control'], as_obj=False) for k, key_space in res.items()}
@@ -503,7 +454,7 @@ def get_retrohunt_job_errors(code, **kwargs):
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
     # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc: dict = get_job_details(code, user)
+    doc = STORAGE.retrohunt.get(code)
 
     # Make sure the user has the right classification to access this retrohunt job
     if doc is None:
