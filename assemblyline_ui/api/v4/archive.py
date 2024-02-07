@@ -1,4 +1,5 @@
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.common.uid import get_random_id
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import DataStoreException, VersionConflictException
@@ -14,6 +15,7 @@ from flask import request
 
 SUB_API = 'archive'
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
+MAX_CONCURRENT_VECTORS = 5
 
 archive_api = make_subapi_blueprint(SUB_API, api_version=4)
 archive_api._doc = "Perform operations on archived submissions"
@@ -66,42 +68,34 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, err=str(se), status_code=400)
 
 
-@archive_api.route("/details/<sha256>/", methods=["GET", "POST"])
+@archive_api.route("/similar/<sha256>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.submission_view])
-def get_additional_details(sha256, **kwargs):
+def find_similar_files(sha256, **kwargs):
     """
-    Get additional details in the archive file details
+    Find files related to the current files via TLSH, SSDEEP or Vectors
 
     Variables:
     sha256                  => A resource locator for the file (SHA256)
 
     Arguments:
-    offset                  => Offset at which we start giving files
-    rows                    => Numbers of files to return
-    sort                    => How to sort the results (not available in deep paging)
+    None
 
     Data Block:
-    {
-        "offset": 0,        # Offset in the results
-        "rows": 100,        # Max number of results
-        "sort": "field asc",# How to sort the results
-    }
+    None
 
     API call example:
-    /api/v4/file/result/123456...654321/
+    /api/v4/archive/similar/123456...654321/
 
     Result example:
-    {
-        "tlsh": {           # List of files related by their tlsh
-            "items": []     # List of files hash
-            "count": 100,   # Number of files returned
-            "offset": 0,    # Offset in the file list
-            "total": 201,   # Total files found
-        },
-        "ssdeep1": {...},   # List of files related by the first part of their ssdeep
-        "ssdeep2": {...},   # List of files related by the second part of their ssdeep
-        "vector": {...}     # List of files related by their vector
-    }
+    [   # List of files related
+      {
+            "items": []            # List of files hash
+            "total": 201,          # Total files through this relation type
+            "type": 'tlsh'         # Type of relationship used to finds thoses files
+            "value": 'T123...123'  # Value used to do the relation
+      },
+      ...
+    ]
     """
     user = kwargs['user']
     file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
@@ -112,65 +106,86 @@ def get_additional_details(sha256, **kwargs):
     if not user or not Classification.is_accessible(user['classification'], file_obj['classification']):
         return make_api_response({"success": False}, "You are not allowed to view this file", 403)
 
-    # Set the default search parameters
-    params = {}
-    params.setdefault('offset', 0)
-    params.setdefault('rows', 10)
-    params.setdefault('sort', 'seen.last desc')
-    params.setdefault('fl', 'type,sha256,seen.last')
-    params.setdefault('filters', [f'NOT(sha256:"{sha256}")'])
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('as_obj', False)
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
+    def _do_search(data_type, value):
+        if value:
+            if data_type == "tlsh":
+                query = f'tlsh:"{value}"'
+            else:
+                query = f'ssdeep:"{value}"~'
 
-    fields = ["offset", "rows", "sort"]
+            res = STORAGE.file.search(query, rows=10, sort='seen.last desc', fl='type,sha256,seen.last',
+                                      filters=[f'NOT(sha256:"{sha256}")'], access_control=user['access_control'],
+                                      as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
+            if res['total'] > 0:
+                # Remove unimportant fields
+                res.pop('offset')
+                res.pop('rows')
 
-    req_data = None
-    if request.method == "POST":
-        req_data = request.json
-    else:
-        req_data = request.args
+                # Add Type and value
+                res['type'] = data_type
+                res['value'] = value
 
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+                return [res]
+        return []
 
-    output = {'tlsh': {}, 'ssdeep1': {}, 'ssdeep2': {}, 'vector': {}}
+    output = []
 
-    # Process tlsh
-    try:
-        tlsh = file_obj['tlsh'].replace('/', '\\/')
-        output['tlsh'] = STORAGE.file.search(query=f"tlsh:{tlsh}", **params)
-    except Exception as e:
-        output['tlsh'] = f"SearchException: {e}"
+    # Look for similar TLSH and SSDEEPS
+    tlsh = file_obj.get('tlsh', '')
+    ssdeep = file_obj.get('ssdeep', '::').split(':')
 
-    # Process ssdeep
-    try:
-        ssdeep = file_obj.get('ssdeep', '').replace('/', '\\/').split(':')
-        output['ssdeep1'] = STORAGE.file.search(query=f"ssdeep:{ssdeep[1]}~", **params)
-        output['ssdeep2'] = STORAGE.file.search(query=f"ssdeep:{ssdeep[2]}~", **params)
-    except Exception as e:
-        output['ssdeep1'] = f"SearchException: {e}"
-        output['ssdeep2'] = f"SearchException: {e}"
+    with APMAwareThreadPoolExecutor(3) as executor:
+        tlsh_future = executor.submit(_do_search, 'tlsh', tlsh)
+        ssdeep1_future = executor.submit(_do_search, 'ssdeep', ssdeep[1])
+        ssdeep2_future = executor.submit(_do_search, 'ssdeep', ssdeep[2])
 
-    # Process vector
-    try:
-        results = STORAGE.result.search(
-            f"sha256:{sha256} AND response.service_name:APIVector", sort="created desc", as_obj=False)
-        results = STORAGE.result.multiget(
-            [result['id'] for result in results.get('items', None)],
-            as_dictionary=False, as_obj=False)
+    # Adding outputs for all hashes
+    output.extend(tlsh_future.result())
+    output.extend(ssdeep1_future.result())
+    output.extend(ssdeep2_future.result())
 
-        vector = []
-        for result in results:
+    # Find all possible vectors from this file
+    vectors = set()
+    for service_results in STORAGE.result.grouped_search('response.service_name',
+                                                         rows=1000,
+                                                         query=f'sha256:{sha256} AND result.sections.tags.vector:*',
+                                                         fl="result.sections.tags.vector",
+                                                         sort="created desc", as_obj=False,
+                                                         index_type=Index.ARCHIVE)['items']:
+        for result in service_results['items']:
             for section in result['result']['sections']:
-                vector.extend(section['tags']['vector'])
+                vectors = vectors.union(set(section['tags']['vector']))
 
-        query = ' OR '.join([f"result.sections.tags.vector:{v}" for v in vector])
-        results = STORAGE.result.search(query=query, as_obj=False)
-        ids = set([x['id'].split('.')[0] for x in STORAGE.result.stream_search(query=query, fl="id", as_obj=False)])
-        query = ' OR '.join(f"sha256:{id}" for id in ids)
-        output['vector'] = STORAGE.file.search(query=query, **params)
-    except Exception as e:
-        output['vector'] = f"SearchException: {e}"
+    # Search for all vectors at the same time
+    vector_futures = {}
+    with APMAwareThreadPoolExecutor(MAX_CONCURRENT_VECTORS) as executor:
+        for v in vectors:
+            vector_futures[v] = executor.submit(
+                STORAGE.result.grouped_search, 'sha256', rows=10,
+                query=f'result.sections.tags.vector:"{v}"',
+                filters=[f'NOT(sha256:"{sha256}")'],
+                fl="type,sha256,created", sort="created desc",
+                as_obj=False, access_control=user['access_control'], limit=1)
+
+    # Gather and append vector results
+    for k, v in vector_futures.items():
+        res = v.result()
+        if res['total'] > 0:
+            # Flatten the grouped search results
+            new_items = []
+            for item_result in res['items']:
+                new_items.extend(item_result['items'])
+            res['items'] = new_items
+
+            # Remove unimportant fields
+            res.pop('offset')
+            res.pop('rows')
+
+            # Add Type and value
+            res['type'] = 'vector'
+            res['value'] = k
+
+            output.append(res)
 
     return make_api_response(output)
 
