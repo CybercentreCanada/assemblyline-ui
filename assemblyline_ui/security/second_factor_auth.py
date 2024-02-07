@@ -1,3 +1,5 @@
+import elasticapm
+
 from fido2 import cbor
 from fido2.client import ClientData
 from fido2.ctap2 import AttestedCredentialData, AuthenticatorData
@@ -13,7 +15,7 @@ rp = PublicKeyCredentialRpEntity(config.ui.fqdn, "Assemblyline server")
 server = U2FFido2Server(f"https://{config.ui.fqdn}", rp)
 
 
-# noinspection PyBroadException
+@elasticapm.capture_span(span_type='validate_2fa')
 def validate_2fa(username, otp_token, state, webauthn_auth_resp, storage):
     security_token_enabled = False
     otp_enabled = False

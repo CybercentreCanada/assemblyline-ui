@@ -2,6 +2,7 @@ import typing
 
 import hauntedhouse
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
@@ -16,7 +17,7 @@ retrohunt_api._doc = "Run yara signatures over all files."
 SECONDS_PER_DAY = 24 * 60 * 60
 
 haunted_house_client = None
-if config.retrohunt:
+if config.retrohunt.enabled:
     haunted_house_client = hauntedhouse.Client(
         address=config.retrohunt.url,
         api_key=config.retrohunt.api_key,
@@ -208,86 +209,92 @@ def repeat_retrohunt_job(**kwargs):
         return make_api_response("", f"{e}", 400)
 
 
-@retrohunt_api.route("/", methods=["GET", "POST"])
-@api_login(require_role=["retrohunt_view"])
-def search_retrohunt_jobs(**kwargs):
-    """
-    Search through the retrohunt index for a given query.
-    Uses lucene search syntax for query.
+# @retrohunt_api.route("/", methods=["GET", "POST"])
+# @api_login(require_role=["retrohunt_view"])
+# def search_retrohunt_jobs(**kwargs):
+#     """
+#     Search through the retrohunt index for a given query.
+#     Uses lucene search syntax for query.
 
-    Optional Arguments:
-        query                   =>  Query to search for
-        offset                  =>  Offset in the results
-        rows                    =>  Number of results per page
-        sort                    =>  How to sort the results (not available in deep paging)
-        fl                      =>  List of fields to return
-        filters                 =>  List of additional filter queries limit the data
+#     Optional Arguments:
+#         query                   =>  Query to search for
+#         offset                  =>  Offset in the results
+#         rows                    =>  Number of results per page
+#         sort                    =>  How to sort the results (not available in deep paging)
+#         fl                      =>  List of fields to return
+#         filters                 =>  List of additional filter queries limit the data
 
-    Data Block (POST ONLY):
-    {
-        "query": "*",           =>  Query to search for
-        "offset": 0,            =>  Offset in the results
-        "rows": 100,            =>  Max number of results
-        "sort": "field asc",    =>  How to sort the results
-        "fl": "id,score",       =>  List of fields to return
-        "filters": ['fq']       =>  List of additional filter queries limit the data
-    }
+#     Data Block (POST ONLY):
+#     {
+#         "query": "*",           =>  Query to search for
+#         "offset": 0,            =>  Offset in the results
+#         "rows": 100,            =>  Max number of results
+#         "sort": "field asc",    =>  How to sort the results
+#         "fl": "id,score",       =>  List of fields to return
+#         "filters": ['fq']       =>  List of additional filter queries limit the data
+#     }
 
-    Result example:
-    {
-        "total": 201,           =>  Total retrohunt jobs found
-        "offset": 0,            =>  Offset in the retrohunt job list
-        "rows": 20,             =>  Number of retrohunt jobs returned
-        "items": []             =>  List of retrohunt jobs
-    }
-    """
-    user = kwargs['user']
+#     Result example:
+#     {
+#         "total": 201,           =>  Total retrohunt jobs found
+#         "offset": 0,            =>  Offset in the retrohunt job list
+#         "rows": 20,             =>  Number of retrohunt jobs returned
+#         "items": []             =>  List of retrohunt jobs
+#     }
+#     """
+#     user = kwargs['user']
 
-    # Make sure retrohunt is configured
-    if haunted_house_client is None:
-        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+#     # Make sure retrohunt is configured
+#     if haunted_house_client is None:
+#         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the request parameters and apply the multi_field parameter to it
-    multi_fields = ['filters']
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-    else:
-        req_data = request.args
-        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+#     # Get the request parameters and apply the multi_field parameter to it
+#     multi_fields = ['filters']
+#     if request.method == "POST":
+#         req_data = request.json
+#         params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+#     else:
+#         req_data = request.args
+#         params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
 
-    # Set the default search parameters
-    params.setdefault('query', '*')
-    params.setdefault('offset', '0')
-    params.setdefault('rows', '20')
-    params.setdefault('sort', 'created desc')
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('as_obj', False)
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-    params.setdefault('track_total_hits', True)
+#     # Set the default search parameters
+#     params.setdefault('query', '*')
+#     params.setdefault('offset', '0')
+#     params.setdefault('rows', '20')
+#     params.setdefault('sort', 'created_time desc')
+#     params.setdefault('access_control', user['access_control'])
+#     params.setdefault('as_obj', False)
+#     params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
+#     params.setdefault('track_total_hits', True)
 
-    # Append the other request parameters
-    fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+#     # Append the other request parameters
+#     fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
+#     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
-    try:
-        result = STORAGE.retrohunt.search(**params)
-        items = result.get('items', [])
-        result['items'] = [get_job_details(item.get('code', None), user, fl=params.get(
-            'fl', None)) if item.get('finished', True) is False else item for item in items]
-        return make_api_response(result)
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
+#     try:
+#         result = STORAGE.retrohunt.search(**params)
+#         items = result.get('items', [])
+
+#         with APMAwareThreadPoolExecutor(len(items)) as executor:
+#             res = {item['key']: { **item, 'query': f'search:"{item["key"]}"'} for item in items}
+#             res = {k: executor.submit(STORAGE.retrohunt_hit.search, query=f"search:{item['key']}", offset=0, rows=10000, fl='sha256', access_control=user['access_control'], as_obj=False) for k, item in res.items()}
+#             res = {k: [result['sha256'] for result in item.result()['items']] for k, item in res.items()}
+#             res = {k: executor.submit(STORAGE.file.search, query='*', rows=0, key_space=key_space, access_control=user['access_control'], as_obj=False) for k, key_space in res.items()}
+#             res = {k: item.result()['total'] for k, item in res.items()}
+#             result['items'] = [{**item, 'total_hits': res[item['key']] if item['key'] in res else 0} for item in items]
+#             return make_api_response(result)
+#     except SearchException as e:
+#         return make_api_response("", f"SearchException: {e}", 400)
 
 
-@retrohunt_api.route("/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/<id>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def get_retrohunt_job_detail(code, **kwargs):
+def get_retrohunt_job_detail(id, **kwargs):
     """
     Get the details of a completed or an in progress retrohunt job.
 
     Variables:
-        code                => Search code of the retrohunt job to be retrieved
+        id                => ID of the retrohunt job to be retrieved
 
     Response Fields:
     {
@@ -324,124 +331,137 @@ def get_retrohunt_job_detail(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc = STORAGE.retrohunt.get(code, as_obj=False)
-
-    if doc is None:
-        return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+    doc = STORAGE.retrohunt.get(id, as_obj=False)
+    if not doc:
+        return make_api_response({}, "This retrohunt job does not exist...", 404)
+    
+    if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
 
+    # doc['total_errors'] = len(doc['errors'])
+    # doc['total_warnings'] = len(doc['warnings'])
+    # doc.pop('warnings', None)
+    # doc.pop('errors', None)
     return make_api_response(doc)
 
 
-@retrohunt_api.route("/hits/<code>/", methods=["GET", "POST"])
-@api_login(require_role=[ROLES.retrohunt_view])
-def get_retrohunt_job_hits(code, **kwargs):
-    """
-    Get hit results of a retrohunt job completed or in progress.
+# @retrohunt_api.route("/hits/<id>/", methods=["GET", "POST"])
+# @api_login(require_role=[ROLES.retrohunt_view])
+# def get_retrohunt_job_hits(id, **kwargs):
+#     """
+#     Get hit results of a retrohunt job completed or in progress.
 
-    Variables:
-        code                    =>  Search code of the retrohunt job to be retrieved
+#     Variables:
+#         id                    =>  ID of the retrohunt job to be retrieved
 
-    Optional Arguments:
-        query                   =>  Query to filter the file list
-        offset                  =>  Offset at which we start giving files
-        rows                    =>  Number of files to return
-        filters                 =>  List of additional filter queries limit the data
-        sort                    =>  How to sort the results (not available in deep paging)
-        fl                      =>  List of fields to return
+#     Optional Arguments:
+#         query                   =>  Query to filter the file list
+#         offset                  =>  Offset at which we start giving files
+#         rows                    =>  Number of files to return
+#         filters                 =>  List of additional filter queries limit the data
+#         sort                    =>  How to sort the results (not available in deep paging)
+#         fl                      =>  List of fields to return
 
-    Data Block (POST ONLY):
-    {
-        "query": "id:*",        =>  Query to filter the file list
-        "offset": "0",          =>  Offset at which we start giving files
-        "rows": "0",            =>  Number of files to return
-        "filters": "0",         =>  List of additional filter queries limit the data
-        "sort": "0",            =>  How to sort the results (not available in deep paging)
-        "fl": "0",              =>  List of fields to return
-        "filters": ['fq']
-    }
+#     Data Block (POST ONLY):
+#     {
+#         "query": "id:*",        =>  Query to filter the file list
+#         "offset": "0",          =>  Offset at which we start giving files
+#         "rows": "0",            =>  Number of files to return
+#         "filters": "0",         =>  List of additional filter queries limit the data
+#         "sort": "0",            =>  How to sort the results (not available in deep paging)
+#         "fl": "0",              =>  List of fields to return
+#         "filters": ['fq']
+#     }
 
-    Response Fields:
-    {
-        "total": 200,           #   Total results found
-        "offset": 0,            #   Offset in the result list
-        "rows": 100,            #   Number of results returned
-        "items": [              #   List of files
-            {
-                "classification": "TLP:CLEAR",
-                "entropy": 0.00,
-                "from_archive": False,
-                "id": "0aa",
-                "is_section_image": False,
-                "label_categories": {
-                    "attribution": [],
-                    "info": [],
-                    "technique": []
-                },
-                "labels": [],
-                "md5": "0aa",
-                "seen": {
-                    "count": 1,
-                    "first": "2023-01-01T00:00:00.000000Z",
-                    "last": "2023-01-01T00:00:00.000000Z"
-                },
-                "sha1": "0aa",
-                "sha256": "0aa",
-                "size": 100,
-                "tlsh": "T134",
-                "type": "text/json"
-            },
-            {
-                ...
-            }
-        ]
-    }
-    """
-    user = kwargs['user']
+#     Response Fields:
+#     {
+#         "total": 200,           #   Total results found
+#         "offset": 0,            #   Offset in the result list
+#         "rows": 100,            #   Number of results returned
+#         "items": [              #   List of files
+#             {
+#                 "classification": "TLP:CLEAR",
+#                 "entropy": 0.00,
+#                 "from_archive": False,
+#                 "id": "0aa",
+#                 "is_section_image": False,
+#                 "label_categories": {
+#                     "attribution": [],
+#                     "info": [],
+#                     "technique": []
+#                 },
+#                 "labels": [],
+#                 "md5": "0aa",
+#                 "seen": {
+#                     "count": 1,
+#                     "first": "2023-01-01T00:00:00.000000Z",
+#                     "last": "2023-01-01T00:00:00.000000Z"
+#                 },
+#                 "sha1": "0aa",
+#                 "sha256": "0aa",
+#                 "size": 100,
+#                 "tlsh": "T134",
+#                 "type": "text/json"
+#             },
+#             {
+#                 ...
+#             }
+#         ]
+#     }
+#     """
+#     user = kwargs['user']
 
-    # Make sure retrohunt is configured
-    if haunted_house_client is None:
-        return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
+#     # Make sure retrohunt is configured
+#     if haunted_house_client is None:
+#         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc: dict = get_job_details(code, user)
+#     doc = STORAGE.retrohunt.get(id, as_obj=False)
+#     if not doc:
+#         return make_api_response({}, "This retrohunt job does not exist...", 404)
 
-    # Make sure the user has the right classification to access this retrohunt job
-    if doc is None:
-        return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
-        return make_api_response({}, err="Access denied.", status_code=403)
+#     if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+#         return make_api_response({}, err="Access denied.", status_code=403)
+    
+#     try:
+#         params = {
+#             'query': f"search:{id}",
+#             'offset': 0,
+#             'rows': 10000,
+#             'fl': 'sha256',
+#             'as_obj': False,
+#             'index_type': Index.HOT_AND_ARCHIVE,
+#             'track_total_hits': True
+#         }
 
-    # Get the request parameters and apply the multi_field parameter to it
-    multi_fields = ['filters']
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-    else:
-        req_data = request.args
-        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
+#         hits = STORAGE.retrohunt_hit.search(**params)
+#         key_space = [item['sha256'] for item in hits['items']]
 
-    # Set the default search parameters
-    params.setdefault('query', '*')
-    params.setdefault('offset', '0')
-    params.setdefault('rows', '10')
-    params.setdefault('sort', 'seen.last desc')
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('as_obj', False)
-    params.setdefault('key_space', doc['hits'])
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-    params.setdefault('track_total_hits', True)
+#         params = {
+#             'query': '*',
+#             'offset': 0,
+#             'rows': 10,
+#             'sort': 'seen.last desc',
+#             'access_control': user['access_control'],
+#             'as_obj': False,
+#             'index_type': Index.HOT_AND_ARCHIVE,
+#             'track_total_hits': True,
+#             'key_space': key_space
+#         }
 
-    # Append the other request parameters
-    fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+#         multi_fields = ['filters']
+#         if request.method == "POST":
+#             req_data = request.json
+#             params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+#         else:
+#             req_data = request.args
+#             params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+            
+#         fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
+#         params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
-    try:
-        return make_api_response(STORAGE.file.search(**params))
-    except SearchException as e:
-        return make_api_response("", f"SearchException: {e}", 400)
+#         return make_api_response(STORAGE.file.search(**params))
+#     except SearchException as e:
+#         return make_api_response("", f"SearchException: {e}", 400)
 
 
 @retrohunt_api.route("/errors/<code>/", methods=["GET", "POST"])
@@ -523,9 +543,9 @@ def get_retrohunt_job_errors(code, **kwargs):
     })
 
 
-@retrohunt_api.route("/types/<code>/", methods=["GET", "POST"])
+@retrohunt_api.route("/types/<id>/", methods=["GET", "POST"])
 @api_login(require_role=[ROLES.retrohunt_view])
-def get_retrohunt_job_types(code, **kwargs):
+def get_retrohunt_job_types(id, **kwargs):
     """
     Get types distribution of a retrohunt job completed or in progress.
 
@@ -557,35 +577,46 @@ def get_retrohunt_job_types(code, **kwargs):
     if haunted_house_client is None:
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
-    # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc: dict = get_job_details(code, user)
-
-    # Make sure the user has the right classification to access this retrohunt job
+    doc = STORAGE.retrohunt.get(id, as_obj=False)
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+    
+    if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-
-    # Get the request parameters and apply the multi_field parameter to it
-    multi_fields = ['filters']
-    if request.method == "POST":
-        req_data = request.json
-        params = {k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-    else:
-        req_data = request.args
-        params = {k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None}
-
-    # Set the default search parameters
-    params.setdefault('query', '*')
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('key_space', doc['hits'])
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-
-    # Append the other request parameters
-    fields = ["query", "mincount"]
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
-
+    
     try:
+        params = {
+            'query': f"search:{id}",
+            'offset': 0,
+            'rows': 10000,
+            'fl': 'sha256',
+            'as_obj': False,
+            'index_type': Index.HOT_AND_ARCHIVE,
+            'track_total_hits': True
+        }
+
+        hits = STORAGE.retrohunt_hit.search(**params)
+        key_space = [item['sha256'] for item in hits['items']]
+
+        params = {
+            'query': '*',
+            'access_control': user['access_control'],
+            'index_type': Index.HOT_AND_ARCHIVE,
+            'key_space': key_space,
+            'mincount': 1
+        }
+
+        multi_fields = ['filters']
+        if request.method == "POST":
+            req_data = request.json
+            params.update({k: req_data.get(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+        else:
+            req_data = request.args
+            params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
+
+        fields = ["query", "mincount"]
+        params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
+
         return make_api_response(STORAGE.file.facet('type', **params))
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)

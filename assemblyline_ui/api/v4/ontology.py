@@ -24,24 +24,27 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
         file_scores.setdefault(r['sha256'], 0)
         file_scores[r['sha256']] += r["result"]["score"]
 
+    # Start downloading all ontology files
     for r in results:
         for supp in r.get('response', {}).get('supplementary', {}):
             if supp['name'].endswith('.ontology'):
+
+                # get ontology data
+                ontology_data = FILESTORE.get(supp['sha256'])
+                # Try to download from archive
+                if not ontology_data and \
+                        ARCHIVESTORE is not None and \
+                        ARCHIVESTORE != FILESTORE and \
+                        ROLES.archive_download in user['roles']:
+                    ontology_data = ARCHIVESTORE.get(supp['sha256'])
+
+                if not ontology_data:
+                    # Could not download the ontology supplementary file
+                    LOGGER.warning(f"Ontology file was not found filestores: {supp['name']} [{supp['sha256']}]")
+                    continue
+
                 try:
-                    # get ontology data
-                    ontology_data = FILESTORE.get(supp['sha256'])
-                    # Try to download from archive
-                    if not ontology_data and \
-                            ARCHIVESTORE is not None and \
-                            ARCHIVESTORE != FILESTORE and \
-                            ROLES.archive_download in user['roles']:
-                        ontology_data = ARCHIVESTORE.get(supp['sha256'])
-
-                    if not ontology_data:
-                        # Could not download the ontology supplementary file
-                        LOGGER.warning(f"Ontology file was not found filestores: {supp['name']} [{supp['sha256']}]")
-                        continue
-
+                    # Parse the ontology file
                     ontology = json.loads(ontology_data)
                     sha256 = ontology['file']['sha256']
                     c12n = ontology['classification']
@@ -68,7 +71,7 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
-                    LOGGER.warning(f"An error occured while fetching ontology files: {str(e)}")
+                    LOGGER.warning(f"An error occured while parsing ontology files: {str(e)}")
 
     # Flush and reset buffer
     sio.flush()
@@ -293,15 +296,18 @@ def get_ontology_for_file(sha256, **kwargs):
         return make_api_response("", f"Your are not allowed get ontology files for this hash: {sha256}", 403)
 
     # Generate the queries to get the results
-    query = f"id:{sha256}* AND response.supplementary.name:*.ontology"
+    query = f"sha256:{sha256} AND response.supplementary.description:ontology"
     filters = []
     if services:
         filters.append(" OR ".join([f'response.service_name:{service}' for service in services]))
 
     # Get the result keys
     if all:
-        keys = [x['id'] for x in STORAGE.result.stream_search(query, fl="id", filters=filters,
-                                                              access_control=user["access_control"], as_obj=False)]
+        keys = [
+            x['id']
+            for x in STORAGE.result.stream_search(
+                query, fl="id", filters=filters, access_control=user["access_control"],
+                as_obj=False, item_buffer_size=1000)]
     else:
         service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id', filters=filters,
                                                      group_sort="created desc", access_control=user["access_control"],
