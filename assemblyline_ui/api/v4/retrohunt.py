@@ -75,7 +75,7 @@ def create_retrohunt_job(**kwargs):
         if max_expiry and config.retrohunt.max_dtl > 0:
             max_expiry = min(max_expiry, config.retrohunt.max_dtl)
         max_expiry = now_as_iso(max_expiry * SECONDS_PER_DAY)
-
+        
     try:
         # Parse the signature and send it to the retrohunt api
         key = haunted_house_client.start_search(
