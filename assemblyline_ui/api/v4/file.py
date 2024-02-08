@@ -913,6 +913,7 @@ def find_similar_files(sha256, **kwargs):
 
     Arguments:
     use_archive             => Also find similar file in archive
+    archive_only            => Only find similar in the malware archive
 
     Data Block:
     None
@@ -933,11 +934,14 @@ def find_similar_files(sha256, **kwargs):
     """
     user = kwargs['user']
     use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
+    archive_only = request.args.get('use_archive', 'false').lower() in ['true', '']
 
-    if use_archive and ROLES.archive_view not in user['roles']:
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
         return make_api_response({}, "User is not allowed to view the archive", 403)
 
-    if use_archive:
+    if archive_only:
+        index_type = Index.ARCHIVE
+    elif use_archive:
         index_type = Index.HOT_AND_ARCHIVE
     else:
         index_type = Index.HOT
