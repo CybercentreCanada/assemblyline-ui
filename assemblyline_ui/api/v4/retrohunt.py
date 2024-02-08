@@ -2,7 +2,7 @@ import typing
 
 import hauntedhouse
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.threading import APMAwareThreadPoolExecutor
+# from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
@@ -225,16 +225,23 @@ def search_retrohunt_jobs(**kwargs) -> Response:
 
     try:
         result = STORAGE.retrohunt.search(**params)
-        items = result.get('items', [])
+        items = result.get('items')
 
-        with APMAwareThreadPoolExecutor(len(items)) as executor:
-            res = {item['key']: {**item, 'query': f'search:"{item["key"]}"'} for item in items}
-            res = {k: executor.submit(STORAGE.retrohunt_hit.search, query=f"search:{item['key']}", offset=0, rows=10000, fl='sha256', access_control=user['access_control'], as_obj=False) for k, item in res.items()}
-            res = {k: [result['sha256'] for result in item.result()['items']] for k, item in res.items()}
-            res = {k: executor.submit(STORAGE.file.search, query='*', rows=0, key_space=key_space, access_control=user['access_control'], as_obj=False) for k, key_space in res.items()}
-            res = {k: item.result()['total'] for k, item in res.items()}
-            result['items'] = [{**item, 'total_hits': res[item['key']] if item['key'] in res else 0} for item in items]
-            return make_api_response(result)
+        if items:
+            query = 'search: (' + ' OR '.join(item['key'] for item in items) + ')'
+            counts = STORAGE.retrohunt_hit.facet("search", query=query,
+                                                 access_control=user['access_control'], size=len(items))
+            for item in items:
+                item['total_hits'] = counts.get(item['key'], 0)
+                
+        # with APMAwareThreadPoolExecutor(min(len(items), 10)) as executor:
+        #     res = {item['key']: {**item, 'query': f'search:"{item["key"]}"'} for item in items}
+        #     res = {k: executor.submit(STORAGE.retrohunt_hit.search, query=f"search:{item['key']}", offset=0, rows=10000, fl='sha256', access_control=user['access_control'], as_obj=False) for k, item in res.items()}
+        #     res = {k: [result['sha256'] for result in item.result()['items']] for k, item in res.items()}
+        #     res = {k: executor.submit(STORAGE.file.search, query='*', rows=0, key_space=key_space, access_control=user['access_control'], as_obj=False) for k, key_space in res.items()}
+        #     res = {k: item.result()['total'] for k, item in res.items()}
+        #     result['items'] = [{**item, 'total_hits': res[item['key']] if item['key'] in res else 0} for item in items]
+        return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
