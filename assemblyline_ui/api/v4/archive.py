@@ -1,5 +1,4 @@
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.common.uid import get_random_id
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import DataStoreException, VersionConflictException
@@ -15,7 +14,6 @@ from flask import request
 
 SUB_API = 'archive'
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
-MAX_CONCURRENT_VECTORS = 5
 
 archive_api = make_subapi_blueprint(SUB_API, api_version=4)
 archive_api._doc = "Perform operations on archived submissions"
@@ -68,130 +66,8 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, err=str(se), status_code=400)
 
 
-@archive_api.route("/similar/<sha256>/", methods=["GET", "POST"])
-@api_login(require_role=[ROLES.submission_view])
-def find_similar_files(sha256, **kwargs):
-    """
-    Find files related to the current files via TLSH, SSDEEP or Vectors
-
-    Variables:
-    sha256                  => A resource locator for the file (SHA256)
-
-    Arguments:
-    None
-
-    Data Block:
-    None
-
-    API call example:
-    /api/v4/archive/similar/123456...654321/
-
-    Result example:
-    [   # List of files related
-      {
-            "items": []            # List of files hash
-            "total": 201,          # Total files through this relation type
-            "type": 'tlsh'         # Type of relationship used to finds thoses files
-            "value": 'T123...123'  # Value used to do the relation
-      },
-      ...
-    ]
-    """
-    user = kwargs['user']
-    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
-
-    if not file_obj:
-        return make_api_response({"success": False}, "This file does not exists", 404)
-
-    if not user or not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response({"success": False}, "You are not allowed to view this file", 403)
-
-    def _do_search(data_type, value):
-        if value:
-            if data_type == "tlsh":
-                query = f'tlsh:"{value}"'
-            else:
-                query = f'ssdeep:"{value}"~'
-
-            res = STORAGE.file.search(query, rows=10, sort='seen.last desc', fl='type,sha256,seen.last',
-                                      filters=[f'NOT(sha256:"{sha256}")'], access_control=user['access_control'],
-                                      as_obj=False, index_type=Index.HOT_AND_ARCHIVE)
-            if res['total'] > 0:
-                # Remove unimportant fields
-                res.pop('offset')
-                res.pop('rows')
-
-                # Add Type and value
-                res['type'] = data_type
-                res['value'] = value
-
-                return [res]
-        return []
-
-    output = []
-
-    # Look for similar TLSH and SSDEEPS
-    tlsh = file_obj.get('tlsh', '')
-    ssdeep = file_obj.get('ssdeep', '::').split(':')
-
-    with APMAwareThreadPoolExecutor(3) as executor:
-        tlsh_future = executor.submit(_do_search, 'tlsh', tlsh)
-        ssdeep1_future = executor.submit(_do_search, 'ssdeep', ssdeep[1])
-        ssdeep2_future = executor.submit(_do_search, 'ssdeep', ssdeep[2])
-
-    # Adding outputs for all hashes
-    output.extend(tlsh_future.result())
-    output.extend(ssdeep1_future.result())
-    output.extend(ssdeep2_future.result())
-
-    # Find all possible vectors from this file
-    vectors = set()
-    for service_results in STORAGE.result.grouped_search('response.service_name',
-                                                         rows=1000,
-                                                         query=f'sha256:{sha256} AND result.sections.tags.vector:*',
-                                                         fl="result.sections.tags.vector",
-                                                         sort="created desc", as_obj=False,
-                                                         index_type=Index.ARCHIVE)['items']:
-        for result in service_results['items']:
-            for section in result['result']['sections']:
-                vectors = vectors.union(set(section['tags']['vector']))
-
-    # Search for all vectors at the same time
-    vector_futures = {}
-    with APMAwareThreadPoolExecutor(MAX_CONCURRENT_VECTORS) as executor:
-        for v in vectors:
-            vector_futures[v] = executor.submit(
-                STORAGE.result.grouped_search, 'sha256', rows=10,
-                query=f'result.sections.tags.vector:"{v}"',
-                filters=[f'NOT(sha256:"{sha256}")'],
-                fl="type,sha256,created", sort="created desc",
-                as_obj=False, access_control=user['access_control'], limit=1)
-
-    # Gather and append vector results
-    for k, v in vector_futures.items():
-        res = v.result()
-        if res['total'] > 0:
-            # Flatten the grouped search results
-            new_items = []
-            for item_result in res['items']:
-                new_items.extend(item_result['items'])
-            res['items'] = new_items
-
-            # Remove unimportant fields
-            res.pop('offset')
-            res.pop('rows')
-
-            # Add Type and value
-            res['type'] = 'vector'
-            res['value'] = k
-
-            output.append(res)
-
-    return make_api_response(output)
-
-
 @archive_api.route("/comment/<sha256>/", methods=["GET"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+@api_login(require_role=[ROLES.archive_view], allow_readonly=False)
 def get_comments(sha256, **kwargs):
     """
     Get all comments with their author made on a given file
@@ -262,7 +138,7 @@ def get_comments(sha256, **kwargs):
 
 
 @archive_api.route("/comment/<sha256>/", methods=["PUT"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+@api_login(require_role=[ROLES.archive_comment], allow_readonly=False)
 def add_comment(sha256, **kwargs):
     """
     Add a comment to a given file
@@ -330,7 +206,7 @@ def add_comment(sha256, **kwargs):
 
 
 @archive_api.route("/comment/<sha256>/<cid>/", methods=["POST"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+@api_login(require_role=[ROLES.archive_comment], allow_readonly=False)
 def update_comment(sha256, cid, **kwargs):
     """
     Update the comment <cid> in a given file
@@ -398,7 +274,7 @@ def update_comment(sha256, cid, **kwargs):
 
 
 @archive_api.route("/comment/<sha256>/<cid>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.file_detail])
+@api_login(require_role=[ROLES.archive_comment])
 def delete_comment(sha256, cid, **kwargs):
     """
     Delete the comment <cid> in a given file
@@ -462,7 +338,7 @@ def delete_comment(sha256, cid, **kwargs):
 
 
 @archive_api.route("/reaction/<sha256>/<cid>/<icon>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_comment])
 def toggle_reaction(sha256, cid, icon, **kwargs):
     """
     Add or remove a reaction made on a comment to a given file
@@ -534,7 +410,7 @@ def toggle_reaction(sha256, cid, icon, **kwargs):
 
 
 @archive_api.route("/label/", methods=["GET", "POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def get_label_suggestions(**kwargs):
     """
     Get the suggestions based on the labels of all the files
@@ -597,7 +473,7 @@ def get_label_suggestions(**kwargs):
 
 
 @archive_api.route("/label/<sha256>/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def set_labels(sha256, **kwargs):
     """
     Set the labels of a given file
@@ -664,7 +540,7 @@ def set_labels(sha256, **kwargs):
 
 
 @archive_api.route("/label/<sha256>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def add_labels(sha256, **kwargs):
     """
     Add one or multiple labels to a given file
@@ -724,7 +600,7 @@ def add_labels(sha256, **kwargs):
 
 
 @archive_api.route("/label/<sha256>/", methods=["DELETE"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def remove_labels(sha256, **kwargs):
     """
     Remove one or multiple labels to a given file

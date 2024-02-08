@@ -27,6 +27,7 @@ from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.datastore.collection import Index
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
+MAX_CONCURRENT_VECTORS = 5
 
 FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
@@ -505,6 +506,9 @@ def summarized_results(sha256, **kwargs):
         index_type = Index.ARCHIVE
 
     user = kwargs['user']
+
+    if archive_only and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
 
     # Create the cache key
     cache_key = AI_CACHE.create_key(sha256, user['classification'], index_type, archive_only, "file")
@@ -1388,3 +1392,140 @@ def get_file_score(sha256, **kwargs):
         return make_api_response({"file_info": file_obj, "score": score, "result_keys": keys})
     else:
         return make_api_response([], "You are not allowed to view this file", 403)
+
+
+@file_api.route("/similar/<sha256>/", methods=["GET", "POST"])
+@api_login(require_role=[ROLES.submission_view])
+def find_similar_files(sha256, **kwargs):
+    """
+    Find files related to the current files via TLSH, SSDEEP or Vectors
+
+    Variables:
+    sha256                  => A resource locator for the file (SHA256)
+
+    Arguments:
+    use_archive             => Also find similar file in archive
+    archive_only            => Only find similar in the malware archive
+
+    Data Block:
+    None
+
+    API call example:
+    /api/v4/archive/similar/123456...654321/
+
+    Result example:
+    [   # List of files related
+      {
+            "items": []            # List of files hash
+            "total": 201,          # Total files through this relation type
+            "type": 'tlsh'         # Type of relationship used to finds thoses files
+            "value": 'T123...123'  # Value used to do the relation
+      },
+      ...
+    ]
+    """
+    user = kwargs['user']
+    use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
+    archive_only = request.args.get('use_archive', 'false').lower() in ['true', '']
+
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
+
+    if archive_only:
+        index_type = Index.ARCHIVE
+    elif use_archive:
+        index_type = Index.HOT_AND_ARCHIVE
+    else:
+        index_type = Index.HOT
+
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=index_type)
+
+    if not file_obj:
+        return make_api_response({"success": False}, "This file does not exists", 404)
+
+    if not user or not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({"success": False}, "You are not allowed to view this file", 403)
+
+    def _do_search(data_type, value):
+        if value:
+            if data_type == "tlsh":
+                query = f'tlsh:"{value}"'
+            else:
+                query = f'ssdeep:"{value}"~'
+
+            res = STORAGE.file.search(query, rows=10, sort='seen.last desc', fl='type,sha256,seen.last',
+                                      filters=[f'NOT(sha256:"{sha256}")'], access_control=user['access_control'],
+                                      as_obj=False, index_type=index_type)
+            if res['total'] > 0:
+                # Remove unimportant fields
+                res.pop('offset')
+                res.pop('rows')
+
+                # Add Type and value
+                res['type'] = data_type
+                res['value'] = value
+
+                return [res]
+        return []
+
+    output = []
+
+    # Look for similar TLSH and SSDEEPS
+    tlsh = file_obj.get('tlsh', '')
+    ssdeep = file_obj.get('ssdeep', '::').split(':')
+
+    with APMAwareThreadPoolExecutor(3) as executor:
+        tlsh_future = executor.submit(_do_search, 'tlsh', tlsh)
+        ssdeep1_future = executor.submit(_do_search, 'ssdeep', ssdeep[1])
+        ssdeep2_future = executor.submit(_do_search, 'ssdeep', ssdeep[2])
+
+    # Adding outputs for all hashes
+    output.extend(tlsh_future.result())
+    output.extend(ssdeep1_future.result())
+    output.extend(ssdeep2_future.result())
+
+    # Find all possible vectors from this file
+    vectors = set()
+    for service_results in STORAGE.result.grouped_search('response.service_name',
+                                                         rows=1000,
+                                                         query=f'sha256:{sha256} AND result.sections.tags.vector:*',
+                                                         fl="result.sections.tags.vector",
+                                                         sort="created desc", as_obj=False,
+                                                         index_type=index_type)['items']:
+        for result in service_results['items']:
+            for section in result['result']['sections']:
+                vectors = vectors.union(set(section['tags']['vector']))
+
+    # Search for all vectors at the same time
+    vector_futures = {}
+    with APMAwareThreadPoolExecutor(MAX_CONCURRENT_VECTORS) as executor:
+        for v in vectors:
+            vector_futures[v] = executor.submit(
+                STORAGE.result.grouped_search, 'sha256', rows=10,
+                query=f'result.sections.tags.vector:"{v}"',
+                filters=[f'NOT(sha256:"{sha256}")'],
+                fl="type,sha256,created", sort="created desc",
+                as_obj=False, access_control=user['access_control'], limit=1,
+                index_type=index_type)
+
+    # Gather and append vector results
+    for k, v in vector_futures.items():
+        res = v.result()
+        if res['total'] > 0:
+            # Flatten the grouped search results
+            new_items = []
+            for item_result in res['items']:
+                new_items.extend(item_result['items'])
+            res['items'] = new_items
+
+            # Remove unimportant fields
+            res.pop('offset')
+            res.pop('rows')
+
+            # Add Type and value
+            res['type'] = 'vector'
+            res['value'] = k
+
+            output.append(res)
+
+    return make_api_response(output)

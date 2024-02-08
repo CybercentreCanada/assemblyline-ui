@@ -524,6 +524,9 @@ def get_ai_summary(sid, **kwargs):
 
     user = kwargs['user']
 
+    if archive_only and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
+
     # Create the cache key
     cache_key = AI_CACHE.create_key(sid, user['classification'], index_type, archive_only, detailed, "submission")
     ai_summary = None
@@ -810,6 +813,9 @@ def list_submissions_for_group(group, **kwargs):
     else:
         index_type = Index.HOT
 
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
+
     if group == "ALL":
         group_query = "id:*"
     else:
@@ -875,6 +881,9 @@ def list_submissions_for_user(username, **kwargs):
         index_type = Index.HOT_AND_ARCHIVE
     else:
         index_type = Index.HOT
+
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
 
     if not STORAGE.user.exists(username):
         return make_api_response("", "User %s does not exists." % username, 404)

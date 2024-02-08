@@ -106,6 +106,9 @@ def search(index, **kwargs):
     else:
         params['index_type'] = Index.HOT
 
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
+
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
 
@@ -197,6 +200,9 @@ def group_search(index, group_field, **kwargs):
         params['index_type'] = Index.HOT_AND_ARCHIVE
     else:
         params['index_type'] = Index.HOT
+
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
 
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
@@ -323,6 +329,9 @@ def facet(index, field, **kwargs):
     else:
         params['index_type'] = Index.HOT
 
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
+
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
 
@@ -424,6 +433,9 @@ def histogram(index, field, **kwargs):
     else:
         params['index_type'] = Index.HOT
 
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
+
     # Make sure access control is enforced
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
@@ -502,6 +514,9 @@ def stats(index, int_field, **kwargs):
         params['index_type'] = Index.HOT_AND_ARCHIVE
     else:
         params['index_type'] = Index.HOT
+
+    if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
+        return make_api_response({}, "User is not allowed to view the archive", 403)
 
     if has_access_control(index):
         params.update({'access_control': user['access_control']})
