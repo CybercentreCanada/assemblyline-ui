@@ -66,117 +66,8 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, err=str(se), status_code=400)
 
 
-@archive_api.route("/details/<sha256>/", methods=["GET", "POST"])
-@api_login(require_role=[ROLES.submission_view])
-def get_additional_details(sha256, **kwargs):
-    """
-    Get additional details in the archive file details
-
-    Variables:
-    sha256                  => A resource locator for the file (SHA256)
-
-    Arguments:
-    offset                  => Offset at which we start giving files
-    rows                    => Numbers of files to return
-    sort                    => How to sort the results (not available in deep paging)
-
-    Data Block:
-    {
-        "offset": 0,        # Offset in the results
-        "rows": 100,        # Max number of results
-        "sort": "field asc",# How to sort the results
-    }
-
-    API call example:
-    /api/v4/file/result/123456...654321/
-
-    Result example:
-    {
-        "tlsh": {           # List of files related by their tlsh
-            "items": []     # List of files hash
-            "count": 100,   # Number of files returned
-            "offset": 0,    # Offset in the file list
-            "total": 201,   # Total files found
-        },
-        "ssdeep1": {...},   # List of files related by the first part of their ssdeep
-        "ssdeep2": {...},   # List of files related by the second part of their ssdeep
-        "vector": {...}     # List of files related by their vector
-    }
-    """
-    user = kwargs['user']
-    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
-
-    if not file_obj:
-        return make_api_response({"success": False}, "This file does not exists", 404)
-
-    if not user or not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response({"success": False}, "You are not allowed to view this file", 403)
-
-    # Set the default search parameters
-    params = {}
-    params.setdefault('offset', 0)
-    params.setdefault('rows', 10)
-    params.setdefault('sort', 'seen.last desc')
-    params.setdefault('fl', 'type,sha256,seen.last')
-    params.setdefault('filters', [f'NOT(sha256:"{sha256}")'])
-    params.setdefault('access_control', user['access_control'])
-    params.setdefault('as_obj', False)
-    params.setdefault('index_type', Index.HOT_AND_ARCHIVE)
-
-    fields = ["offset", "rows", "sort"]
-
-    req_data = None
-    if request.method == "POST":
-        req_data = request.json
-    else:
-        req_data = request.args
-
-    params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
-
-    output = {'tlsh': {}, 'ssdeep1': {}, 'ssdeep2': {}, 'vector': {}}
-
-    # Process tlsh
-    try:
-        tlsh = file_obj['tlsh'].replace('/', '\\/')
-        output['tlsh'] = STORAGE.file.search(query=f"tlsh:{tlsh}", **params)
-    except Exception as e:
-        output['tlsh'] = f"SearchException: {e}"
-
-    # Process ssdeep
-    try:
-        ssdeep = file_obj.get('ssdeep', '').replace('/', '\\/').split(':')
-        output['ssdeep1'] = STORAGE.file.search(query=f"ssdeep:{ssdeep[1]}~", **params)
-        output['ssdeep2'] = STORAGE.file.search(query=f"ssdeep:{ssdeep[2]}~", **params)
-    except Exception as e:
-        output['ssdeep1'] = f"SearchException: {e}"
-        output['ssdeep2'] = f"SearchException: {e}"
-
-    # Process vector
-    try:
-        results = STORAGE.result.search(
-            f"sha256:{sha256} AND response.service_name:APIVector", sort="created desc", as_obj=False)
-        results = STORAGE.result.multiget(
-            [result['id'] for result in results.get('items', None)],
-            as_dictionary=False, as_obj=False)
-
-        vector = []
-        for result in results:
-            for section in result['result']['sections']:
-                vector.extend(section['tags']['vector'])
-
-        query = ' OR '.join([f"result.sections.tags.vector:{v}" for v in vector])
-        results = STORAGE.result.search(query=query, as_obj=False)
-        ids = set([x['id'].split('.')[0] for x in STORAGE.result.stream_search(query=query, fl="id", as_obj=False)])
-        query = ' OR '.join(f"sha256:{id}" for id in ids)
-        output['vector'] = STORAGE.file.search(query=query, **params)
-    except Exception as e:
-        output['vector'] = f"SearchException: {e}"
-
-    return make_api_response(output)
-
-
 @archive_api.route("/comment/<sha256>/", methods=["GET"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+@api_login(require_role=[ROLES.archive_view], allow_readonly=False)
 def get_comments(sha256, **kwargs):
     """
     Get all comments with their author made on a given file
@@ -247,7 +138,7 @@ def get_comments(sha256, **kwargs):
 
 
 @archive_api.route("/comment/<sha256>/", methods=["PUT"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+@api_login(require_role=[ROLES.archive_comment], allow_readonly=False)
 def add_comment(sha256, **kwargs):
     """
     Add a comment to a given file
@@ -315,7 +206,7 @@ def add_comment(sha256, **kwargs):
 
 
 @archive_api.route("/comment/<sha256>/<cid>/", methods=["POST"])
-@api_login(require_role=[ROLES.file_detail], allow_readonly=False)
+@api_login(require_role=[ROLES.archive_comment], allow_readonly=False)
 def update_comment(sha256, cid, **kwargs):
     """
     Update the comment <cid> in a given file
@@ -383,7 +274,7 @@ def update_comment(sha256, cid, **kwargs):
 
 
 @archive_api.route("/comment/<sha256>/<cid>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.file_detail])
+@api_login(require_role=[ROLES.archive_comment])
 def delete_comment(sha256, cid, **kwargs):
     """
     Delete the comment <cid> in a given file
@@ -447,7 +338,7 @@ def delete_comment(sha256, cid, **kwargs):
 
 
 @archive_api.route("/reaction/<sha256>/<cid>/<icon>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_comment])
 def toggle_reaction(sha256, cid, icon, **kwargs):
     """
     Add or remove a reaction made on a comment to a given file
@@ -519,7 +410,7 @@ def toggle_reaction(sha256, cid, icon, **kwargs):
 
 
 @archive_api.route("/label/", methods=["GET", "POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def get_label_suggestions(**kwargs):
     """
     Get the suggestions based on the labels of all the files
@@ -582,7 +473,7 @@ def get_label_suggestions(**kwargs):
 
 
 @archive_api.route("/label/<sha256>/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def set_labels(sha256, **kwargs):
     """
     Set the labels of a given file
@@ -649,7 +540,7 @@ def set_labels(sha256, **kwargs):
 
 
 @archive_api.route("/label/<sha256>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def add_labels(sha256, **kwargs):
     """
     Add one or multiple labels to a given file
@@ -709,7 +600,7 @@ def add_labels(sha256, **kwargs):
 
 
 @archive_api.route("/label/<sha256>/", methods=["DELETE"])
-@api_login(allow_readonly=False, require_role=[ROLES.file_detail])
+@api_login(allow_readonly=False, require_role=[ROLES.archive_manage])
 def remove_labels(sha256, **kwargs):
     """
     Remove one or multiple labels to a given file
