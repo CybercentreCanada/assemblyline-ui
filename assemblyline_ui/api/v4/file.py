@@ -1426,7 +1426,7 @@ def find_similar_files(sha256, **kwargs):
     """
     user = kwargs['user']
     use_archive = request.args.get('use_archive', 'false').lower() in ['true', '']
-    archive_only = request.args.get('use_archive', 'false').lower() in ['true', '']
+    archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
 
     if (use_archive or archive_only) and ROLES.archive_view not in user['roles']:
         return make_api_response({}, "User is not allowed to view the archive", 403)
