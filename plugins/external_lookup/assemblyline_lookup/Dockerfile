@@ -23,7 +23,7 @@ WORKDIR /install
 
 # Get required apt packages
 RUN apt-get update \
-    && apt-get install -yy build-essential libffi-dev \
+    && apt-get install -yy build-essential libffi-dev libfuzzy-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
