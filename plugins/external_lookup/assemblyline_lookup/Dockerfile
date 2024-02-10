@@ -6,7 +6,7 @@ USER root
 # Upgrade packages
 RUN apt-get update && apt-get -yy upgrade && rm -rf /var/lib/apt/lists/*
 # Get required apt packages
-RUN apt-get update && apt-get install -yy libffi6 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -yy libffi8 && rm -rf /var/lib/apt/lists/*
 
 
 FROM base as builder
