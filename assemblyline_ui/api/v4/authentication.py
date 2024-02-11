@@ -1,4 +1,3 @@
-
 import hashlib
 import jwt
 import pyqrcode
@@ -9,7 +8,6 @@ from authlib.integrations.base_client import OAuthError
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from io import BytesIO
-from passlib.hash import bcrypt
 from urllib.parse import urlparse
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
@@ -88,7 +86,7 @@ def add_apikey(name, priv, **kwargs):
             "", err="None of the roles you've requested for this key are allowed for this user.", status_code=400)
 
     user_data['apikeys'][name] = {
-        "password": bcrypt.encrypt(random_pass),
+        "password": get_password_hash(random_pass),
         "acl": priv_map,
         "roles": roles
     }
