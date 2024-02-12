@@ -30,6 +30,7 @@ class BasicLDAPWrapper(object):
         self.base = ldap_config.base
         self.uid_lookup = f"{ldap_config.uid_field}=%s"
         self.group_lookup = ldap_config.group_lookup_query
+        self.group_lookup_with_uid = ldap_config.group_lookup_with_uid
         self.bind_user = ldap_config.bind_user
         self.bind_pass = ldap_config.bind_pass
         self.admin_dn = ldap_config.admin_dn
@@ -51,8 +52,9 @@ class BasicLDAPWrapper(object):
             ldap_server.simple_bind_s(self.bind_user, self.bind_pass)
         return ldap_server
 
-    def get_group_list(self, dn, ldap_server=None):
-        group_list = [x[0] for x in self.get_object(self.group_lookup % dn, ldap_server)["ldap"]]
+    def get_group_list(self, user, dn, ldap_server=None):
+        group_user = user if self.group_lookup_with_uid else dn
+        group_list = [x[0] for x in self.get_object(self.group_lookup % group_user, ldap_server)["ldap"]]
         group_list.append(dn)
         return group_list
 
@@ -138,7 +140,7 @@ class BasicLDAPWrapper(object):
 
                 # Add fields to details
                 details['dn'] = dn
-                details['groups'] = self.get_group_list(dn, ldap_server=ldap_server)
+                details['groups'] = self.get_group_list(user, dn, ldap_server=ldap_server)
 
                 # Parse auto-properties
                 access = True
