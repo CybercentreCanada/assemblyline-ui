@@ -30,7 +30,8 @@ def _call_ai_backend(data, params: AIQueryParams, action):
 
     try:
         # Call API
-        resp = requests.post(config.ui.ai.chat_url, headers=config.ui.ai.headers, json=data)
+        resp = requests.post(config.ui.ai.chat_url, headers=config.ui.ai.headers,
+                             proxies=config.ui.ai.proxies, json=data)
     except Exception as e:
         message = f"An exception occured while trying to {action} with AI on server {config.ui.ai.chat_url}. [{e}]"
         LOGGER.warning(message)
