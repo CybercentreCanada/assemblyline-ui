@@ -1,4 +1,3 @@
-assemblyline>=4.5,<5
 flask
 gevent
 gunicorn
