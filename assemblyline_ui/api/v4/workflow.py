@@ -173,7 +173,7 @@ def edit_workflow(workflow_id, **kwargs):
 
 
 @workflow_api.route("/enable/<workflow_id>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.safelist_manage])
+@api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
 def set_workflow_status(workflow_id, **_):
     """
     Set the enabled status of a workflow
@@ -192,10 +192,10 @@ def set_workflow_status(workflow_id, **_):
     """
     data = request.json
 
-    return make_api_response({'success': STORAGE.safelist.update(
+    return make_api_response({'success': STORAGE.workflow.update(
         workflow_id, [
-            (STORAGE.safelist.UPDATE_SET, 'enabled', data),
-            (STORAGE.safelist.UPDATE_SET, 'updated', now_as_iso()),
+            (STORAGE.workflow.UPDATE_SET, 'enabled', data),
+            (STORAGE.workflow.UPDATE_SET, 'last_edit', now_as_iso()),
         ])})
 
 
