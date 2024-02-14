@@ -34,7 +34,7 @@ def get_alert_update_ops(workflow: Workflow):
                                "priority": workflow.priority,
                                "status": workflow.status,
                                "labels": workflow.labels or None,
-                               })
+                           })
                            ))
 
     return operations
@@ -125,9 +125,6 @@ def edit_workflow(workflow_id, **kwargs):
     Variables:
     workflow_id         => ID of the workflow to edit
 
-    Arguments:
-    run_workflow        => Run workflow immediately on past alerts
-
     Data Block:
     {
      "name": "Workflow name",    # Name of the workflow
@@ -167,19 +164,39 @@ def edit_workflow(workflow_id, **kwargs):
         })
 
     success = STORAGE.workflow.save(workflow_id, wf)
-
-    run_workflow = request.args.get('run_workflow', 'false').lower() == 'true'
     if success:
-        if run_workflow:
-            # Process workflow against all alerts in the system matching the query
-            STORAGE.alert.update_by_query(query=wf['query'], operations=get_alert_update_ops(Workflow(wf)))
-
         return make_api_response({"success": success})
-
     else:
         return make_api_response({"success": False},
                                  err="Workflow ID %s does not exist" % workflow_id,
                                  status_code=404)
+
+
+@workflow_api.route("/enable/<workflow_id>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.safelist_manage])
+def set_workflow_status(workflow_id, **_):
+    """
+    Set the enabled status of a workflow
+
+    Variables:
+    workflow_id       => ID of the workflow
+
+    Arguments:
+    None
+
+    Data Block:
+    "true"
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json
+
+    return make_api_response({'success': STORAGE.safelist.update(
+        workflow_id, [
+            (STORAGE.safelist.UPDATE_SET, 'enabled', data),
+            (STORAGE.safelist.UPDATE_SET, 'updated', now_as_iso()),
+        ])})
 
 
 @workflow_api.route("/<workflow_id>/", methods=["GET"])
@@ -271,6 +288,37 @@ def remove_workflow(workflow_id, **_):
     wf = STORAGE.workflow.get(workflow_id)
     if wf:
         return make_api_response({"success": STORAGE.workflow.delete(workflow_id)})
+    else:
+        return make_api_response({"success": False},
+                                 err="Workflow ID %s does not exist" % workflow_id,
+                                 status_code=404)
+
+
+@workflow_api.route("/<workflow_id>/run", methods=["GET"])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_manage])
+def run_workflow(workflow_id, **_):
+    """
+    Run the specified workflow against all existing alerts that match the query
+
+    Variables:
+    workflow_id       => ID of the workflow to run
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "success": true  # Was the run successful?
+    }
+    """
+    wf = STORAGE.workflow.get(workflow_id)
+    if wf:
+        # Process workflow against all alerts in the system matching the query
+        ret_value = STORAGE.alert.update_by_query(query=wf['query'], operations=get_alert_update_ops(wf))
+        return make_api_response({"success": ret_value is not False})
     else:
         return make_api_response({"success": False},
                                  err="Workflow ID %s does not exist" % workflow_id,

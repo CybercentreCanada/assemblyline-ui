@@ -2,7 +2,7 @@
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.replay.client import REPLAY_PENDING, REPLAY_DONE, REPLAY_REQUESTED
 from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification, REPLAY_ALERT_QUEUE, REPLAY_FILE_QUEUE, \
-    REPLAY_SUBMISSION_QUEUE
+    REPLAY_SUBMISSION_QUEUE, REPLAY_CHECKPOINT_HASH
 from flask import request
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -17,6 +17,60 @@ QUEUE_MAP = {
     'submission': REPLAY_SUBMISSION_QUEUE
 }
 
+
+@replay_api.route("/checkpoint/<message_type>/", methods=["GET"])
+@api_login(audit=False, require_role=[ROLES.replay_system])
+def put_checkpoint(message_type, **_):
+    """
+    Set the last checkpoint for data replay according to message type
+
+    Variables:
+    message_type         =>    Type of message (badlist | safelist | workflow)
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+        "checkpoint": "*"  # A date string or "*" to force replay to start from the beginning
+    }
+
+    Result example:
+    {"success": true}
+
+    """
+    message = request.json
+    if message_type not in ['badlist', 'safelist', 'workflow']:
+        return make_api_response("", f"{message_type.upper()} is not a valid message type for this API.", 400)
+
+    # Update the checkpoint based on the data provided
+    REPLAY_CHECKPOINT_HASH.set(message_type, message['checkpoint'])
+    return make_api_response({"success": True})
+
+@replay_api.route("/checkpoint/<message_type>/", methods=["PUT"])
+@api_login(audit=False, require_role=[ROLES.replay_system])
+def get_checkpoint(message_type, **_):
+    """
+    Return the last checkpoint
+
+    Variables:
+    message_type         =>    Type of message (badlist | safelist | workflow)
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+        "checkpoint": "*"  # The last timestamp of the last set of data exported or "*" if no checkpoint exists.
+    }
+    """
+    if message_type not in ['badlist', 'safelist', 'workflow']:
+        return make_api_response("", f"{message_type.upper()} is not a valid message type for this API.", 400)
+
+    return make_api_response({"checkpoint": REPLAY_CHECKPOINT_HASH.get(message_type) or "*"})
 
 @replay_api.route("/queue/<message_type>/", methods=["GET"])
 @api_login(audit=False, require_role=[ROLES.replay_system])
