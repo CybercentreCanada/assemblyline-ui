@@ -6,7 +6,6 @@ from hashlib import sha256
 from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.odm.messages.changes import Operation
-from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
@@ -219,50 +218,8 @@ def change_status(signature_id, status, **kwargs):
     { "success" : true }      #If saving the rule was a success or not
     """
     user = kwargs['user']
-    possible_statuses = DEPLOYED_STATUSES + DRAFT_STATUSES
-    if status not in possible_statuses:
-        return make_api_response("",
-                                 f"You cannot apply the status {status} on yara rules.",
-                                 403)
-
-    data = STORAGE.signature.get(signature_id, as_obj=False)
-    if data:
-        if not Classification.is_accessible(user['classification'],
-                                            data.get('classification', Classification.UNRESTRICTED)):
-            return make_api_response("", "You are not allowed change status on this signature", 403)
-
-        if data['status'] in STALE_STATUSES and status not in DRAFT_STATUSES:
-            return make_api_response("",
-                                     f"Only action available while signature in {data['status']} "
-                                     f"status is to change signature to a DRAFT status. ({', '.join(DRAFT_STATUSES)})",
-                                     403)
-
-        if data['status'] in DEPLOYED_STATUSES and status in DRAFT_STATUSES:
-            return make_api_response("",
-                                     f"You cannot change the status of signature {signature_id} from "
-                                     f"{data['status']} to {status}.", 403)
-
-        today = now_as_iso()
-        uname = user['uname']
-
-        if status not in ['DISABLED', 'INVALID', 'TESTING']:
-            query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{signature_id}"
-            others_operations = [
-                ('SET', 'last_modified', today),
-                ('SET', 'state_change_date', today),
-                ('SET', 'state_change_user', uname),
-                ('SET', 'status', 'DISABLED')
-            ]
-            STORAGE.signature.update_by_query(query, others_operations)
-
-        operations = [
-            ('SET', 'last_modified', today),
-            ('SET', 'state_change_date', today),
-            ('SET', 'state_change_user', uname),
-            ('SET', 'status', status)
-        ]
-
-        success = STORAGE.signature.update(signature_id, operations)
+    try:
+        success, data = CLIENT.change_status(signature_id, status, user)
         signature_event_sender.send(data['type'], {
             'signature_id': signature_id,
             'signature_type': data['type'],
@@ -270,8 +227,10 @@ def change_status(signature_id, status, **kwargs):
             'operation': Operation.Modified
         })
         return make_api_response({"success": success})
-    else:
-        return make_api_response("", f"Signature not found. ({signature_id})", 404)
+    except (ValueError, PermissionError) as e:
+        make_api_response("", str(e), 403)
+    except FileNotFoundError as e:
+        make_api_response("", str(e), 404)
 
 
 @signature_api.route("/<signature_id>/", methods=["DELETE"])
