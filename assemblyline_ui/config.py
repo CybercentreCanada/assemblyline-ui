@@ -38,9 +38,6 @@ ORGANISATION = config.system.organisation
 SYSTEM_TYPE = config.system.type
 VERSION = os.environ.get('ASSEMBLYLINE_VERSION', f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.dev0")
 
-DEFAULT_SAFELIST_TAG_EXPIRY = config.core.expiry.safelisted_tag_dtl * 24 * 3600
-DEFAULT_BADLIST_TAG_EXPIRY = config.core.expiry.badlisted_tag_dtl * 24 * 3600
-
 BUNDLING_DIR = "/var/lib/assemblyline/bundling"
 
 TEMP_DIR = "/var/lib/assemblyline/flowjs/"
@@ -66,6 +63,7 @@ SUBMISSION_TRAFFIC = CommsQueue('submissions', host=redis)
 REPLAY_ALERT_QUEUE = NamedQueue("replay_alert", host=redis)
 REPLAY_FILE_QUEUE = NamedQueue("replay_file", host=redis)
 REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
+REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 
 
 def get_token_store(key):

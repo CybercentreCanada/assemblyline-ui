@@ -226,6 +226,7 @@ def who_am_i(**kwargs):
                                                 x.classification or CLASSIFICATION.UNRESTRICTED)
             ],
             "external_source_tags": external_source_tags,
+            "fqdn": config.ui.fqdn,
             "read_only": config.ui.read_only,
             "rss_feeds": config.ui.rss_feeds,
             "services_feed": config.ui.services_feed,

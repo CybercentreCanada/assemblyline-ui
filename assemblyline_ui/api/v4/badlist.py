@@ -8,9 +8,9 @@ from flask import request
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline.odm.models.user import ROLES
-from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, DEFAULT_BADLIST_TAG_EXPIRY
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE
+from assemblyline_core.badlist_client import BadlistClient, InvalidBadhash
 
 SUB_API = 'badlist'
 badlist_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -18,82 +18,7 @@ badlist_api._doc = "Perform operations on badlisted hashes"
 
 ATTRIBUTION_TYPES = ['actor', 'campaign', 'category', 'exploit', 'implant', 'family', 'network']
 
-
-class InvalidBadhash(Exception):
-    pass
-
-
-def _merge_bad_hashes(new, old):
-    try:
-        # Check if hash types match
-        if new['type'] != old['type']:
-            raise InvalidBadhash(f"Bad hash type mismatch: {new['type']} != {old['type']}")
-
-        # Use the new classification but we will recompute it later anyway
-        old['classification'] = new['classification']
-
-        # Update updated time
-        old['updated'] = new.get('updated', now_as_iso())
-
-        # Update hashes
-        old['hashes'].update({k: v for k, v in new['hashes'].items() if v})
-
-        # Merge attributions
-        if not old['attribution']:
-            old['attribution'] = new.get('attribution', None)
-        elif new.get('attribution', None):
-            for key in ["actor", 'campaign', 'category', 'exploit', 'implant', 'family', 'network']:
-                old_value = old['attribution'].get(key, []) or []
-                new_value = new['attribution'].get(key, []) or []
-                old['attribution'][key] = list(set(old_value + new_value)) or None
-
-        if old['attribution'] is not None:
-            old['attribution'] = {key: value for key, value in old['attribution'].items() if value}
-
-        # Update type specific info
-        if old['type'] == 'file':
-            old.setdefault('file', {})
-            new_names = new.get('file', {}).pop('name', [])
-            if 'name' in old['file']:
-                for name in new_names:
-                    if name not in old['file']['name']:
-                        old['file']['name'].append(name)
-            elif new_names:
-                old['file']['name'] = new_names
-            old['file'].update({k: v for k, v in new.get('file', {}).items() if v})
-        elif old['type'] == 'tag':
-            old['tag'] = new['tag']
-
-        # Merge sources
-        src_map = {x['name']: x for x in new['sources']}
-        if not src_map:
-            raise InvalidBadhash("No valid source found")
-
-        old_src_map = {x['name']: x for x in old['sources']}
-        for name, src in src_map.items():
-            if name not in old_src_map:
-                old_src_map[name] = src
-            else:
-                old_src = old_src_map[name]
-                if old_src['type'] != src['type']:
-                    raise InvalidBadhash(f"Source {name} has a type conflict: {old_src['type']} != {src['type']}")
-
-                for reason in src['reason']:
-                    if reason not in old_src['reason']:
-                        old_src['reason'].append(reason)
-                old_src['classification'] = src.get('classification', old_src['classification'])
-        old['sources'] = list(old_src_map.values())
-
-        # Calculate the new classification
-        for src in old['sources']:
-            old['classification'] = CLASSIFICATION.max_classification(
-                old['classification'], src.get('classification', None))
-
-        # Set the expiry
-        old['expiry_ts'] = new.get('expiry_ts', None)
-        return old
-    except Exception as e:
-        raise InvalidBadhash(f"Invalid data provided: {str(e)}")
+CLIENT = BadlistClient(datastore=STORAGE)
 
 
 @badlist_api.route("/", methods=["POST", "PUT"])
@@ -161,82 +86,13 @@ def add_or_update_hash(**kwargs):
     data = request.json
     user = kwargs['user']
 
-    # Set defaults
-    data['classification'] = CLASSIFICATION.UNRESTRICTED
-    data.setdefault('hashes', {})
-    data.setdefault('expiry_ts', None)
-    if data['type'] == 'tag':
-        # Remove file related fields
-        data.pop('file', None)
-        data.pop('hashes', None)
-
-        tag_data = data.get('tag', None)
-        if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
-            return make_api_response(None, "Tag data not found", 400)
-
-        hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
-        data['hashes'] = {
-            'md5': hashlib.md5(hashed_value).hexdigest(),
-            'sha1': hashlib.sha1(hashed_value).hexdigest(),
-            'sha256': hashlib.sha256(hashed_value).hexdigest()
-        }
-
-    elif data['type'] == 'file':
-        data.pop('tag', None)
-        data.setdefault('file', {})
-
-    # Ensure expiry_ts is set on tag-related items
-    dtl = data.pop('dtl', None) or DEFAULT_BADLIST_TAG_EXPIRY
-    if dtl:
-        data['expiry_ts'] = now_as_iso(dtl)
-
-    # Set last updated
-    data['added'] = data['updated'] = now_as_iso()
-
-    # Find the best hash to use for the key
-    for hash_key in ['sha256', 'sha1', 'md5']:
-        qhash = data['hashes'].get(hash_key, None)
-        if qhash:
-            break
-
-    # Validate hash length
-    if not qhash:
-        return make_api_response(None, "No valid hash found", 400)
-
-    # Validate sources
-    src_map = {}
-    for src in data['sources']:
-        if src['type'] == 'user':
-            if src['name'] != user['uname']:
-                return make_api_response(
-                    {}, f"You cannot add a source for another user. {src['name']} != {user['uname']}", 400)
-        else:
-            if ROLES.signature_import not in user['roles']:
-                return make_api_response(
-                    {}, "You do not have sufficient priviledges to add an external source.", 403)
-
-        # Find the highest classification of all sources
-        data['classification'] = CLASSIFICATION.max_classification(
-            data['classification'], src.get('classification', None))
-
-        src_map[src['name']] = src
-
-    with Lock(f'add_or_update-badlist-{qhash}', 30):
-        old = STORAGE.badlist.get_if_exists(qhash, as_obj=False)
-        if old:
-            try:
-                # Save data to the DB
-                STORAGE.badlist.save(qhash, _merge_bad_hashes(data, old))
-                return make_api_response({'success': True, "op": "update", 'hash': qhash})
-            except InvalidBadhash as e:
-                return make_api_response({}, str(e), 400)
-        else:
-            try:
-                data['sources'] = src_map.values()
-                STORAGE.badlist.save(qhash, data)
-                return make_api_response({'success': True, "op": "add", 'hash': qhash})
-            except Exception as e:
-                return make_api_response({}, f"Invalid data provided: {str(e)}", 400)
+    try:
+        qhash, op = CLIENT.add_update(data, user)
+        return make_api_response({'success': True, "op": op, 'hash': qhash})
+    except PermissionError as e:
+        return make_api_response(None, str(e), 403)
+    except (ValueError, InvalidBadhash) as e:
+        return make_api_response(None, str(e), 400)
 
 
 @badlist_api.route("/add_update_many/", methods=["POST", "PUT"])
@@ -305,84 +161,12 @@ def add_update_many_hashes(**_):
     """
     data = request.json
 
-    if not isinstance(data, list):
-        return make_api_response("", "Could not get the list of hashes", 400)
-
-    new_data = {}
-    for hash_data in data:
-        # Set a classification if None
-        hash_data.setdefault('classification', CLASSIFICATION.UNRESTRICTED)
-        hash_data.setdefault('hashes', {})
-        hash_data.setdefault('expiry_ts', None)
-
-        if hash_data['type'] == 'tag':
-            # Remove file related fields
-            hash_data.pop('file', None)
-            hash_data.pop('hashes', None)
-
-            tag_data = hash_data.get('tag', None)
-            if tag_data is None or 'type' not in tag_data or 'value' not in tag_data:
-                return make_api_response(None, f"Invalid or missing tag data. ({hash_data})", 400)
-
-            hashed_value = f"{tag_data['type']}: {tag_data['value']}".encode('utf8')
-            hash_data['hashes'] = {
-                'md5': hashlib.md5(hashed_value).hexdigest(),
-                'sha1': hashlib.sha1(hashed_value).hexdigest(),
-                'sha256': hashlib.sha256(hashed_value).hexdigest()
-            }
-
-            # Ensure expiry_ts is set on tag-related items
-            hash_data['expiry_ts'] = hash_data.get('expiry_ts', now_as_iso(DEFAULT_BADLIST_TAG_EXPIRY))
-        elif hash_data['type'] == 'file':
-            hash_data.pop('tag', None)
-            hash_data.setdefault('file', {})
-        else:
-            return make_api_response("", f"Invalid hash type: {hash_data['type']}", 400)
-
-        # Ensure expiry_ts is set on tag-related items
-        dtl = hash_data.pop('dtl', None) or DEFAULT_BADLIST_TAG_EXPIRY
-        if dtl:
-            hash_data['expiry_ts'] = now_as_iso(dtl)
-
-        # Set last updated
-        hash_data['added'] = hash_data['updated'] = now_as_iso()
-
-        # Find the hash used for the key
-        hashes = hash_data.get('hashes', {})
-        for hash_key in ['sha256', 'sha1', 'md5']:
-            key = hashes.get(hash_key, None)
-            if key:
-                break
-
-        if not key:
-            return make_api_response("", f"Invalid hash block: {str(hash_data)}", 400)
-
-        # Save the new hash_block
-        new_data[key] = hash_data
-
-    # Get already existing hashes
-    old_data = STORAGE.badlist.multiget(list(new_data.keys()), as_dictionary=True, as_obj=False,
-                                        error_on_missing=False)
-
-    # Test signature names
-    plan = STORAGE.badlist.get_bulk_plan()
-    for key, val in new_data.items():
-        # Use maximum classification
-        old_val = old_data.get(key, {'classification': CLASSIFICATION.UNRESTRICTED, 'attribution': {},
-                                     'hashes': {}, 'sources': [], 'type': val['type']})
-
-        # Add upsert operation
-        try:
-            plan.add_upsert_operation(key, _merge_bad_hashes(val, old_val))
-        except InvalidBadhash as e:
-            return make_api_response("", str(e), 400)
-
-    if not plan.empty:
-        # Execute plan
-        res = STORAGE.badlist.bulk(plan)
-        return make_api_response({"success": len(res['items']), "errors": res['errors']})
-
-    return make_api_response({"success": 0, "errors": []})
+    try:
+        return make_api_response(CLIENT.add_update_many(data))
+    except PermissionError as e:
+        return make_api_response(None, str(e), 403)
+    except (ValueError, InvalidBadhash) as e:
+        return make_api_response(None, str(e), 400)
 
 
 @badlist_api.route("/<qhash>/", methods=["GET"])
