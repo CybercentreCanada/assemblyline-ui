@@ -1,17 +1,10 @@
 from flask_socketio import join_room
 
 from assemblyline_ui.sio.base import LOGGER, datastore, classification, config, SecureNamespace, authenticated_only
+from assemblyline_ui.helper.retrohunt import get_hauntedhouse_client
 
-import hauntedhouse
 
-
-haunted_house_client = None
-if config.retrohunt:
-    haunted_house_client = hauntedhouse.Client(
-        address=config.retrohunt.url,
-        api_key=config.retrohunt.api_key,
-        verify=config.retrohunt.tls_verify
-    )
+haunted_house_client = get_hauntedhouse_client(config)
 
 
 class RetrohuntNamespace(SecureNamespace):
