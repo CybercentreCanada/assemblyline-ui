@@ -1,13 +1,13 @@
 import typing
 
-import hauntedhouse
 from assemblyline.common.isotime import now_as_iso
 # from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, STORAGE, config
+from assemblyline_ui.helper.retrohunt import get_hauntedhouse_client
+from assemblyline_ui.config import CLASSIFICATION, STORAGE, config, LOGGER
 from flask import request, Response
 
 SUB_API = 'retrohunt'
@@ -16,13 +16,7 @@ retrohunt_api._doc = "Run yara signatures over all files."
 
 SECONDS_PER_DAY = 24 * 60 * 60
 
-haunted_house_client = None
-if config.retrohunt.enabled:
-    haunted_house_client = hauntedhouse.Client(
-        address=config.retrohunt.url,
-        api_key=config.retrohunt.api_key,
-        verify=config.retrohunt.tls_verify
-    )
+haunted_house_client = get_hauntedhouse_client(config)
 
 
 @retrohunt_api.route("/", methods=["PUT"])
@@ -223,9 +217,16 @@ def search_retrohunt_jobs(**kwargs) -> Response:
     fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
     params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
+    fl = params.get('fl', '')
+    if fl:
+        params['fl'] = fl + ',key'
+    else:
+        params['fl'] = 'key'
+
     try:
         result = STORAGE.retrohunt.search(**params)
         items = result.get('items')
+        LOGGER.warning("%s", items)
 
         if items:
             query = 'search: (' + ' OR '.join(item['key'] for item in items) + ')'
@@ -234,13 +235,6 @@ def search_retrohunt_jobs(**kwargs) -> Response:
             for item in items:
                 item['total_hits'] = counts.get(item['key'], 0)
                 
-        # with APMAwareThreadPoolExecutor(min(len(items), 10)) as executor:
-        #     res = {item['key']: {**item, 'query': f'search:"{item["key"]}"'} for item in items}
-        #     res = {k: executor.submit(STORAGE.retrohunt_hit.search, query=f"search:{item['key']}", offset=0, rows=10000, fl='sha256', access_control=user['access_control'], as_obj=False) for k, item in res.items()}
-        #     res = {k: [result['sha256'] for result in item.result()['items']] for k, item in res.items()}
-        #     res = {k: executor.submit(STORAGE.file.search, query='*', rows=0, key_space=key_space, access_control=user['access_control'], as_obj=False) for k, key_space in res.items()}
-        #     res = {k: item.result()['total'] for k, item in res.items()}
-        #     result['items'] = [{**item, 'total_hits': res[item['key']] if item['key'] in res else 0} for item in items]
         return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
