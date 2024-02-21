@@ -42,6 +42,7 @@ from assemblyline_ui.healthz import healthz
 from assemblyline_ui import config
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
+AL_SESSION_COOKIE_SAMESITE = os.environ.get("AL_SESSION_COOKIE_SAMESITE", None)
 AL_HSTS_MAX_AGE = os.environ.get('AL_HSTS_MAX_AGE', None)
 CERT_BUNDLE = (
     os.environ.get('UI_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/ui/tls.crt'),
@@ -65,6 +66,14 @@ else:
         SECRET_KEY=config.SECRET_KEY,
         PREFERRED_URL_SCHEME='https'
     )
+if AL_SESSION_COOKIE_SAMESITE:
+    if AL_SESSION_COOKIE_SAMESITE in ["Strict", "Lax"]:
+        app.config.update(
+            SESSION_COOKIE_SAMESITE=AL_SESSION_COOKIE_SAMESITE
+        )
+    else:
+        raise ValueError("AL_SESSION_COOKIE_SAMESITE must be set to 'Strict', 'Lax', or None")
+
 if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
     # If all files required are present, start up encrypted comms
     ssl_context = CERT_BUNDLE
