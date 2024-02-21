@@ -184,7 +184,7 @@ def test_submit_binary_nameless(datastore, login_session, scheduler):
         assert isinstance(resp['sid'], str)
         for f in resp['files']:
             assert f['sha256'] == sha256
-            assert f['name'] == sha256
+            assert f['name'] == os.path.basename(temp_path)
 
         msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
         assert msg.submission.sid == resp['sid']

@@ -178,7 +178,7 @@ def test_ingest_binary_nameless(datastore, login_session):
         msg = Submission(iq.pop(blocking=False))
         assert msg.metadata['ingest_id'] == resp['ingest_id']
         assert msg.files[0].sha256 == sha256
-        assert msg.files[0].name == sha256
+        assert msg.files[0].name == os.path.basename(temp_path)
 
     finally:
         # noinspection PyBroadException
