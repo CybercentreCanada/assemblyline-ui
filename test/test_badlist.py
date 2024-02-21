@@ -6,7 +6,7 @@ import random
 import pytest
 
 from assemblyline.common.forge import get_classification
-from assemblyline.common.isotime import iso_to_epoch
+from assemblyline.common.isotime import iso_to_epoch, now_as_iso
 from assemblyline.odm.random_data import create_users, create_badlists, wipe_users, wipe_badlist
 from assemblyline.odm.randomizer import get_random_hash
 from assemblyline_ui.config import CLASSIFICATION
@@ -16,6 +16,7 @@ add_hash_file = "10" + get_random_hash(62)
 add_error_hash = "11" + get_random_hash(62)
 update_hash = "12" + get_random_hash(62)
 update_conflict_hash = "13" + get_random_hash(62)
+source_hash = "14" + get_random_hash(62)
 
 BAD_SOURCE = {
     "classification": CLASSIFICATION.UNRESTRICTED,
@@ -50,6 +51,14 @@ USER_SOURCE = {
         "I just feel like it!",
     ],
     "type": "user"}
+
+CLASSIFIED_SOURCE = {
+    "classification": CLASSIFICATION.RESTRICTED,
+    "name": "Classified",
+    "reason": [
+        "This is a classified reason"
+    ],
+    "type": "external"}
 
 
 @pytest.fixture(scope="module")
@@ -93,6 +102,10 @@ def test_badlist_add_file(datastore, login_session):
     # Test dates
     added = ds_sl.pop('added', None)
     updated = ds_sl.pop('updated', None)
+
+    # File item will live forever
+    assert ds_sl.pop('expiry_ts', None) is None
+
     assert added == updated
     assert added is not None and updated is not None
 
@@ -130,6 +143,7 @@ def test_badlist_add_tag(datastore, login_session):
             'family': None,
             'network': None
         },
+        'dtl': 15,
         'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
                    'sha1': hashlib.sha1(hashed_value).hexdigest(),
                    'sha256': hashlib.sha256(hashed_value).hexdigest(),
@@ -152,6 +166,10 @@ def test_badlist_add_tag(datastore, login_session):
     # Test dates
     added = ds_sl.pop('added', None)
     updated = ds_sl.pop('updated', None)
+
+    # Tag item will live up to a certain date
+    assert ds_sl.pop('expiry_ts', None) is not None
+
     assert added == updated
     assert added is not None and updated is not None
 
@@ -167,7 +185,8 @@ def test_badlist_add_tag(datastore, login_session):
     enabled = ds_sl.pop('enabled', None)
     assert enabled
 
-    # Test rest
+    # Test rest, (dtl should be gone)
+    sl_data.pop('dtl', None)
     assert ds_sl == sl_data
 
 
@@ -223,13 +242,12 @@ def test_badlist_update(datastore, login_session):
 
     # Test rest
     assert {k: v for k, v in ds_sl.items()
-            if k not in ['added', 'updated', 'classification', 'enabled', 'tag']} == sl_data
+            if k not in ['added', 'updated', 'expiry_ts', 'classification', 'enabled', 'tag']} == sl_data
 
     u_data = {
         'attribution': {'implant': ['TEST'], 'actor': ['TEST']},
-        'classification': cl_eng.RESTRICTED,
         'hashes': {'sha256': update_hash, 'tlsh': 'faketlsh'},
-        'sources': [BAD2_SOURCE],
+        'sources': [CLASSIFIED_SOURCE],
         'type': 'file'
     }
 
@@ -245,7 +263,7 @@ def test_badlist_update(datastore, login_session):
     assert iso_to_epoch(ds_u['updated']) > iso_to_epoch(ds_sl['updated'])
     assert ds_u['classification'] == cl_eng.RESTRICTED
     assert len(ds_u['sources']) == 2
-    assert BAD2_SOURCE in ds_u['sources']
+    assert CLASSIFIED_SOURCE in ds_u['sources']
     assert BAD_SOURCE in ds_u['sources']
     assert 'TEST' in ds_u['attribution']['implant']
     assert 'BAD' in ds_u['attribution']['implant']
@@ -322,3 +340,82 @@ def test_badlist_similar_tlsh(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v4/badlist/tlsh/{hash}/")
     assert len(resp) > 0
+
+
+def test_badlist_delete_hash(datastore, login_session):
+    _, session, host = login_session
+
+    hash = random.choice(datastore.badlist.search("*", fl="id", rows=100, as_obj=False)['items'])['id']
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/{hash}/", method="DELETE")
+    assert resp['success']
+
+    assert datastore.badlist.get_if_exists(hash) is None
+
+
+def test_badlist_attribution(datastore, login_session):
+    _, session, host = login_session
+
+    item = random.choice(datastore.badlist.search("attribution.actor:*",
+                         fl="id,attribution.actor", rows=100, as_obj=False)['items'])
+
+    actor = random.choice(item['attribution']['actor'])
+    hash = item['id']
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/attribution/{hash}/actor/{actor}/", method="DELETE")
+    assert resp['success']
+
+    assert actor not in datastore.badlist.get_if_exists(hash).attribution.actor
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/attribution/{hash}/actor/{actor}/", method="PUT")
+    assert resp['success']
+
+    assert actor in datastore.badlist.get_if_exists(hash).attribution.actor
+
+
+def test_badlist_expiry(datastore, login_session):
+    _, session, host = login_session
+
+    hash = random.choice(datastore.badlist.search("*", fl="id", rows=100, as_obj=False)['items'])['id']
+
+    new_expiry = now_as_iso()
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/expiry/{hash}/", method="PUT", data=json.dumps(new_expiry))
+    assert resp['success']
+
+    assert new_expiry[:26] == datastore.badlist.get_if_exists(hash, as_obj=False)['expiry_ts'][:26]
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/expiry/{hash}/", method="DELETE")
+    assert resp['success']
+
+    assert datastore.badlist.get_if_exists(hash, as_obj=False)['expiry_ts'] is None
+
+
+def test_badlist_source_remove(datastore, login_session):
+    _, session, host = login_session
+
+    # Generate a random badlist
+    sl_data = {
+        'hashes': {
+            'md5': get_random_hash(32),
+            'sha1': get_random_hash(40),
+            'sha256': source_hash
+        },
+        'file': {'name': ['test.txt'],
+                 'size': random.randint(128, 4096),
+                 'type': 'document/text'},
+        'sources': [BAD_SOURCE, BAD2_SOURCE],
+        'type': 'file'
+    }
+
+    # Insert it and test return value
+    resp = get_api_data(session, f"{host}/api/v4/badlist/", method="PUT", data=json.dumps(sl_data))
+    assert resp['success']
+    assert resp['op'] == 'add'
+
+    assert BAD2_SOURCE in datastore.badlist.get_if_exists(source_hash, as_obj=False)['sources']
+
+    resp = get_api_data(session, f"{host}/api/v4/badlist/source/{source_hash}/BAD2/external/", method="DELETE")
+    assert resp['success']
+
+    assert BAD2_SOURCE not in datastore.badlist.get_if_exists(source_hash, as_obj=False)['sources']

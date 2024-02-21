@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import io
 import json
 import os
 import shutil
@@ -211,17 +214,20 @@ def submit(**kwargs):
     Submit a single file, sha256 or url for analysis
 
         Note 1:
-            If you are submitting a sh256 or a URL, you must use the application/json encoding and one of
+            If you are submitting a sha256 or a URL, you must use the application/json encoding and one of
             sha256 or url parameters must be included in the data block.
 
         Note 2:
-            If you are submitting a file directly, you have to use multipart/form-data encoding this
-            was done to reduce the memory footprint and speedup file transfers
+            If you are submitting a file directly, you should use multipart/form-data encoding as this
+            was done to reduce the memory footprint and speedup file transfers.
              ** Read documentation of mime multipart standard if your library does not support it**
 
             The multipart/form-data for sending binary has two parts:
                 - The first part contains a JSON dump of the optional params and uses the name 'json'
                 - The last part conatins the file binary, uses the name 'bin' and includes a filename
+
+            If your system can handle the memory footprint and slowdown, you can also submit a file
+            via the plaintext (not encoded) or base64 (encoded) parameters included in the data block.
 
     Variables:
     None
@@ -235,15 +241,19 @@ def submit(**kwargs):
       "sha256": "123...DEF",      # SHA256 hash of the file already in the datastore
       "url": "http://...",        # Url to fetch the file from
 
+      // NOT RECOMMENDED: Or one of the two following
+      "plaintext": "<RAW DATA OF THE FILE TO SCAN... ENCODED AS UTF-8 STRING>",
+      "base64": "<BINARY DATA OF THE FILE TO SCAN... ENCODED AS BASE64 STRING>",
+
       // OPTIONAL VALUES
       "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
 
       "metadata": {               # Submission metadata
-        "key": val,                 # Key/Value pair metadata values
+        "key": val,                 # Key/Value pair for metadata parameters
       },
 
       "params": {                 # Submission parameters
-        "key": val,                 # Key/Value pair for params that different then defaults
+        "key": val,                 # Key/Value pair for params that differ from the user's defaults
       },                            # Default params can be fetch at /api/v3/user/submission_params/<user>/
     }
 
@@ -256,7 +266,7 @@ def submit(**kwargs):
     --0b34a3c50d3c02dd804a172329a0b2aa               <-- Switch to next part, file part
     Content-Disposition: form-data; name="bin"; filename="name_of_the_file_to_scan.bin"
 
-    <BINARY DATA OF THE FILE TO SCAN... DOES NOT NEED TO BE ENCODDED>
+    <BINARY DATA OF THE FILE TO SCAN... DOES NOT NEED TO BE ENCODED>
 
     --0b34a3c50d3c02dd804a172329a0b2aa--             <-- End of HTTP transmission
 
@@ -285,11 +295,14 @@ def submit(**kwargs):
             url = None
         elif 'application/json' in request.content_type:
             data = request.json
-            binary = None
+            binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
             sha256 = data.get('sha256', None)
             url = data.get('url', None)
             if url:
                 url = refang_url(url)
+            if binary:
+                sha256 = safe_str(hashlib.sha256(binary).hexdigest())
+                binary = io.BytesIO(binary)
             name = url or safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
@@ -411,7 +424,7 @@ def submit(**kwargs):
                 return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
         else:
             with open(out_file, "wb") as my_file:
-                my_file.write(binary.read())
+                shutil.copyfileobj(binary, my_file, 16384)
 
         if not s_params['description']:
             s_params['description'] = default_description

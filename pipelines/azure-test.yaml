@@ -6,6 +6,10 @@ pr: ["*"]
 pool:
   vmImage: "ubuntu-20.04"
 
+variables:
+  # Try to checkout the matching branch, if the command fails, don't care.
+  BRANCH_NAME: $[coalesce(variables['System.PullRequest.SourceBranch'], variables['System.PullRequest.TargetBranch'], replace(variables['Build.SourceBranch'], 'refs/heads/', ''))]
+
 resources:
   containers:
     - container: redis
@@ -44,8 +48,10 @@ jobs:
       matrix:
         python3_9:
           python.version: "3.9"
-        # Python3_10:
-        #   python.version: "3.10"
+        Python3_10:
+          python.version: "3.10"
+        Python3_11:
+          python.version: "3.11"
 
     timeoutInMinutes: 15
     services:
@@ -77,17 +83,11 @@ jobs:
         displayName: Setup Environment
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
-          # Try to checkout the matching branch, if the command fails, don't care.
-          export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
-          export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
           sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
         displayName: Install assemblyline
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
       - script: |
-          # Try to checkout the matching branch, if the command fails, don't care.
-          export BRANCH_NAME=$(basename -- "$SYSTEM_PULLREQUEST_SOURCEBRANCH")
-          export BRANCH_NAME=${BRANCH_NAME:-"$BUILD_SOURCEBRANCHNAME"}
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
           sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
         displayName: Install assemblyline-core

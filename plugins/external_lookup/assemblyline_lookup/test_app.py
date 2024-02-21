@@ -1,3 +1,4 @@
+from assemblyline.common.version import SYSTEM_VERSION, FRAMEWORK_VERSION
 from urllib import parse as ul
 
 import pytest
@@ -9,6 +10,7 @@ from . import app as server
 def dquote(tag):
     """Double encode the tag."""
     return ul.quote(ul.quote(tag, safe=""), safe="")
+
 
 @pytest.fixture()
 def test_client():
@@ -30,7 +32,7 @@ def mock_lookup_error(mocker):
         error_message="A generic server error",
         response="",
         status_code=500,
-        server_version="4.4.0.0"
+        server_version=f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.0.0"
     ):
 
         r = {
@@ -90,7 +92,7 @@ def mock_lookup_success(mocker):
                 "rows": rows,
                 "total": total,
             },
-            "api_server_version": "4.4.0.0",
+            "api_server_version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.0.0",
             "api_status_code": 200,
         }
 
@@ -267,7 +269,7 @@ def test_detailed_hash_lookup(test_client, mocker, mock_lookup_success):
             "rows": 25,
             "total": 1,
         },
-        "api_server_version": "4.4.0.0",
+        "api_server_version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.0.0",
         "api_status_code": 200,
     }
     mock_lookup2 = mocker.MagicMock(spec=requests.Response)

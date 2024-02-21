@@ -9,6 +9,7 @@ from assemblyline.common import forge, log as al_log
 from assemblyline.datastore.helper import AssemblylineDatastore
 from assemblyline.filestore import FileStore
 from assemblyline.remote.datatypes import get_client
+from assemblyline.remote.datatypes.cache import Cache
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -62,6 +63,7 @@ SUBMISSION_TRAFFIC = CommsQueue('submissions', host=redis)
 REPLAY_ALERT_QUEUE = NamedQueue("replay_alert", host=redis)
 REPLAY_FILE_QUEUE = NamedQueue("replay_file", host=redis)
 REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
+REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 
 
 def get_token_store(key):
@@ -141,6 +143,10 @@ if config.datastore.archive.enabled:
     ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
 else:
     ARCHIVESTORE = None
+if config.ui.ai.enabled:
+    AI_CACHE: Cache = Cache(prefix="ai_cache", host=redis, ttl=24 * 60 * 60)
+else:
+    AI_CACHE = None
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(

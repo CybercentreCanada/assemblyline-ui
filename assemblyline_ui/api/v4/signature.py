@@ -4,17 +4,15 @@ from flask import request
 from hashlib import sha256
 
 from assemblyline.common import forge
-from assemblyline.common.isotime import iso_to_epoch, now_as_iso
-from assemblyline.common.memory_zip import InMemoryZip
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.odm.messages.changes import Operation
-from assemblyline.odm.models.signature import DEPLOYED_STATUSES, STALE_STATUSES, DRAFT_STATUSES
-from assemblyline.odm.models.service import SIGNATURE_DELIMITERS
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline.remote.datatypes.events import EventSender
+from assemblyline_core.signature_client import SignatureClient
 from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, SERVICE_LIST, STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification
 from assemblyline_ui.helper.signature import append_source_status
 
 SUB_API = 'signature'
@@ -22,6 +20,8 @@ signature_api = make_subapi_blueprint(SUB_API, api_version=4)
 signature_api._doc = "Perform operations on signatures"
 
 DEFAULT_CACHE_TTL = 24 * 60 * 60  # 1 Day
+CLIENT = SignatureClient(STORAGE)
+
 
 signature_event_sender = EventSender('changes.signatures',
                                      host=config.core.redis.nonpersistent.host,
@@ -29,27 +29,6 @@ signature_event_sender = EventSender('changes.signatures',
 service_event_sender = EventSender('changes.services',
                                    host=config.core.redis.nonpersistent.host,
                                    port=config.core.redis.nonpersistent.port)
-
-
-def _get_signature_delimiters():
-    signature_delimiters = {}
-    for service in SERVICE_LIST:
-        if service.get("update_config", {}).get("generates_signatures", False):
-            signature_delimiters[service['name'].lower()] = _get_signature_delimiter(service['update_config'])
-    return signature_delimiters
-
-
-def _get_signature_delimiter(update_config):
-    delimiter_type = update_config['signature_delimiter']
-    if delimiter_type == 'custom':
-        delimiter = update_config['custom_delimiter'].encode().decode('unicode-escape')
-    else:
-        delimiter = SIGNATURE_DELIMITERS.get(delimiter_type, '\n\n')
-    return {'type': delimiter_type, 'delimiter': delimiter}
-
-
-DEFAULT_DELIMITER = "\n\n"
-DELIMITERS = forge.CachedObject(_get_signature_delimiters)
 
 
 @signature_api.route("/add_update/", methods=["POST", "PUT"])
@@ -79,59 +58,24 @@ def add_update_signature(**_):
     data = request.json
     dedup_name = request.args.get('dedup_name', 'true').lower() == 'true'
 
-    if data.get('type', None) is None or data['name'] is None or data['data'] is None:
-        return make_api_response("", "Signature id, name, type and data are mandatory fields.", 400)
+    try:
+        success, key, op = CLIENT.add_update(data, dedup_name)
+        if success:
+            signature_event_sender.send(data['type'], {
+                'signature_id': data['signature_id'],
+                'signature_type': data['type'],
+                'source': data['source'],
+                'operation': op
+            })
 
-    # Compute signature ID if missing
-    data['signature_id'] = data.get('signature_id', data['name'])
+        return make_api_response({"success": success, "id": key})
 
-    key = f"{data['type']}_{data['source']}_{data['signature_id']}"
-
-    # Test signature name
-    if dedup_name:
-        check_name_query = f"name:\"{data['name']}\" " \
-                           f"AND type:\"{data['type']}\" " \
-                           f"AND source:\"{data['source']}\" " \
-                           f"AND NOT id:\"{key}\""
-        other = STORAGE.signature.search(check_name_query, fl='id', rows='0')
-        if other['total'] > 0:
-            return make_api_response(
-                {"success": False},
-                "A signature with that name already exists",
-                400
-            )
-
-    old = STORAGE.signature.get(key, as_obj=False)
-    if old:
-        if old['data'] == data['data']:
-            return make_api_response({"success": True, "id": key})
-
-        # Ensure that the last state change, if any, was made by a user and not a system account.
-        user_modified_last_state = old['state_change_user'] not in ['update_service_account', None]
-
-        # If rule state is moving to an active state but was disabled by a user before:
-        # Keep original inactive state, a user changed the state for a reason
-        if user_modified_last_state and data['status'] == 'DEPLOYED' and data['status'] != old['status']:
-            data['status'] = old['status']
-
-        # Preserve last state change
-        data['state_change_date'] = old['state_change_date']
-        data['state_change_user'] = old['state_change_user']
-
-        # Preserve signature stats
-        data['stats'] = old['stats']
-
-    # Save the signature
-    success = STORAGE.signature.save(key, data)
-    if success:
-        signature_event_sender.send(data['type'], {
-            'signature_id': data['signature_id'],
-            'signature_type': data['type'],
-            'source': data['source'],
-            'operation': Operation.Modified if old else Operation.Added
-        })
-
-    return make_api_response({"success": success, "id": key})
+    except ValueError as e:
+        message = str(e)
+        resp_data = ""
+        if "A signature with that name already exists" == message:
+            resp_data = {"success": False}
+        return make_api_response(resp_data, message, 400)
 
 
 @signature_api.route("/add_update_many/", methods=["POST", "PUT"])
@@ -167,60 +111,18 @@ def add_update_many_signature(**_):
     source = request.args.get('source', None)
     sig_type = request.args.get('sig_type', None)
 
-    if source is None or sig_type is None or not isinstance(data, list):
-        return make_api_response("", "Source, source type and data are mandatory fields.", 400)
-
-    # Test signature names
-    names_map = {x['name']: f"{x['type']}_{x['source']}_{x.get('signature_id', x['name'])}" for x in data}
-
-    skip_list = []
-    if dedup_name:
-        for item in STORAGE.signature.stream_search(f"type: \"{sig_type}\" AND source:\"{source}\"",
-                                                    fl="id,name", as_obj=False, item_buffer_size=1000):
-            lookup_id = names_map.get(item['name'], None)
-            if lookup_id and lookup_id != item['id']:
-                skip_list.append(lookup_id)
-
-        if skip_list:
-            data = [x for x in data if f"{x['type']}_{x['source']}_{x.get('signature_id', x['name'])}" not in skip_list]
-
-    old_data = STORAGE.signature.multiget(list(names_map.values()), as_dictionary=True, as_obj=False,
-                                          error_on_missing=False)
-
-    plan = STORAGE.signature.get_bulk_plan()
-    for rule in data:
-        key = f"{rule['type']}_{rule['source']}_{rule.get('signature_id', rule['name'])}"
-        if key in old_data:
-            # Ensure that the last state change, if any, was made by a user and not a system account.
-            user_modified_last_state = old_data[key]['state_change_user'] not in ['update_service_account', None]
-
-            # If rule state is moving to an active state but was disabled by a user before:
-            # Keep original inactive state, a user changed the state for a reason
-            if user_modified_last_state and rule['status'] == 'DEPLOYED' and rule['status'] != old_data[key]['status']:
-                rule['status'] = old_data[key]['status']
-
-            # Preserve last state change
-            rule['state_change_date'] = old_data[key]['state_change_date']
-            rule['state_change_user'] = old_data[key]['state_change_user']
-
-            # Preserve signature stats
-            rule['stats'] = old_data[key]['stats']
-
-        plan.add_upsert_operation(key, rule)
-
-    if not plan.empty:
-        res = STORAGE.signature.bulk(plan)
-
-        signature_event_sender.send(sig_type, {
-            'signature_id': '*',
-            'signature_type': sig_type,
-            'source': source,
-            'operation': Operation.Modified
-        })
-
-        return make_api_response({"success": len(res['items']), "errors": res['errors'], "skipped": skip_list})
-
-    return make_api_response({"success": 0, "errors": [], "skipped": skip_list})
+    try:
+        res = CLIENT.add_update_many(source, sig_type, data, dedup_name)
+        if res:
+            signature_event_sender.send(sig_type, {
+                'signature_id': '*',
+                'signature_type': sig_type,
+                'source': source,
+                'operation': Operation.Modified
+            })
+        return make_api_response(res)
+    except ValueError as e:
+        return make_api_response("", str(e), 400)
 
 
 @signature_api.route("/sources/<service>/", methods=["PUT"])
@@ -316,50 +218,8 @@ def change_status(signature_id, status, **kwargs):
     { "success" : true }      #If saving the rule was a success or not
     """
     user = kwargs['user']
-    possible_statuses = DEPLOYED_STATUSES + DRAFT_STATUSES
-    if status not in possible_statuses:
-        return make_api_response("",
-                                 f"You cannot apply the status {status} on yara rules.",
-                                 403)
-
-    data = STORAGE.signature.get(signature_id, as_obj=False)
-    if data:
-        if not Classification.is_accessible(user['classification'],
-                                            data.get('classification', Classification.UNRESTRICTED)):
-            return make_api_response("", "You are not allowed change status on this signature", 403)
-
-        if data['status'] in STALE_STATUSES and status not in DRAFT_STATUSES:
-            return make_api_response("",
-                                     f"Only action available while signature in {data['status']} "
-                                     f"status is to change signature to a DRAFT status. ({', '.join(DRAFT_STATUSES)})",
-                                     403)
-
-        if data['status'] in DEPLOYED_STATUSES and status in DRAFT_STATUSES:
-            return make_api_response("",
-                                     f"You cannot change the status of signature {signature_id} from "
-                                     f"{data['status']} to {status}.", 403)
-
-        today = now_as_iso()
-        uname = user['uname']
-
-        if status not in ['DISABLED', 'INVALID', 'TESTING']:
-            query = f"status:{status} AND signature_id:{data['signature_id']} AND NOT id:{signature_id}"
-            others_operations = [
-                ('SET', 'last_modified', today),
-                ('SET', 'state_change_date', today),
-                ('SET', 'state_change_user', uname),
-                ('SET', 'status', 'DISABLED')
-            ]
-            STORAGE.signature.update_by_query(query, others_operations)
-
-        operations = [
-            ('SET', 'last_modified', today),
-            ('SET', 'state_change_date', today),
-            ('SET', 'state_change_user', uname),
-            ('SET', 'status', status)
-        ]
-
-        success = STORAGE.signature.update(signature_id, operations)
+    try:
+        success, data = CLIENT.change_status(signature_id, status, user)
         signature_event_sender.send(data['type'], {
             'signature_id': signature_id,
             'signature_type': data['type'],
@@ -367,8 +227,10 @@ def change_status(signature_id, status, **kwargs):
             'operation': Operation.Modified
         })
         return make_api_response({"success": success})
-    else:
-        return make_api_response("", f"Signature not found. ({signature_id})", 404)
+    except (ValueError, PermissionError) as e:
+        make_api_response("", str(e), 403)
+    except FileNotFoundError as e:
+        make_api_response("", str(e), 404)
 
 
 @signature_api.route("/<signature_id>/", methods=["DELETE"])
@@ -469,6 +331,7 @@ def delete_signature_source(service, name, **_):
                                config.core.redis.persistent.port)
         [service_updates.pop(k) for k in service_updates.keys() if k.startswith(f'{name}.')]
 
+
     service_event_sender.send(service, {
         'operation': Operation.Modified,
         'name': service
@@ -529,27 +392,7 @@ def download_signatures(**kwargs):
             if response:
                 return response
 
-            output_files = {}
-
-            signature_list = sorted(
-                STORAGE.signature.stream_search(
-                    query, fl="signature_id,type,source,data,order", access_control=access, as_obj=False,
-                    item_buffer_size=1000),
-                key=lambda x: x['order'])
-
-            for sig in signature_list:
-                out_fname = f"{sig['type']}/{sig['source']}"
-                if DELIMITERS.get(sig['type'], {}).get('type', None) == 'file':
-                    out_fname = f"{out_fname}/{sig['signature_id']}"
-                output_files.setdefault(out_fname, [])
-                output_files[out_fname].append(sig['data'])
-
-            output_zip = InMemoryZip()
-            for fname, data in output_files.items():
-                separator = DELIMITERS.get(fname.split('/')[0], {}).get('delimiter', DEFAULT_DELIMITER)
-                output_zip.append(fname, separator.join(data))
-
-            rule_file_bin = output_zip.read()
+            rule_file_bin = CLIENT.download(query, access)
 
             signature_cache.save(query_hash, rule_file_bin, ttl=DEFAULT_CACHE_TTL)
 
@@ -749,11 +592,13 @@ def update_signature_source(service, name, **_):
     new_sources = []
     found = False
     classification_changed = False
+    uri_changed = False
     for source in current_sources:
         if data['name'] == source['name']:
             new_sources.append(data)
             found = True
             classification_changed = data['default_classification'] != source['default_classification']
+            uri_changed = data['uri'] != source['uri']
         else:
             new_sources.append(source)
 
@@ -774,6 +619,15 @@ def update_signature_source(service, name, **_):
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm),
                                                       ("SET", "last_modified", now_as_iso())])
+
+    # Has the URI changed?
+    if uri_changed:
+        # If so, we need to clear the caching value and trigger an update
+        service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
+                               config.core.redis.persistent.port)
+        service_updates.set(key=f'{data["name"]}.update_time', value=0)
+        service_updates.set(key=f'{data["name"]}.status',
+                            value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
 
     # Save the signature
     success = STORAGE.service_delta.save(service, service_delta)
@@ -866,7 +720,6 @@ def update_available(**_):
     { "update_available" : true }      # If updated rules are available.
     """
     sig_type = request.args.get('type', '*')
-    last_update = iso_to_epoch(request.args.get('last_update', '1970-01-01T00:00:00.000000Z'))
-    last_modified = iso_to_epoch(STORAGE.get_signature_last_modified(sig_type))
+    last_update = request.args.get('last_update')
 
-    return make_api_response({"update_available": last_modified > last_update})
+    return make_api_response({"update_available": CLIENT.update_available(last_update, sig_type)})

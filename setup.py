@@ -33,6 +33,8 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
     ],
     keywords="assemblyline automated malware analysis gc canada cse-cst cse cst cyber cccs",
     packages=find_packages(),
@@ -49,7 +51,7 @@ setup(
         'PyJWT',
         'gunicorn',
         'gevent',
-        'hauntedhouse==0.0.23',
+        'hauntedhouse==0.1.4',
     ],
     extras_require={
         'test': [

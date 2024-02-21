@@ -1,13 +1,10 @@
 ARG branch=latest
-ARG base=cccs/assemblyline
+ARG base=cccs/assemblyline-ui
 FROM $base:$branch AS base
 
 USER root
 # Upgrade packages
 RUN apt-get update && apt-get -yy upgrade && rm -rf /var/lib/apt/lists/*
-# Get required apt packages
-RUN apt-get update && apt-get install -yy libffi6 && rm -rf /var/lib/apt/lists/*
-
 
 FROM base as builder
 # support mirrors
@@ -21,15 +18,9 @@ ARG PIP_EXTRA_INDEX_URL
 RUN mkdir /install
 WORKDIR /install
 
-# Get required apt packages
-RUN apt-get update \
-    && apt-get install -yy build-essential libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install dependencies
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --prefix=/install -r /tmp/requirements.txt
-
 
 FROM base as release
 
