@@ -162,6 +162,42 @@ def test_submit_binary(datastore, login_session, scheduler):
             pass
 
 # noinspection PyUnusedLocal
+def test_submit_binary_nameless(datastore, login_session, scheduler):
+    _, session, host = login_session
+
+    sq.delete()
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    fd, temp_path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(byte_str)
+
+        with open(temp_path, 'rb') as fh:
+            sha256 = hashlib.sha256(byte_str).hexdigest()
+            json_data = {
+                'metadata': {'test': 'test_submit_binary_nameless'}
+            }
+            data = {'json': json.dumps(json_data)}
+            resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=data,
+                                files={'bin': fh}, headers={})
+
+        assert isinstance(resp['sid'], str)
+        for f in resp['files']:
+            assert f['sha256'] == sha256
+            assert f['name'] == sha256
+
+        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+        assert msg.submission.sid == resp['sid']
+
+    finally:
+        # noinspection PyBroadException
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass
+
+
+# noinspection PyUnusedLocal
 def test_submit_plaintext(datastore, login_session, scheduler):
     _, session, host = login_session
 
@@ -183,6 +219,27 @@ def test_submit_plaintext(datastore, login_session, scheduler):
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
+def test_submit_plaintext_nameless(datastore, login_session, scheduler):
+    _, session, host = login_session
+
+    sq.delete()
+    plain_str = get_random_phrase(wmin=30, wmax=75)
+    sha256 = hashlib.sha256(plain_str.encode()).hexdigest()
+    data = {
+        'plaintext': plain_str,
+        'metadata': {'test': 'test_submit_plaintext_nameless'}
+    }
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['sid'], str)
+    for f in resp['files']:
+        assert f['sha256'] == sha256
+        assert f['name'] == sha256
+
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    assert msg.submission.sid == resp['sid']
+
+
+# noinspection PyUnusedLocal
 def test_submit_base64(datastore, login_session, scheduler):
     _, session, host = login_session
 
@@ -199,6 +256,26 @@ def test_submit_base64(datastore, login_session, scheduler):
     for f in resp['files']:
         assert f['sha256'] == sha256
         assert f['name'] == data['name']
+
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    assert msg.submission.sid == resp['sid']
+
+# noinspection PyUnusedLocal
+def test_submit_base64_nameless(datastore, login_session, scheduler):
+    _, session, host = login_session
+
+    sq.delete()
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    sha256 = hashlib.sha256(byte_str).hexdigest()
+    data = {
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'metadata': {'test': 'test_submit_base64_nameless'}
+    }
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['sid'], str)
+    for f in resp['files']:
+        assert f['sha256'] == sha256
+        assert f['name'] == sha256
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']

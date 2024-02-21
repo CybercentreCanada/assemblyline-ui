@@ -152,6 +152,43 @@ def test_ingest_binary(datastore, login_session):
             pass
 
 # noinspection PyUnusedLocal
+def test_ingest_binary_nameless(datastore, login_session):
+    _, session, host = login_session
+
+    iq.delete()
+
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    fd, temp_path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, 'wb') as fh:
+            fh.write(byte_str)
+
+        with open(temp_path, 'rb') as fh:
+            sha256 = hashlib.sha256(byte_str).hexdigest()
+            json_data = {
+                'metadata': {'test': 'ingest_binary_nameless'},
+                'notification_queue': TEST_QUEUE
+            }
+            data = {'json': json.dumps(json_data)}
+            resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=data,
+                                files={'bin': fh}, headers={})
+
+        assert isinstance(resp['ingest_id'], str)
+
+        msg = Submission(iq.pop(blocking=False))
+        assert msg.metadata['ingest_id'] == resp['ingest_id']
+        assert msg.files[0].sha256 == sha256
+        assert msg.files[0].name == sha256
+
+    finally:
+        # noinspection PyBroadException
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass
+
+
+# noinspection PyUnusedLocal
 def test_ingest_plaintext(datastore, login_session):
     _, session, host = login_session
 
@@ -174,6 +211,28 @@ def test_ingest_plaintext(datastore, login_session):
     assert msg.files[0].name == data['name']
 
 # noinspection PyUnusedLocal
+def test_ingest_plaintext_nameless(datastore, login_session):
+    _, session, host = login_session
+
+    iq.delete()
+
+    plain_str = get_random_phrase(wmin=30, wmax=75)
+    sha256 = hashlib.sha256(plain_str.encode()).hexdigest()
+    data = {
+        'plaintext': plain_str,
+        'metadata': {'test': 'ingest_plaintext_nameless'},
+        'notification_queue': TEST_QUEUE
+    }
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['ingest_id'], str)
+
+    msg = Submission(iq.pop(blocking=False))
+    assert msg.metadata['ingest_id'] == resp['ingest_id']
+    assert msg.files[0].sha256 == sha256
+    assert msg.files[0].name == sha256
+
+
+# noinspection PyUnusedLocal
 def test_ingest_base64(datastore, login_session):
     _, session, host = login_session
 
@@ -194,6 +253,27 @@ def test_ingest_base64(datastore, login_session):
     assert msg.metadata['ingest_id'] == resp['ingest_id']
     assert msg.files[0].sha256 == sha256
     assert msg.files[0].name == data['name']
+
+# noinspection PyUnusedLocal
+def test_ingest_base64_nameless(datastore, login_session):
+    _, session, host = login_session
+
+    iq.delete()
+
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    sha256 = hashlib.sha256(byte_str).hexdigest()
+    data = {
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'metadata': {'test': 'ingest_base64_nameless'},
+        'notification_queue': TEST_QUEUE
+    }
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['ingest_id'], str)
+
+    msg = Submission(iq.pop(blocking=False))
+    assert msg.metadata['ingest_id'] == resp['ingest_id']
+    assert msg.files[0].sha256 == sha256
+    assert msg.files[0].name == sha256
 
 
 # noinspection PyUnusedLocal
