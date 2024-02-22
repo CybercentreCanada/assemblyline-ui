@@ -1030,8 +1030,16 @@ def get_report(submission_id, **kwargs):
                     submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
                 submission['important_files'].add(sha256)
 
+        # Process important files
+        submitted_sha256 = submission['files'][0]['sha256']
+        submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
+        if submitted_sha256 in submission['important_files']:
+            submission['important_files'].remove(submitted_sha256)
+
+        submission['important_files'] = list(submission['important_files'])
+
         # Process promoted sections
-        keys = [x for x in list(results) if not x.endswith(".e")]
+        keys = [x for x in list(results) if not x.endswith(".e") and x.startswith(submitted_sha256)]
         results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
 
         for result in results:
@@ -1042,14 +1050,6 @@ def get_report(submission_id, **kwargs):
                 for section in formatted_result['result'].get('sections'):
                     if section.get('promote_to', None) is not None:
                         submission['promoted_sections'].append(section)
-
-        # PRocess important files
-        submitted_sha256 = submission['files'][0]['sha256']
-        submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
-        if submitted_sha256 in submission['important_files']:
-            submission['important_files'].remove(submitted_sha256)
-
-        submission['important_files'] = list(submission['important_files'])
 
         return make_api_response(submission)
     else:
