@@ -103,6 +103,7 @@ def test_get_submission_report(datastore, login_session):
     assert isinstance(resp['files'], list)
     assert isinstance(resp['heuristics'], dict)
     assert isinstance(resp['tags'], dict)
+    assert isinstance(resp['promoted_sections'], list)
 
 
 # noinspection PyUnusedLocal
