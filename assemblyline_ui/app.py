@@ -83,7 +83,6 @@ if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
         except:
             raise ValueError("AL_HSTS_MAX_AGE must be set to an integer")
 
-
         def include_hsts_header(response):
             response.headers['Strict-Transport-Security'] = f"max-age={AL_HSTS_MAX_AGE}; includeSubdomains"
             return response
