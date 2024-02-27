@@ -497,6 +497,7 @@ def get_ai_summary(sid, **kwargs):
     archive_only   => Only use the archive data to generate the summary
     detailed       => Do you want the detailed output (Default: False)
     no_cache       => Caching for the output of this API will be disabled
+    with_trace     => Should the AI call return the full trace of the conversation?
 
     Data Block:
     None
@@ -515,6 +516,7 @@ def get_ai_summary(sid, **kwargs):
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
     detailed = request.args.get('detailed', 'false').lower() in ['true', '']
     no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+    with_trace = request.args.get('with_trace', 'false').lower() in ['true', '']
 
     index_type = None
     if archive_only:
@@ -528,7 +530,8 @@ def get_ai_summary(sid, **kwargs):
         return make_api_response({}, "User is not allowed to view the archive", 403)
 
     # Create the cache key
-    cache_key = AI_CACHE.create_key(sid, user['classification'], index_type, archive_only, detailed, "submission")
+    cache_key = AI_CACHE.create_key(sid, user['classification'], index_type,
+                                    archive_only, detailed, with_trace, "submission")
     ai_summary = None
     if (not no_cache):
         # Get the summary from cache
@@ -543,9 +546,9 @@ def get_ai_summary(sid, **kwargs):
 
         try:
             if detailed:
-                ai_summary = detailed_al_submission(data)
+                ai_summary = detailed_al_submission(data, with_trace=with_trace)
             else:
-                ai_summary = summarized_al_submission(data)
+                ai_summary = summarized_al_submission(data, with_trace=with_trace)
 
             # Save to cache
             AI_CACHE.set(cache_key, ai_summary)
