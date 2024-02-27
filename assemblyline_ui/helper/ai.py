@@ -47,17 +47,12 @@ def _call_ai_backend(data, action, with_trace=False):
 def continued_ai_conversation(messages):
     # Build chat completions request
     data = {
-        "max_tokens": 4096,
+        "max_tokens": config.ui.ai.assistant.max_tokens,
         "messages": messages,
         "model": config.ui.ai.model_name,
         "stream": False
     }
-    data.update({
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
-        "temperature": 0,
-        "top_p": 0
-    })
+    data.update(config.ui.ai.assistant.options)
 
     return _call_ai_backend(data, "answer the question", with_trace=True)
 
