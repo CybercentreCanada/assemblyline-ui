@@ -87,7 +87,6 @@ if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
             response.headers['Strict-Transport-Security'] = f"max-age={AL_HSTS_MAX_AGE}; includeSubdomains"
             return response
 
-
         app.after_request(include_hsts_header)
 
 app.register_blueprint(healthz)
