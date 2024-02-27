@@ -43,6 +43,7 @@ from assemblyline_ui import config
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 AL_SESSION_COOKIE_SAMESITE = os.environ.get("AL_SESSION_COOKIE_SAMESITE", None)
+AL_HSTS_MAX_AGE = os.environ.get('AL_HSTS_MAX_AGE', None)
 CERT_BUNDLE = (
     os.environ.get('UI_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/ui/tls.crt'),
     os.environ.get('UI_CLIENT_KEY_PATH', '/etc/assemblyline/ssl/ui/tls.key')
@@ -76,6 +77,17 @@ if AL_SESSION_COOKIE_SAMESITE:
 if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
     # If all files required are present, start up encrypted comms
     ssl_context = CERT_BUNDLE
+    if AL_HSTS_MAX_AGE is not None:
+        try:
+            int(AL_HSTS_MAX_AGE)
+        except:
+            raise ValueError("AL_HSTS_MAX_AGE must be set to an integer")
+
+        def include_hsts_header(response):
+            response.headers['Strict-Transport-Security'] = f"max-age={AL_HSTS_MAX_AGE}; includeSubdomains"
+            return response
+
+        app.after_request(include_hsts_header)
 
 app.register_blueprint(healthz)
 app.register_blueprint(api)
