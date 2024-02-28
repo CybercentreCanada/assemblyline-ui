@@ -57,12 +57,12 @@ def continued_ai_conversation(messages):
     return _call_ai_backend(data, "answer the question", with_trace=True)
 
 
-def detailed_al_submission(report, with_trace=False):
+def detailed_al_submission(report, lang="english", with_trace=False):
     # Build chat completions request
     data = {
         "max_tokens": config.ui.ai.detailed_report.max_tokens,
         "messages": [
-            {"role": "system", "content": config.ui.ai.detailed_report.system_message},
+            {"role": "system", "content": config.ui.ai.detailed_report.system_message.replace("$(LANG)", lang)},
             # TODO: we may have to do token detection and split the data in chunks...
             {"role": "user", "content": yaml.dump(report)},
         ],
@@ -74,12 +74,12 @@ def detailed_al_submission(report, with_trace=False):
     return _call_ai_backend(data, "create detailed analysis of the AL report", with_trace=with_trace)
 
 
-def summarized_al_submission(report, with_trace=False):
+def summarized_al_submission(report, lang="english", with_trace=False):
     # Build chat completions request
     data = {
         "max_tokens": config.ui.ai.executive_summary.max_tokens,
         "messages": [
-            {"role": "system", "content": config.ui.ai.executive_summary.system_message},
+            {"role": "system", "content": config.ui.ai.executive_summary.system_message.replace("$(LANG)", lang)},
             # TODO: we may have to do token detection and split the data in chunks...
             {"role": "user", "content": yaml.dump(report)},
         ],
@@ -91,12 +91,12 @@ def summarized_al_submission(report, with_trace=False):
     return _call_ai_backend(data, "summarize the AL report", with_trace=with_trace)
 
 
-def summarize_code_snippet(code, with_trace=False):
+def summarize_code_snippet(code, lang="english", with_trace=False):
     # Build chat completions request
     data = {
         "max_tokens": config.ui.ai.code.max_tokens,
         "messages": [
-            {"role": "system", "content": config.ui.ai.code.system_message},
+            {"role": "system", "content": config.ui.ai.code.system_message.replace("$(LANG)", lang)},
             # TODO: we may have to do token detection and split the data in chunks...
             {"role": "user", "content": safe_str(code)},
         ],

@@ -516,6 +516,7 @@ def get_ai_summary(sid, **kwargs):
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
     detailed = request.args.get('detailed', 'false').lower() in ['true', '']
     no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+    lang = request.args.get('lang', 'english')
     with_trace = request.args.get('with_trace', 'false').lower() in ['true', '']
 
     index_type = None
@@ -531,7 +532,7 @@ def get_ai_summary(sid, **kwargs):
 
     # Create the cache key
     cache_key = AI_CACHE.create_key(sid, user['classification'], index_type,
-                                    archive_only, detailed, with_trace, "submission")
+                                    archive_only, detailed, lang, with_trace, "submission")
     ai_summary = None
     if (not no_cache):
         # Get the summary from cache
@@ -546,9 +547,9 @@ def get_ai_summary(sid, **kwargs):
 
         try:
             if detailed:
-                ai_summary = detailed_al_submission(data, with_trace=with_trace)
+                ai_summary = detailed_al_submission(data, lang=lang, with_trace=with_trace)
             else:
-                ai_summary = summarized_al_submission(data, with_trace=with_trace)
+                ai_summary = summarized_al_submission(data, lang=lang, with_trace=with_trace)
 
             # Save to cache
             AI_CACHE.set(cache_key, ai_summary)
