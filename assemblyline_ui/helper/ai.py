@@ -1,5 +1,4 @@
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.config import AIQueryParams
 import requests
 import yaml
 
@@ -14,20 +13,7 @@ class EmptyAIResponse(Exception):
     pass
 
 
-def _call_ai_backend(data, params: AIQueryParams, action):
-    # Build chat completions request
-    data = {
-        "max_tokens": params.max_tokens,
-        "messages": [
-            {"role": "system", "content": params.system_message},
-            # TODO: we may have to do token detection and split the data in chunks...
-            {"role": "user", "content": data},
-        ],
-        "model": config.ui.ai.model_name,
-        "stream": False
-    }
-    data.update(params.options)
-
+def _call_ai_backend(data, action, with_trace=False):
     try:
         # Call API
         resp = requests.post(config.ui.ai.chat_url, headers=config.ui.ai.headers,
@@ -49,19 +35,74 @@ def _call_ai_backend(data, params: AIQueryParams, action):
     if responses:
         content = responses[0]['message']['content']
         reason = responses[0]['finish_reason']
+        if with_trace:
+            trace = data['messages']
+            trace.append({'role': 'assistant', 'content': content})
+            return {'trace': trace, 'truncated': reason == 'length'}
         return {'content': content, 'truncated': reason == 'length'}
 
     raise EmptyAIResponse("There was no response returned by the AI")
 
 
-def detailed_al_submission(report):
-    return _call_ai_backend(yaml.dump(report),
-                            config.ui.ai.detailed_report, "create detailed analysis of the AL report")
+def continued_ai_conversation(messages):
+    # Build chat completions request
+    data = {
+        "max_tokens": config.ui.ai.assistant.max_tokens,
+        "messages": messages,
+        "model": config.ui.ai.model_name,
+        "stream": False
+    }
+    data.update(config.ui.ai.assistant.options)
+
+    return _call_ai_backend(data, "answer the question", with_trace=True)
 
 
-def summarized_al_submission(report):
-    return _call_ai_backend(yaml.dump(report), config.ui.ai.executive_summary, "summarize the AL report")
+def detailed_al_submission(report, lang="english", with_trace=False):
+    # Build chat completions request
+    data = {
+        "max_tokens": config.ui.ai.detailed_report.max_tokens,
+        "messages": [
+            {"role": "system", "content": config.ui.ai.detailed_report.system_message.replace("$(LANG)", lang)},
+            # TODO: we may have to do token detection and split the data in chunks...
+            {"role": "user", "content": yaml.dump(report)},
+        ],
+        "model": config.ui.ai.model_name,
+        "stream": False
+    }
+    data.update(config.ui.ai.detailed_report.options)
+
+    return _call_ai_backend(data, "create detailed analysis of the AL report", with_trace=with_trace)
 
 
-def summarize_code_snippet(code):
-    return _call_ai_backend(safe_str(code), config.ui.ai.code, "summarize code snippet")
+def summarized_al_submission(report, lang="english", with_trace=False):
+    # Build chat completions request
+    data = {
+        "max_tokens": config.ui.ai.executive_summary.max_tokens,
+        "messages": [
+            {"role": "system", "content": config.ui.ai.executive_summary.system_message.replace("$(LANG)", lang)},
+            # TODO: we may have to do token detection and split the data in chunks...
+            {"role": "user", "content": yaml.dump(report)},
+        ],
+        "model": config.ui.ai.model_name,
+        "stream": False
+    }
+    data.update(config.ui.ai.executive_summary.options)
+
+    return _call_ai_backend(data, "summarize the AL report", with_trace=with_trace)
+
+
+def summarize_code_snippet(code, lang="english", with_trace=False):
+    # Build chat completions request
+    data = {
+        "max_tokens": config.ui.ai.code.max_tokens,
+        "messages": [
+            {"role": "system", "content": config.ui.ai.code.system_message.replace("$(LANG)", lang)},
+            # TODO: we may have to do token detection and split the data in chunks...
+            {"role": "user", "content": safe_str(code)},
+        ],
+        "model": config.ui.ai.model_name,
+        "stream": False
+    }
+    data.update(config.ui.ai.code.options)
+
+    return _call_ai_backend(data, "summarize code snippet", with_trace=with_trace)
