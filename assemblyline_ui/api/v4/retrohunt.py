@@ -234,7 +234,7 @@ def search_retrohunt_jobs(**kwargs) -> Response:
                                                  access_control=user['access_control'], size=len(items))
             for item in items:
                 item['total_hits'] = counts.get(item['key'], 0)
-                
+
         return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
@@ -374,7 +374,7 @@ def get_retrohunt_job_hits(id, **kwargs):
 
     if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-    
+
     try:
         params = {
             'query': f"search:{id}",
@@ -408,7 +408,7 @@ def get_retrohunt_job_hits(id, **kwargs):
         else:
             req_data = request.args
             params.update({k: req_data.getlist(k, None) for k in multi_fields if req_data.get(k, None) is not None})
-            
+
         fields = ["query", "offset", "rows", "sort", "fl", 'track_total_hits']
         params.update({k: req_data.get(k, None) for k in fields if req_data.get(k, None) is not None})
 
@@ -421,7 +421,7 @@ def get_retrohunt_job_hits(id, **kwargs):
 @api_login(require_role=[ROLES.retrohunt_view])
 def get_retrohunt_job_errors(code, **kwargs):
     """
-    Get errors of a retrohunt job completed or in progress.
+    Get warnings and errors of a retrohunt job completed or in progress.
 
     Variables:
         code                    =>  Search code of the retrohunt job to be retrieved
@@ -469,7 +469,9 @@ def get_retrohunt_job_errors(code, **kwargs):
     else:
         req_data = request.args
 
-    errors = doc['errors']
+    errors = [{'type': 'errors', 'message': item}for item in doc['errors']] + \
+             [{'type': 'warnings', 'message': item}for item in doc['warnings']]
+
     offset = int(req_data.get('offset', 0))
     rows = int(req_data.get('rows', 20))
 
@@ -533,10 +535,10 @@ def get_retrohunt_job_types(id, **kwargs):
     doc = STORAGE.retrohunt.get(id, as_obj=False)
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
-    
+
     if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
-    
+
     try:
         params = {
             'query': f"search:{id}",
