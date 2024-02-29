@@ -266,6 +266,7 @@ def get_retrohunt_job_detail(id, **kwargs):
         "tags": {},                                 #   Tags describing this retrohunt job
         "total_hits": 100,                          #   Total number of hits when the job first ran
         "total_errors": 80,                         #   Total number of errors encountered during the job
+        "total_warnings": 80,                       #   Total number of warnings encountered during the job
         "truncated": False,                         #   Indicates if the list of hits been truncated at some limit
         "yara_signature":                           #   Text of original yara signature run
                             rule my_rule {
@@ -440,10 +441,10 @@ def get_retrohunt_job_errors(code, **kwargs):
 
     Response Fields:
     {
-        "total": 200,           #   Total errors found
+        "total": 200,           #   Total warnings and errors found
         "offset": 0,            #   Offset in the error list
-        "rows": 100,            #   Number of errors returned
-        "items": [              #   List of errors
+        "rows": 100,            #   Number of warnings and errors returned
+        "items": [              #   List of warnings and errors
             "File not available: channel closed",
             ...
         ]
@@ -456,12 +457,13 @@ def get_retrohunt_job_errors(code, **kwargs):
         return make_api_response({}, err="retrohunt not configured for this system", status_code=501)
 
     # Get the latest retrohunt job information from both Elasticsearch and HauntedHouse
-    doc = STORAGE.retrohunt.get(code)
+    doc = STORAGE.retrohunt.get(code, as_obj=False)
 
     # Make sure the user has the right classification to access this retrohunt job
     if doc is None:
         return make_api_response({}, err="Not Found.", status_code=404)
-    if not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
+
+    if not user or not CLASSIFICATION.is_accessible(user['classification'], doc['classification']):
         return make_api_response({}, err="Access denied.", status_code=403)
 
     if request.method == "POST":
@@ -469,8 +471,8 @@ def get_retrohunt_job_errors(code, **kwargs):
     else:
         req_data = request.args
 
-    errors = [{'type': 'errors', 'message': item}for item in doc['errors']] + \
-             [{'type': 'warnings', 'message': item}for item in doc['warnings']]
+    errors = [{'type': 'error', 'message': item} for item in doc['errors']] + \
+             [{'type': 'warning', 'message': item} for item in doc['warnings']]
 
     offset = int(req_data.get('offset', 0))
     rows = int(req_data.get('rows', 20))
@@ -485,10 +487,17 @@ def get_retrohunt_job_errors(code, **kwargs):
 
     sort = req_data.get('sort', None)
     if sort is not None:
-        if 'asc' in sort.lower():
-            errors.sort()
-        elif 'desc' in sort.lower():
-            errors.sort(reverse=True)
+        field = None
+        if 'type' in sort:
+            field = 'type'
+        elif 'message' in sort:
+            field = 'message'
+
+        if field is not None:
+            if 'asc' in sort.lower():
+                errors = sorted(errors, key=lambda e: e[field])
+            elif 'desc' in sort.lower():
+                errors = sorted(errors, key=lambda e: e[field], reverse=True)
 
     return make_api_response({
         'offset': offset,
