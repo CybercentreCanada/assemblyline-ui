@@ -90,7 +90,7 @@ def create_retrohunt_job(**kwargs):
         return make_api_response("", f"{e}", 400)
 
 
-@retrohunt_api.route("/repeat", methods=["POST"])
+@retrohunt_api.route("/repeat/", methods=["POST"])
 @api_login(require_role=[ROLES.retrohunt_run])
 def repeat_retrohunt_job(**kwargs):
     """
