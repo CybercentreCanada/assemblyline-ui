@@ -6,7 +6,7 @@ from assemblyline.common.identify import Identify
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
-from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
@@ -148,6 +148,7 @@ if config.ui.ai.enabled:
 else:
     AI_CACHE = None
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
+metadata_validator = MetadataValidator(STORAGE)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
