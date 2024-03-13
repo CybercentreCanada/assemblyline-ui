@@ -194,7 +194,10 @@ def who_am_i(**kwargs):
         },
         "ui": {
             "ai": {
-                "enabled": config.ui.ai.enabled
+                "enabled": config.ui.ai.enabled,
+                "assistant": {
+                    "system_message": config.ui.ai.assistant.system_message
+                }
             },
             "alerting_meta": {
                 "important": config.ui.alerting_meta.important,

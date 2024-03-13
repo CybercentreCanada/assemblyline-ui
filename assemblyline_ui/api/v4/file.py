@@ -259,6 +259,7 @@ def summarized_results(sha256, **kwargs):
     Arguments:
     archive_only   => Only use the archive data to generate the summary
     no_cache       => Caching for the output of this API will be disabled
+    with_trace     => Should the AI call return the full trace of the conversation?
 
     Data Block:
     None
@@ -277,6 +278,8 @@ def summarized_results(sha256, **kwargs):
 
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
     no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+    lang = request.args.get('lang', 'english')
+    with_trace = request.args.get('with_trace', 'false').lower() in ['true', '']
 
     index_type = None
     if archive_only:
@@ -290,7 +293,7 @@ def summarized_results(sha256, **kwargs):
         return make_api_response({}, "User is not allowed to view the archive", 403)
 
     # Create the cache key
-    cache_key = AI_CACHE.create_key(sha256, user['classification'], index_type, archive_only, "file")
+    cache_key = AI_CACHE.create_key(sha256, user['classification'], index_type, archive_only, lang, with_trace, "file")
     ai_summary = None
     if (not no_cache):
         # Get the summary from cache
@@ -304,7 +307,7 @@ def summarized_results(sha256, **kwargs):
             return make_api_response("", "The file was not found in the system.", 404)
 
         try:
-            ai_summary = summarized_al_submission(data)
+            ai_summary = summarized_al_submission(data, lang=lang, with_trace=with_trace)
 
             # Save to cache
             AI_CACHE.set(cache_key, ai_summary)
@@ -326,6 +329,7 @@ def summarize_code_snippet(sha256, **kwargs):
 
     Arguments:
     no_cache       => Caching for the output of this API will be disabled
+    with_trace     => Should the AI call return the full trace of the conversation?
 
     Data Block:
     None
@@ -343,11 +347,13 @@ def summarize_code_snippet(sha256, **kwargs):
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
+    lang = request.args.get('lang', 'english')
+    with_trace = request.args.get('with_trace', 'false').lower() in ['true', '']
 
     user = kwargs['user']
 
     # Create the cache key
-    cache_key = AI_CACHE.create_key(sha256, user['classification'], "code")
+    cache_key = AI_CACHE.create_key(sha256, user['classification'], lang, with_trace, "code")
     ai_summary = None
     if (not no_cache):
         # Get the summary from cache
@@ -386,7 +392,7 @@ def summarize_code_snippet(sha256, **kwargs):
                 return make_api_response({}, "The file was not found in the system.", 404)
 
             try:
-                ai_summary = ai_code(data)
+                ai_summary = ai_code(data, lang=lang, with_trace=with_trace)
 
                 # Save to cache
                 AI_CACHE.set(cache_key, ai_summary)
