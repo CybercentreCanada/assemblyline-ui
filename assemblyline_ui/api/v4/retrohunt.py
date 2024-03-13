@@ -259,9 +259,6 @@ def get_retrohunt_job_detail(id, **kwargs):
         "description": "This is the description",   #   Human readable description of this retrohunt job
         "finished": True,                           #   Boolean indicating if this retrohunt job is finished
         "id": "0x",                                 #   Unique code identifying this retrohunt job
-        "phase": "finished",                        #   Phase the job is on : 'filtering' | 'yara' | 'finished'
-        "percentage": 0,                            #   Percentage of completion the phase is at
-        "progress": [1, 1],                         #   Progress values when the job is running
         "raw_query": "(min 1 of (100))",            #   Text of filter query derived from yara signature
         "tags": {},                                 #   Tags describing this retrohunt job
         "total_hits": 100,                          #   Total number of hits when the job first ran
