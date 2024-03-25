@@ -26,7 +26,7 @@ def create_retrohunt_job(**kwargs):
     Create a new search over file storage.
 
     Arguments:
-        archive_only          => Should the search only be run on archived files
+        indices               => One of 'hot', 'archive', or 'hot_and_archive'
         classification        => Classification level for the search/rule
         search_classification => Classification visibility search is run with
         description           => Textual description of this search
@@ -48,7 +48,7 @@ def create_retrohunt_job(**kwargs):
     try:
         signature = str(body['yara_signature'])
         description = str(body['description'])
-        archive_only = bool(body['archive_only'])
+        indices = str(body['indices'])
         classification = str(body['classification'])
         search_classification = str(body['search_classification'])
     except KeyError as err:
@@ -76,7 +76,7 @@ def create_retrohunt_job(**kwargs):
             yara_rule=signature,
             rule_classification=classification,
             search_classification=search_classification,
-            archive_only=archive_only,
+            indices=indices,
             creator=user['uname'],
             description=description,
             expiry=max_expiry,
@@ -251,7 +251,6 @@ def get_retrohunt_job_detail(id, **kwargs):
 
     Response Fields:
     {
-        "archive_only": False,                      #   Defines the indices used for this retrohunt job
         "classification": "TLP:WHITE",              #   Classification string for the retrohunt job and results list
         "code": "0x",                               #   Unique code identifying this retrohunt job
         "created": "2023-01-01T00:00:00.000000Z",   #   Timestamp when this retrohunt job started
