@@ -57,6 +57,9 @@ def get_file_ascii(sha256, **kwargs):
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
 
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
+
     if file_obj['size'] > API_MAX_SIZE:
         return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
@@ -540,6 +543,9 @@ def get_file_strings(sha256, **kwargs):
     user = kwargs['user']
     hlen = request.args.get('len', "6")
     file_obj = STORAGE.file.get(sha256, as_obj=False)
+
+    if not file_obj:
+        return make_api_response({}, "The file was not found in the system.", 404)
 
     if file_obj['size'] > API_MAX_SIZE:
         return make_api_response({}, "This file is too big to be seen through this API.", 403)
