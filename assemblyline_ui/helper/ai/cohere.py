@@ -82,7 +82,7 @@ class CohereAgent(AIAgent):
         data = {
             "max_tokens": self.config.assistant.max_tokens,
             "message": message or "Hello!",
-            "history": history,
+            "chat_history": history,
             "model": self.config.model_name,
             "stream": False
         }
