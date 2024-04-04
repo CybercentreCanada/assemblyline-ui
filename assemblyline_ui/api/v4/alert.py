@@ -36,7 +36,7 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
             'status': status,
             'priority': priority,
             'labels': labels,
-            'labels_removed': labels_removed
+            'labels_removed': labels_removed or None
         })))
 
     return operations
