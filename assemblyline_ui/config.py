@@ -6,7 +6,7 @@ from assemblyline.common.identify import Identify
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
-from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
@@ -15,6 +15,8 @@ from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
+from assemblyline_ui.helper.ai import get_ai_agent
+from assemblyline_ui.helper.ai.base import AIAgent
 from assemblyline_ui.helper.discover import get_apps_list
 
 config = forge.get_config()
@@ -145,9 +147,12 @@ else:
     ARCHIVESTORE = None
 if config.ui.ai.enabled:
     AI_CACHE: Cache = Cache(prefix="ai_cache", host=redis, ttl=24 * 60 * 60)
+    AI_AGENT: AIAgent = get_ai_agent(config.ui.ai, LOGGER)
 else:
     AI_CACHE = None
+    AI_AGENT = None
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
+metadata_validator = MetadataValidator(STORAGE)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)

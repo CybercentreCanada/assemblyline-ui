@@ -35,8 +35,8 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
             'entity_name': STORAGE.user.get(user_id, as_obj=False)['name'],
             'status': status,
             'priority': priority,
-            'labels': labels or None,
-            'labels_removed': labels_removed or None
+            'labels': labels,
+            'labels_removed': labels_removed
         })))
 
     return operations

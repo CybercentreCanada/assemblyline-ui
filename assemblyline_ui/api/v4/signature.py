@@ -331,6 +331,7 @@ def delete_signature_source(service, name, **_):
                                config.core.redis.persistent.port)
         [service_updates.pop(k) for k in service_updates.keys() if k.startswith(f'{name}.')]
 
+
     service_event_sender.send(service, {
         'operation': Operation.Modified,
         'name': service

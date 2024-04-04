@@ -20,7 +20,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
-    STORAGE, config, FILESTORE
+    STORAGE, config, FILESTORE, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received, refang_url
 from assemblyline_ui.helper.user import load_user_settings
@@ -35,7 +35,6 @@ ingest = NamedQueue(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
-
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
@@ -417,6 +416,11 @@ def ingest_single_file(**kwargs):
         if 'ts' not in metadata:
             metadata['ts'] = now_as_iso()
         metadata.update(extra_meta)
+
+        # Validate the metadata
+        metadata_error = metadata_validator.check_metadata(metadata)
+        if metadata_error:
+            return make_api_response({}, err=metadata_error[1], status_code=400)
 
         # Set description if it does not exists
         if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:

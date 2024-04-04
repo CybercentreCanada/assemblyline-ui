@@ -117,7 +117,7 @@ def host(redis_connection):
         warnings.simplefilter('ignore')
         for host in POSSIBLE_HOSTS:
             try:
-                result = requests.get(f"{host}/api/v4/auth/login/", verify=False)
+                result = requests.get(f"{host}/api/v4/auth/login/", verify=False, timeout=5)
                 if result.status_code == 401:
                     return host
                 result.raise_for_status()
