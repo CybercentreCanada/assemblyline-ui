@@ -36,7 +36,7 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
             'status': status,
             'priority': priority,
             'labels': labels,
-            'labels_removed': labels_removed or None
+            'labels_removed': labels_removed
         })))
 
     return operations
@@ -428,24 +428,19 @@ def list_grouped_alerts(field, **kwargs):
 
 @alert_api.route("/all/<alert_id>/", methods=["POST"])
 @api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
-def run_workflow(**kwargs):
+def run_workflow(alert_id, **kwargs):
     """
     Apply one-time workflow to specified alert
 
     Variables:
     alert_id                         => ID of the alert to add the label to
 
-    Arguments:
-    q                                => Main query to filter the data [REQUIRED]
-    tc_start                         => Time offset at which we start the time constraint
-    tc                               => Time constraint applied to the API
-    fq                               => Filter query applied to the data
-
     Data Block:
     {
         "priority": "HIGH"           => New priority for the alert
         "status": "MALICIOUS"        => New status for the alert
         "labels": ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+        "removed_labels": ["LBL3", "LBL4"]  => List of labels to remove as a comma separated string
     }
 
     API call example:
@@ -468,20 +463,9 @@ def run_workflow(**kwargs):
     except ValueError as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    query = request.args.get('q', "alert_id:*") or "alert_id:*"
-    tc_start = request.args.get('tc_start', None)
-    tc = request.args.get('tc', None)
-    if tc and config.ui.read_only:
-        tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
-
-    filters = [x for x in request.args.getlist("fq") if x != ""]
-    if timming_filter:
-        filters.append(timming_filter)
-
     operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
     return make_api_response({
-        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+        "success": STORAGE.alert.update(alert_id, operations, access_control=user['access_control'])
     })
 
 
@@ -516,8 +500,8 @@ def run_workflow_by_batch(**kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json.get('labels', []))
-        removed_labels = set(request.json.get('removed_labels', []))
+        labels = set([label.upper() for label in request.json.get('labels', [])])
+        removed_labels = set([label.upper() for label in request.json.get('removed_labels', [])])
         priority = request.json.get('priority')
         priority = priority.upper() if priority else None
         if priority not in PRIORITIES:
@@ -570,7 +554,7 @@ def add_labels(alert_id, **kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        labels = set([label.upper() for label in request.json])
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
@@ -618,7 +602,7 @@ def add_labels_by_batch(**kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        labels = set([label.upper() for label in request.json])
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
@@ -662,7 +646,7 @@ def remove_labels(alert_id, **kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        labels = set([label.upper() for label in request.json])
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
@@ -711,7 +695,7 @@ def remove_labels_by_batch(**kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        labels = set([label.upper() for label in request.json])
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
