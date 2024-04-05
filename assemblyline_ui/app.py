@@ -10,6 +10,7 @@ from assemblyline_ui.api.base import api
 from assemblyline_ui.api.v4 import apiv4
 from assemblyline_ui.api.v4.alert import alert_api
 from assemblyline_ui.api.v4.archive import archive_api
+from assemblyline_ui.api.v4.assistant import assistant_api
 from assemblyline_ui.api.v4.authentication import auth_api
 from assemblyline_ui.api.v4.badlist import badlist_api
 from assemblyline_ui.api.v4.bundle import bundle_api
@@ -95,6 +96,8 @@ app.register_blueprint(apiv4)
 app.register_blueprint(alert_api)
 if config.config.datastore.archive.enabled:
     app.register_blueprint(archive_api)
+if config.config.ui.ai.enabled:
+    app.register_blueprint(assistant_api)
 app.register_blueprint(auth_api)
 app.register_blueprint(badlist_api)
 app.register_blueprint(bundle_api)
