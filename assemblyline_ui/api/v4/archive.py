@@ -31,8 +31,10 @@ def archive_submission(sid, **kwargs):
     Arguments:
     delete_after     => Delete data from hot storage after the move ? (Default: False)
 
-    Data Block:
-    None
+    Data Block (Optional):
+    {                                   # Optional metadata block to be added to the submission while archiving
+     "meta_key": "Metadata value!"
+    }
 
     API call example:
     /api/v4/archive/12345...67890/
@@ -58,7 +60,14 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, f"The submission '{sid}' is not accessible by this user", 403)
 
     try:
-        archive_action = ARCHIVE_MANAGER.archive_submission(submission=submission, delete_after=delete_after)
+        metadata = request.json
+    except Exception:
+        LOGGER.warning("Invalid metadata")
+        metadata = None
+
+    try:
+        archive_action = ARCHIVE_MANAGER.archive_submission(
+            submission=submission, delete_after=delete_after, metadata=metadata)
         archive_action['success'] = True
         return make_api_response(archive_action)
 
