@@ -257,7 +257,7 @@ def add_service(**_):
             # Create a Service object
             tmp_service = Service(tmp_data)
 
-            _, tag_name, _, os = get_latest_tag_for_service(tmp_service, config, LOGGER)
+            _, tag_name, _ = get_latest_tag_for_service(tmp_service, config, LOGGER)
             enable_allowed = bool(tag_name)
             tag_name = tag_name.encode() if tag_name else b'latest'
 
@@ -289,20 +289,12 @@ def add_service(**_):
             service['update_channel'] = config.services.preferred_update_channel
         if not service.get('docker_config', {}).get('registry_type'):
             service['docker_config']['registry_type'] = config.services.preferred_registry_type
-        if not service.get('docker_config', {}).get('operating_system'):
-            service['docker_config']['operating_system'] = os
 
         # Privilege can be set explicitly but also granted to services that don't require the file for analysis
         service['privileged'] = service.get('privileged', config.services.prefer_service_privileged)
 
-        for name, dep in service.get('dependencies', {}).items():
+        for dep in service.get('dependencies', {}).values():
             dep['container']['registry_type'] = dep.get('registry_type', config.services.preferred_registry_type)
-            if not dep['container'].get('operating_system'):
-                # Mock a service config to get the operating system details
-                _, _, _, os = get_latest_tag_for_service(Service({'name': {f"{service['name']}_dep_{name}"},
-                                                                  'version': "0",
-                                                                  'docker_config': dep['container']}), config, LOGGER)
-                dep['container']['operating_system'] = os
         service['enabled'] = service['enabled'] and enable_allowed
 
         # Load service info
