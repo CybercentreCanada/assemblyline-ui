@@ -197,6 +197,10 @@ def search_hash(file_hash, *args, **kwargs):
     }
     """
     user = kwargs['user']
+
+    # Normalize file_hash input
+    file_hash = file_hash.lower()
+
     submitted_hash_type = next((x for x, y in HASH_MAP.items() if y.match(file_hash)), None)
     if not submitted_hash_type:
         return make_api_response("", f"Invalid hash. This API only supports {', '.join(HASH_MAP.keys())}.", 400)
