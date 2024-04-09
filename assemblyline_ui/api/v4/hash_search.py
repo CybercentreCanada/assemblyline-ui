@@ -200,19 +200,18 @@ def search_hash(file_hash, *args, **kwargs):
 
     submitted_hash_type = None
 
-    for hash_type, hash_pattern in HASH_MAP.items():
-        if hash_type in ["sha256", "sha1", "md5"] and hash_pattern.match(file_hash.lower()):
+    for h_type, hash_pattern in HASH_MAP.items():
+        if h_type in ["sha256", "sha1", "md5"] and hash_pattern.match(file_hash.lower()):
                 # Normalize file_hash input to expected format and set the hash type
                 file_hash = file_hash.lower()
-                submitted_hash_type = hash_type
+                submitted_hash_type = h_type
         elif hash_pattern.match(file_hash):
-            submitted_hash_type = hash_type
+            submitted_hash_type = h_type
 
         if submitted_hash_type:
             # We've determined the submitted hash type
             break
 
-    submitted_hash_type = next((x for x, y in HASH_MAP.items() if y.match(file_hash)), None)
     if not submitted_hash_type:
         return make_api_response("", f"Invalid hash. This API only supports {', '.join(HASH_MAP.keys())}.", 400)
 
