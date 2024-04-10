@@ -30,6 +30,7 @@ def archive_submission(sid, **kwargs):
 
     Arguments:
     delete_after     => Delete data from hot storage after the move ? (Default: False)
+    skip_hook        => Skip webhook, if there is a webhook (Default: False)
 
     Data Block (Optional):
     {                                   # Optional metadata block to be added to the submission while archiving
@@ -52,6 +53,7 @@ def archive_submission(sid, **kwargs):
 
     user = kwargs['user']
     delete_after = request.args.get('delete_after', 'false').lower() in ['true', '']
+    skip_hook = request.args.get('skip_hook', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
     if not submission:
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
@@ -61,14 +63,13 @@ def archive_submission(sid, **kwargs):
 
     try:
         metadata = request.json
-    except Exception:
-        LOGGER.warning("Invalid metadata")
+    except Exception as e:
+        LOGGER.warning(f"Invalid metadata [{e}]")
         metadata = None
 
     try:
         archive_action = ARCHIVE_MANAGER.archive_submission(
-            submission=submission, delete_after=delete_after, metadata=metadata)
-        archive_action['success'] = True
+            submission=submission, delete_after=delete_after, metadata=metadata, skip_hook=skip_hook)
         return make_api_response(archive_action)
 
     except SubmissionException as se:
