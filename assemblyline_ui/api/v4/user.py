@@ -164,6 +164,12 @@ def who_am_i(**kwargs):
             "allow_extended_apikeys": config.auth.allow_extended_apikeys,
             "allow_security_tokens": config.auth.allow_security_tokens,
         },
+        "core": {
+            "archiver": {
+                "metadata": {k: v.as_primitives() for k, v in config.core.archiver.metadata.items()},
+                "use_metadata": config.core.archiver.use_metadata
+            }
+        },
         "datastore": {
             "archive": {
                 "enabled": config.datastore.archive.enabled
