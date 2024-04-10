@@ -44,7 +44,7 @@ def get_message(notification_queue, **kwargs):
     Get one message on the specified notification queue
 
     Variables:
-    complete_queue       => Queue to get the message from
+    notification_queue       => Queue to get the message from
 
     Arguments:
     None
@@ -72,10 +72,10 @@ def get_all_messages(notification_queue, **kwargs):
     Get all messages on the specified notification queue
 
     Variables:
-    complete_queue       => Queue to get the message from
+    notification_queue       => Queue to get the message from
 
     Arguments:
-    None
+    page_size                => Number of messages to get back from queue
 
     Data Block:
     None
@@ -84,11 +84,15 @@ def get_all_messages(notification_queue, **kwargs):
     []            # List of messages
     """
     resp_list = []
+
+    # Default page_size will return all the messages within the queue
+    page_size = int(request.args.get("page_size", -1))
+
     u = NamedQueue("nq-%s" % notification_queue,
                    host=config.core.redis.persistent.host,
                    port=config.core.redis.persistent.port)
 
-    while True:
+    while True and len(resp_list) != page_size:
         msg = u.pop(blocking=False)
 
         if msg is None:
