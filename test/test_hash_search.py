@@ -1,4 +1,5 @@
 import pytest
+import random
 import requests
 
 from conftest import get_api_data
@@ -244,7 +245,8 @@ def test_hash_search(datastore, login_session):
     _, session, host = login_session
 
     for x in range(NUM_ITEMS):
-        resp = get_api_data(session, f"{host}/api/v4/hash_search/{f_hash_list[x]}/")
+        hash = f_hash_list[x] if random.randint(0, 1) == 0 else f_hash_list[x].upper()
+        resp = get_api_data(session, f"{host}/api/v4/hash_search/{hash}/")
         assert len(resp['alert']['items']) > 0 and len(resp['al']['items']) > 0
 
 
