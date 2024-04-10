@@ -1,7 +1,7 @@
 from flask_socketio import join_room
+from assemblyline.common.forge import get_hauntedhouse_client
 
 from assemblyline_ui.sio.base import LOGGER, datastore, classification, config, SecureNamespace, authenticated_only
-from assemblyline_ui.helper.retrohunt import get_hauntedhouse_client
 
 
 haunted_house_client = get_hauntedhouse_client(config)
