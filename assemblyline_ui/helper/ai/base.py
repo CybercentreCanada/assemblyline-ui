@@ -22,11 +22,13 @@ class AIAgent():
         self.config = config.ui.ai
         self.logger = logger or PrintLogger()
         self.system_config = config
+        self.ds = forge.get_datastore()
         self.classification = forge.get_classification()
         self.scoring_prompt = self._build_scoring_prompt()
         self.classification_prompt = self._build_classification_prompt()
         self.services_prompt = self._build_services_prompt()
         self.indices_prompt = self._build_indices_prompt()
+        self.system_prompt = self._build_system_prompt()
 
     def continued_ai_conversation(self, messages):
         raise UnimplementedException("Method not implemented yet")
@@ -63,26 +65,43 @@ Assemblyline can classify/restrict access to its output with the following marki
 {markings}"""
 
     def _build_services_prompt(self):
-        ds = forge.get_datastore()
-        service_list: List[Service] = ds.list_all_services()
+        service_list: List[Service] = self.ds.list_all_services()
 
         def safe_description(description):
-            return description.replace('\n', '\n     ')
+            return description.replace("</br>", "\n").replace('\n', '\n  ')
 
         services = "\n".join(
-            [f" - name: {srv.name}\n   category: {srv.category}"
-             f"\n   description: |\n     {safe_description(srv.description)}"
+            [f"name: {srv.name}\ncategory: {srv.category}"
+             f"\ndescription: |\n  {safe_description(srv.description)}"
              for srv in service_list])
         return f"### Services and plugin definitions\n\nAssemblyline does its processing using only the" \
             f"following services/plugins:\n\n{services}"
 
     def _build_indices_prompt(self):
-        return ""
+        collections = []
+        for index in ['alert', 'file', 'result', 'signature', 'submission']:
+            collection = self.ds.get_collection(index)
+            collection_fields = collection.fields(include_description=True)
+            collections.append(
+                f"\n#### {index.upper()} index definition\nThis is the list of fields that are available for "
+                f"query in the {index} index with their description and data type.\n")
+            collections.append(
+                "\n".join(
+                    [f"{name}: {field['description']} [{field['type']}]" for name,
+                     field in collection_fields.items() if field['indexed']]))
+        indices = '\n'.join(collections)
+        return "### Data index definitions\n\nAssemblyline has multiple indices where it stores the data, theses " \
+               f"indices can be queried with the lucene syntax.\n{indices}"
+
+    def _build_system_prompt(self):
+        return "## Definitions\n\nThe next few sections will provide you with the necessary information to help " \
+            "users understand the results produced by Assemblyline. " \
+            "Note that these are not Assemblyline results, just definitions.\n\n" \
+            f"{self.scoring_prompt}\n\n{self.classification_prompt}\n\n" \
+            f"{self.services_prompt}\n\n{self.indices_prompt}\n\n"
 
 
 if __name__ == "__main__":
     agent = AIAgent(forge.get_config())
-    print(agent.scoring_prompt)
-    print(agent.classification_prompt)
-    print(agent.services_prompt)
-    print(agent.indices_prompt)
+    with open("prompt.txt", 'wb') as myfile:
+        myfile.write(agent.system_prompt.encode())
