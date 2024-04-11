@@ -302,3 +302,23 @@ def test_get_message_list(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/ingest/get_message_list/{TEST_QUEUE}/")
     for x in range(NUM_FILES):
         assert resp[x] == messages[x]
+
+# noinspection PyUnusedLocal
+def test_get_message_list_with_paging(datastore, login_session):
+    _, session, host = login_session
+
+    nq.delete()
+    messages = []
+    for x in range(NUM_FILES):
+        test_message = random_model_obj(Submission).as_primitives()
+        messages.append(test_message)
+        nq.push(test_message)
+
+    message_list = []
+    resp = True
+    while resp:
+        # Page through the notification queue with a page_size of 2
+        resp = get_api_data(session, f"{host}/api/v4/ingest/get_message_list/{TEST_QUEUE}/?page_size=2")
+        message_list += resp
+    for x in range(NUM_FILES):
+        assert message_list[x] == messages[x]
