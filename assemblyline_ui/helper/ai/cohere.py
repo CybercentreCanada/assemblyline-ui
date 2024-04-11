@@ -84,7 +84,10 @@ class CohereAgent(AIAgent):
             "message": message or "Hello!",
             "chat_history": history,
             "model": self.config.model_name,
-            "stream": False
+            "stream": False,
+            "documents": [
+                {"title": "Glossary of Assemblyline terms", "snippet": self.system_prompt}
+            ]
         }
         if preamble:
             data['preamble'] = preamble
