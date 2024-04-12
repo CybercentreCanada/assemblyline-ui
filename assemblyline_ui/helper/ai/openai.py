@@ -50,6 +50,9 @@ class OpenAIAgent(AIAgent):
         raise EmptyAIResponse("There was no response returned by the AI")
 
     def continued_ai_conversation(self, messages):
+        if "## Definitions" not in messages[0]['content'] and messages[0]['role'] == 'system':
+            messages[0]['content'] = "\n".join([messages[0]['content'], self.system_prompt])
+
         # Make sure this is not an empty message
         messages[-1]['content'] = messages[-1]['content'] or "Hello"
 
