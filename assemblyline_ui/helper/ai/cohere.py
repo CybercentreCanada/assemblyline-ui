@@ -1,5 +1,5 @@
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.config import AI as AIConfig
+from assemblyline.odm.models.config import Config
 from assemblyline_ui.helper.ai.base import AIAgent, APIException
 import requests
 import yaml
@@ -16,7 +16,7 @@ ROLE_MAP = {
 
 
 class CohereAgent(AIAgent):
-    def __init__(self, config: AIConfig, logger) -> None:
+    def __init__(self, config: Config, logger) -> None:
         super(CohereAgent, self).__init__(config, logger)
         self.session = requests.Session()
         self.session.headers = self.config.headers
@@ -84,7 +84,10 @@ class CohereAgent(AIAgent):
             "message": message or "Hello!",
             "chat_history": history,
             "model": self.config.model_name,
-            "stream": False
+            "stream": False,
+            "documents": [
+                {"title": "Glossary of Assemblyline terms", "snippet": self.system_prompt}
+            ]
         }
         if preamble:
             data['preamble'] = preamble

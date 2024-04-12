@@ -1,5 +1,5 @@
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.config import AI as AIConfig
+from assemblyline.odm.models.config import Config
 from assemblyline_ui.helper.ai.base import AIAgent, APIException, EmptyAIResponse
 import requests
 import yaml
@@ -8,7 +8,7 @@ ALLOWED_OPTIONS = ["temperature", "frequency_penalty", "presence_penalty", "top_
 
 
 class OpenAIAgent(AIAgent):
-    def __init__(self, config: AIConfig, logger) -> None:
+    def __init__(self, config: Config, logger) -> None:
         super(OpenAIAgent, self).__init__(config, logger)
         self.session = requests.Session()
         self.session.headers = self.config.headers
@@ -50,6 +50,9 @@ class OpenAIAgent(AIAgent):
         raise EmptyAIResponse("There was no response returned by the AI")
 
     def continued_ai_conversation(self, messages):
+        if "## Definitions" not in messages[0]['content'] and messages[0]['role'] == 'system':
+            messages[0]['content'] = "\n".join([messages[0]['content'], self.system_prompt])
+
         # Make sure this is not an empty message
         messages[-1]['content'] = messages[-1]['content'] or "Hello"
 
