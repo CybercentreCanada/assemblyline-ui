@@ -2,15 +2,21 @@ import json
 import re
 import requests
 import os
+import shutil
 import socket
+import tempfile
 
 from urllib.parse import urlparse
 
+from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.messages.submission import SubmissionMessage
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config
+from assemblyline.odm.models.user import ROLES
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE
+
+FETCH_METHODS = set(list(STORAGE.file.fields().keys()) + [x.hash_type for x in config.submission.file_sources] + ['url'])
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
@@ -30,6 +36,113 @@ class InvalidUrlException(Exception):
 
 class ForbiddenLocation(Exception):
     pass
+
+
+def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str):
+    sha256 = None
+    fileinfo = None
+    # If the method is by SHA256 hash, check to see if we already have that file
+    if method == "sha256":
+        fileinfo = STORAGE.file.get_if_exists(input, as_obj=False)
+    elif method == "url":
+        # If the method is by URL, check if we have a file with matching `uri_info.uri` as input
+        res = STORAGE.file.search(f'uri_info.uri:"{input}"', rows=1, as_obj=False)
+        if res['total']:
+            fileinfo = res['items'][0]
+    elif method in FETCH_METHODS:
+        # If the method is by a field that's known in our File model, query the datastore for the SHA256
+        res = STORAGE.file.search(f"{method}:{input}", rows=1, as_obj=False)
+        if res['total']:
+            fileinfo = res['items'][0]
+
+    found = False
+    if fileinfo:
+        sha256 = fileinfo['sha256']
+        # File exists in the DB, so let's retrieve it from the filestore and write to the out file
+        if CLASSIFICATION.is_accessible(user['classification'], fileinfo['classification']):
+            # User has access to the file
+            if FILESTORE.exists(sha256):
+                # File exists in the filestore
+                FILESTORE.download(sha256, out_file)
+                found = True
+
+            elif ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
+                    ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
+                # File exists in the archivestore
+                ARCHIVESTORE.download(sha256, out_file)
+                found = True
+
+            if found:
+                # Found the file, now apply its classification
+                s_params['classification'] = CLASSIFICATION.max_classification(s_params['classification'],
+                                                                                fileinfo['classification'])
+
+                if (
+                    fileinfo["type"].startswith("uri/")
+                    and "uri_info" in fileinfo
+                    and "uri" in fileinfo["uri_info"]
+                ):
+                    # Set a description if one hasn't been already set
+                    s_params['description']= s_params.get('description',
+                                                          f"Inspection of URL: {fileinfo['uri_info']['uri']}")
+
+    if not found:
+        # File doesn't exist in our system, therefore it has to be retrieved
+
+        # Check if external submit is allowed
+        default_external_sources = s_params.pop('default_external_sources', [])
+        if method == "url":
+            if not config.ui.allow_url_submissions:
+                raise PermissionError("URL submissions are disabled in this system")
+
+            # Create an AL-URI file to be tasked by a downloader service (ie. URLDownloader)
+            with tempfile.TemporaryDirectory() as dir_path:
+                shutil.move(make_uri_file(dir_path, input), out_file)
+
+            found = True
+        elif not default_external_sources:
+            # No external sources specified and the file being asked for doesn't exist in the system
+            raise FileNotFoundError(f"{method.upper()} does not exist in Assemblyline")
+        else:
+            if method == "sha256":
+                # Legacy support: Merge the sources from `sha256_sources` + `file_sources` that support SHA256 fetching
+                available_sources = [x for x in config.submission.sha256_sources
+                                    if CLASSIFICATION.is_accessible(user['classification'], x.classification) and
+                                    x.name in default_external_sources] + \
+                                    [x for x in config.submission.file_sources
+                                    if x.hash_type == "sha256" and
+                                    CLASSIFICATION.is_accessible(user['classification'], x.classification)
+                                    and x.name in default_external_sources]
+            else:
+                # Otherwise go based on the `file_sources` configuration
+                available_sources = [x for x in config.submission.file_sources
+                                    if x.hash_type == method and
+                                    CLASSIFICATION.is_accessible(user['classification'], x.classification)
+                                    and x.name in default_external_sources]
+
+            for source in available_sources:
+                src_url = source.url.replace(source.replace_pattern, input)
+                src_data = source.data.replace(source.replace_pattern, input) if source.data else None
+                failure_pattern = source.failure_pattern.encode('utf-8') if source.failure_pattern else None
+                dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
+                                            headers=source.headers, proxies=source.proxies,
+                                            verify=source.verify, validate=False,
+                                            failure_pattern=failure_pattern,
+                                            ignore_size=s_params.get('ignore_size', False))
+                if dl_from is not None:
+                    # Apply minimum classification for the source
+                    s_params['classification'] = \
+                        CLASSIFICATION.max_classification(s_params['classification'],
+                                                            source.classification)
+                    metadata['original_source'] = source.name
+                    found = True
+                    break
+
+    return found, fileinfo
+
+
+
+
 
 
 def refang_url(url):

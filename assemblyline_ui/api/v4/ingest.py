@@ -22,7 +22,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import download_from_url, FileTooBigException, submission_received, refang_url
+from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, FETCH_METHODS
 from assemblyline_ui.helper.user import load_user_settings
 
 
@@ -183,6 +183,8 @@ def ingest_single_file(**kwargs):
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
     extracted_path = original_file = None
+    string_type = None
+    string_value = None
     try:
         # Get data block and binary blob
         if 'multipart/form-data' in request.content_type:
@@ -193,23 +195,28 @@ def ingest_single_file(**kwargs):
             binary = request.files['bin']
             name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
             sha256 = None
-            url = None
         elif 'application/json' in request.content_type:
             data = request.json
             binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
-            sha256 = data.get('sha256', None)
-            url = data.get('url', None)
-            if url:
-                url = refang_url(url)
+
+            # Determine if we're expected to fetch a file
+            for method in FETCH_METHODS:
+                if data.get(method):
+                    string_type, string_value = method, data[method]
+                    break
+
+            sha256 = string_value if string_type == "sha256" else None
+            if string_type == "url":
+                string_value = refang_url(string_value)
             if binary:
                 sha256 = safe_str(hashlib.sha256(binary).hexdigest())
                 binary = io.BytesIO(binary)
-            name = url or safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
+            name = safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
         # Get default description
-        default_description = f"Inspection of {'URL' if url else 'file'}: {name}"
+        default_description = f"Inspection of {'URL' if string_type == 'url' else 'file'}: {name}"
 
         # Get file name
         if not name:
@@ -228,8 +235,6 @@ def ingest_single_file(**kwargs):
         original_file = out_file = os.path.join(out_dir, get_random_id())
 
         # Prepare variables
-        extra_meta = {}
-        fileinfo = None
         do_upload = True
         al_meta = {}
 
@@ -249,86 +254,39 @@ def ingest_single_file(**kwargs):
         # Apply provided params
         s_params.update(data.get("params", {}))
 
-        # Check if external submit is allowed
-        default_external_sources = s_params.pop('default_external_sources', [])
-
+        metadata = flatten(data.get("metadata", {}))
+        found = False
+        fileinfo = None
         # Load file
         if not binary:
-            if sha256:
-                found = False
-                fileinfo = STORAGE.file.get_if_exists(sha256, as_obj=False)
-
-                if fileinfo:
-                    # File exists in the DB
-                    if Classification.is_accessible(user['classification'], fileinfo['classification']):
-                        # User has access to the file
-                        if FILESTORE.exists(sha256):
-                            # File exists in the filestore
-                            FILESTORE.download(sha256, out_file)
-                            found = True
-                            # File is in storage and the DB no need to upload anymore
-                            do_upload = False
-
-                        elif ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
-                                ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
-                            # File exists in the archivestore
-                            ARCHIVESTORE.download(sha256, out_file)
-                            found = True
-                            # File is only in archivestorage so I'll still need to upload it to the hot storage
-                            do_upload = True
-
-                        if found:
-                            # Found the file, now apply its classification
-                            s_params['classification'] = Classification.max_classification(s_params['classification'],
-                                                                                           fileinfo['classification'])
-
-                if not found and default_external_sources:
-                    # File is not found still, and we have external sources
-                    dl_from = None
-                    available_sources = [x for x in config.submission.sha256_sources
-                                         if Classification.is_accessible(user['classification'], x.classification)
-                                         and x.name in default_external_sources]
-                    try:
-                        for source in available_sources:
-                            src_url = source.url.replace(source.replace_pattern, sha256)
-                            src_data = source.data.replace(source.replace_pattern, sha256) if source.data else None
-                            failure_pattern = source.failure_pattern.encode('utf-8') if source.failure_pattern else None
-                            dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
-                                                        headers=source.headers, proxies=source.proxies,
-                                                        verify=source.verify, validate=False,
-                                                        failure_pattern=failure_pattern,
-                                                        ignore_size=s_params.get('ignore_size', False))
-                            if dl_from is not None:
-                                # Apply minimum classification for the source
-                                s_params['classification'] = \
-                                    Classification.max_classification(s_params['classification'],
-                                                                      source.classification)
-                                extra_meta['original_source'] = source.name
-                                found = True
-                                break
-                    except FileTooBigException:
-                        return make_api_response({}, "File too big to be scanned.", 400)
-
+            if string_type:
+                try:
+                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
                     if not found:
-                        # File was never found, error out
-                        return make_api_response(
-                            {},
-                            "SHA256 does not exist in Assemblyline or any of the selected sources", 404)
-
-                if not found:
-                    # File was never found, error out
-                    return make_api_response({}, "SHA256 does not exist in Assemblyline", 404)
-            elif url:
-                if not config.ui.allow_url_submissions:
-                    return make_api_response({}, "URL submissions are disabled in this system", 400)
-
-                with tempfile.TemporaryDirectory() as dir_path:
-                    shutil.move(make_uri_file(dir_path, url), out_file)
+                        raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
+                except FileTooBigException:
+                    return make_api_response({}, "File too big to be scanned.", 400)
+                except FileNotFoundError as e:
+                    return make_api_response({}, str(e), 404)
+                except PermissionError as e:
+                    return make_api_response({}, str(e), 400)
             else:
-                return make_api_response({}, "Missing file to scan. No binary, sha256 or url provided.", 400)
+                return make_api_response({}, "Missing file to scan. No binary or fetching method provided.", 400)
         else:
             with open(out_file, "wb") as my_file:
                 shutil.copyfileobj(binary, my_file, 16384)
+
+        # Determine where the file exists and whether or not we need to re-upload to hot storage
+        if found and string_type != "url":
+            if FILESTORE.exists(fileinfo['sha256']):
+                # File is in storage and the DB no need to upload anymore
+                do_upload = False
+            elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
+                # File is only in archivestorage so I'll still need to upload it to the hot storage
+                do_upload = True
+            else:
+                # The file doesn't exist in the system, so it was fetched
+                do_upload = True
 
         if do_upload and os.path.getsize(out_file) == 0:
             return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
@@ -413,13 +371,11 @@ def ingest_single_file(**kwargs):
 
         # Load metadata, setup some default values if they are missing and append the cart metadata
         ingest_id = get_random_id()
-        metadata = flatten(data.get("metadata", {}))
         metadata['ingest_id'] = ingest_id
         metadata['type'] = s_params['type']
         metadata.update(al_meta)
         if 'ts' not in metadata:
             metadata['ts'] = now_as_iso()
-        metadata.update(extra_meta)
 
         # Validate the metadata
         metadata_error = metadata_validator.check_metadata(metadata)
