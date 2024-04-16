@@ -11,6 +11,7 @@ from traceback import format_tb
 
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
+from assemblyline_ui.security.oauth_auth import validate_oauth_token
 from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
@@ -75,6 +76,42 @@ class api_login(BaseSecurityRenderer):
                                                                      request.args.get("XSRF_TOKEN", "")):
             abort(403, "Invalid XSRF token")
 
+    def parse_al_obo_token(self, bearer_token, roles_limit, impersonator):
+        # noinspection PyBroadException
+        try:
+            headers = jwt.get_unverified_header(bearer_token)
+
+            # Test token validity
+            if 'token_id' not in headers or 'user' not in headers:
+                raise AuthenticationException("This is not a valid AL OBO token - Missing data from the headers")
+
+            # Try to decode token
+            decoded = jwt.decode(bearer_token,
+                                 hashlib.sha256(f"{SECRET_KEY}_{headers['token_id']}".encode()).hexdigest(),
+                                 algorithms=[headers.get('alg', "HS256")])
+        except jwt.PyJWTError as e:
+            raise AuthenticationException(f"Invalid OBO token - {str(e)}")
+
+        target_user = STORAGE.user.get(headers['user'], as_obj=False)
+        if target_user:
+            target_token = target_user.get('apps', {}).get(headers['token_id'], {})
+            if target_token != decoded:
+                raise AuthenticationException("Invalid OBO token - Token ID does not match the token")
+
+            if target_token['client_id'] != impersonator:
+                raise AuthenticationException(f"Invalid OBO token - {impersonator} is not allowed to use this token")
+
+            logged_in_uname = headers['user']
+
+            if roles_limit:
+                roles_limit = [r for r in decoded['roles'] if r in roles_limit]
+            else:
+                roles_limit = decoded["roles"]
+
+            return logged_in_uname, roles_limit
+        else:
+            raise AuthenticationException("User of the OBO token is not found")
+
     def __call__(self, func):
         @functools.wraps(func)
         def base(*args, **kwargs):
@@ -83,7 +120,6 @@ class api_login(BaseSecurityRenderer):
                     return func(*args, **kwargs)
                 else:
                     abort(403, "Invalid pre-authenticated user")
-                    return
 
             self.test_readonly("API")
             logged_in_uname, roles_limit = self.get_logged_in_user()
@@ -92,36 +128,33 @@ class api_login(BaseSecurityRenderer):
             # Impersonate
             authorization = request.environ.get("HTTP_AUTHORIZATION", None)
             if authorization:
-                # noinspection PyBroadException
-                try:
-                    bearer_token = authorization.split(" ")[-1]
-                    headers = jwt.get_unverified_header(bearer_token)
-                    decoded = jwt.decode(bearer_token,
-                                         hashlib.sha256(f"{SECRET_KEY}_{headers['token_id']}".encode()).hexdigest(),
-                                         algorithms=[headers.get('alg', "HS256")])
-                except Exception:
-                    abort(400, "Malformed bearer token")
-                    return
+                ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+                impersonator = logged_in_uname
+                bearer_token = authorization.split(" ")[-1]
+                token_provider = request.environ.get("HTTP_X_TOKEN_PROVIDER", None)
+                if token_provider:
+                    # Token has an associated provider, use it to validate the token
+                    try:
+                        logged_in_uname, token_roles_limit = validate_oauth_token(bearer_token, token_provider)
+                    except AuthenticationException as e:
+                        LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
+                        abort(403, str(e))
 
-                target_user = STORAGE.user.get(headers['user'], as_obj=False)
-                if target_user:
-                    target_token = target_user.get('apps', {}).get(headers['token_id'], {})
-                    if target_token == decoded and target_token['client_id'] == logged_in_uname:
-                        impersonator = logged_in_uname
-                        logged_in_uname = headers['user']
-                        LOGGER.info(f"{impersonator} is impersonating {logged_in_uname} for query: {request.path}")
-
-                        if roles_limit:
-                            roles_limit = [r for r in decoded['roles'] if r in roles_limit]
-                        else:
-                            roles_limit = decoded["roles"]
-
+                    # Combine role limits
+                    if roles_limit:
+                        roles_limit = [r for r in token_roles_limit if r in roles_limit]
                     else:
-                        abort(403, "Invalid bearer token")
-                        return
+                        roles_limit = token_roles_limit
                 else:
-                    abort(404, "User not found")
-                    return
+                    # Use the internal AL token validator
+                    try:
+                        logged_in_uname, roles_limit = self.parse_al_obo_token(
+                            bearer_token, roles_limit, impersonator)
+                    except AuthenticationException as e:
+                        LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
+                        abort(403, str(e))
+
+                LOGGER.info(f"{impersonator} [{ip}] is impersonating {logged_in_uname} for query: {request.path}")
 
             user = login(logged_in_uname, roles_limit)
 
@@ -131,7 +164,6 @@ class api_login(BaseSecurityRenderer):
                                     "/api/v4/auth/logout/"] \
                     and not user.get('agrees_with_tos', False) and config.ui.tos is not None:
                 abort(403, "Agree to Terms of Service before you can make any API calls")
-                return
 
             self.test_require_role(user, "API")
 
