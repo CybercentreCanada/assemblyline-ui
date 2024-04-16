@@ -12,11 +12,12 @@ from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
+from assemblyline.odm.models.config import HASH_PATTERN_MAP
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE
 
-FETCH_METHODS = set(list(STORAGE.file.fields().keys()) + [x.hash_type for x in config.submission.file_sources] + ['url'])
+FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + [x.hash_type for x in config.submission.file_sources] + ['url'])
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
