@@ -5,9 +5,24 @@ import requests
 from copy import copy
 
 from assemblyline.odm.models.user import load_roles_form_acls
-from assemblyline_ui.config import config, get_token_store, STORAGE
+from assemblyline_ui.config import config, get_token_store, STORAGE, CACHE
 from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.http_exceptions import AuthenticationException
+
+
+@elasticapm.capture_span(span_type='authentication')
+def get_jwks_keys(url):
+    cache_key = CACHE.create_key("jwks", url)
+    jwks = CACHE.get(cache_key, reset=False)
+
+    # Go get it is not in cache
+    if not jwks:
+        jwks = requests.get(url).json()
+
+        # Save it to the cache
+        CACHE.set(cache_key, jwks, ttl=600)
+
+    return jwks["keys"]
 
 
 @elasticapm.capture_span(span_type='authentication')
@@ -43,7 +58,7 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
 
         # Find proper signing key
         headers = jwt.get_unverified_header(oauth_token)
-        key_list = requests.get(oauth_provider_config.jwks_uri).json()["keys"]
+        key_list = get_jwks_keys(oauth_provider_config.jwks_uri)
         signing_key = None
         for key in key_list:
             if key['kid'] == headers['kid']:

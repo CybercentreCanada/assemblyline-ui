@@ -76,6 +76,7 @@ class api_login(BaseSecurityRenderer):
                                                                      request.args.get("XSRF_TOKEN", "")):
             abort(403, "Invalid XSRF token")
 
+    @elasticapm.capture_span(span_type='authentication')
     def parse_al_obo_token(self, bearer_token, roles_limit, impersonator):
         # noinspection PyBroadException
         try:
@@ -128,43 +129,41 @@ class api_login(BaseSecurityRenderer):
                 # Impersonate
                 authorization = request.environ.get("HTTP_AUTHORIZATION", None)
                 if authorization:
-                    with elasticapm.capture_span(name="assemblyline_ui.api.base.api_login:impersonate",
-                                                 span_type="authentication"):
-                        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-                        impersonator = logged_in_uname
-                        bearer_token = authorization.split(" ")[-1]
-                        token_provider = request.environ.get("HTTP_X_TOKEN_PROVIDER", None)
-                        if token_provider:
-                            # Token has an associated provider, use it to validate the token
-                            try:
-                                user, token_roles_limit = validate_oauth_token(
-                                    bearer_token, token_provider, return_user=True)
-                            except AuthenticationException as e:
-                                LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
-                                abort(403, str(e))
+                    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+                    impersonator = logged_in_uname
+                    bearer_token = authorization.split(" ")[-1]
+                    token_provider = request.environ.get("HTTP_X_TOKEN_PROVIDER", None)
+                    if token_provider:
+                        # Token has an associated provider, use it to validate the token
+                        try:
+                            user, token_roles_limit = validate_oauth_token(
+                                bearer_token, token_provider, return_user=True)
+                        except AuthenticationException as e:
+                            LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
+                            abort(403, str(e))
 
-                            # Combine role limits
-                            if roles_limit:
-                                roles_limit = [r for r in token_roles_limit if r in roles_limit]
-                            else:
-                                roles_limit = token_roles_limit
+                        # Combine role limits
+                        if roles_limit:
+                            roles_limit = [r for r in token_roles_limit if r in roles_limit]
                         else:
-                            # Use the internal AL token validator
-                            try:
-                                user, roles_limit = self.parse_al_obo_token(bearer_token, roles_limit, impersonator)
-                            except AuthenticationException as e:
-                                LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
-                                abort(403, str(e))
+                            roles_limit = token_roles_limit
+                    else:
+                        # Use the internal AL token validator
+                        try:
+                            user, roles_limit = self.parse_al_obo_token(bearer_token, roles_limit, impersonator)
+                        except AuthenticationException as e:
+                            LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
+                            abort(403, str(e))
 
-                        # Intersect impersonator and user classifications
-                        impersonator_user = STORAGE.user.get(impersonator, as_obj=False)
-                        user['classification'] = CLASSIFICATION.intersect_user_classification(
-                            impersonator_user['classification'], user['classification'])
+                    # Intersect impersonator and user classifications
+                    impersonator_user = STORAGE.user.get(impersonator, as_obj=False)
+                    user['classification'] = CLASSIFICATION.intersect_user_classification(
+                        impersonator_user['classification'], user['classification'])
 
-                        # Set currently logged in user
-                        logged_in_uname = user['uname']
-                        LOGGER.info(f"{impersonator} [{ip}] is impersonating "
-                                    f"{logged_in_uname} for query: {request.path}")
+                    # Set currently logged in user
+                    logged_in_uname = user['uname']
+                    LOGGER.info(f"{impersonator} [{ip}] is impersonating "
+                                f"{logged_in_uname} for query: {request.path}")
 
                 user = login(logged_in_uname, roles_limit, user=user)
 
