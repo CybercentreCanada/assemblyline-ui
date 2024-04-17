@@ -5,12 +5,27 @@ import requests
 from copy import copy
 
 from assemblyline.odm.models.user import load_roles_form_acls
-from assemblyline_ui.config import config, get_token_store, STORAGE
+from assemblyline_ui.config import config, get_token_store, STORAGE, CACHE
 from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
-@elasticapm.capture_span(span_type='validate_oauth_token_id')
+@elasticapm.capture_span(span_type='authentication')
+def get_jwks_keys(url):
+    cache_key = CACHE.create_key("jwks", url)
+    jwks = CACHE.get(cache_key, reset=False)
+
+    # Go get it is not in cache
+    if not jwks:
+        jwks = requests.get(url).json()
+
+        # Save it to the cache
+        CACHE.set(cache_key, jwks, ttl=600)
+
+    return jwks["keys"]
+
+
+@elasticapm.capture_span(span_type='authentication')
 def validate_oauth_id(username, oauth_token_id):
     # This function identifies the user via a saved oauth_token_id in redis
     if config.auth.oauth.enabled and oauth_token_id:
@@ -22,8 +37,8 @@ def validate_oauth_id(username, oauth_token_id):
     return None
 
 
-@elasticapm.capture_span(span_type='validate_oauth_token')
-def validate_oauth_token(oauth_token, oauth_provider):
+@elasticapm.capture_span(span_type='authentication')
+def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
     # This function identifies the user via an externally provided oauth token
     if config.auth.oauth.enabled and oauth_token and oauth_provider:
         oauth_provider_config = config.auth.oauth.providers.get(oauth_provider, None)
@@ -43,7 +58,7 @@ def validate_oauth_token(oauth_token, oauth_provider):
 
         # Find proper signing key
         headers = jwt.get_unverified_header(oauth_token)
-        key_list = requests.get(oauth_provider_config.jwks_uri).json()["keys"]
+        key_list = get_jwks_keys(oauth_provider_config.jwks_uri)
         signing_key = None
         for key in key_list:
             if key['kid'] == headers['kid']:
@@ -65,10 +80,14 @@ def validate_oauth_token(oauth_token, oauth_provider):
             email = parse_profile(jwt_data, oauth_provider_config).get('email', None)
             if email is not None:
                 # Get user from it's email
-                users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False)['items']
+                users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False, rows=1)['items']
                 if users:
                     # Limit user logging in from external token to only user READ/WRITE APIs
-                    return users[0]['uname'], load_roles_form_acls(["R", "W"], [])
+                    roles = load_roles_form_acls(["R", "W"], [])
+
+                    if return_user:
+                        return users[0], roles
+                    return users[0]['uname'], roles
 
         raise AuthenticationException("Invalid token")
 
