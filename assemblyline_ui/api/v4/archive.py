@@ -30,9 +30,12 @@ def archive_submission(sid, **kwargs):
 
     Arguments:
     delete_after     => Delete data from hot storage after the move ? (Default: False)
+    skip_hook        => Skip webhook, if there is a webhook (Default: False)
 
-    Data Block:
-    None
+    Data Block (Optional):
+    {                                   # Optional metadata block to be added to the submission while archiving
+     "meta_key": "Metadata value!"
+    }
 
     API call example:
     /api/v4/archive/12345...67890/
@@ -50,6 +53,7 @@ def archive_submission(sid, **kwargs):
 
     user = kwargs['user']
     delete_after = request.args.get('delete_after', 'false').lower() in ['true', '']
+    skip_hook = request.args.get('skip_hook', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
     if not submission:
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
@@ -58,8 +62,14 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, f"The submission '{sid}' is not accessible by this user", 403)
 
     try:
-        archive_action = ARCHIVE_MANAGER.archive_submission(submission=submission, delete_after=delete_after)
-        archive_action['success'] = True
+        metadata = request.json
+    except Exception as e:
+        LOGGER.warning(f"Invalid metadata [{e}]")
+        metadata = None
+
+    try:
+        archive_action = ARCHIVE_MANAGER.archive_submission(
+            submission=submission, delete_after=delete_after, metadata=metadata, skip_hook=skip_hook)
         return make_api_response(archive_action)
 
     except SubmissionException as se:
@@ -657,3 +667,4 @@ def remove_labels(sha256, **kwargs):
     values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
     return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
+
