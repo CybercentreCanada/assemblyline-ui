@@ -8,7 +8,7 @@ from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.dispatching.client import DispatchClient
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification, AI_CACHE
+from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification, CACHE
 from assemblyline_ui.helper.ai import EmptyAIResponse, APIException, detailed_al_submission, summarized_al_submission
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
@@ -531,12 +531,12 @@ def get_ai_summary(sid, **kwargs):
         return make_api_response({}, "User is not allowed to view the archive", 403)
 
     # Create the cache key
-    cache_key = AI_CACHE.create_key(sid, user['classification'], index_type,
-                                    archive_only, detailed, lang, with_trace, "submission")
+    cache_key = CACHE.create_key(sid, user['classification'], index_type,
+                                 archive_only, detailed, lang, with_trace, "submission")
     ai_summary = None
     if (not no_cache):
         # Get the summary from cache
-        ai_summary = AI_CACHE.get(cache_key)
+        ai_summary = CACHE.get(cache_key)
 
     if not ai_summary:
         data = STORAGE.get_ai_formatted_submission_data(
@@ -552,7 +552,7 @@ def get_ai_summary(sid, **kwargs):
                 ai_summary = summarized_al_submission(data, lang=lang, with_trace=with_trace)
 
             # Save to cache
-            AI_CACHE.set(cache_key, ai_summary)
+            CACHE.set(cache_key, ai_summary)
         except (APIException, EmptyAIResponse) as e:
             return make_api_response("", str(e), 400)
 
