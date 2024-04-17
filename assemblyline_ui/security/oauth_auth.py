@@ -10,7 +10,7 @@ from assemblyline_ui.helper.oauth import parse_profile
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
-@elasticapm.capture_span(span_type='validate_oauth_token_id')
+@elasticapm.capture_span(span_type='authentication')
 def validate_oauth_id(username, oauth_token_id):
     # This function identifies the user via a saved oauth_token_id in redis
     if config.auth.oauth.enabled and oauth_token_id:
@@ -22,8 +22,8 @@ def validate_oauth_id(username, oauth_token_id):
     return None
 
 
-@elasticapm.capture_span(span_type='validate_oauth_token')
-def validate_oauth_token(oauth_token, oauth_provider):
+@elasticapm.capture_span(span_type='authentication')
+def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
     # This function identifies the user via an externally provided oauth token
     if config.auth.oauth.enabled and oauth_token and oauth_provider:
         oauth_provider_config = config.auth.oauth.providers.get(oauth_provider, None)
@@ -65,10 +65,14 @@ def validate_oauth_token(oauth_token, oauth_provider):
             email = parse_profile(jwt_data, oauth_provider_config).get('email', None)
             if email is not None:
                 # Get user from it's email
-                users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False)['items']
+                users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False, rows=1)['items']
                 if users:
                     # Limit user logging in from external token to only user READ/WRITE APIs
-                    return users[0]['uname'], load_roles_form_acls(["R", "W"], [])
+                    roles = load_roles_form_acls(["R", "W"], [])
+
+                    if return_user:
+                        return users[0], roles
+                    return users[0]['uname'], roles
 
         raise AuthenticationException("Invalid token")
 
