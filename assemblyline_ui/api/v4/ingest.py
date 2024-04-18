@@ -194,7 +194,6 @@ def ingest_single_file(**kwargs):
                 data = {}
             binary = request.files['bin']
             name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
-            sha256 = None
         elif 'application/json' in request.content_type:
             data = request.json
             binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
@@ -205,13 +204,13 @@ def ingest_single_file(**kwargs):
                     string_type, string_value = method, data[method]
                     break
 
-            sha256 = string_value if string_type == "sha256" else None
+            hash = string_value
             if string_type == "url":
                 string_value = refang_url(string_value)
             if binary:
-                sha256 = safe_str(hashlib.sha256(binary).hexdigest())
+                hash = safe_str(hashlib.sha256(binary).hexdigest())
                 binary = io.BytesIO(binary)
-            name = safe_str(os.path.basename(data.get("name", None) or sha256 or ""))
+            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
