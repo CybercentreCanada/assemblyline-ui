@@ -74,17 +74,17 @@ def test_submit_hash(datastore, login_session, scheduler, hash):
     _, session, host = login_session
 
     sq.delete()
-    sha256 = random.choice(submission.results)[:64]
-    file = datastore.file.get(sha256)
+    # Look for any file where the hash of that file is set
+    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=f"sha256,{hash}", as_obj=False)['items'][0]
     data = {
-        hash: getattr(file, hash),
+        hash: fileinfo[hash],
         'name': 'random_hash.txt',
         'metadata': {'test': 'test_submit_hash'}
     }
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert isinstance(resp['sid'], str)
     for f in resp['files']:
-        assert f['sha256'] == sha256
+        assert f['sha256'] == fileinfo['sha256']
         assert f['name'] == data['name']
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))

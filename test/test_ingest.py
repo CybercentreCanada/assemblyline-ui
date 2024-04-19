@@ -62,11 +62,10 @@ def test_ingest_hash(datastore, login_session, hash):
     _, session, host = login_session
 
     iq.delete()
-    sha256 = random.choice(file_hashes)
-    file = datastore.file.get(sha256)
-
+    # Look for any file where the hash of that file is set
+    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=hash, as_obj=False)['items'][0]
     data = {
-        hash: getattr(file, hash),
+        hash: fileinfo[hash],
         'name': 'random_hash.txt',
         'metadata': {'test': 'ingest_hash'},
         'notification_queue': TEST_QUEUE
