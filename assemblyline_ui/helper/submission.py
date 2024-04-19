@@ -52,7 +52,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
             fileinfo = res['items'][0]
     elif method in FETCH_METHODS:
         # If the method is by a field that's known in our File model, query the datastore for the SHA256
-        res = STORAGE.file.search(f"{method}:{input}", rows=1, as_obj=False)
+        res = STORAGE.file.search(f'{method}:"{input}"', rows=1, as_obj=False)
         if res['total']:
             fileinfo = res['items'][0]
 
