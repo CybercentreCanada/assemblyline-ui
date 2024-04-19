@@ -58,6 +58,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     found = False
     if fileinfo:
+        fileinfo.pop('id', None)
         sha256 = fileinfo['sha256']
         # File exists in the DB, so let's retrieve it from the filestore and write to the out file
         if CLASSIFICATION.is_accessible(user['classification'], fileinfo['classification']):
