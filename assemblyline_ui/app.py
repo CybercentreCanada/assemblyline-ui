@@ -81,7 +81,7 @@ if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
     if AL_HSTS_MAX_AGE is not None:
         try:
             int(AL_HSTS_MAX_AGE)
-        except:
+        except Exception:
             raise ValueError("AL_HSTS_MAX_AGE must be set to an integer")
 
         def include_hsts_header(response):
