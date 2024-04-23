@@ -15,6 +15,8 @@ from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
+from assemblyline_ui.helper.ai import get_ai_agent
+from assemblyline_ui.helper.ai.base import AIAgent
 from assemblyline_ui.helper.discover import get_apps_list
 
 config = forge.get_config()
@@ -144,6 +146,10 @@ if config.datastore.archive.enabled:
 else:
     ARCHIVESTORE = None
 CACHE: Cache = Cache(prefix="flask_cache", host=redis, ttl=24 * 60 * 60)
+if config.ui.ai.enabled:
+    AI_AGENT: AIAgent = get_ai_agent(config, LOGGER)
+else:
+    AI_AGENT = None
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
 metadata_validator = MetadataValidator(STORAGE)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
