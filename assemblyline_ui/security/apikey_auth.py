@@ -6,7 +6,7 @@ from assemblyline.common.security import verify_password
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
-@elasticapm.capture_span(span_type='validate_apikey')
+@elasticapm.capture_span(span_type='authentication')
 def validate_apikey(username, apikey, storage):
     # This function identifies the user via the internal API key functionality
     #   NOTE: It is not recommended to overload this function but you can still do it

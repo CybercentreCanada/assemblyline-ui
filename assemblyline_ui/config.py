@@ -143,10 +143,7 @@ if config.datastore.archive.enabled:
     ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
 else:
     ARCHIVESTORE = None
-if config.ui.ai.enabled:
-    AI_CACHE: Cache = Cache(prefix="ai_cache", host=redis, ttl=24 * 60 * 60)
-else:
-    AI_CACHE = None
+CACHE: Cache = Cache(prefix="flask_cache", host=redis, ttl=24 * 60 * 60)
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
 metadata_validator = MetadataValidator(STORAGE)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)

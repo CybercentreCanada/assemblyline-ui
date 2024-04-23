@@ -1,6 +1,8 @@
 
 import re
 
+from flask import request
+
 from assemblyline.common import forge
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import IDENTIFY, STORAGE, CLASSIFICATION, config
@@ -28,7 +30,7 @@ def get_classification_definition(**_):
     None
 
     Arguments:
-    None
+    original    =>   Return to original unparsed classification definition
 
     Data Block:
     None
@@ -36,6 +38,9 @@ def get_classification_definition(**_):
     Result example:
     A parsed classification definition. (This is more for internal use)
     """
+    original = request.args.get('original', 'false').lower() in ['true', '']
+    if original:
+        return make_api_response(CLASSIFICATION.original_definition)
     return make_api_response(classification_definition)
 
 
