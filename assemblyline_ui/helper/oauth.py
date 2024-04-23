@@ -147,6 +147,18 @@ def parse_profile(profile, provider):
                                 group_value = group_value.replace(f"${index+1}", gm_value)
                             groups.append(group_value)
 
+                # Append multiple groups from a single matching pattern
+                elif auto_prop.type == "multi_group":
+                    all_matches = re.findall(auto_prop.pattern, value)
+                    for group_match in all_matches:
+                        for group_value in auto_prop.value:
+                            if not isinstance(group_match, list):
+                                group_match = [group_match]
+                            for index, gm_value in enumerate(group_match):
+                                group_value = group_value.replace(f"${index+1}", gm_value)
+                            if group_value not in groups:
+                                groups.append(group_value)
+
     # if not user type was assigned
     if not user_type:
         # if also no roles were assigned
