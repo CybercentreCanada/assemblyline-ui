@@ -92,7 +92,7 @@ def who_am_i(**kwargs):
        "submission": {                            # Submission Configuration
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
-         "sha256_sources": [],                      # List of sources SHA256 submissions lookup on other systems
+         "file_sources": [],                        # List of file sources to perform remote submission into the system
          "verdicts": {                              # Verdict scoring configuration
             "info": 0,                                # Default minimum score for info
             "suspicious": 300,                        # Default minimum score for suspicious
@@ -195,9 +195,6 @@ def who_am_i(**kwargs):
         "submission": {
             "dtl": config.submission.dtl,
             "max_dtl": config.submission.max_dtl,
-            "sha256_sources": [x.name for x in config.submission.sha256_sources
-                               if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                               x.classification)],
             "file_sources": file_sources,
             "verdicts": {
                 "info": config.submission.verdicts.info,
