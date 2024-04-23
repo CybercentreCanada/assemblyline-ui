@@ -16,7 +16,7 @@ alert_api = make_subapi_blueprint(SUB_API, api_version=4)
 alert_api._doc = "Perform operations on alerts"
 
 
-def get_alert_update_ops(user_id: str, status: str = None, priority: str = None, labels=[]) -> dict:
+def get_alert_update_ops(user_id: str, status: str = None, priority: str = None, labels=[], labels_removed=[]) -> dict:
     operations = []
     if status:
         operations.append((STORAGE.alert.UPDATE_SET, 'status', status))
@@ -24,6 +24,8 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
         operations.append((STORAGE.alert.UPDATE_SET, 'priority', priority))
     for label in labels:
         operations.append((STORAGE.alert.UPDATE_APPEND_IF_MISSING, 'label', label))
+    for label in labels_removed:
+        operations.append((STORAGE.alert.UPDATE_REMOVE, 'label', label))
 
     # Make sure operations get audited
     if operations:
@@ -34,6 +36,7 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
             'status': status,
             'priority': priority,
             'labels': labels,
+            'labels_removed': labels_removed
         })))
 
     return operations
@@ -425,24 +428,19 @@ def list_grouped_alerts(field, **kwargs):
 
 @alert_api.route("/all/<alert_id>/", methods=["POST"])
 @api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
-def run_workflow(**kwargs):
+def run_workflow(alert_id, **kwargs):
     """
     Apply one-time workflow to specified alert
 
     Variables:
     alert_id                         => ID of the alert to add the label to
 
-    Arguments:
-    q                                => Main query to filter the data [REQUIRED]
-    tc_start                         => Time offset at which we start the time constraint
-    tc                               => Time constraint applied to the API
-    fq                               => Filter query applied to the data
-
     Data Block:
     {
         "priority": "HIGH"           => New priority for the alert
         "status": "MALICIOUS"        => New status for the alert
         "labels": ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+        "removed_labels": ["LBL3", "LBL4"]  => List of labels to remove as a comma separated string
     }
 
     API call example:
@@ -465,20 +463,9 @@ def run_workflow(**kwargs):
     except ValueError as e:
         return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    query = request.args.get('q', "alert_id:*") or "alert_id:*"
-    tc_start = request.args.get('tc_start', None)
-    tc = request.args.get('tc', None)
-    if tc and config.ui.read_only:
-        tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
-
-    filters = [x for x in request.args.getlist("fq") if x != ""]
-    if timming_filter:
-        filters.append(timming_filter)
-
     operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
     return make_api_response({
-        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+        "success": STORAGE.alert.update(alert_id, operations, access_control=user['access_control'])
     })
 
 
@@ -499,9 +486,10 @@ def run_workflow_by_batch(**kwargs):
 
     Data Block:
     {
-        "priority": "HIGH"           => New priority for the alert
-        "status": "MALICIOUS"        => New status for the alert
-        "labels": ["LBL1", "LBL2"]   => List of labels to add as comma separated string
+        "priority": "HIGH"                  => New priority for the alert
+        "status": "MALICIOUS"               => New status for the alert
+        "labels": ["LBL1", "LBL2"]          => List of labels to add as comma separated string
+        "removed_labels": ["LBL3", "LBL4"]  => List of labels to remove as a comma separated string
     }
 
     API call example:
@@ -512,7 +500,8 @@ def run_workflow_by_batch(**kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json.get('labels', []))
+        labels = set([label.upper() for label in request.json.get('labels', [])])
+        removed_labels = set([label.upper() for label in request.json.get('removed_labels', [])])
         priority = request.json.get('priority')
         priority = priority.upper() if priority else None
         if priority not in PRIORITIES:
@@ -535,7 +524,8 @@ def run_workflow_by_batch(**kwargs):
     if timming_filter:
         filters.append(timming_filter)
 
-    operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
+    operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority,
+                                      status=status, labels_removed=removed_labels)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
     })
@@ -564,7 +554,7 @@ def add_labels(alert_id, **kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        labels = set([label.upper() for label in request.json])
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
@@ -612,7 +602,7 @@ def add_labels_by_batch(**kwargs):
     """
     user = kwargs['user']
     try:
-        labels = set(request.json)
+        labels = set([label.upper() for label in request.json])
     except ValueError:
         return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
 
@@ -628,6 +618,99 @@ def add_labels_by_batch(**kwargs):
         filters.append(timming_filter)
 
     operations = get_alert_update_ops(user['uname'], labels=labels)
+    return make_api_response({
+        "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
+    })
+
+
+@alert_api.route("/label/<alert_id>/", methods=["DELETE"])
+@api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
+def remove_labels(alert_id, **kwargs):
+    """
+    Remove one or multiple labels to a given alert
+
+    Variables:
+    alert_id           => ID of the alert to remove the label to
+
+    Arguments:
+    None
+
+    Data Block:
+    ["LBL1", "LBL2"]   => List of labels to remove as comma separated string
+
+    API call example:
+    /api/v4/alert/label/12345...67890/
+
+    Result example:
+    {"success": true}
+    """
+    user = kwargs['user']
+    try:
+        labels = set([label.upper() for label in request.json])
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+
+    alert = STORAGE.alert.get(alert_id, as_obj=False)
+
+    if not alert:
+        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
+
+    if not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response("", "You are not allowed to see this alert...", 403)
+
+    cur_label = set(alert.get('label', []))
+    # Check to see if any of the labels being proposed to be removed exists
+    label_inter = cur_label.intersection(labels)
+    if label_inter:
+        return make_api_response({
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], labels_removed=label_inter))
+        })
+    else:
+        return make_api_response({"success": True})
+
+
+@alert_api.route("/label/batch/", methods=["DELETE"])
+@api_login(allow_readonly=False, require_role=[ROLES.alert_manage])
+def remove_labels_by_batch(**kwargs):
+    """
+    Remove labels to all alerts matching the given filters
+
+    Variables:
+    None
+
+    Arguments:
+    q          =>  Main query to filter the data [REQUIRED]
+    tc_start   => Time offset at which we start the time constraint
+    tc         => Time constraint applied to the API
+    fq         =>  Filter query applied to the data
+
+    Data Block:
+    ["LBL1", "LBL2"]   => List of labels to remove as comma separated string
+
+    API call example:
+    /api/v4/alert/label/batch/?q=protocol:SMTP
+
+    Result example:
+    { "success": true }
+    """
+    user = kwargs['user']
+    try:
+        labels = set([label.upper() for label in request.json])
+    except ValueError:
+        return make_api_response({"success": False}, err="Invalid list of labels received.", status_code=400)
+
+    query = request.args.get('q', "alert_id:*") or "alert_id:*"
+    tc_start = request.args.get('tc_start', None)
+    tc = request.args.get('tc', None)
+    if tc and config.ui.read_only:
+        tc += config.ui.read_only_offset
+    timming_filter = get_timming_filter(tc_start, tc)
+
+    filters = [x for x in request.args.getlist("fq") if x != ""]
+    if timming_filter:
+        filters.append(timming_filter)
+
+    operations = get_alert_update_ops(user['uname'], labels_removed=labels)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
     })

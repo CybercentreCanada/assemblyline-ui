@@ -63,8 +63,10 @@ def decrement_submission_quota(user):
     SUBMISSION_TRACKER.end(user['uname'])
 
 
-def login(uname, roles_limit):
-    user = STORAGE.user.get(uname, as_obj=False)
+def login(uname, roles_limit, user=None):
+    if user is None:
+        user = STORAGE.user.get(uname, as_obj=False)
+
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
 

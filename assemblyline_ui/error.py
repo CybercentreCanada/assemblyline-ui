@@ -2,11 +2,12 @@
 from flask import Blueprint, request, session as flsk_session
 from sys import exc_info
 from traceback import format_tb
-from werkzeug.exceptions import Forbidden, Unauthorized, BadRequest
+from werkzeug.exceptions import Forbidden, Unauthorized, BadRequest, NotFound
 
 from assemblyline_ui.api.base import make_api_response
 from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config, KV_SESSION
-from assemblyline_ui.http_exceptions import AccessDeniedException, AuthenticationException
+from assemblyline_ui.http_exceptions import AccessDeniedException, AuthenticationException, \
+    InvalidDataException, NotFoundException
 from assemblyline_ui.logger import log_with_traceback
 
 errors = Blueprint("errors", __name__)
@@ -84,8 +85,11 @@ def handle_403(e):
 
 
 @errors.app_errorhandler(404)
-def handle_404(_):
-    return make_api_response("", "Api does not exist (%s)" % request.path, 404)
+def handle_404(e):
+    if isinstance(e, NotFound):
+        return make_api_response("", "Api does not exist (%s)" % request.path, 404)
+    else:
+        return make_api_response("", str(e), 400)
 
 
 @errors.app_errorhandler(415)
@@ -100,6 +104,12 @@ def handle_500(e):
 
     if isinstance(e.original_exception, AuthenticationException):
         return handle_401(e.original_exception)
+
+    if isinstance(e.original_exception, InvalidDataException):
+        return handle_400(e.original_exception)
+
+    if isinstance(e.original_exception, NotFoundException):
+        return handle_404(e.original_exception)
 
     oe = e.original_exception or e
 
