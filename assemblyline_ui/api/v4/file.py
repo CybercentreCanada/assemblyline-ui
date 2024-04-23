@@ -16,9 +16,8 @@ from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
 from assemblyline_ui.config import CACHE, ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
-    CLASSIFICATION as Classification, ARCHIVESTORE
-from assemblyline_ui.helper.ai import APIException, EmptyAIResponse, \
-    summarize_code_snippet as ai_code, summarized_al_submission
+    CLASSIFICATION as Classification, ARCHIVESTORE, AI_AGENT
+from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.datastore.collection import Index
@@ -310,7 +309,7 @@ def summarized_results(sha256, **kwargs):
             return make_api_response("", "The file was not found in the system.", 404)
 
         try:
-            ai_summary = summarized_al_submission(data, lang=lang, with_trace=with_trace)
+            ai_summary = AI_AGENT.summarized_al_submission(data, lang=lang, with_trace=with_trace)
 
             # Save to cache
             CACHE.set(cache_key, ai_summary)
@@ -395,7 +394,7 @@ def summarize_code_snippet(sha256, **kwargs):
                 return make_api_response({}, "The file was not found in the system.", 404)
 
             try:
-                ai_summary = ai_code(data, lang=lang, with_trace=with_trace)
+                ai_summary = AI_AGENT.summarize_code_snippet(data, lang=lang, with_trace=with_trace)
 
                 # Save to cache
                 CACHE.set(cache_key, ai_summary)
