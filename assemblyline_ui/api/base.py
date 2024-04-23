@@ -89,7 +89,7 @@ class api_login(BaseSecurityRenderer):
             # Try to decode token
             decoded = jwt.decode(bearer_token,
                                  hashlib.sha256(f"{SECRET_KEY}_{headers['token_id']}".encode()).hexdigest(),
-                                 algorithms=[headers.get('alg', "HS256")])
+                                 algorithms=["HS256"])
         except jwt.PyJWTError as e:
             raise AuthenticationException(f"Invalid OBO token - {str(e)}")
 

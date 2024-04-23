@@ -71,7 +71,7 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
                 jwt_data = jwt.decode(
                     oauth_token,
                     signing_key.key,
-                    algorithms=[headers['alg']],
+                    algorithms=[oauth_provider_config.jwt_token_alg],
                     audience=audiences)
             except jwt.PyJWTError as e:
                 raise AuthenticationException(f"Invalid token - {str(e)}")
