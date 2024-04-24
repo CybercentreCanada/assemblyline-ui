@@ -9,6 +9,7 @@ import tempfile
 from conftest import get_api_data
 
 from assemblyline.common import forge
+from assemblyline.odm.models.config import HASH_PATTERN_MAP
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -68,24 +69,26 @@ def test_resubmit_dynamic(datastore, login_session, scheduler):
 
 
 # noinspection PyUnusedLocal
-def test_submit_hash(datastore, login_session, scheduler):
+@pytest.mark.parametrize("hash", list(HASH_PATTERN_MAP.keys()))
+def test_submit_hash(datastore, login_session, scheduler, hash):
     _, session, host = login_session
 
     sq.delete()
+    # Look for any file where the hash of that file is set
+    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=f"sha256,{hash}", as_obj=False)['items'][0]
     data = {
-        'sha256': random.choice(submission.results)[:64],
+        hash: fileinfo[hash],
         'name': 'random_hash.txt',
         'metadata': {'test': 'test_submit_hash'}
     }
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert isinstance(resp['sid'], str)
     for f in resp['files']:
-        assert f['sha256'] == data['sha256']
+        assert f['sha256'] == fileinfo['sha256']
         assert f['name'] == data['name']
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
-
 
 # noinspection PyUnusedLocal
 def test_submit_url(datastore, login_session, scheduler):
