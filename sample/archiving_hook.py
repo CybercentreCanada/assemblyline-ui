@@ -29,8 +29,12 @@ def index():
     metadata = data['metadata'] or {}
     metadata['hook_result'] = "The hook ran successfully!"
 
+    use_alternate_dtl = '&use_alternate_dtl' if data['use_alternate_dtl'] else ''
+
     # Ask the API to finally archive the data
-    CLIENT._connection.put(f"api/v4/archive/{data['submission']['sid']}/?skip_hook", json=metadata)
+    CLIENT._connection.put(
+        f"api/v4/archive/{data['submission']['sid']}/?skip_hook{use_alternate_dtl}",
+        json=metadata)
 
     return make_response(jsonify({"success": True}), 200)
 
