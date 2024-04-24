@@ -185,6 +185,7 @@ def who_am_i(**kwargs):
         },
         "core": {
             "archiver": {
+                "alternate_dtl": config.core.archiver.alternate_dtl,
                 "metadata": {k: v.as_primitives() for k, v in config.core.archiver.metadata.items()},
                 "use_metadata": config.core.archiver.use_metadata
             }
