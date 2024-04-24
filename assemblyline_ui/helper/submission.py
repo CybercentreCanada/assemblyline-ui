@@ -17,7 +17,11 @@ from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE
 
-FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + [x.hash_type for x in config.submission.file_sources] + ['url'])
+# Baseline fetch methods
+FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
+
+# Update our fetch methods based on what's in our configuration
+[FETCH_METHODS.update(set(x.hash_types)) for x in config.submission.file_sources]
 
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
@@ -112,13 +116,13 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                     if CLASSIFICATION.is_accessible(user['classification'], x.classification) and
                                     x.name in default_external_sources] + \
                                     [x for x in config.submission.file_sources
-                                    if x.hash_type == "sha256" and
+                                    if "sha256" in x.hash_types and
                                     CLASSIFICATION.is_accessible(user['classification'], x.classification)
                                     and x.name in default_external_sources]
             else:
                 # Otherwise go based on the `file_sources` configuration
                 available_sources = [x for x in config.submission.file_sources
-                                    if x.hash_type == method and
+                                    if method in x.hash_types and
                                     CLASSIFICATION.is_accessible(user['classification'], x.classification)
                                     and x.name in default_external_sources]
 
