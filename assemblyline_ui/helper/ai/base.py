@@ -52,23 +52,25 @@ class AIAgent():
 
 
 class AIAgentPool():
-    def __init__(self, config: Config, api_backends: List[AIAgent] = [], logger=None) -> None:
+    def __init__(self, config: Config, api_backends: List[AIAgent] = [],
+                 logger=None, ds=None, classification=None) -> None:
         # Load pool dependencies
         self.logger = logger or PrintLogger()
         self.config = config
-        self.ds = forge.get_datastore()
-        self.classification = forge.get_classification()
+        self.ds = ds or forge.get_datastore()
+        self.classification = classification or forge.get_classification()
 
-        # Generate system prompts
-        self.definition_prompt = "## Definitions\n\nThis section will provide " \
-            "you with the necessary information to help " \
-            "users understand the results produced by Assemblyline. " \
-            "Note that these are not Assemblyline results, just definitions."
-        self.scoring_prompt = self._build_scoring_prompt()
-        self.classification_prompt = self._build_classification_prompt()
-        self.services_prompt = self._build_services_prompt()
-        self.indices_prompt = self._build_indices_prompt()
-        self.system_prompt = self._build_system_prompt()
+        if api_backends:
+            # Generate system prompts if we have any configured backends
+            self.definition_prompt = "## Definitions\n\nThis section will provide " \
+                "you with the necessary information to help " \
+                "users understand the results produced by Assemblyline. " \
+                "Note that these are not Assemblyline results, just definitions."
+            self.scoring_prompt = self._build_scoring_prompt()
+            self.classification_prompt = self._build_classification_prompt()
+            self.services_prompt = self._build_services_prompt()
+            self.indices_prompt = self._build_indices_prompt()
+            self.system_prompt = self._build_system_prompt()
 
         # Apply system prompts to backends
         for backend in api_backends:

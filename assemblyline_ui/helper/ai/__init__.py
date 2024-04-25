@@ -5,7 +5,7 @@ from assemblyline_ui.helper.ai.cohere import CohereAgent
 from assemblyline_ui.helper.ai.openai import OpenAIAgent
 
 
-def get_ai_agent(config: Config, logger: Logger):
+def get_ai_agent(config: Config, logger: Logger, ds, classification):
     backends = []
     if config.ui.ai.enabled:
         # Deprecation warning
@@ -18,7 +18,7 @@ def get_ai_agent(config: Config, logger: Logger):
         for api_connection in config.ui.ai_backends.api_connections:
             backends.append(_init_ai_agent(api_connection, config.ui.ai_backends.function_params, logger=logger))
 
-    return AIAgentPool(config, api_backends=backends, logger=logger)
+    return AIAgentPool(config, api_backends=backends, logger=logger, ds=ds, classification=classification)
 
 
 def _init_ai_agent(config: AIConnection, function_params: AIFunctionParameters, logger):
