@@ -11,7 +11,7 @@ from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
@@ -194,10 +194,7 @@ def who_am_i(**kwargs):
         },
         "ui": {
             "ai": {
-                "enabled": config.ui.ai.enabled,
-                "assistant": {
-                    "system_message": config.ui.ai.assistant.system_message
-                }
+                "enabled": AI_AGENT.has_backends()
             },
             "alerting_meta": {
                 "important": config.ui.alerting_meta.important,
