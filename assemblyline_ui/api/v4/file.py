@@ -262,6 +262,7 @@ def summarized_results(sha256, **kwargs):
     archive_only   => Only use the archive data to generate the summary
     no_cache       => Caching for the output of this API will be disabled
     with_trace     => Should the AI call return the full trace of the conversation?
+    lang           => Which language do you want the AI to respond in?
 
     Data Block:
     None
@@ -275,7 +276,7 @@ def summarized_results(sha256, **kwargs):
       "truncated": false
     }
     """
-    if not config.ui.ai.enabled:
+    if not AI_AGENT.has_backends():
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
@@ -332,6 +333,7 @@ def summarize_code_snippet(sha256, **kwargs):
     Arguments:
     no_cache       => Caching for the output of this API will be disabled
     with_trace     => Should the AI call return the full trace of the conversation?
+    lang           => Which language do you want the AI to respond in?
 
     Data Block:
     None
@@ -345,7 +347,7 @@ def summarize_code_snippet(sha256, **kwargs):
       "truncated": false
     }
     """
-    if not config.ui.ai.enabled:
+    if not AI_AGENT.has_backends():
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
