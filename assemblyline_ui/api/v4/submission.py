@@ -206,7 +206,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     current_htype, _, _ = output["tags"][t['type']].get(t['value'], (None, None, None))
                     tag_htype = h_type
                     if current_htype:
-                        if 'malicous' in (current_htype, h_type):
+                        if 'malicious' in (current_htype, h_type):
                             tag_htype = 'malicious'
                         elif 'suspicious' in (current_htype, h_type):
                             tag_htype = 'suspicious'
