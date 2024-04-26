@@ -25,14 +25,16 @@ class OpenAIAgent(AIAgent):
             # Call API
             resp = self.session.post(self.config.chat_url, json=data)
         except Exception as e:
-            message = f"An exception occured while trying to {action} with AI on server {self.config.chat_url}. [{e}]"
+            message = f"An exception occured while trying to {action} with AI on " \
+                      f"server {self.config.chat_url} with model {self.config.model_name}. [{e}]"
             self.logger.warning(message)
             raise APIException(message)
 
         if not resp.ok:
             msg_data = resp.json()
             msg = msg_data.get('error', {}).get('message', None) or msg_data
-            message = f"The AI API denied the request to {action} with the following message: {msg}"
+            message = f"The AI model {self.config.model_name} denied the request to " \
+                      f"{action} with the following message: {msg}"
             self.logger.warning(message)
             raise APIException(message)
 
