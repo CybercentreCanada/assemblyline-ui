@@ -84,42 +84,58 @@ class AIAgentPool():
         return len(self.api_backends) != 0
 
     def continued_ai_conversation(self, messages, lang="english"):
+        last_error = None
         for backend in self.api_backends:
             try:
                 return backend.continued_ai_conversation(messages=messages, lang=lang)
-            except Exception as e:
-                self.logger.info(f"AI backend for model {backend.config.model_name} failed with error: {str(e)}")
+            except APIException as e:
+                last_error = e
                 pass
+
+        if last_error:
+            raise last_error
 
         raise EmptyAIResponse("Could not find any AI backend to answer the question")
 
     def detailed_al_submission(self, report, lang="english", with_trace=False):
+        last_error = None
         for backend in self.api_backends:
             try:
                 return backend.detailed_al_submission(report, lang=lang, with_trace=with_trace)
-            except Exception as e:
-                self.logger.info(f"AI backend for model {backend.config.model_name} failed with error: {str(e)}")
+            except APIException as e:
+                last_error = e
                 pass
+
+        if last_error:
+            raise last_error
 
         raise EmptyAIResponse("Could not find any AI backend to answer the question")
 
     def summarized_al_submission(self, report, lang="english", with_trace=False):
+        last_error = None
         for backend in self.api_backends:
             try:
                 return backend.summarized_al_submission(report, lang=lang, with_trace=with_trace)
-            except Exception as e:
-                self.logger.info(f"AI backend for model {backend.config.model_name} failed with error: {str(e)}")
+            except APIException as e:
+                last_error = e
                 pass
+
+        if last_error:
+            raise last_error
 
         raise EmptyAIResponse("Could not find any AI backend to answer the question")
 
     def summarize_code_snippet(self, code, lang="english", with_trace=False):
+        last_error = None
         for backend in self.api_backends:
             try:
                 return backend.summarize_code_snippet(code, lang=lang, with_trace=with_trace)
-            except Exception as e:
-                self.logger.info(f"AI backend for model {backend.config.model_name} failed with error: {str(e)}")
+            except APIException as e:
+                last_error = e
                 pass
+
+        if last_error:
+            raise last_error
 
         raise EmptyAIResponse("Could not find any AI backend to answer the question")
 
