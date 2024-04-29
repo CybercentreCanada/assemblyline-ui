@@ -19,7 +19,7 @@ def assistant_conversation(**kwargs):
     None
 
     Arguments:
-    None
+    lang           => Which language do you want the AI to respond in?
 
     Data Block:
     [
@@ -53,6 +53,7 @@ def assistant_conversation(**kwargs):
     ]
     """
     user = kwargs['user']
+    lang = request.args.get('lang', 'english')
     messages = request.json
 
     if not isinstance(messages, list):
@@ -69,4 +70,4 @@ def assistant_conversation(**kwargs):
                 f"{user['uname']} [{user['classification']}] :: assistant_conversation(content={message['content']})")
             break
 
-    return make_api_response(AI_AGENT.continued_ai_conversation(messages))
+    return make_api_response(AI_AGENT.continued_ai_conversation(messages, lang=lang))

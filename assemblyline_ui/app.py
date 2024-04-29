@@ -96,7 +96,7 @@ app.register_blueprint(apiv4)
 app.register_blueprint(alert_api)
 if config.config.datastore.archive.enabled:
     app.register_blueprint(archive_api)
-if config.config.ui.ai.enabled:
+if config.AI_AGENT.has_backends():
     app.register_blueprint(assistant_api)
 app.register_blueprint(auth_api)
 app.register_blueprint(badlist_api)

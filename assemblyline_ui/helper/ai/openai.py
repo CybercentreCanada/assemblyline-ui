@@ -1,5 +1,5 @@
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.config import Config
+from assemblyline.odm.models.config import AIFunctionParameters, AIConnection
 from assemblyline_ui.helper.ai.base import AIAgent, APIException, EmptyAIResponse
 import requests
 import yaml
@@ -8,31 +8,33 @@ ALLOWED_OPTIONS = ["temperature", "frequency_penalty", "presence_penalty", "top_
 
 
 class OpenAIAgent(AIAgent):
-    def __init__(self, config: Config, logger) -> None:
-        super(OpenAIAgent, self).__init__(config, logger)
+    def __init__(self, config: AIConnection, function_params: AIFunctionParameters, logger) -> None:
+        super(OpenAIAgent, self).__init__(config, function_params, logger)
         self.session = requests.Session()
         self.session.headers = self.config.headers
         self.session.proxies = self.config.proxies
-        self.config.assistant.options = {k: v for k, v in self.config.assistant.options.items() if k in ALLOWED_OPTIONS}
-        self.config.code.options = {k: v for k, v in self.config.code.options.items() if k in ALLOWED_OPTIONS}
-        self.config.detailed_report.options = {k: v for k,
-                                               v in self.config.detailed_report.options.items() if k in ALLOWED_OPTIONS}
-        self.config.executive_summary.options = {
-            k: v for k, v in self.config.executive_summary.options.items() if k in ALLOWED_OPTIONS}
+        self.params.assistant.options = {k: v for k, v in self.params.assistant.options.items() if k in ALLOWED_OPTIONS}
+        self.params.code.options = {k: v for k, v in self.params.code.options.items() if k in ALLOWED_OPTIONS}
+        self.params.detailed_report.options = {k: v for k,
+                                               v in self.params.detailed_report.options.items() if k in ALLOWED_OPTIONS}
+        self.params.executive_summary.options = {
+            k: v for k, v in self.params.executive_summary.options.items() if k in ALLOWED_OPTIONS}
 
     def _call_ai_backend(self, data, action, with_trace=False):
         try:
             # Call API
             resp = self.session.post(self.config.chat_url, json=data)
         except Exception as e:
-            message = f"An exception occured while trying to {action} with AI on server {self.config.chat_url}. [{e}]"
+            message = f"An exception occured while trying to {action} with AI on " \
+                      f"server {self.config.chat_url} with model {self.config.model_name}. [{e}]"
             self.logger.warning(message)
             raise APIException(message)
 
         if not resp.ok:
             msg_data = resp.json()
             msg = msg_data.get('error', {}).get('message', None) or msg_data
-            message = f"The AI API denied the request to {action} with the following message: {msg}"
+            message = f"The AI model {self.config.model_name} denied the request to " \
+                      f"{action} with the following message: {msg}"
             self.logger.warning(message)
             raise APIException(message)
 
@@ -49,70 +51,79 @@ class OpenAIAgent(AIAgent):
 
         raise EmptyAIResponse("There was no response returned by the AI")
 
-    def continued_ai_conversation(self, messages):
-        if "## Definitions" not in messages[0]['content'] and messages[0]['role'] == 'system':
-            messages[0]['content'] = "\n".join([messages[0]['content'], self.system_prompt])
+    def continued_ai_conversation(self, messages, lang="english"):
+        # If there are no system prompt, use the default one.
+        if not messages[0]['content'] and messages[0]['role'] == 'system':
+            system_message = self.params.assistant.system_message.replace("$(LANG)", lang)
+            messages[0]['content'] = "\n".join([system_message, self.system_prompt])
 
         # Make sure this is not an empty message
         messages[-1]['content'] = messages[-1]['content'] or "Hello"
 
         # Build chat completions request
         data = {
-            "max_tokens": self.config.assistant.max_tokens,
+            "max_tokens": self.params.assistant.max_tokens,
             "messages": messages,
             "model": self.config.model_name,
             "stream": False
         }
-        data.update(self.config.assistant.options)
+        data.update(self.params.assistant.options)
 
         return self._call_ai_backend(data, "answer the question", with_trace=True)
 
     def detailed_al_submission(self, report, lang="english", with_trace=False):
         # Build chat completions request
+        system_message = self.params.detailed_report.system_message.replace("$(LANG)", lang)
+        content = [self.params.detailed_report.task, "## Assemblyline Report\n", f"```yaml\n{yaml.dump(report)}\n```"]
         data = {
-            "max_tokens": self.config.detailed_report.max_tokens,
+            "max_tokens": self.params.detailed_report.max_tokens,
             "messages": [
-                {"role": "system", "content": self.config.detailed_report.system_message.replace(
-                    "$(LANG)", lang)},
+                {"role": "system", "content": "\n".join(
+                    [system_message, self.definition_prompt, "", self.scoring_prompt])},
                 # TODO: we may have to do token detection and split the data in chunks...
-                {"role": "user", "content": yaml.dump(report)},
+                {"role": "user",
+                    "content": "\n".join(content)},
             ],
             "model": self.config.model_name,
             "stream": False
         }
-        data.update(self.config.detailed_report.options)
+        data.update(self.params.detailed_report.options)
 
         return self._call_ai_backend(data, "create detailed analysis of the AL report", with_trace=with_trace)
 
     def summarized_al_submission(self, report, lang="english", with_trace=False):
         # Build chat completions request
+        system_message = self.params.executive_summary.system_message.replace("$(LANG)", lang)
+        content = [self.params.executive_summary.task, "## Assemblyline Report\n", f"```yaml\n{yaml.dump(report)}\n```"]
         data = {
-            "max_tokens": self.config.executive_summary.max_tokens,
+            "max_tokens": self.params.executive_summary.max_tokens,
             "messages": [
-                {"role": "system", "content": self.config.executive_summary.system_message.replace(
-                    "$(LANG)", lang)},
+                {"role": "system", "content": "\n".join(
+                    [system_message, self.definition_prompt, "", self.scoring_prompt])},
                 # TODO: we may have to do token detection and split the data in chunks...
-                {"role": "user", "content": yaml.dump(report)},
+                {"role": "user", "content": "\n".join(content)},
             ],
             "model": self.config.model_name,
             "stream": False
         }
-        data.update(self.config.executive_summary.options)
+        data.update(self.params.executive_summary.options)
 
         return self._call_ai_backend(data, "summarize the AL report", with_trace=with_trace)
 
     def summarize_code_snippet(self, code, lang="english", with_trace=False):
         # Build chat completions request
+        system_message = self.params.code.system_message.replace("$(LANG)", lang)
+        content = [self.params.code.task, "## Code snippet\n", f"```\n{safe_str(code)}\n```"]
         data = {
-            "max_tokens": self.config.code.max_tokens,
+            "max_tokens": self.params.code.max_tokens,
             "messages": [
-                {"role": "system", "content": self.config.code.system_message.replace("$(LANG)", lang)},
+                {"role": "system", "content": system_message},
                 # TODO: we may have to do token detection and split the data in chunks...
-                {"role": "user", "content": safe_str(code)},
+                {"role": "user", "content": "\n".join(content)}
             ],
             "model": self.config.model_name,
             "stream": False
         }
-        data.update(self.config.code.options)
+        data.update(self.params.code.options)
 
         return self._call_ai_backend(data, "summarize code snippet", with_trace=with_trace)
