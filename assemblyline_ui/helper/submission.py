@@ -46,6 +46,7 @@ class ForbiddenLocation(Exception):
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str):
     sha256 = None
     fileinfo = None
+    default_external_sources = s_params.pop('default_external_sources', [])
     # If the method is by SHA256 hash, check to see if we already have that file
     if method == "sha256":
         fileinfo = STORAGE.file.get_if_exists(input, as_obj=False)
@@ -96,7 +97,6 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
         # File doesn't exist in our system, therefore it has to be retrieved
 
         # Check if external submit is allowed
-        default_external_sources = s_params.pop('default_external_sources', [])
         if method == "url":
             if not config.ui.allow_url_submissions:
                 raise PermissionError("URL submissions are disabled in this system")
