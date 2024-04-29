@@ -10,6 +10,7 @@ from conftest import get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
+from assemblyline.odm.models.config import HASH_PATTERN_MAP
 from assemblyline.odm.models.file import File
 from assemblyline.odm.randomizer import random_model_obj, get_random_phrase
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
@@ -56,12 +57,15 @@ def datastore(datastore_connection, filestore):
 
 
 # noinspection PyUnusedLocal
-def test_ingest_hash(datastore, login_session):
+@pytest.mark.parametrize("hash", list(HASH_PATTERN_MAP.keys()))
+def test_ingest_hash(datastore, login_session, hash):
     _, session, host = login_session
 
     iq.delete()
+    # Look for any file where the hash of that file is set
+    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=hash, as_obj=False)['items'][0]
     data = {
-        'sha256': random.choice(file_hashes),
+        hash: fileinfo[hash],
         'name': 'random_hash.txt',
         'metadata': {'test': 'ingest_hash'},
         'notification_queue': TEST_QUEUE
