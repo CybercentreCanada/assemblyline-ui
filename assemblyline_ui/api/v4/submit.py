@@ -370,6 +370,9 @@ def submit(**kwargs):
         if not s_params['description']:
             s_params['description'] = default_description
 
+        # Remove external sources from submission parameters
+        s_params.pop('default_external_sources', None)
+
         try:
             # Validate the metadata
             metadata_error = metadata_validator.check_metadata(metadata)
