@@ -318,9 +318,12 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
+        default_external_sources = []
+
         # Create task object
         if "ui_params" in data:
-            s_params = ui_to_submission_params(data['ui_params'], ignore_params=['default_external_sources'])
+            default_external_sources = data['ui_params'].pop('default_external_sources', [])
+            s_params = ui_to_submission_params(data['ui_params'])
         else:
             s_params = ui_to_submission_params(load_user_settings(user))
 
@@ -351,7 +354,8 @@ def submit(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
+                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                          default_external_sources)
                     if not found:
                         raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
 

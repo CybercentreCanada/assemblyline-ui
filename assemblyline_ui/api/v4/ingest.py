@@ -238,7 +238,7 @@ def ingest_single_file(**kwargs):
         al_meta = {}
 
         # Load default user params
-        s_params = ui_to_submission_params(load_user_settings(user), ignore_params=['default_external_sources'])
+        s_params = ui_to_submission_params(load_user_settings(user))
 
         # Reset dangerous user settings to safe values
         s_params.update({
@@ -253,6 +253,8 @@ def ingest_single_file(**kwargs):
         # Apply provided params
         s_params.update(data.get("params", {}))
 
+        default_external_sources = s_params.pop('default_external_sources', [])
+
         metadata = flatten(data.get("metadata", {}))
         found = False
         fileinfo = None
@@ -260,7 +262,8 @@ def ingest_single_file(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
+                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                                 default_external_sources)
                     if not found:
                         raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
                 except FileTooBigException:
