@@ -74,7 +74,7 @@ def simplify_service_spec(service_spec):
     return params
 
 
-def ui_to_submission_params(params, ignore_params=[]) -> Optional[dict[str, Any]]:
+def ui_to_submission_params(params) -> Optional[dict[str, Any]]:
     if params is None:
         return params
 
@@ -92,9 +92,7 @@ def ui_to_submission_params(params, ignore_params=[]) -> Optional[dict[str, Any]
 
     # Remove UI specific params that don't apply as submission params based on the model
     for param in USER_SETTINGS_FIELDS:
-        if param in ignore_params:
-            continue
-        elif param not in SUBMISSION_PARAM_FIELDS:
+        if param not in SUBMISSION_PARAM_FIELDS:
             params.pop(param, None)
 
     return params

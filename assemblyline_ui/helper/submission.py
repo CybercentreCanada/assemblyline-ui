@@ -6,6 +6,7 @@ import shutil
 import socket
 import tempfile
 
+from typing import List
 from urllib.parse import urlparse
 
 from assemblyline.common.file import make_uri_file
@@ -43,10 +44,10 @@ class ForbiddenLocation(Exception):
     pass
 
 
-def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str):
+def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
+               default_external_sources: List[str]):
     sha256 = None
     fileinfo = None
-    default_external_sources = s_params.pop('default_external_sources', [])
     # If the method is by SHA256 hash, check to see if we already have that file
     if method == "sha256":
         fileinfo = STORAGE.file.get_if_exists(input, as_obj=False)
