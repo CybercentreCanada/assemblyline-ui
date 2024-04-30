@@ -320,7 +320,7 @@ def submit(**kwargs):
 
         # Create task object
         if "ui_params" in data:
-            s_params = ui_to_submission_params(data['ui_params'])
+            s_params = ui_to_submission_params(data['ui_params'], ignore_params=['default_external_sources'])
         else:
             s_params = ui_to_submission_params(load_user_settings(user))
 
@@ -369,9 +369,6 @@ def submit(**kwargs):
 
         if not s_params['description']:
             s_params['description'] = default_description
-
-        # Remove external sources from submission parameters
-        s_params.pop('default_external_sources', None)
 
         try:
             # Validate the metadata

@@ -238,7 +238,7 @@ def ingest_single_file(**kwargs):
         al_meta = {}
 
         # Load default user params
-        s_params = ui_to_submission_params(load_user_settings(user))
+        s_params = ui_to_submission_params(load_user_settings(user), ignore_params=['default_external_sources'])
 
         # Reset dangerous user settings to safe values
         s_params.update({
@@ -385,9 +385,6 @@ def ingest_single_file(**kwargs):
         if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
             default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
-
-        # Remove external sources from submission parameters
-        s_params.pop('default_external_sources', None)
 
         # Create submission object
         try:
