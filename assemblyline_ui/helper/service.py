@@ -1,8 +1,12 @@
 from copy import copy
 from typing import Any, Optional
 from assemblyline_ui.config import CLASSIFICATION, config, SERVICE_LIST
-from assemblyline.odm.models.submission import DEFAULT_SRV_SEL
+from assemblyline.odm.models.submission import DEFAULT_SRV_SEL, SubmissionParams
+from assemblyline.odm.models.user_settings import UserSettings
 
+# Get the list of fields relating to the models
+USER_SETTINGS_FIELDS = list(UserSettings.fields().keys())
+SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
 
 def get_default_service_spec(srv_list=None, user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     if not srv_list:
@@ -70,7 +74,7 @@ def simplify_service_spec(service_spec):
     return params
 
 
-def ui_to_submission_params(params) -> Optional[dict[str, Any]]:
+def ui_to_submission_params(params, ignore_params=[]) -> Optional[dict[str, Any]]:
     if params is None:
         return params
 
@@ -86,13 +90,11 @@ def ui_to_submission_params(params) -> Optional[dict[str, Any]]:
 
     params['ttl'] = int(params.get('ttl', config.submission.dtl))
 
-    # Remove UI specific params
-    params.pop('default_zip_password', None)
-    params.pop('download_encoding', None)
-    params.pop('executive_summary', None)
-    params.pop('expand_min_score', None)
-    params.pop('submission_view', None)
-    params.pop('ui4', None)
-    params.pop('ui4_ask', None)
+    # Remove UI specific params that don't apply as submission params based on the model
+    for param in USER_SETTINGS_FIELDS:
+        if param in ignore_params:
+            continue
+        elif param not in SUBMISSION_PARAM_FIELDS:
+            params.pop(param, None)
 
     return params
