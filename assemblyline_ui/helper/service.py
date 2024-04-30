@@ -87,7 +87,7 @@ def ui_to_submission_params(params, ignore_params=[]) -> Optional[dict[str, Any]
 
     params['ttl'] = int(params.get('ttl', config.submission.dtl))
 
-    # Remove UI specific params that don't apply to as Submission params
+    # Remove UI specific params that don't apply as submission params based on the model
     sub_params_fields = list(SubmissionParams.fields().keys())
     for param in UserSettings.fields().keys():
         if param in ignore_params:
