@@ -54,7 +54,7 @@ class OpenAIAgent(AIAgent):
     def continued_ai_conversation(self, messages, lang="english"):
         # If there are no system prompt, use the default one.
         if not messages[0]['content'] and messages[0]['role'] == 'system':
-            system_message = self.params.assistant.system_message.replace("$(LANG)", lang)
+            system_message = self._get_system_message(self.params.assistant.system_message, lang)
             messages[0]['content'] = "\n".join([system_message, self.system_prompt])
 
         # Make sure this is not an empty message
@@ -73,7 +73,7 @@ class OpenAIAgent(AIAgent):
 
     def detailed_al_submission(self, report, lang="english", with_trace=False):
         # Build chat completions request
-        system_message = self.params.detailed_report.system_message.replace("$(LANG)", lang)
+        system_message = self._get_system_message(self.params.detailed_report.system_message, lang)
         content = [self.params.detailed_report.task, "## Assemblyline Report\n", f"```yaml\n{yaml.dump(report)}\n```"]
         data = {
             "max_tokens": self.params.detailed_report.max_tokens,
@@ -93,7 +93,7 @@ class OpenAIAgent(AIAgent):
 
     def summarized_al_submission(self, report, lang="english", with_trace=False):
         # Build chat completions request
-        system_message = self.params.executive_summary.system_message.replace("$(LANG)", lang)
+        system_message = self._get_system_message(self.params.executive_summary.system_message, lang)
         content = [self.params.executive_summary.task, "## Assemblyline Report\n", f"```yaml\n{yaml.dump(report)}\n```"]
         data = {
             "max_tokens": self.params.executive_summary.max_tokens,
@@ -112,7 +112,7 @@ class OpenAIAgent(AIAgent):
 
     def summarize_code_snippet(self, code, lang="english", with_trace=False):
         # Build chat completions request
-        system_message = self.params.code.system_message.replace("$(LANG)", lang)
+        system_message = self._get_system_message(self.params.code.system_message, lang)
         content = [self.params.code.task, "## Code snippet\n", f"```\n{safe_str(code)}\n```"]
         data = {
             "max_tokens": self.params.code.max_tokens,
