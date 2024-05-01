@@ -257,6 +257,7 @@ def start_ui_submission(ui_sid, **kwargs):
             # Submit to dispatcher
             try:
                 params = ui_to_submission_params(ui_params)
+                metadata = params.pop("metadata", {})
 
                 # Enforce maximum DTL
                 if config.submission.max_dtl > 0:
@@ -266,6 +267,7 @@ def start_ui_submission(ui_sid, **kwargs):
 
                 submission_obj = Submission({
                     "files": [],
+                    "metadata": metadata,
                     "params": params
                 })
             except (ValueError, KeyError) as e:
