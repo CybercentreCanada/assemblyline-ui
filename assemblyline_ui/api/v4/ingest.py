@@ -207,10 +207,13 @@ def ingest_single_file(**kwargs):
             hash = string_value
             if string_type == "url":
                 string_value = refang_url(string_value)
-            if binary:
-                hash = safe_str(hashlib.sha256(binary).hexdigest())
-                binary = io.BytesIO(binary)
-            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+                name = string_value
+            else:
+                hash = string_value
+                if binary:
+                    hash = safe_str(hashlib.sha256(binary).hexdigest())
+                    binary = io.BytesIO(binary)
+                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
