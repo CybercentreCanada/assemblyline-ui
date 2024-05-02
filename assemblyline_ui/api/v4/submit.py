@@ -321,15 +321,13 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
-        default_external_sources = []
+        # Load in the user's settings in case it wasn't provided from the UI
+        # Ensure the `default_external_sources` are popped before converting UI params to submission params
+        user_settings = data['ui_params'] if "ui_params" in data else load_user_settings(user)
+        default_external_sources = user_settings.pop('default_external_sources', [])
 
         # Create task object
-        if "ui_params" in data:
-            default_external_sources = data['ui_params'].pop('default_external_sources', [])
-            s_params = ui_to_submission_params(data['ui_params'])
-        else:
-            s_params = ui_to_submission_params(load_user_settings(user))
-
+        s_params = ui_to_submission_params(user_settings)
         s_params.update(data.get("params", {}))
         if 'groups' not in s_params:
             s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
