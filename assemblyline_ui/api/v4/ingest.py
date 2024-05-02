@@ -240,8 +240,13 @@ def ingest_single_file(**kwargs):
         do_upload = True
         al_meta = {}
 
-        # Load default user params
-        s_params = ui_to_submission_params(load_user_settings(user))
+        user_settings = load_user_settings(user)
+
+        # Grab the user's `default_external_sources` from their settings as the default
+        default_external_sources = user_settings.pop('default_external_sources', [])
+
+        # Load default user params from user settings
+        s_params = ui_to_submission_params(user_settings)
 
         # Reset dangerous user settings to safe values
         s_params.update({
@@ -256,7 +261,8 @@ def ingest_single_file(**kwargs):
         # Apply provided params
         s_params.update(data.get("params", {}))
 
-        default_external_sources = s_params.pop('default_external_sources', [])
+        # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
+        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
 
         metadata = flatten(data.get("metadata", {}))
         found = False
