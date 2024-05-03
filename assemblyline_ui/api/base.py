@@ -214,19 +214,15 @@ class api_login(BaseSecurityRenderer):
                     quota = user.get('api_quota', DEFAULT_API_QUOTA)
                     if not QUOTA_TRACKER.begin(quota_user, quota):
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
-                        return make_api_response("", f"You've exceeded your maximum quota of {quota}", 503)
-                    else:
-                        LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {quota}")
-                        flsk_session['quota_set'] = True
+                        return make_api_response(
+                            "", f"You've exceeded your maximum concurrent API calls quota of {quota}", 503)
 
                     # Check daily quota
                     daily_quota = user.get('api_daily_quota', DEFAULT_DAILY_API_QUOTA)
                     if DAILY_QUOTA_TRACKER.increment_api(quota_user) > daily_quota:
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                         return make_api_response(
-                            "", f"You've exceeded your maximum quota of {daily_quota} daily api calls", 503)
-                    else:
-                        LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {daily_quota}")
+                            "", f"You've exceeded your daily maximum API calls quota of {daily_quota}", 503)
 
             return func(*args, **kwargs)
         base.protected = True
