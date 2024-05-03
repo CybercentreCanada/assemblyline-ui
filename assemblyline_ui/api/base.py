@@ -12,13 +12,14 @@ from traceback import format_tb
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline_ui.security.oauth_auth import validate_oauth_token
-from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION, CLASSIFICATION
+from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION, CLASSIFICATION, \
+    DAILY_QUOTA_TRACKER
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import ROLES
+from assemblyline.odm.models.user import DEFAULT_API_QUOTA, DEFAULT_DAILY_API_QUOTA, ROLES
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -203,21 +204,29 @@ class api_login(BaseSecurityRenderer):
                                                 email=user.get('email', None),
                                                 user_id=user.get('uname', None))
 
-                # Check current user quota
-                quota_user = user['uname']
+                if config.ui.enforce_quota:
+                    # Prepare session for quotas
+                    quota_user = user['uname']
+                    flsk_session['quota_user'] = quota_user
+                    flsk_session['quota_set'] = True
 
-                flsk_session['quota_user'] = quota_user
-                flsk_session['quota_set'] = True
-
-                quota = user.get('api_quota', 10)
-                if not QUOTA_TRACKER.begin(quota_user, quota):
-                    if config.ui.enforce_quota:
+                    # Check current user quota
+                    quota = user.get('api_quota', DEFAULT_API_QUOTA)
+                    if not QUOTA_TRACKER.begin(quota_user, quota):
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                         return make_api_response("", f"You've exceeded your maximum quota of {quota}", 503)
                     else:
-                        LOGGER.debug(f"Quota of {quota} exceeded for user {quota_user}.")
-                else:
-                    LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {quota}")
+                        LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {quota}")
+                        flsk_session['quota_set'] = True
+
+                    # Check daily quota
+                    daily_quota = user.get('api_daily_quota', DEFAULT_DAILY_API_QUOTA)
+                    if DAILY_QUOTA_TRACKER.increment_api(quota_user) > daily_quota:
+                        LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
+                        return make_api_response(
+                            "", f"You've exceeded your maximum quota of {daily_quota} daily api calls", 503)
+                    else:
+                        LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {daily_quota}")
 
             return func(*args, **kwargs)
         base.protected = True
