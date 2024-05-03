@@ -207,10 +207,13 @@ def ingest_single_file(**kwargs):
             hash = string_value
             if string_type == "url":
                 string_value = refang_url(string_value)
-            if binary:
-                hash = safe_str(hashlib.sha256(binary).hexdigest())
-                binary = io.BytesIO(binary)
-            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+                name = string_value
+            else:
+                hash = string_value
+                if binary:
+                    hash = safe_str(hashlib.sha256(binary).hexdigest())
+                    binary = io.BytesIO(binary)
+                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -237,8 +240,13 @@ def ingest_single_file(**kwargs):
         do_upload = True
         al_meta = {}
 
-        # Load default user params
-        s_params = ui_to_submission_params(load_user_settings(user))
+        user_settings = load_user_settings(user)
+
+        # Grab the user's `default_external_sources` from their settings as the default
+        default_external_sources = user_settings.pop('default_external_sources', [])
+
+        # Load default user params from user settings
+        s_params = ui_to_submission_params(user_settings)
 
         # Reset dangerous user settings to safe values
         s_params.update({
@@ -253,6 +261,9 @@ def ingest_single_file(**kwargs):
         # Apply provided params
         s_params.update(data.get("params", {}))
 
+        # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
+        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
+
         metadata = flatten(data.get("metadata", {}))
         found = False
         fileinfo = None
@@ -260,7 +271,8 @@ def ingest_single_file(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
+                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                                 default_external_sources)
                     if not found:
                         raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
                 except FileTooBigException:
@@ -277,14 +289,17 @@ def ingest_single_file(**kwargs):
 
         # Determine where the file exists and whether or not we need to re-upload to hot storage
         if found and string_type != "url":
-            if FILESTORE.exists(fileinfo['sha256']):
+            if not fileinfo:
+                # File was downloaded from an external source but wasn't known to the system
+                do_upload = True
+            elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
                 # File is in storage and the DB no need to upload anymore
                 do_upload = False
             elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
                 # File is only in archivestorage so I'll still need to upload it to the hot storage
                 do_upload = True
             else:
-                # The file doesn't exist in the system, so it was fetched
+                # Corner case: If we do know about the file but it doesn't exist in our filestores
                 do_upload = True
 
         if do_upload and os.path.getsize(out_file) == 0:
@@ -385,6 +400,7 @@ def ingest_single_file(**kwargs):
         if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
             default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
+
         # Create submission object
         try:
             submission_obj = Submission({

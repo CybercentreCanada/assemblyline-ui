@@ -302,13 +302,16 @@ def submit(**kwargs):
                     string_type, string_value = method, data[method]
                     break
 
-            hash = string_value
             if string_type == "url":
                 string_value = refang_url(string_value)
-            if binary:
-                hash = safe_str(hashlib.sha256(binary).hexdigest())
-                binary = io.BytesIO(binary)
-            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+                name = string_value
+            else:
+                hash = string_value
+                if binary:
+                    hash = safe_str(hashlib.sha256(binary).hexdigest())
+                    binary = io.BytesIO(binary)
+                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -318,13 +321,15 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
-        # Create task object
-        if "ui_params" in data:
-            s_params = ui_to_submission_params(data['ui_params'])
-        else:
-            s_params = ui_to_submission_params(load_user_settings(user))
+        # Load in the user's settings in case it wasn't provided from the UI
+        # Ensure the `default_external_sources` are popped before converting UI params to submission params
+        user_settings = data['ui_params'] if "ui_params" in data else load_user_settings(user)
+        default_external_sources = user_settings.pop('default_external_sources', [])
 
+        # Create task object
+        s_params = ui_to_submission_params(user_settings)
         s_params.update(data.get("params", {}))
+        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
         if 'groups' not in s_params:
             s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
 
@@ -351,7 +356,8 @@ def submit(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
+                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                          default_external_sources)
                     if not found:
                         raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
 
