@@ -1,10 +1,11 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import User, load_roles, ROLES
+from assemblyline.odm.models.user import DEFAULT_DAILY_SUBMISSION_QUOTA, DEFAULT_SUBMISSION_QUOTA, User, load_roles, \
+    ROLES
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
-    SERVICE_LIST
+from assemblyline_ui.config import DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, config, \
+    CLASSIFICATION as Classification, SERVICE_LIST
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
@@ -46,16 +47,29 @@ def add_access_control(user):
     user['access_control'] = safe_str(query)
 
 
-def check_submission_quota(user) -> Optional[str]:
-    quota_user = user['uname']
-    max_quota = user.get('submission_quota', 5)
+def check_daily_submission_quota(user) -> Optional[str]:
+    if config.ui.enforce_quota:
+        quota_user = user['uname']
+        daily_quota = user.get('submission_daily_quota', DEFAULT_DAILY_SUBMISSION_QUOTA)
 
-    if config.ui.enforce_quota and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
-        LOGGER.info(
-            "User %s exceeded their submission quota of %s.",
-            quota_user, max_quota
-        )
-        return "You've exceeded your maximum submission quota of %s " % max_quota
+        if DAILY_QUOTA_TRACKER.increment_submission(quota_user) > daily_quota:
+            LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
+            return f"You've exceeded your daily maximum submission quota of {daily_quota}"
+
+    return None
+
+
+def check_submission_quota(user) -> Optional[str]:
+    if config.ui.enforce_quota:
+        quota_user = user['uname']
+        max_quota = user.get('submission_quota', DEFAULT_SUBMISSION_QUOTA)
+
+        if not SUBMISSION_TRACKER.begin(quota_user, max_quota):
+            LOGGER.info(f"User {quota_user} exceeded their submission quota of {max_quota}.")
+            return f"You've exceeded your maximum concurrent submission quota of {max_quota}"
+
+        return check_daily_submission_quota(user)
+
     return None
 
 
