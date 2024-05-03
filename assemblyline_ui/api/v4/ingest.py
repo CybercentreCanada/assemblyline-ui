@@ -289,14 +289,17 @@ def ingest_single_file(**kwargs):
 
         # Determine where the file exists and whether or not we need to re-upload to hot storage
         if found and string_type != "url":
-            if FILESTORE.exists(fileinfo['sha256']):
+            if not fileinfo:
+                # File was downloaded from an external source but wasn't known to the system
+                do_upload = True
+            elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
                 # File is in storage and the DB no need to upload anymore
                 do_upload = False
             elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
                 # File is only in archivestorage so I'll still need to upload it to the hot storage
                 do_upload = True
             else:
-                # The file doesn't exist in the system, so it was fetched
+                # Corner case: If we do know about the file but it doesn't exist in our filestores
                 do_upload = True
 
         if do_upload and os.path.getsize(out_file) == 0:
