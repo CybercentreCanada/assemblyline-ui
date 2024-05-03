@@ -64,9 +64,9 @@ def check_submission_quota(user) -> Optional[str]:
         quota_user = user['uname']
         max_quota = user.get('submission_quota', DEFAULT_SUBMISSION_QUOTA)
 
-        msg = check_daily_submission_quota(user)
-        if msg:
-            return msg
+        daily_submission_quota_error = check_daily_submission_quota(user)
+        if daily_submission_quota_error:
+            return daily_submission_quota_error
 
         if not SUBMISSION_TRACKER.begin(quota_user, max_quota):
             LOGGER.info(f"User {quota_user} exceeded their submission quota of {max_quota}.")
