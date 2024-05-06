@@ -9,7 +9,7 @@ import time
 from assemblyline.common.str_utils import safe_str
 from assemblyline_ui.config import config, CLASSIFICATION
 from assemblyline.odm.models.user import USER_TYPE_DEP, load_roles
-from assemblyline_ui.helper.user import get_dynamic_classification
+from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 log = logging.getLogger('assemblyline.ldap_authenticator')
@@ -313,7 +313,7 @@ def validate_ldapuser(username, password, storage):
 
                 # Save the updated user
                 cur_user.update(data)
-                storage.user.save(username, cur_user)
+                storage.user.save(username, get_default_user_quotas(cur_user))
 
             if cur_user:
                 return username
