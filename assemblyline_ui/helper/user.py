@@ -1,8 +1,7 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import DEFAULT_DAILY_SUBMISSION_QUOTA, DEFAULT_SUBMISSION_QUOTA, User, load_roles, \
-    ROLES
+from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, config, \
     CLASSIFICATION as Classification, SERVICE_LIST
@@ -50,7 +49,7 @@ def add_access_control(user):
 def check_daily_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        daily_quota = user.get('submission_daily_quota', DEFAULT_DAILY_SUBMISSION_QUOTA)
+        daily_quota = user.get('submission_daily_quota') or config.ui.default_quotas.daily_submissions
 
         if DAILY_QUOTA_TRACKER.increment_submission(quota_user) > daily_quota:
             LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
@@ -62,7 +61,7 @@ def check_daily_submission_quota(user) -> Optional[str]:
 def check_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        max_quota = user.get('submission_quota', DEFAULT_SUBMISSION_QUOTA)
+        max_quota = user.get('submission_quota') or config.ui.default_quotas.concurrent_submissions
 
         daily_submission_quota_error = check_daily_submission_quota(user)
         if daily_submission_quota_error:
@@ -90,6 +89,7 @@ def login(uname, roles_limit, user=None):
         raise AccessDeniedException("User %s is disabled" % uname)
 
     add_access_control(user)
+    get_default_user_quotas(user)
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
@@ -114,6 +114,16 @@ def login(uname, roles_limit, user=None):
     return user
 
 
+def get_default_user_quotas(user_profile: dict):
+    user_profile['api_quota'] = user_profile.get('api_quota') or config.ui.default_quotas.concurrent_api_calls
+    user_profile['api_daily_quota'] = user_profile.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
+    user_profile['submission_quota'] = user_profile.get('submission_quota') or \
+        config.ui.default_quotas.concurrent_submissions
+    user_profile['submission_daily_quota'] = user_profile.get('submission_daily_quota') or \
+        config.ui.default_quotas.daily_submissions
+    return user_profile
+
+
 def save_user_account(username, data, user):
     # Clear non user account data
     avatar = data.pop('avatar', None)
@@ -121,6 +131,10 @@ def save_user_account(username, data, user):
     data.pop('security_token_enabled', None)
     data.pop('has_password', None)
 
+    # Make sure the default quotas are set
+    get_default_user_quotas(data)
+
+    # Test the user params againts the model
     data = User(data).as_primitives()
 
     if username != data['uname']:

@@ -19,7 +19,7 @@ from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import DEFAULT_API_QUOTA, DEFAULT_DAILY_API_QUOTA, ROLES
+from assemblyline.odm.models.user import ROLES
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -211,14 +211,14 @@ class api_login(BaseSecurityRenderer):
                     flsk_session['quota_set'] = True
 
                     # Check current user quota
-                    quota = user.get('api_quota', DEFAULT_API_QUOTA)
+                    quota = user.get('api_quota') or config.ui.default_quotas.concurrent_api_calls
                     if not QUOTA_TRACKER.begin(quota_user, quota):
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                         return make_api_response(
                             "", f"You've exceeded your maximum concurrent API calls quota of {quota}", 503)
 
                     # Check daily quota
-                    daily_quota = user.get('api_daily_quota', DEFAULT_DAILY_API_QUOTA)
+                    daily_quota = user.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
                     if DAILY_QUOTA_TRACKER.increment_api(quota_user) > daily_quota:
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                         return make_api_response(
