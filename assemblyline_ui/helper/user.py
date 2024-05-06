@@ -51,7 +51,7 @@ def check_daily_submission_quota(user) -> Optional[str]:
         quota_user = user['uname']
         daily_quota = user.get('submission_daily_quota') or config.ui.default_quotas.daily_submissions
 
-        if DAILY_QUOTA_TRACKER.increment_submission(quota_user) > daily_quota:
+        if daily_quota != 0 and DAILY_QUOTA_TRACKER.increment_submission(quota_user) > daily_quota:
             LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
             return f"You've exceeded your daily maximum submission quota of {daily_quota}"
 
@@ -67,7 +67,7 @@ def check_submission_quota(user) -> Optional[str]:
         if daily_submission_quota_error:
             return daily_submission_quota_error
 
-        if not SUBMISSION_TRACKER.begin(quota_user, max_quota):
+        if max_quota != 0 and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
             LOGGER.info(f"User {quota_user} exceeded their submission quota of {max_quota}.")
             return f"You've exceeded your maximum concurrent submission quota of {max_quota}"
 
