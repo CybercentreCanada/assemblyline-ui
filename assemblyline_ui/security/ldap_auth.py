@@ -149,6 +149,7 @@ class BasicLDAPWrapper(object):
                 roles = []
                 groups = []
                 remove_roles = set()
+                quotas = {}
                 classification = self.get_user_classification(details['groups'])
                 for auto_prop in config.auth.ldap.auto_properties:
                     if auto_prop.type == "access" and not access_set:
@@ -216,6 +217,24 @@ class BasicLDAPWrapper(object):
                                         group_value = group_value.replace(f"${index+1}", gm_value)
                                     groups.append(group_value)
 
+                        # Append multiple groups from a single matching pattern
+                        elif auto_prop.type == "multi_group":
+                            all_matches = re.findall(auto_prop.pattern, value)
+                            for group_match in all_matches:
+                                for group_value in auto_prop.value:
+                                    if not isinstance(group_match, list):
+                                        group_match = [group_match]
+                                    for index, gm_value in enumerate(group_match):
+                                        group_value = group_value.replace(f"${index+1}", gm_value)
+                                    if group_value not in groups:
+                                        groups.append(group_value)
+
+                        # Set API and Submission quotas
+                        elif auto_prop.type in ['api_quota', 'api_daily_quota',
+                                                'submission_quota', 'submission_daily_quota']:
+                            if re.match(auto_prop.pattern, value):
+                                quotas[auto_prop.type] = int(auto_prop.value[0])
+
                 # if not user type was assigned
                 if not user_type:
                     # if also no roles were assigned
@@ -236,6 +255,7 @@ class BasicLDAPWrapper(object):
                                "connection": ldap_server, "details": details, "cached": False,
                                "classification": classification, "type": user_type, 'roles': roles, 'dn': dn,
                                'access': access, 'groups': groups}
+                cache_entry.update(quotas)
                 self.cache[user] = cache_entry
                 return cache_entry
         except Exception as e:
