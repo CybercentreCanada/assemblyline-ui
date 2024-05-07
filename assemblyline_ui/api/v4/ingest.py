@@ -35,9 +35,8 @@ ingest = NamedQueue(
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
 
+
 # noinspection PyUnusedLocal
-
-
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
 @api_login(allow_readonly=False, require_role=[ROLES.submission_create])
 def get_message(notification_queue, **kwargs):
