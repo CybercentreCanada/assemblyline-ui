@@ -8,8 +8,9 @@ from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.dispatching.client import DispatchClient
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, LOGGER, FILESTORE, config, CLASSIFICATION as Classification, AI_CACHE
-from assemblyline_ui.helper.ai import EmptyAIResponse, APIException, detailed_al_submission, summarized_al_submission
+from assemblyline_ui.config import AI_AGENT, STORAGE, LOGGER, FILESTORE, config, \
+    CLASSIFICATION as Classification, CACHE
+from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
 
@@ -205,7 +206,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
                     current_htype, _, _ = output["tags"][t['type']].get(t['value'], (None, None, None))
                     tag_htype = h_type
                     if current_htype:
-                        if 'malicous' in (current_htype, h_type):
+                        if 'malicious' in (current_htype, h_type):
                             tag_htype = 'malicious'
                         elif 'suspicious' in (current_htype, h_type):
                             tag_htype = 'suspicious'
@@ -498,6 +499,7 @@ def get_ai_summary(sid, **kwargs):
     detailed       => Do you want the detailed output (Default: False)
     no_cache       => Caching for the output of this API will be disabled
     with_trace     => Should the AI call return the full trace of the conversation?
+    lang           => Which language do you want the AI to respond in?
 
     Data Block:
     None
@@ -510,7 +512,7 @@ def get_ai_summary(sid, **kwargs):
 
 
     """
-    if not config.ui.ai.enabled:
+    if not AI_AGENT.has_backends():
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
@@ -531,12 +533,12 @@ def get_ai_summary(sid, **kwargs):
         return make_api_response({}, "User is not allowed to view the archive", 403)
 
     # Create the cache key
-    cache_key = AI_CACHE.create_key(sid, user['classification'], index_type,
-                                    archive_only, detailed, lang, with_trace, "submission")
+    cache_key = CACHE.create_key(sid, user['classification'], index_type,
+                                 archive_only, detailed, lang, with_trace, "submission")
     ai_summary = None
     if (not no_cache):
         # Get the summary from cache
-        ai_summary = AI_CACHE.get(cache_key)
+        ai_summary = CACHE.get(cache_key)
 
     if not ai_summary:
         data = STORAGE.get_ai_formatted_submission_data(
@@ -547,12 +549,12 @@ def get_ai_summary(sid, **kwargs):
 
         try:
             if detailed:
-                ai_summary = detailed_al_submission(data, lang=lang, with_trace=with_trace)
+                ai_summary = AI_AGENT.detailed_al_submission(data, lang=lang, with_trace=with_trace)
             else:
-                ai_summary = summarized_al_submission(data, lang=lang, with_trace=with_trace)
+                ai_summary = AI_AGENT.summarized_al_submission(data, lang=lang, with_trace=with_trace)
 
             # Save to cache
-            AI_CACHE.set(cache_key, ai_summary)
+            CACHE.set(cache_key, ai_summary)
         except (APIException, EmptyAIResponse) as e:
             return make_api_response("", str(e), 400)
 
@@ -959,8 +961,8 @@ def get_report(submission_id, **kwargs):
             return output
 
         name_map = recurse_get_names(tree['tree'])
-
-        summary = get_or_create_summary(submission_id, submission.pop('results', []), user['classification'],
+        results = submission.pop('results', [])
+        summary = get_or_create_summary(submission_id, results, user['classification'],
                                         submission['state'] == "completed")
         tags = [t for t in summary['tags'] if not t['safelisted']]
 
@@ -979,6 +981,7 @@ def get_report(submission_id, **kwargs):
         submission['attack_matrix'] = {}
         submission['heuristics'] = {}
         submission['tags'] = {}
+        submission['promoted_sections'] = []
 
         # Process attack matrix
         for item in attack_matrix:
@@ -1033,12 +1036,26 @@ def get_report(submission_id, **kwargs):
                     submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
                 submission['important_files'].add(sha256)
 
+        # Process important files
         submitted_sha256 = submission['files'][0]['sha256']
         submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
         if submitted_sha256 in submission['important_files']:
             submission['important_files'].remove(submitted_sha256)
 
         submission['important_files'] = list(submission['important_files'])
+
+        # Process promoted sections
+        keys = [x for x in list(results) if not x.endswith(".e") and x.startswith(submitted_sha256)]
+        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+
+        for result in results:
+            formatted_result = format_result(user['classification'], result,
+                                             submission['classification'], build_hierarchy=True)
+            if formatted_result and Classification.is_accessible(user['classification'],
+                                                                 formatted_result['classification']):
+                for section in formatted_result['result'].get('sections'):
+                    if section.get('promote_to', None) is not None:
+                        submission['promoted_sections'].append(section)
 
         return make_api_response(submission)
     else:

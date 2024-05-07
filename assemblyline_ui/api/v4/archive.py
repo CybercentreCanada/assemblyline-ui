@@ -29,10 +29,14 @@ def archive_submission(sid, **kwargs):
     sid         => ID of the submission to send to the archive
 
     Arguments:
-    delete_after     => Delete data from hot storage after the move ? (Default: False)
+    delete_after        => Delete data from hot storage after the move ? (Default: False)
+    skip_hook           => Skip webhook, if there is a webhook (Default: False)
+    use_alternate_dtl   => Use the alternate dtl as expiry time
 
-    Data Block:
-    None
+    Data Block (Optional):
+    {                                   # Optional metadata block to be added to the submission while archiving
+     "meta_key": "Metadata value!"
+    }
 
     API call example:
     /api/v4/archive/12345...67890/
@@ -50,6 +54,8 @@ def archive_submission(sid, **kwargs):
 
     user = kwargs['user']
     delete_after = request.args.get('delete_after', 'false').lower() in ['true', '']
+    skip_hook = request.args.get('skip_hook', 'false').lower() in ['true', '']
+    use_alternate_dtl = request.args.get('use_alternate_dtl', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
     if not submission:
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
@@ -58,8 +64,15 @@ def archive_submission(sid, **kwargs):
         return make_api_response({"success": False}, f"The submission '{sid}' is not accessible by this user", 403)
 
     try:
-        archive_action = ARCHIVE_MANAGER.archive_submission(submission=submission, delete_after=delete_after)
-        archive_action['success'] = True
+        metadata = request.json
+    except Exception as e:
+        LOGGER.warning(f"Invalid metadata [{e}]")
+        metadata = None
+
+    try:
+        archive_action = ARCHIVE_MANAGER.archive_submission(
+            submission=submission, delete_after=delete_after, metadata=metadata,
+            skip_hook=skip_hook, use_alternate_dtl=use_alternate_dtl)
         return make_api_response(archive_action)
 
     except SubmissionException as se:

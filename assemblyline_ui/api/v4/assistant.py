@@ -1,7 +1,6 @@
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import AUDIT_LOG
-from assemblyline_ui.helper.ai import continued_ai_conversation
+from assemblyline_ui.config import AUDIT_LOG, AI_AGENT
 from flask import request
 
 SUB_API = 'assistant'
@@ -20,7 +19,7 @@ def assistant_conversation(**kwargs):
     None
 
     Arguments:
-    None
+    lang           => Which language do you want the AI to respond in?
 
     Data Block:
     [
@@ -54,6 +53,7 @@ def assistant_conversation(**kwargs):
     ]
     """
     user = kwargs['user']
+    lang = request.args.get('lang', 'english')
     messages = request.json
 
     if not isinstance(messages, list):
@@ -70,4 +70,4 @@ def assistant_conversation(**kwargs):
                 f"{user['uname']} [{user['classification']}] :: assistant_conversation(content={message['content']})")
             break
 
-    return make_api_response(continued_ai_conversation(messages))
+    return make_api_response(AI_AGENT.continued_ai_conversation(messages, lang=lang))

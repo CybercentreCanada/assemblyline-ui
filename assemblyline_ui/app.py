@@ -81,7 +81,7 @@ if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
     if AL_HSTS_MAX_AGE is not None:
         try:
             int(AL_HSTS_MAX_AGE)
-        except:
+        except Exception:
             raise ValueError("AL_HSTS_MAX_AGE must be set to an integer")
 
         def include_hsts_header(response):
@@ -96,7 +96,7 @@ app.register_blueprint(apiv4)
 app.register_blueprint(alert_api)
 if config.config.datastore.archive.enabled:
     app.register_blueprint(archive_api)
-if config.config.ui.ai.enabled:
+if config.AI_AGENT.has_backends():
     app.register_blueprint(assistant_api)
 app.register_blueprint(auth_api)
 app.register_blueprint(badlist_api)
