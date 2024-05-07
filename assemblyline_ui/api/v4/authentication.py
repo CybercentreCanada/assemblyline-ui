@@ -21,7 +21,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
                                     get_signup_queue, get_token_store, CLASSIFICATION as Classification)
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
-from assemblyline_ui.helper.user import get_dynamic_classification, API_PRIV_MAP
+from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification, API_PRIV_MAP
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
@@ -614,7 +614,7 @@ def oauth_validate(**_):
                                 STORAGE.user_avatar.save(username, avatar)
 
                         # Save updated user
-                        STORAGE.user.save(username, cur_user)
+                        STORAGE.user.save(username, get_default_user_quotas(cur_user))
 
                     if cur_user:
                         if avatar is None:

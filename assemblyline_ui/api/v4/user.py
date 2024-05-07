@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import List
 from assemblyline.odm.models.config import ExternalLinks
 from flask import request
@@ -16,8 +15,9 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
-from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
-                                         save_user_settings, API_PRIV_MAP)
+from assemblyline_ui.helper.user import (
+    get_default_user_quotas, get_dynamic_classification, load_user_settings, save_user_account, save_user_settings,
+    API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
 from .federated_lookup import filtered_tag_names
@@ -172,9 +172,7 @@ def who_am_i(**kwargs):
 
     # Backwards-compat: Merge sha256_sources with file_sources
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
-                               if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                               x.classification)]
-
+     if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
     user_data['configuration'] = {
         "auth": {
@@ -339,7 +337,7 @@ def add_user_account(username, **_):
             STORAGE.user_avatar.save(username, avatar)
 
         try:
-            return make_api_response({"success": STORAGE.user.save(username, User(data))})
+            return make_api_response({"success": STORAGE.user.save(username, User(get_default_user_quotas(data)))})
         except ValueError as e:
             return make_api_response({"success": False}, str(e), 400)
 
@@ -379,6 +377,9 @@ def get_user_account(username, **kwargs):
     user = STORAGE.user.get(username, as_obj=False)
     if not user:
         return make_api_response({}, "User %s does not exists" % username, 404)
+
+    # Load default user quotas if they are missing
+    get_default_user_quotas(user)
 
     user_roles = load_roles(user['type'], user.get('roles', None))
 
@@ -511,7 +512,7 @@ def set_user_account(username, **kwargs):
                     send_activated_email(email, username, email, kwargs['user']['uname'])
             except Exception as e:
                 # We can't send confirmation email, Rollback user change and mark this a failure
-                STORAGE.user.save(username, old_user)
+                STORAGE.user.save(username, get_default_user_quotas(old_user))
                 LOGGER.error(f"An error occured while sending confirmation emails: {str(e)}")
                 return make_api_response({"success": False}, "The system was unable to send confirmation emails. "
                                                              "Retry again later...", 404)

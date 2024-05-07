@@ -9,7 +9,6 @@ import tempfile
 from flask import request
 
 from assemblyline.common.dict_utils import flatten
-from assemblyline.common.file import make_uri_file
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -19,7 +18,8 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
     CLASSIFICATION as Classification, IDENTIFY, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, FETCH_METHODS
+from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
+    FETCH_METHODS
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -359,7 +359,8 @@ def submit(**kwargs):
                     found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
                                           default_external_sources)
                     if not found:
-                        raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
+                        raise FileNotFoundError(
+                            f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
 
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)

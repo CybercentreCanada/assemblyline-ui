@@ -12,7 +12,8 @@ from traceback import format_tb
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline_ui.security.oauth_auth import validate_oauth_token
-from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION, CLASSIFICATION
+from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION, CLASSIFICATION, \
+    DAILY_QUOTA_TRACKER
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
@@ -203,21 +204,25 @@ class api_login(BaseSecurityRenderer):
                                                 email=user.get('email', None),
                                                 user_id=user.get('uname', None))
 
-                # Check current user quota
-                quota_user = user['uname']
+                if config.ui.enforce_quota:
+                    # Prepare session for quotas
+                    quota_user = user['uname']
+                    flsk_session['quota_user'] = quota_user
+                    flsk_session['quota_set'] = True
 
-                flsk_session['quota_user'] = quota_user
-                flsk_session['quota_set'] = True
-
-                quota = user.get('api_quota', 10)
-                if not QUOTA_TRACKER.begin(quota_user, quota):
-                    if config.ui.enforce_quota:
+                    # Check current user quota
+                    quota = user.get('api_quota') or config.ui.default_quotas.concurrent_api_calls
+                    if quota != 0 and not QUOTA_TRACKER.begin(quota_user, quota):
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
-                        return make_api_response("", f"You've exceeded your maximum quota of {quota}", 503)
-                    else:
-                        LOGGER.debug(f"Quota of {quota} exceeded for user {quota_user}.")
-                else:
-                    LOGGER.debug(f"{quota_user}'s quota is under or equal its limit of {quota}")
+                        return make_api_response(
+                            "", f"You've exceeded your maximum concurrent API calls quota of {quota}", 503)
+
+                    # Check daily quota
+                    daily_quota = user.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
+                    if daily_quota != 0 and DAILY_QUOTA_TRACKER.increment_api(quota_user) > daily_quota:
+                        LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
+                        return make_api_response(
+                            "", f"You've exceeded your daily maximum API calls quota of {daily_quota}", 503)
 
             return func(*args, **kwargs)
         base.protected = True
