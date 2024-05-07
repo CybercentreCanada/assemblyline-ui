@@ -172,8 +172,7 @@ def who_am_i(**kwargs):
 
     # Backwards-compat: Merge sha256_sources with file_sources
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
-     if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                     x.classification)]
+     if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
     user_data['configuration'] = {
         "auth": {
