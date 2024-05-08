@@ -5,9 +5,10 @@ import re
 
 from authlib.integrations.requests_client import OAuth2Session
 from authlib.integrations.base_client import OAuthError
-from flask import current_app, redirect, request
+from flask import current_app, redirect, request, make_response
 from flask import session as flsk_session
 from io import BytesIO
+from typing import Dict, Any
 from urllib.parse import urlparse
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
@@ -472,9 +473,27 @@ def logout(**_):
 @auth_api.route("/saml/sso/", methods=["GET"])
 def saml_sso(**_):
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
-    sso_built_url: str = auth.login(return_to=request.host_url)
-    session["AuthNRequestID"] = auth.get_last_request_id()
+    sso_built_url: str = auth.login(return_to=f'https://{request.host}/')
+    flsk_session["AuthNRequestID"] = auth.get_last_request_id()
     return redirect(sso_built_url)
+
+
+@auth_api.route("/saml/metadata/", methods=["GET"])
+def saml_metadata(**_):
+    
+    """Render the metadata of this service."""
+    request_data: Dict[str, Any] = _prepare_flask_request(request)
+    auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
+    settings = auth.get_settings()
+    metadata = settings.get_sp_metadata()
+    errors = settings.validate_metadata(metadata)
+
+    if len(errors) == 0:
+        resp = make_response(metadata, 200)
+        resp.headers['Content-Type'] = 'text/xml'
+    else:
+        resp = make_response(', '.join(errors), 500)
+    return resp
 
 
 @auth_api.route("/saml/acs/", methods=["GET", "POST"])
@@ -490,7 +509,7 @@ def saml_acs(**_):
     '''
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
-    request_id: str = session.get("AuthNRequestID")
+    request_id: str = flsk_session.get("AuthNRequestID")
 
     auth.process_response(request_id=request_id)
     errors: list = auth.get_errors()
@@ -498,16 +517,16 @@ def saml_acs(**_):
     # If authentication failed, it'll be noted in `errors`
     # TODO: redirect on failure? something else?
     if len(errors) == 0:
-        if "AuthNRequestID" in session:
-            del session["AuthNRequestID"]
+        if "AuthNRequestID" in flsk_session:
+            del flsk_session["AuthNRequestID"]
 
-        session["samlUserdata"] = auth.get_attributes()
-        session["samlNameId"] = auth.get_nameid()
-        # TODO These are additional attributes that others may require
-        # session["samlNameIdFormat"] = auth.get_nameid_format()
-        # session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
-        # session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
-        # session["samlSessionIndex"] = auth.get_session_index()
+        flsk_session["samlUserdata"] = auth.get_attributes()
+        flsk_session["samlNameId"] = auth.get_nameid()
+        # These are additional attributes that others may require
+        flsk_session["samlNameIdFormat"] = auth.get_nameid_format()
+        flsk_session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
+        flsk_session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
+        flsk_session["samlSessionIndex"] = auth.get_session_index()
 
         login()
 
@@ -539,20 +558,20 @@ def saml_acs(**_):
 @auth_api.route("/saml/slo/", methods=["GET"])
 def saml_logout(**_):
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
-    return redirect(auth.logout(name_id=session.get('samlNameId'),
-                                session_index=session.get('samlSessionIndex'),
-                                nq=session.get('samlNameIdNameQualifier'),
-                                name_id_format=session.get('samlNameIdFormat'),
-                                spnq=session.get('samlNameIdSPNameQualifier')))
+    return redirect(auth.logout(name_id=flsk_session.get('samlNameId'),
+                                session_index=flsk_session.get('samlSessionIndex'),
+                                nq=flsk_session.get('samlNameIdNameQualifier'),
+                                name_id_format=flsk_session.get('samlNameIdFormat'),
+                                spnq=flsk_session.get('samlNameIdSPNameQualifier')))
 
 
 @auth_api.route("/saml/sls/", methods=["GET"])
 def saml_single_logout(**_):
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
-    request_id: str = session.get('LogoutRequestID')
+    request_id: str = flsk_session.get('LogoutRequestID')
 
     url: str = auth.process_slo(request_id=request_id,
-                                delete_session_cb=lambda: session.clear())
+                                delete_session_cb=lambda: flsk_session.clear())
 
     errors: list = auth.get_errors()
 
@@ -1066,7 +1085,7 @@ def validate_otp(token, **kwargs):
         return make_api_response({'success': False}, err="OTP token does not match secret key", status_code=400)
 
 
-def _prepare_flask_request(request: Request) -> Dict[str, Any]:
+def _prepare_flask_request(request) -> Dict[str, Any]:
     # If server is behind proxys or balancers use the HTTP_X_FORWARDED fields
     return {
         # TODO - the https switching disabled because everything redirects to http under the hood. Possibly just a
@@ -1075,8 +1094,8 @@ def _prepare_flask_request(request: Request) -> Dict[str, Any]:
         "http_host": request.host,
         "script_name": request.path,
         "get_data": request.args.copy(),
-        # Uncomment if using ADFS as IdP, https://github.com/onelogin/python-saml/pull/144
-        # "lowercase_urlencoding": True,
+        # lowercase_urlencoding if using ADFS as IdP, https://github.com/onelogin/python-saml/pull/144
+        "lowercase_urlencoding": config.auth.saml.lowercase_urlencoding,
         "post_data": request.form.copy()
     }
 

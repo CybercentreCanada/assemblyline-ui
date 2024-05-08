@@ -36,7 +36,8 @@ def handle_401(e):
                             if p['client_id'] and p['client_secret']],
         "allow_userpass_login": config.auth.ldap.enabled or config.auth.internal.enabled,
         "allow_signup": config.auth.internal.signup.enabled,
-        "allow_pw_rest": config.auth.internal.signup.enabled
+        "allow_pw_rest": config.auth.internal.signup.enabled,
+        "allow_saml_login": config.auth.saml.enabled,
     }
     session_id = flsk_session.get('session_id', None)
     if session_id:
