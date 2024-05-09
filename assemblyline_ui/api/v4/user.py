@@ -243,6 +243,7 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "enforce_quota": config.ui.enforce_quota,
             "external_links": parse_external_links([
                 x for x in config.ui.external_links
                 if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
@@ -355,7 +356,7 @@ def add_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_account(username, **kwargs):
     """
     Load the user account information.
@@ -539,7 +540,7 @@ def set_user_account(username, **kwargs):
 
 
 @user_api.route("/avatar/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_avatar(username, **_):
     """
     Loads the user's avatar.

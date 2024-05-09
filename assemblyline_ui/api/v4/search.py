@@ -224,7 +224,7 @@ def group_search(index, group_field, **kwargs):
 @search_api.route("/fields/<index>/", methods=["GET"])
 @api_login(audit=False,
            require_role=["alert_view", "heuristic_view", "safelist_view", "signature_view", "submission_view",
-                         "workflow_view", "retrohunt_view", "badlist_view"])
+                         "workflow_view", "retrohunt_view", "badlist_view"], count_toward_quota=False)
 def list_index_fields(index, **kwargs):
     """
     List all available fields for a given index

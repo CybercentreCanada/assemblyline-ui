@@ -181,7 +181,7 @@ def disable_otp(**kwargs):
 
 
 @auth_api.route("/obo_token/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.obo_access])
+@api_login(audit=False, require_role=[ROLES.obo_access], count_toward_quota=False)
 def get_obo_token(**kwargs):
     """
     Get or create a token to allow an external application to impersonate your
