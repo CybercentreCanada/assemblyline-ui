@@ -498,7 +498,7 @@ def check_for_service_updates(**_):
 
 
 @service_api.route("/constants/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False)
+@api_login(audit=False, allow_readonly=False, count_toward_quota=False)
 def get_service_constants(**_):
     """
     Get global service constants.
@@ -672,7 +672,7 @@ def get_service_defaults(servicename, version, **_):
 
 
 @service_api.route("/all/", methods=["GET"])
-@api_login(audit=False, allow_readonly=False)
+@api_login(audit=False, allow_readonly=False, count_toward_quota=False)
 def list_all_services(**_):
     """
     List all service configurations of the system.
