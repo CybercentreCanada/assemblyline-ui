@@ -472,6 +472,8 @@ def logout(**_):
 
 @auth_api.route("/saml/sso/", methods=["GET"])
 def saml_sso(**_):
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
     sso_built_url: str = auth.login(return_to=f'https://{request.host}/')
     flsk_session["AuthNRequestID"] = auth.get_last_request_id()
@@ -480,7 +482,8 @@ def saml_sso(**_):
 
 @auth_api.route("/saml/metadata/", methods=["GET"])
 def saml_metadata(**_):
-    
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     """Render the metadata of this service."""
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
@@ -507,6 +510,8 @@ def saml_acs(**_):
     the user's attributes or the authentication event, and using that
     information to grant the user access to the protected resource.
     '''
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
     request_id: str = flsk_session.get("AuthNRequestID")
@@ -520,13 +525,24 @@ def saml_acs(**_):
         if "AuthNRequestID" in flsk_session:
             del flsk_session["AuthNRequestID"]
 
+        # if the 'User' type is defined in the group_role_mapping
+        # limit access to group members, else allow all athenticated users
+        valid_groups = config.auth.saml.attributes.group_role_mapping
+        if 'user' in (value.lower() for value in valid_groups.values()):
+            user_groups = auth.get_attribute(config.auth.saml.attributes.groups_attribute) or []
+            if not any(group in valid_groups for group in user_groups):
+                error_message = (f"User was not in one of the required groups: {valid_groups.keys()}. "
+                                f"User's groups: {user_groups}")
+                return make_api_response({"err_code": 1}, err=error_message, status_code=401)
+        
         flsk_session["samlUserdata"] = auth.get_attributes()
         flsk_session["samlNameId"] = auth.get_nameid()
+        
         # These are additional attributes that others may require
-        flsk_session["samlNameIdFormat"] = auth.get_nameid_format()
-        flsk_session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
-        flsk_session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
-        flsk_session["samlSessionIndex"] = auth.get_session_index()
+        #flsk_session["samlNameIdFormat"] = auth.get_nameid_format()
+        #flsk_session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
+        #flsk_session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
+        #flsk_session["samlSessionIndex"] = auth.get_session_index()
 
         login()
 
@@ -557,6 +573,8 @@ def saml_acs(**_):
 
 @auth_api.route("/saml/slo/", methods=["GET"])
 def saml_logout(**_):
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
     return redirect(auth.logout(name_id=flsk_session.get('samlNameId'),
                                 session_index=flsk_session.get('samlSessionIndex'),
@@ -567,6 +585,8 @@ def saml_logout(**_):
 
 @auth_api.route("/saml/sls/", methods=["GET"])
 def saml_single_logout(**_):
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
     request_id: str = flsk_session.get('LogoutRequestID')
 

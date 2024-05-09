@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, Optional
 
 from assemblyline_ui.config import AssemblylineDatastore, config
+from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
@@ -21,30 +22,29 @@ def validate_saml_user(username: str,
 
             # Make sure the user exists in AL and is in sync
             if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
-
-                email: Any = saml_user_data.get(config.auth.saml.email_attribute_name)
-                last_name: Any = saml_user_data.get(config.auth.saml.last_name_attribute_name)
-                first_name: Any = saml_user_data.get(config.auth.saml.first_name_attribute_name)
-
-                email: str = _normalize_saml_attribute(email).lower()
-                last_name: str = _normalize_saml_attribute(last_name)
-                first_name: str = _normalize_saml_attribute(first_name)
-
                 # Generate user data from SAML
-                data = dict(uname=username,
-                            name=f"{last_name}, {first_name}",
-                            email=email,
-                            password="__NO_PASSWORD__",
-                            )
-                # TODO - These exist in LDAP, not sure what it's used for
-                #     classification=saml_user_data.get("classification"),
-                #     type=saml_user_data.get("type"),
-                #     roles=saml_user_data.get("roles",
-                #     dn=saml_user_data.get("dn")
+                email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
+                if email is not None:
+                    email = email.lower()
+                name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
 
-                # TODO
-                # # Get the dynamic classification info
-                # data["classification"] = get_dynamic_classification(u_classification, data)
+                data = dict(
+                    uname=username,
+                    name=name,
+                    email=email,
+                    password="__NO_PASSWORD__"
+                )
+
+                # Get the user type and roles
+                if (type :=_get_types(saml_user_data)):
+                    data['type'] = type
+                if (roles := _get_attribute(saml_user_data, config.auth.saml.attributes.roles_attribute)):
+                    data['roles'] = roles
+                if (dn := _get_attribute(saml_user_data, "dn")):
+                    data['dn'] = dn
+                # Get the dynamic classification info
+                if (u_classification := _get_attribute(saml_user_data, 'classification')):
+                    data["classification"] = get_dynamic_classification(u_classification, data)
 
                 # Save the updated user
                 cur_user.update(data)
@@ -64,9 +64,16 @@ def validate_saml_user(username: str,
 
     return None
 
+def _get_types(data: dict) -> list:
+    valid_groups = config.auth.saml.attributes.group_role_mapping
+    user_groups = _get_attribute(data, config.auth.saml.attributes.groups_attribute) or []
+    return [valid_groups[key] for key in user_groups if key in valid_groups]
 
-def _normalize_saml_attribute(attribute: Any) -> str:
+def _get_attribute(data: dict, key: str) -> Any:
+    return _normalize_saml_attribute(data.get(key))
+
+def _normalize_saml_attribute(attribute: Any) -> Optional[str]:
     # SAML attributes all seem to come through as lists
     if isinstance(attribute, list) and attribute:
         attribute = attribute[0]
-    return str(attribute or "")
+    return attribute
