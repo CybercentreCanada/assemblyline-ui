@@ -37,11 +37,12 @@ def make_subapi_blueprint(name, api_version=4):
 # noinspection PyPep8Naming
 class api_login(BaseSecurityRenderer):
     def __init__(self, require_role=None, username_key='username', audit=True,
-                 check_xsrf_token=XSRF_ENABLED, allow_readonly=True):
+                 check_xsrf_token=XSRF_ENABLED, allow_readonly=True, quota=True):
         super().__init__(require_role, audit, allow_readonly)
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
+        self.count_toward_quota = quota
 
     def auto_auth_check(self):
         apikey = request.environ.get('HTTP_X_APIKEY', None)
@@ -219,10 +220,13 @@ class api_login(BaseSecurityRenderer):
 
                     # Check daily quota
                     daily_quota = user.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
-                    if daily_quota != 0 and DAILY_QUOTA_TRACKER.increment_api(quota_user) > daily_quota:
-                        LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
-                        return make_api_response(
-                            "", f"You've exceeded your daily maximum API calls quota of {daily_quota}", 503)
+                    if daily_quota != 0 and self.count_toward_quota:
+                        current_daily_quota = DAILY_QUOTA_TRACKER.increment_api(quota_user)
+                        flsk_session['remaining_quota_api'] = max(daily_quota - current_daily_quota, 0)
+                        if current_daily_quota > daily_quota:
+                            LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
+                            return make_api_response(
+                                "", f"You've exceeded your daily maximum API calls quota of {daily_quota}", 503)
 
             return func(*args, **kwargs)
         base.protected = True
@@ -231,6 +235,22 @@ class api_login(BaseSecurityRenderer):
         base.check_xsrf_token = self.check_xsrf_token
         base.allow_readonly = self.allow_readonly
         return base
+
+
+def get_response_headers():
+    headers = {}
+
+    # Add remaining API quota
+    daily_quota_api = flsk_session.pop("remaining_quota_api", None)
+    if daily_quota_api:
+        headers['x-remaining-quota-api'] = daily_quota_api
+
+    # Add remaining submission quota
+    daily_quota_submission = flsk_session.pop("remaining_quota_submission", None)
+    if daily_quota_submission:
+        headers['x-remaining-quota-submission'] = daily_quota_submission
+
+    return headers
 
 
 def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
@@ -255,6 +275,9 @@ def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
         for k, v in cookies.items():
             resp.set_cookie(k, v)
 
+    # Add extra headers
+    resp.headers.update(get_response_headers())
+
     return resp
 
 
@@ -270,6 +293,9 @@ def make_file_response(data, name, size, status_code=200, content_type="applicat
     response.headers["Content-Type"] = content_type
     response.headers["Content-Length"] = size
     response.headers["Content-Disposition"] = f"attachment; filename=file.bin; filename*={filename}"
+
+    # Add extra headers
+    response.headers.update(get_response_headers())
 
     return response
 
@@ -295,6 +321,10 @@ def stream_file_response(reader, name, size, status_code=200):
 
     headers = {"Content-Type": 'application/octet-stream', "Content-Length": size,
                "Content-Disposition": f"attachment; filename=file.bin; filename*={filename}"}
+
+    # Add extra headers
+    headers.update(get_response_headers())
+
     return Response(generate(), status=status_code, headers=headers)
 
 
@@ -307,6 +337,10 @@ def make_binary_response(data, size, status_code=200):
     response = make_response(data, status_code)
     response.headers["Content-Type"] = 'application/octet-stream'
     response.headers["Content-Length"] = size
+
+    # Add extra headers
+    response.headers.update(get_response_headers())
+
     return response
 
 
@@ -326,7 +360,10 @@ def stream_binary_response(reader, status_code=200):
                 break
             yield data
 
-    return Response(generate(), status=status_code, mimetype='application/octet-stream')
+    # Add extra headers
+    headers = get_response_headers() or None
+
+    return Response(generate(), status=status_code, mimetype='application/octet-stream', headers=headers)
 
 
 #####################################
