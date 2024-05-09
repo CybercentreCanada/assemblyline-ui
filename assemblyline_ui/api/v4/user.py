@@ -58,7 +58,7 @@ def parse_favorites(favorites: List[Favorite]):
 
 
 @user_api.route("/whoami/", methods=["GET"])
-@api_login(quota=False)
+@api_login(count_toward_quota=False)
 def who_am_i(**kwargs):
     """
     Return the currently logged in user as well as the system configuration
@@ -994,7 +994,7 @@ def get_user_submission_params(username, **kwargs):
 ######################################################
 
 @user_api.route("/tos/<username>/", methods=["GET"])
-@api_login(require_role=[ROLES.self_manage], quota=False)
+@api_login(require_role=[ROLES.self_manage], count_toward_quota=False)
 def agree_with_tos(username, **kwargs):
     """
     Specified user send agreement to Terms of Service
@@ -1046,7 +1046,7 @@ def agree_with_tos(username, **kwargs):
 ######################################################
 
 @user_api.route("/quotas/<username>/", methods=["GET"])
-@api_login(quota=False)
+@api_login(count_toward_quota=False)
 def get_remaining_quotas(username, **kwargs):
     """
     Get the remaining quotas for the current user

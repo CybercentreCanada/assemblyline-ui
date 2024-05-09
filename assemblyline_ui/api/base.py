@@ -37,12 +37,12 @@ def make_subapi_blueprint(name, api_version=4):
 # noinspection PyPep8Naming
 class api_login(BaseSecurityRenderer):
     def __init__(self, require_role=None, username_key='username', audit=True,
-                 check_xsrf_token=XSRF_ENABLED, allow_readonly=True, quota=True):
+                 check_xsrf_token=XSRF_ENABLED, allow_readonly=True, count_toward_quota=True):
         super().__init__(require_role, audit, allow_readonly)
 
         self.username_key = username_key
         self.check_xsrf_token = check_xsrf_token
-        self.count_toward_quota = quota
+        self.count_toward_quota = count_toward_quota
 
     def auto_auth_check(self):
         apikey = request.environ.get('HTTP_X_APIKEY', None)
@@ -234,6 +234,7 @@ class api_login(BaseSecurityRenderer):
         base.audit = self.audit
         base.check_xsrf_token = self.check_xsrf_token
         base.allow_readonly = self.allow_readonly
+        base.count_toward_quota = self.count_toward_quota
         return base
 
 
@@ -369,7 +370,7 @@ def stream_binary_response(reader, status_code=200):
 #####################################
 # API list API (API inception)
 @api.route("/")
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def api_version_list(**_):
     """
     List all available API versions.
@@ -402,7 +403,7 @@ def api_version_list(**_):
 
 
 @api.route("/site_map/")
-@api_login(require_role=[ROLES.administration], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False, count_toward_quota=False)
 def site_map(**_):
     """
     Check if all pages have been protected by a login decorator
@@ -436,6 +437,7 @@ def site_map(**_):
         required_type = func.__dict__.get('require_role', [])
         audit = func.__dict__.get('audit', False)
         allow_readonly = func.__dict__.get('allow_readonly', True)
+        count_towards_quota = func.__dict__.get('count_toward_quota', False)
         if "/api/v4/" in rule.rule:
             prefix = "api.v4."
         else:
@@ -452,6 +454,7 @@ def site_map(**_):
                       "methods": methods,
                       "protected": protected,
                       "required_type": required_type,
-                      "audit": audit})
+                      "audit": audit,
+                      "count_towards_quota": count_towards_quota})
 
     return make_api_response(sorted(pages, key=lambda i: i['url']))

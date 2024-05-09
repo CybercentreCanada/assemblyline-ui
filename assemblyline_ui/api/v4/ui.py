@@ -39,9 +39,8 @@ def get_cache_name(identifier, chunk_number=None):
 
 # noinspection PyUnusedLocal
 @ui_api.route("/flowjs/", methods=["GET"])
-@api_login(
-    audit=False, check_xsrf_token=False, allow_readonly=False, require_role=[ROLES.submission_create],
-    quota=False)
+@api_login(audit=False, check_xsrf_token=False, allow_readonly=False, require_role=[ROLES.submission_create],
+           count_toward_quota=False)
 def flowjs_check_chunk(**kwargs):
     """
     Flowjs check file chunk.
@@ -90,9 +89,8 @@ def flowjs_check_chunk(**kwargs):
 
 # noinspection PyBroadException, PyUnusedLocal
 @ui_api.route("/flowjs/", methods=["POST"])
-@api_login(
-    audit=False, check_xsrf_token=False, allow_readonly=False, require_role=[ROLES.submission_create],
-    quota=False)
+@api_login(audit=False, check_xsrf_token=False, allow_readonly=False, require_role=[ROLES.submission_create],
+           count_toward_quota=False)
 def flowjs_upload_chunk(**kwargs):
     """
     Flowjs upload file chunk.
