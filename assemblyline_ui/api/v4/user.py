@@ -243,6 +243,7 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "enforce_quota": config.ui.enforce_quota,
             "external_links": parse_external_links([
                 x for x in config.ui.external_links
                 if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
