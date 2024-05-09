@@ -1,6 +1,6 @@
 from typing import List
 from assemblyline.odm.models.config import ExternalLinks
-from flask import request
+from flask import request, session as flsk_session
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
@@ -146,12 +146,20 @@ def who_am_i(**kwargs):
     """
     user_data = {
         k: v for k, v in kwargs['user'].items()
-        if k in
-        ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "roles", "type", "uname"]}
+        if k in ["agrees_with_tos", "classification", "email", "groups", "is_active", "name",
+                 "roles", "type", "uname", "api_daily_quota", "submission_daily_quota"]}
 
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
     user_data['is_admin'] = "administration" in user_data['roles']
+
+    # Force quotas to be part of the session so they could be trapped by the UI
+    if user_data['api_daily_quota'] != 0:
+        flsk_session['remaining_quota_api'] = max(
+            user_data['api_daily_quota'] - DAILY_QUOTA_TRACKER.get_api(user_data['username']), 0)
+    if user_data['submission_daily_quota'] != 0:
+        flsk_session['remaining_quota_submission'] = max(
+            user_data['submission_daily_quota'] - DAILY_QUOTA_TRACKER.get_submission(user_data['username']), 0)
 
     # System configuration
     user_data['c12nDef'] = classification_definition
@@ -1072,6 +1080,7 @@ def get_remaining_quotas(username, **kwargs):
         if ROLES.administration not in user['roles']:
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
         user = STORAGE.user.get(username, as_obj=False)
+        user = get_default_user_quotas(user)
 
     return make_api_response({
         'daily_api': max(user['api_daily_quota'] - DAILY_QUOTA_TRACKER.get_api(username), 0),
