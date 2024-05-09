@@ -39,7 +39,7 @@ auth_api._doc = "Allow user to authenticate to the web server"
 
 
 @auth_api.route("/apikey/<name>/<priv>/", methods=["PUT"])
-@api_login(audit=False, require_role=[ROLES.apikey_access])
+@api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
 def add_apikey(name, priv, **kwargs):
     """
     Add an API Key for the currently logged in user with given privileges
@@ -96,7 +96,7 @@ def add_apikey(name, priv, **kwargs):
 
 
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
-@api_login(audit=False, require_role=[ROLES.apikey_access])
+@api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
 def delete_apikey(name, **kwargs):
     """
     Delete an API Key matching specified name for the currently logged in user
@@ -124,7 +124,7 @@ def delete_apikey(name, **kwargs):
 
 
 @auth_api.route("/obo_token/<token_id>/", methods=["DELETE"])
-@api_login(audit=False, require_role=[ROLES.obo_access])
+@api_login(audit=False, require_role=[ROLES.obo_access], count_toward_quota=False)
 def delete_obo_token(token_id, **kwargs):
     """
     Delete an application access to your profile
@@ -153,7 +153,7 @@ def delete_obo_token(token_id, **kwargs):
 
 
 @auth_api.route("/disable_otp/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.self_manage])
+@api_login(audit=False, require_role=[ROLES.self_manage], count_toward_quota=False)
 def disable_otp(**kwargs):
     """
     Disable OTP for the currently logged in user
@@ -424,7 +424,7 @@ def login(**_):
 
 
 @auth_api.route("/logout/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, count_toward_quota=False)
 def logout(**_):
     """
     Logout from the system clearing the current session
@@ -716,7 +716,7 @@ def reset_pwd(**_):
 
 
 @auth_api.route("/setup_otp/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.self_manage])
+@api_login(audit=False, require_role=[ROLES.self_manage], count_toward_quota=False)
 def setup_otp(**kwargs):
     """
     Setup OTP for the currently logged in user
@@ -915,7 +915,7 @@ def signup_validate(**_):
 
 
 @auth_api.route("/validate_otp/<token>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def validate_otp(token, **kwargs):
     """
     Validate newly setup OTP token

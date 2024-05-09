@@ -42,7 +42,7 @@ def get_error(error_key, **kwargs):
 
 
 @error_api.route("/list/", methods=["GET"])
-@api_login(require_role=[ROLES.administration])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
 def list_errors(**_):
     """
     List all error in the system (per page)
