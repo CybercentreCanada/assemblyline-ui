@@ -58,7 +58,7 @@ def parse_favorites(favorites: List[Favorite]):
 
 
 @user_api.route("/whoami/", methods=["GET"])
-@api_login(count_toward_quota=False)
+@api_login()  # whoami has to count towards quota otherwise the UI goes into an infinite loop
 def who_am_i(**kwargs):
     """
     Return the currently logged in user as well as the system configuration
