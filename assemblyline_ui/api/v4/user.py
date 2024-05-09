@@ -355,7 +355,7 @@ def add_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_account(username, **kwargs):
     """
     Load the user account information.
@@ -539,7 +539,7 @@ def set_user_account(username, **kwargs):
 
 
 @user_api.route("/avatar/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_avatar(username, **_):
     """
     Loads the user's avatar.
