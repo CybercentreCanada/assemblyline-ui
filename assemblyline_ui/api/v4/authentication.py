@@ -475,7 +475,9 @@ def saml_sso(**_):
     if not config.auth.saml.enabled:
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
-    sso_built_url: str = auth.login(return_to=f'https://{request.host}/')
+    host: str = config.ui.fqdn or request.host
+    path: str = urlparse(request.referrer).path
+    sso_built_url: str = auth.login(return_to=f"https://{host}{path}")
     flsk_session["AuthNRequestID"] = auth.get_last_request_id()
     return redirect(sso_built_url)
 
