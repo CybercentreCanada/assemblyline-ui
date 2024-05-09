@@ -279,7 +279,7 @@ def who_am_i(**kwargs):
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_role=[ROLES.administration])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -406,7 +406,7 @@ def get_user_account(username, **kwargs):
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.administration])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -443,7 +443,7 @@ def remove_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["POST"])
-@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_account(username, **kwargs):
     """
     Save the user account information.
@@ -556,7 +556,7 @@ def get_user_avatar(username, **_):
 
 
 @user_api.route("/avatar/<username>/", methods=["POST"])
-@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_avatar(username, **kwargs):
     """
     Sets the user's Avatar
@@ -596,7 +596,7 @@ def set_user_avatar(username, **kwargs):
 
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
-@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def save_to_user_favorite(username, favorite_type, **kwargs):
     """
     Save an entry to the user's favorites
@@ -648,7 +648,7 @@ def save_to_user_favorite(username, favorite_type, **kwargs):
 
 
 @user_api.route("/favorites/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_favorites(username, **kwargs):
     """
     Loads the user's favorites.
@@ -699,7 +699,7 @@ def get_user_favorites(username, **kwargs):
 
 # noinspection PyBroadException
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def remove_user_favorite(username, favorite_type, **kwargs):
     """
     Remove a favorite from the user's favorites.
@@ -743,7 +743,7 @@ def remove_user_favorite(username, favorite_type, **kwargs):
 
 
 @user_api.route("/favorites/<username>/", methods=["POST"])
-@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_favorites(username, **kwargs):
     """
     Sets the user's Favorites
@@ -797,7 +797,7 @@ def set_user_favorites(username, **kwargs):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_role=[ROLES.administration], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False, count_toward_quota=False)
 def list_users(**_):
     """
     List all users of the system.
@@ -847,7 +847,7 @@ def list_users(**_):
 
 
 @user_api.route("/settings/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_settings(username, **kwargs):
     """
     Load the user's settings.
@@ -888,7 +888,7 @@ def get_user_settings(username, **kwargs):
 
 
 @user_api.route("/settings/<username>/", methods=["POST"])
-@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_settings(username, **kwargs):
     """
     Save the user's settings.
@@ -944,7 +944,7 @@ def set_user_settings(username, **kwargs):
 ######################################################
 
 @user_api.route("/submission_params/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_submission_params(username, **kwargs):
     """
     Load the user's default submission params that should be passed to the submit API.
