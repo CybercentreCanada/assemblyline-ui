@@ -12,7 +12,8 @@ from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
+    VERSION, config, AI_AGENT
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
@@ -57,7 +58,7 @@ def parse_favorites(favorites: List[Favorite]):
 
 
 @user_api.route("/whoami/", methods=["GET"])
-@api_login()
+@api_login(quota=False)
 def who_am_i(**kwargs):
     """
     Return the currently logged in user as well as the system configuration
@@ -993,7 +994,7 @@ def get_user_submission_params(username, **kwargs):
 ######################################################
 
 @user_api.route("/tos/<username>/", methods=["GET"])
-@api_login(require_role=[ROLES.self_manage])
+@api_login(require_role=[ROLES.self_manage], quota=False)
 def agree_with_tos(username, **kwargs):
     """
     Specified user send agreement to Terms of Service
@@ -1038,3 +1039,41 @@ def agree_with_tos(username, **kwargs):
         STORAGE.user.save(username, user)
 
         return make_api_response({"success": True})
+
+
+######################################################
+# Quotas
+######################################################
+
+@user_api.route("/quotas/<username>/", methods=["GET"])
+@api_login(quota=False)
+def get_remaining_quotas(username, **kwargs):
+    """
+    Get the remaining quotas for the current user
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "daily_submission": 100,
+     "daily_api": 10000
+    }
+    """
+    user = kwargs['user']
+
+    if username != user['uname']:
+        if ROLES.administration not in user['roles']:
+            raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
+        user = STORAGE.user.get(username, as_obj=False)
+
+    return make_api_response({
+        'daily_api': max(user['api_daily_quota'] - DAILY_QUOTA_TRACKER.get_api(username), 0),
+        'daily_submission': max(user['submission_daily_quota'] - DAILY_QUOTA_TRACKER.get_submission(username), 0)
+    })
