@@ -1,5 +1,7 @@
 from typing import Optional
 
+from flask import session as flsk_session
+
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
@@ -51,9 +53,12 @@ def check_daily_submission_quota(user) -> Optional[str]:
         quota_user = user['uname']
         daily_quota = user.get('submission_daily_quota') or config.ui.default_quotas.daily_submissions
 
-        if daily_quota != 0 and DAILY_QUOTA_TRACKER.increment_submission(quota_user) > daily_quota:
-            LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
-            return f"You've exceeded your daily maximum submission quota of {daily_quota}"
+        if daily_quota != 0:
+            current_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
+            flsk_session['remaining_quota_submission'] = max(daily_quota - current_daily_quota, 0)
+            if current_daily_quota > daily_quota:
+                LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
+                return f"You've exceeded your daily maximum submission quota of {daily_quota}"
 
     return None
 
