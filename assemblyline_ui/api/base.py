@@ -243,12 +243,12 @@ def get_response_headers():
 
     # Add remaining API quota
     daily_quota_api = flsk_session.pop("remaining_quota_api", None)
-    if daily_quota_api:
+    if daily_quota_api is not None:
         headers['x-remaining-quota-api'] = daily_quota_api
 
     # Add remaining submission quota
     daily_quota_submission = flsk_session.pop("remaining_quota_submission", None)
-    if daily_quota_submission:
+    if daily_quota_submission is not None:
         headers['x-remaining-quota-submission'] = daily_quota_submission
 
     return headers
