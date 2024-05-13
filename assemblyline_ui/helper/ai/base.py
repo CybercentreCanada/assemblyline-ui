@@ -28,6 +28,10 @@ class AIAgent():
         self.services_prompt = ""
         self.indices_prompt = ""
         self.definition_prompt = ""
+        self.extra_context = ""
+
+    def _get_system_message(self, context: str, lang: str):
+        return context.replace("$(EXTRA_CONTEXT)", self.extra_context).replace("$(LANG)", lang)
 
     def continued_ai_conversation(self, messages):
         raise UnimplementedException("Method not implemented yet")
