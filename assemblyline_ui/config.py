@@ -10,6 +10,7 @@ from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidat
 from assemblyline.filestore import FileStore
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
+from assemblyline.remote.datatypes.daily_quota_tracker import DailyQuotaTracker
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -50,9 +51,10 @@ redis = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpe
 
 # TRACKERS
 QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
-                                 redis=redis)
+                                 redis=redis_persistent)
 SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minutes timout
                                       redis=redis_persistent)
+DAILY_QUOTA_TRACKER = DailyQuotaTracker(redis=redis_persistent)
 
 # UI queues
 KV_SESSION = Hash("flask_sessions", host=redis)

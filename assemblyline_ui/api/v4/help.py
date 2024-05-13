@@ -21,7 +21,7 @@ yara_custom = re.compile(r'[ \t]+type[ \t]+=[ \t]+["]?([\w\/]+)["]?')
 
 
 @help_api.route("/classification_definition/")
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, count_toward_quota=False)
 def get_classification_definition(**_):
     """
     Return the current system classification definition
@@ -46,7 +46,7 @@ def get_classification_definition(**_):
 
 # noinspection PyUnresolvedReferences
 @help_api.route("/configuration/")
-@api_login(audit=False, allow_readonly=False)
+@api_login(audit=False, allow_readonly=False, count_toward_quota=False)
 def get_system_configuration(**_):
     """
     Return the current system configuration:
@@ -137,7 +137,7 @@ def get_system_configuration(**_):
 
 
 @help_api.route("/constants/")
-@api_login(audit=False, allow_readonly=False)
+@api_login(audit=False, allow_readonly=False, count_toward_quota=False)
 def get_systems_constants(**_):
     """
     Return the current system configuration constants which includes:
@@ -204,7 +204,7 @@ def get_systems_constants(**_):
 
 
 @help_api.route("/tos/")
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, count_toward_quota=False)
 def get_terms_of_service(**_):
     """
     Return the current system terms of service

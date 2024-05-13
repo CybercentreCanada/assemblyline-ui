@@ -4,14 +4,12 @@ import io
 import json
 import os
 import shutil
-import tempfile
 
 from flask import request
 
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
-from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
@@ -22,8 +20,9 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, FETCH_METHODS
-from assemblyline_ui.helper.user import load_user_settings
+from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
+    FETCH_METHODS
+from assemblyline_ui.helper.user import check_daily_submission_quota, load_user_settings
 
 
 SUB_API = 'ingest'
@@ -35,6 +34,7 @@ ingest = NamedQueue(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
+
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
@@ -181,6 +181,12 @@ def ingest_single_file(**kwargs):
     { "ingest_id": <ID OF THE INGESTED FILE> }
     """
     user = kwargs['user']
+
+    # Check daily submission quota
+    quota_error = check_daily_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
     extracted_path = original_file = None
     string_type = None
@@ -274,7 +280,8 @@ def ingest_single_file(**kwargs):
                     found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
                                                  default_external_sources)
                     if not found:
-                        raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
+                        raise FileNotFoundError(
+                            f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)
                 except FileNotFoundError as e:
