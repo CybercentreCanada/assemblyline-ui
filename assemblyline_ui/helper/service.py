@@ -40,7 +40,8 @@ def get_default_service_list(srv_list=None, default_selection=None, classificati
         services[grp].append({"name": item["name"],
                               "category": grp,
                               "selected": (grp in default_selection or item['name'] in default_selection),
-                              "is_external": item["is_external"]})
+                              "is_external": item["is_external"],
+                              "description": item["description"]})
 
     return [{"name": k, "selected": k in default_selection, "services": v} for k, v in services.items()]
 

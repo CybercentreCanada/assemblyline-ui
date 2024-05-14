@@ -8,6 +8,7 @@ from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common import forge, log as al_log
 from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
+from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
 from assemblyline.remote.datatypes.hash import Hash
@@ -47,6 +48,18 @@ TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
 redis_persistent = get_client(config.core.redis.persistent.host, config.core.redis.persistent.port, False)
 redis = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpersistent.port, False)
+
+# Metadata validation for the frontend
+UI_METADATA_VALIDATION = {'submit': {}, 'archive': {}}
+meta_config = config.submission.metadata.as_primitives()
+for section in ['submit', 'archive']:
+    for m_name, m_cfg in meta_config[section].items():
+        field_cls = METADATA_FIELDTYPE_MAP[m_cfg['validator_type']](**(m_cfg['validator_params'] or {}))
+        if m_cfg['validator_type'] != "uri" and hasattr(field_cls, 'validation_regex'):
+            # Extract regex validation for UI (except for URI, we'll re-use the existing pattern on the frontend)
+            m_cfg['validator_params']['validation_regex'] = field_cls.validation_regex.pattern
+        UI_METADATA_VALIDATION[section][m_name] = m_cfg
+
 
 # TRACKERS
 QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
