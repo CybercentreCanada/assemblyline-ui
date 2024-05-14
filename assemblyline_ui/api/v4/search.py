@@ -135,18 +135,19 @@ def group_search(index, group_field, **kwargs):
     Uses lucene search syntax for query.
 
     Variables:
-    index       =>   Index to search in (alert, submission,...)
-    group_field  =>   Field to group on
+    index          =>   Index to search in (alert, submission,...)
+    group_field    =>   Field to group on
 
     Optional Arguments:
-    group_sort   =>   How to sort the results inside the group
-    limit        =>   Maximum number of results return for each groups
-    query        =>   Query to search for
-    filters      =>   List of additional filter queries limit the data
-    offset       =>   Offset in the results
-    rows         =>   Max number of results
-    sort         =>   How to sort the results
-    fl           =>   List of fields to return
+    group_sort     =>   How to sort the results inside the group
+    limit          =>   Maximum number of results return for each groups
+    query          =>   Query to search for
+    filters        =>   List of additional filter queries limit the data
+    offset         =>   Offset in the results
+    rows           =>   Max number of results
+    sort           =>   How to sort the results
+    fl             =>   List of fields to return
+    timeout        =>   Maximum execution time (ms)
     use_archive    =>   Allow access to the malware archive (Default: False)
     archive_only   =>   Only access the Malware archive (Default: False)
 
@@ -223,7 +224,7 @@ def group_search(index, group_field, **kwargs):
 @search_api.route("/fields/<index>/", methods=["GET"])
 @api_login(audit=False,
            require_role=["alert_view", "heuristic_view", "safelist_view", "signature_view", "submission_view",
-                         "workflow_view", "retrohunt_view", "badlist_view"])
+                         "workflow_view", "retrohunt_view", "badlist_view"], count_toward_quota=False)
 def list_index_fields(index, **kwargs):
     """
     List all available fields for a given index
@@ -270,13 +271,14 @@ def facet(index, field, **kwargs):
     where the documents matches the specified queries.
 
     Variables:
-    index       =>   Index to search in (alert, submission,...)
-    field        =>   Field to analyse
+    index          =>   Index to search in (alert, submission,...)
+    field          =>   Field to analyse
 
     Optional Arguments:
-    query        =>   Query to search for
-    mincount    =>   Minimum item count for the fieldvalue to be returned
-    filters      =>   Additional query to limit to output
+    query          =>   Query to search for
+    mincount       =>   Minimum item count for the fieldvalue to be returned
+    filters        =>   Additional query to limit to output
+    timeout        =>   Maximum execution time (ms)
     use_archive    =>   Allow access to the malware archive (Default: False)
     archive_only   =>   Only access the Malware archive (Default: False)
 
@@ -302,7 +304,7 @@ def facet(index, field, **kwargs):
     if field_info is None:
         return make_api_response("", f"Field '{field}' is not a valid field in index: {index}", 400)
 
-    fields = ["query", "mincount"]
+    fields = ["query", "mincount", "timeout"]
     multi_fields = ['filters']
     boolean_fields = ['use_archive', 'archive_only']
 
@@ -349,19 +351,20 @@ def histogram(index, field, **kwargs):
     Generate an histogram based on a time or and int field using a specific gap size
 
     Variables:
-    index       =>   Index to search in (alert, submission,...)
-    field        =>   Field to generate the histogram from
+    index          =>   Index to search in (alert, submission,...)
+    field          =>   Field to generate the histogram from
 
     Optional Arguments:
-    query        =>   Query to search for
-    mincount     =>   Minimum item count for the fieldvalue to be returned
-    filters      =>   Additional query to limit to output
-    start        =>   Value at which to start creating the histogram
-                       * Defaults: 0 or now-1d
-    end          =>   Value at which to end the histogram
-                       * Defaults: 2000 or now
-    gap          =>   Size of each step in the histogram
-                       * Defaults: 100 or +1h
+    query          =>   Query to search for
+    mincount       =>   Minimum item count for the fieldvalue to be returned
+    filters        =>   Additional query to limit to output
+    start          =>   Value at which to start creating the histogram
+                         * Defaults: 0 or now-1d
+    end            =>   Value at which to end the histogram
+                         * Defaults: 2000 or now
+    gap            =>   Size of each step in the histogram
+                         * Defaults: 100 or +1h
+    timeout        =>   Maximum execution time (ms)
     use_archive    =>   Allow access to the malware archive (Default: False)
     archive_only   =>   Only access the Malware archive (Default: False)
 
@@ -380,7 +383,7 @@ def histogram(index, field, **kwargs):
      "step_N": 19,
     }
     """
-    fields = ["query", "mincount", "start", "end", "gap"]
+    fields = ["query", "mincount", "start", "end", "gap", "timeout"]
     multi_fields = ['filters']
     boolean_fields = ['use_archive', 'archive_only']
     user = kwargs['user']
@@ -454,12 +457,13 @@ def stats(index, int_field, **kwargs):
     Perform statistical analysis of an integer field to get its min, max, average and count values
 
     Variables:
-    index       =>   Index to search in (alert, submission,...)
-    int_field    =>   Integer field to analyse
+    index          =>   Index to search in (alert, submission,...)
+    int_field      =>   Integer field to analyse
 
     Optional Arguments:
-    query        =>   Query to search for
-    filters      =>   Additional query to limit to output
+    query          =>   Query to search for
+    filters        =>   Additional query to limit to output
+    timeout        =>   Maximum execution time (ms)
     use_archive    =>   Allow access to the malware archive (Default: False)
     archive_only   =>   Only access the Malware archive (Default: False)
 
@@ -489,7 +493,7 @@ def stats(index, int_field, **kwargs):
     if field_info['type'] not in ["integer", "float"]:
         return make_api_response("", f"Field '{int_field}' is not a numeric field.", 400)
 
-    fields = ["query"]
+    fields = ["query", "timeout"]
     multi_fields = ['filters']
     boolean_fields = ['use_archive', 'archive_only']
 

@@ -1,10 +1,12 @@
 from typing import Optional
 
+from flask import session as flsk_session
+
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import LOGGER, STORAGE, SUBMISSION_TRACKER, config, CLASSIFICATION as Classification, \
-    SERVICE_LIST
+from assemblyline_ui.config import DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, config, \
+    CLASSIFICATION as Classification, SERVICE_LIST
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
@@ -46,16 +48,34 @@ def add_access_control(user):
     user['access_control'] = safe_str(query)
 
 
-def check_submission_quota(user) -> Optional[str]:
-    quota_user = user['uname']
-    max_quota = user.get('submission_quota', 5)
+def check_daily_submission_quota(user) -> Optional[str]:
+    if config.ui.enforce_quota:
+        quota_user = user['uname']
+        daily_quota = user.get('submission_daily_quota') or config.ui.default_quotas.daily_submissions
 
-    if config.ui.enforce_quota and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
-        LOGGER.info(
-            "User %s exceeded their submission quota of %s.",
-            quota_user, max_quota
-        )
-        return "You've exceeded your maximum submission quota of %s " % max_quota
+        if daily_quota != 0:
+            current_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
+            flsk_session['remaining_quota_submission'] = max(daily_quota - current_daily_quota, 0)
+            if current_daily_quota > daily_quota:
+                LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
+                return f"You've exceeded your daily maximum submission quota of {daily_quota}"
+
+    return None
+
+
+def check_submission_quota(user) -> Optional[str]:
+    if config.ui.enforce_quota:
+        quota_user = user['uname']
+        max_quota = user.get('submission_quota') or config.ui.default_quotas.concurrent_submissions
+
+        daily_submission_quota_error = check_daily_submission_quota(user)
+        if daily_submission_quota_error:
+            return daily_submission_quota_error
+
+        if max_quota != 0 and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
+            LOGGER.info(f"User {quota_user} exceeded their submission quota of {max_quota}.")
+            return f"You've exceeded your maximum concurrent submission quota of {max_quota}"
+
     return None
 
 
@@ -74,6 +94,7 @@ def login(uname, roles_limit, user=None):
         raise AccessDeniedException("User %s is disabled" % uname)
 
     add_access_control(user)
+    get_default_user_quotas(user)
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['allow_2fa'] = config.auth.allow_2fa
@@ -98,6 +119,16 @@ def login(uname, roles_limit, user=None):
     return user
 
 
+def get_default_user_quotas(user_profile: dict):
+    user_profile['api_quota'] = user_profile.get('api_quota') or config.ui.default_quotas.concurrent_api_calls
+    user_profile['api_daily_quota'] = user_profile.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
+    user_profile['submission_quota'] = user_profile.get('submission_quota') or \
+        config.ui.default_quotas.concurrent_submissions
+    user_profile['submission_daily_quota'] = user_profile.get('submission_daily_quota') or \
+        config.ui.default_quotas.daily_submissions
+    return user_profile
+
+
 def save_user_account(username, data, user):
     # Clear non user account data
     avatar = data.pop('avatar', None)
@@ -105,6 +136,10 @@ def save_user_account(username, data, user):
     data.pop('security_token_enabled', None)
     data.pop('has_password', None)
 
+    # Make sure the default quotas are set
+    get_default_user_quotas(data)
+
+    # Test the user params againts the model
     data = User(data).as_primitives()
 
     if username != data['uname']:

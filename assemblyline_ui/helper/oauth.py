@@ -80,6 +80,7 @@ def parse_profile(profile, provider):
     roles = []
     groups = []
     remove_roles = set()
+    quotas = {}
     classification = cl_engine.UNRESTRICTED
     if provider.auto_properties:
         for auto_prop in provider.auto_properties:
@@ -159,6 +160,11 @@ def parse_profile(profile, provider):
                             if group_value not in groups:
                                 groups.append(group_value)
 
+                # Set API and Submission quotas
+                elif auto_prop.type in ['api_quota', 'api_daily_quota', 'submission_quota', 'submission_daily_quota']:
+                    if re.match(auto_prop.pattern, value):
+                        quotas[auto_prop.type] = int(auto_prop.value[0])
+
     # if not user type was assigned
     if not user_type:
         # if also no roles were assigned
@@ -185,7 +191,8 @@ def parse_profile(profile, provider):
         name=name,
         email=email_adr,
         password="__NO_PASSWORD__",
-        avatar=profile.get('picture', alternate)
+        avatar=profile.get('picture', alternate),
+        **quotas
     )
 
 

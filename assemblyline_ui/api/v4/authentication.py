@@ -22,7 +22,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
                                     get_signup_queue, get_token_store, CLASSIFICATION as Classification)
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
-from assemblyline_ui.helper.user import get_dynamic_classification, API_PRIV_MAP
+from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification, API_PRIV_MAP
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 
@@ -42,7 +42,7 @@ auth_api._doc = "Allow user to authenticate to the web server"
 
 
 @auth_api.route("/apikey/<name>/<priv>/", methods=["PUT"])
-@api_login(audit=False, require_role=[ROLES.apikey_access])
+@api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
 def add_apikey(name, priv, **kwargs):
     """
     Add an API Key for the currently logged in user with given privileges
@@ -99,7 +99,7 @@ def add_apikey(name, priv, **kwargs):
 
 
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
-@api_login(audit=False, require_role=[ROLES.apikey_access])
+@api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
 def delete_apikey(name, **kwargs):
     """
     Delete an API Key matching specified name for the currently logged in user
@@ -127,7 +127,7 @@ def delete_apikey(name, **kwargs):
 
 
 @auth_api.route("/obo_token/<token_id>/", methods=["DELETE"])
-@api_login(audit=False, require_role=[ROLES.obo_access])
+@api_login(audit=False, require_role=[ROLES.obo_access], count_toward_quota=False)
 def delete_obo_token(token_id, **kwargs):
     """
     Delete an application access to your profile
@@ -156,7 +156,7 @@ def delete_obo_token(token_id, **kwargs):
 
 
 @auth_api.route("/disable_otp/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.self_manage])
+@api_login(audit=False, require_role=[ROLES.self_manage], count_toward_quota=False)
 def disable_otp(**kwargs):
     """
     Disable OTP for the currently logged in user
@@ -184,7 +184,7 @@ def disable_otp(**kwargs):
 
 
 @auth_api.route("/obo_token/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.obo_access])
+@api_login(audit=False, require_role=[ROLES.obo_access], count_toward_quota=False)
 def get_obo_token(**kwargs):
     """
     Get or create a token to allow an external application to impersonate your
@@ -439,7 +439,7 @@ def login(**_):
 
 
 @auth_api.route("/logout/", methods=["GET"])
-@api_login(audit=False, check_xsrf_token=False)
+@api_login(audit=False, check_xsrf_token=False, count_toward_quota=False)
 def logout(**_):
     """
     Logout from the system clearing the current session
@@ -769,7 +769,7 @@ def oauth_validate(**_):
                                 STORAGE.user_avatar.save(username, avatar)
 
                         # Save updated user
-                        STORAGE.user.save(username, cur_user)
+                        STORAGE.user.save(username, get_default_user_quotas(cur_user))
 
                     if cur_user:
                         if avatar is None:
@@ -871,7 +871,7 @@ def reset_pwd(**_):
 
 
 @auth_api.route("/setup_otp/", methods=["GET"])
-@api_login(audit=False, require_role=[ROLES.self_manage])
+@api_login(audit=False, require_role=[ROLES.self_manage], count_toward_quota=False)
 def setup_otp(**kwargs):
     """
     Setup OTP for the currently logged in user
@@ -1070,7 +1070,7 @@ def signup_validate(**_):
 
 
 @auth_api.route("/validate_otp/<token>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def validate_otp(token, **kwargs):
     """
     Validate newly setup OTP token

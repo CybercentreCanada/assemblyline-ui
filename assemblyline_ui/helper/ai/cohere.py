@@ -28,6 +28,11 @@ class CohereAgent(AIAgent):
         self.params.executive_summary.options = {
             k: v for k, v in self.params.executive_summary.options.items() if k in ALLOWED_OPTIONS}
 
+        self.extra_context = "Please answer using only the information provided to you in the prompt. If there is " \
+                             "not enough information in the prompt to answer the user's question, please say so. " \
+                             "Please do NOT use any information you know about Assemblyline unless it is " \
+                             "provided to you."
+
     def _call_ai_backend(self, data, action, with_trace=False):
         try:
             # Call API
@@ -81,12 +86,7 @@ class CohereAgent(AIAgent):
     def continued_ai_conversation(self, messages, lang="english"):
         # Get current values from openai message format
         preamble, history, message = self._openai_to_cohere_messages(messages)
-        default_assistant_preamble = self.params.assistant.system_message.replace("$(LANG)", lang)
-
-        if not preamble or preamble == default_assistant_preamble:
-            glossary = self.system_prompt
-        else:
-            glossary = "\n".join([self.definition_prompt, "", self.scoring_prompt])
+        default_assistant_preamble = self._get_system_message(self.params.assistant.system_message, lang)
 
         # Build chat completions request
         data = {
@@ -95,18 +95,19 @@ class CohereAgent(AIAgent):
             "message": message or "Hello!",
             "chat_history": history,
             "model": self.config.model_name,
-            "stream": False,
-            "documents": [
-                {"title": "Glossary of Assemblyline terms", "snippet": glossary}
-            ]
+            "stream": False
         }
+
+        if not preamble or preamble == default_assistant_preamble:
+            data["documents"] = [{"title": "Glossary of Assemblyline terms", "snippet": self.system_prompt}]
+
         data.update(self.params.assistant.options)
 
         return self._call_ai_backend(data, "answer the question", with_trace=True)
 
     def detailed_al_submission(self, report, lang="english", with_trace=False):
         # Build chat completions request
-        preamble = self.params.detailed_report.system_message.replace("$(LANG)", lang)
+        preamble = self._get_system_message(self.params.detailed_report.system_message, lang)
         content = [self.params.detailed_report.task, "## Assemblyline Report\n", f"```yaml\n{yaml.dump(report)}\n```"]
         data = {
             "max_tokens": self.params.detailed_report.max_tokens,
@@ -114,12 +115,6 @@ class CohereAgent(AIAgent):
             "message": "\n".join(content),
             "model": self.config.model_name,
             "stream": False,
-            "documents": [
-                {
-                    "title": "Glossary of Assemblyline terms",
-                    "snippet": "\n".join([self.definition_prompt, "", self.scoring_prompt])
-                }
-            ]
         }
         data.update(self.params.detailed_report.options)
 
@@ -127,20 +122,14 @@ class CohereAgent(AIAgent):
 
     def summarized_al_submission(self, report, lang="english", with_trace=False):
         # Build chat completions request
-        preamble = self.params.executive_summary.system_message.replace("$(LANG)", lang)
+        preamble = self._get_system_message(self.params.executive_summary.system_message, lang)
         content = [self.params.executive_summary.task, "## Assemblyline Report\n", f"```yaml\n{yaml.dump(report)}\n```"]
         data = {
             "max_tokens": self.params.executive_summary.max_tokens,
             "preamble": preamble,
             "message": "\n".join(content),
             "model": self.config.model_name,
-            "stream": False,
-            "documents": [
-                {
-                    "title": "Glossary of Assemblyline terms",
-                    "snippet": "\n".join([self.definition_prompt, "", self.scoring_prompt])
-                }
-            ]
+            "stream": False
         }
         data.update(self.params.executive_summary.options)
 
@@ -148,7 +137,7 @@ class CohereAgent(AIAgent):
 
     def summarize_code_snippet(self, code, lang="english", with_trace=False):
         # Build chat completions request
-        preamble = self.params.code.system_message.replace("$(LANG)", lang)
+        preamble = self._get_system_message(self.params.code.system_message, lang)
         content = [self.params.code.task, "## Code snippet\n", f"```\n{safe_str(code)}\n```"]
         data = {
             "max_tokens": self.params.code.max_tokens,

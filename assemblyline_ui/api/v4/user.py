@@ -1,7 +1,6 @@
-from copy import deepcopy
 from typing import List
 from assemblyline.odm.models.config import ExternalLinks
-from flask import request
+from flask import request, session as flsk_session
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
@@ -13,11 +12,13 @@ from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, LOGGER, STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
+    VERSION, config, AI_AGENT
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
-from assemblyline_ui.helper.user import (get_dynamic_classification, load_user_settings, save_user_account,
-                                         save_user_settings, API_PRIV_MAP)
+from assemblyline_ui.helper.user import (
+    get_default_user_quotas, get_dynamic_classification, load_user_settings, save_user_account, save_user_settings,
+    API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
 from .federated_lookup import filtered_tag_names
@@ -57,7 +58,7 @@ def parse_favorites(favorites: List[Favorite]):
 
 
 @user_api.route("/whoami/", methods=["GET"])
-@api_login()
+@api_login()  # whoami has to count towards quota otherwise the UI goes into an infinite loop
 def who_am_i(**kwargs):
     """
     Return the currently logged in user as well as the system configuration
@@ -145,12 +146,20 @@ def who_am_i(**kwargs):
     """
     user_data = {
         k: v for k, v in kwargs['user'].items()
-        if k in
-        ["agrees_with_tos", "classification", "email", "groups", "is_active", "name", "roles", "type", "uname"]}
+        if k in ["agrees_with_tos", "classification", "email", "groups", "is_active", "name",
+                 "roles", "type", "uname", "api_daily_quota", "submission_daily_quota"]}
 
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
     user_data['is_admin'] = "administration" in user_data['roles']
+
+    # Force quotas to be part of the session so they could be trapped by the UI
+    if user_data['api_daily_quota'] != 0:
+        flsk_session['remaining_quota_api'] = max(
+            user_data['api_daily_quota'] - DAILY_QUOTA_TRACKER.get_api(user_data['username']), 0)
+    if user_data['submission_daily_quota'] != 0:
+        flsk_session['remaining_quota_submission'] = max(
+            user_data['submission_daily_quota'] - DAILY_QUOTA_TRACKER.get_submission(user_data['username']), 0)
 
     # System configuration
     user_data['c12nDef'] = classification_definition
@@ -172,9 +181,7 @@ def who_am_i(**kwargs):
 
     # Backwards-compat: Merge sha256_sources with file_sources
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
-                               if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
-                                                               x.classification)]
-
+     if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
     user_data['configuration'] = {
         "auth": {
@@ -236,6 +243,7 @@ def who_am_i(**kwargs):
                                                      ignore_invalid=True)],
             "banner": config.ui.banner,
             "banner_level": config.ui.banner_level,
+            "enforce_quota": config.ui.enforce_quota,
             "external_links": parse_external_links([
                 x for x in config.ui.external_links
                 if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
@@ -280,7 +288,7 @@ def who_am_i(**kwargs):
 
 
 @user_api.route("/<username>/", methods=["PUT"])
-@api_login(require_role=[ROLES.administration])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
 def add_user_account(username, **_):
     """
     Add a user to the system
@@ -339,7 +347,7 @@ def add_user_account(username, **_):
             STORAGE.user_avatar.save(username, avatar)
 
         try:
-            return make_api_response({"success": STORAGE.user.save(username, User(data))})
+            return make_api_response({"success": STORAGE.user.save(username, User(get_default_user_quotas(data)))})
         except ValueError as e:
             return make_api_response({"success": False}, str(e), 400)
 
@@ -348,7 +356,7 @@ def add_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_account(username, **kwargs):
     """
     Load the user account information.
@@ -380,6 +388,9 @@ def get_user_account(username, **kwargs):
     if not user:
         return make_api_response({}, "User %s does not exists" % username, 404)
 
+    # Load default user quotas if they are missing
+    get_default_user_quotas(user)
+
     user_roles = load_roles(user['type'], user.get('roles', None))
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
@@ -404,7 +415,7 @@ def get_user_account(username, **kwargs):
 
 
 @user_api.route("/<username>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.administration])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
 def remove_user_account(username, **_):
     """
     Remove the account specified by the username.
@@ -441,7 +452,7 @@ def remove_user_account(username, **_):
 
 
 @user_api.route("/<username>/", methods=["POST"])
-@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_account(username, **kwargs):
     """
     Save the user account information.
@@ -511,7 +522,7 @@ def set_user_account(username, **kwargs):
                     send_activated_email(email, username, email, kwargs['user']['uname'])
             except Exception as e:
                 # We can't send confirmation email, Rollback user change and mark this a failure
-                STORAGE.user.save(username, old_user)
+                STORAGE.user.save(username, get_default_user_quotas(old_user))
                 LOGGER.error(f"An error occured while sending confirmation emails: {str(e)}")
                 return make_api_response({"success": False}, "The system was unable to send confirmation emails. "
                                                              "Retry again later...", 404)
@@ -529,7 +540,7 @@ def set_user_account(username, **kwargs):
 
 
 @user_api.route("/avatar/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_avatar(username, **_):
     """
     Loads the user's avatar.
@@ -554,7 +565,7 @@ def get_user_avatar(username, **_):
 
 
 @user_api.route("/avatar/<username>/", methods=["POST"])
-@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_avatar(username, **kwargs):
     """
     Sets the user's Avatar
@@ -594,7 +605,7 @@ def set_user_avatar(username, **kwargs):
 
 
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["PUT"])
-@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def save_to_user_favorite(username, favorite_type, **kwargs):
     """
     Save an entry to the user's favorites
@@ -646,7 +657,7 @@ def save_to_user_favorite(username, favorite_type, **kwargs):
 
 
 @user_api.route("/favorites/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_favorites(username, **kwargs):
     """
     Loads the user's favorites.
@@ -697,7 +708,7 @@ def get_user_favorites(username, **kwargs):
 
 # noinspection PyBroadException
 @user_api.route("/favorites/<username>/<favorite_type>/", methods=["DELETE"])
-@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def remove_user_favorite(username, favorite_type, **kwargs):
     """
     Remove a favorite from the user's favorites.
@@ -741,7 +752,7 @@ def remove_user_favorite(username, favorite_type, **kwargs):
 
 
 @user_api.route("/favorites/<username>/", methods=["POST"])
-@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(audit=False, require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_favorites(username, **kwargs):
     """
     Sets the user's Favorites
@@ -795,7 +806,7 @@ def set_user_favorites(username, **kwargs):
 
 
 @user_api.route("/list/", methods=["GET"])
-@api_login(require_role=[ROLES.administration], audit=False)
+@api_login(require_role=[ROLES.administration], audit=False, count_toward_quota=False)
 def list_users(**_):
     """
     List all users of the system.
@@ -845,7 +856,7 @@ def list_users(**_):
 
 
 @user_api.route("/settings/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_settings(username, **kwargs):
     """
     Load the user's settings.
@@ -886,7 +897,7 @@ def get_user_settings(username, **kwargs):
 
 
 @user_api.route("/settings/<username>/", methods=["POST"])
-@api_login(require_role=[ROLES.self_manage, ROLES.administration])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
 def set_user_settings(username, **kwargs):
     """
     Save the user's settings.
@@ -942,7 +953,7 @@ def set_user_settings(username, **kwargs):
 ######################################################
 
 @user_api.route("/submission_params/<username>/", methods=["GET"])
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_user_submission_params(username, **kwargs):
     """
     Load the user's default submission params that should be passed to the submit API.
@@ -992,7 +1003,7 @@ def get_user_submission_params(username, **kwargs):
 ######################################################
 
 @user_api.route("/tos/<username>/", methods=["GET"])
-@api_login(require_role=[ROLES.self_manage])
+@api_login(require_role=[ROLES.self_manage], count_toward_quota=False)
 def agree_with_tos(username, **kwargs):
     """
     Specified user send agreement to Terms of Service
@@ -1037,3 +1048,42 @@ def agree_with_tos(username, **kwargs):
         STORAGE.user.save(username, user)
 
         return make_api_response({"success": True})
+
+
+######################################################
+# Quotas
+######################################################
+
+@user_api.route("/quotas/<username>/", methods=["GET"])
+@api_login(count_toward_quota=False)
+def get_remaining_quotas(username, **kwargs):
+    """
+    Get the remaining quotas for the current user
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "daily_submission": 100,
+     "daily_api": 10000
+    }
+    """
+    user = kwargs['user']
+
+    if username != user['uname']:
+        if ROLES.administration not in user['roles']:
+            raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
+        user = STORAGE.user.get(username, as_obj=False)
+        user = get_default_user_quotas(user)
+
+    return make_api_response({
+        'daily_api': max(user['api_daily_quota'] - DAILY_QUOTA_TRACKER.get_api(username), 0),
+        'daily_submission': max(user['submission_daily_quota'] - DAILY_QUOTA_TRACKER.get_submission(username), 0)
+    })
