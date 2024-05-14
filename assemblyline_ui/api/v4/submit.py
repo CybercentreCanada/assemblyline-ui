@@ -16,7 +16,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
-    CLASSIFICATION as Classification, IDENTIFY, metadata_validator
+    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, SUBMIT_METADATA_SCHEME
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS
@@ -379,8 +379,7 @@ def submit(**kwargs):
 
         try:
             # Validate the metadata (use validation scheme if we have one configured for submissions)
-            metadata_error = metadata_validator.check_metadata(metadata,
-                                                               validation_scheme=config.submission.metadata.submit)
+            metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=SUBMIT_METADATA_SCHEME)
             if metadata_error:
                 return make_api_response({}, err=metadata_error[1], status_code=400)
 

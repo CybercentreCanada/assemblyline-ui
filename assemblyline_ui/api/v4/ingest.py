@@ -18,7 +18,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
-    STORAGE, config, FILESTORE, metadata_validator
+    STORAGE, config, FILESTORE, metadata_validator, INGEST_METADATA_SCHEMES
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS
@@ -400,7 +400,7 @@ def ingest_single_file(**kwargs):
 
         # Validate the metadata (use validation scheme if we have one configured for the ingest_type)
         metadata_error = metadata_validator.check_metadata(metadata,
-                                                           validation_scheme=config.submission.metadata.ingest.get(s_params['type']))
+                                                           validation_scheme=INGEST_METADATA_SCHEMES.get(s_params['type']))
         if metadata_error:
             return make_api_response({}, err=metadata_error[1], status_code=400)
 
