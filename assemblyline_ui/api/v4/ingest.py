@@ -376,8 +376,9 @@ def ingest_single_file(**kwargs):
         if 'ts' not in metadata:
             metadata['ts'] = now_as_iso()
 
-        # Validate the metadata
-        metadata_error = metadata_validator.check_metadata(metadata)
+        # Validate the metadata (use validation scheme if we have one configured for the ingest_type)
+        metadata_error = metadata_validator.check_metadata(metadata,
+                                                           validation_scheme=config.submission.metadata.ingest.get(s_params['type']))
         if metadata_error:
             return make_api_response({}, err=metadata_error[1], status_code=400)
 
