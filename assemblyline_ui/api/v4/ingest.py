@@ -4,14 +4,12 @@ import io
 import json
 import os
 import shutil
-import tempfile
 
 from flask import request
 
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import flatten
-from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
@@ -22,8 +20,9 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, FETCH_METHODS
-from assemblyline_ui.helper.user import load_user_settings
+from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
+    FETCH_METHODS
+from assemblyline_ui.helper.user import check_daily_submission_quota, load_user_settings
 
 
 SUB_API = 'ingest'
@@ -35,6 +34,7 @@ ingest = NamedQueue(
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
+
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
@@ -181,6 +181,12 @@ def ingest_single_file(**kwargs):
     { "ingest_id": <ID OF THE INGESTED FILE> }
     """
     user = kwargs['user']
+
+    # Check daily submission quota
+    quota_error = check_daily_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
     extracted_path = original_file = None
     string_type = None
@@ -207,10 +213,13 @@ def ingest_single_file(**kwargs):
             hash = string_value
             if string_type == "url":
                 string_value = refang_url(string_value)
-            if binary:
-                hash = safe_str(hashlib.sha256(binary).hexdigest())
-                binary = io.BytesIO(binary)
-            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+                name = string_value
+            else:
+                hash = string_value
+                if binary:
+                    hash = safe_str(hashlib.sha256(binary).hexdigest())
+                    binary = io.BytesIO(binary)
+                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -237,8 +246,13 @@ def ingest_single_file(**kwargs):
         do_upload = True
         al_meta = {}
 
-        # Load default user params
-        s_params = ui_to_submission_params(load_user_settings(user))
+        user_settings = load_user_settings(user)
+
+        # Grab the user's `default_external_sources` from their settings as the default
+        default_external_sources = user_settings.pop('default_external_sources', [])
+
+        # Load default user params from user settings
+        s_params = ui_to_submission_params(user_settings)
 
         # Reset dangerous user settings to safe values
         s_params.update({
@@ -253,6 +267,9 @@ def ingest_single_file(**kwargs):
         # Apply provided params
         s_params.update(data.get("params", {}))
 
+        # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
+        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
+
         metadata = flatten(data.get("metadata", {}))
         found = False
         fileinfo = None
@@ -260,9 +277,11 @@ def ingest_single_file(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
+                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                                 default_external_sources)
                     if not found:
-                        raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
+                        raise FileNotFoundError(
+                            f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)
                 except FileNotFoundError as e:
@@ -277,14 +296,17 @@ def ingest_single_file(**kwargs):
 
         # Determine where the file exists and whether or not we need to re-upload to hot storage
         if found and string_type != "url":
-            if FILESTORE.exists(fileinfo['sha256']):
+            if not fileinfo:
+                # File was downloaded from an external source but wasn't known to the system
+                do_upload = True
+            elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
                 # File is in storage and the DB no need to upload anymore
                 do_upload = False
             elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
                 # File is only in archivestorage so I'll still need to upload it to the hot storage
                 do_upload = True
             else:
-                # The file doesn't exist in the system, so it was fetched
+                # Corner case: If we do know about the file but it doesn't exist in our filestores
                 do_upload = True
 
         if do_upload and os.path.getsize(out_file) == 0:
@@ -386,6 +408,7 @@ def ingest_single_file(**kwargs):
         if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
             default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
         s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
+
         # Create submission object
         try:
             submission_obj = Submission({

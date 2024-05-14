@@ -6,6 +6,7 @@ import shutil
 import socket
 import tempfile
 
+from typing import List
 from urllib.parse import urlparse
 
 from assemblyline.common.file import make_uri_file
@@ -43,7 +44,8 @@ class ForbiddenLocation(Exception):
     pass
 
 
-def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str):
+def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
+               default_external_sources: List[str]):
     sha256 = None
     fileinfo = None
     # If the method is by SHA256 hash, check to see if we already have that file
@@ -96,7 +98,6 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
         # File doesn't exist in our system, therefore it has to be retrieved
 
         # Check if external submit is allowed
-        default_external_sources = s_params.pop('default_external_sources', [])
         if method == "url":
             if not config.ui.allow_url_submissions:
                 raise PermissionError("URL submissions are disabled in this system")

@@ -9,7 +9,6 @@ import tempfile
 from flask import request
 
 from assemblyline.common.dict_utils import flatten
-from assemblyline.common.file import make_uri_file
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -19,7 +18,8 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
     CLASSIFICATION as Classification, IDENTIFY, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, FETCH_METHODS
+from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
+    FETCH_METHODS
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -302,13 +302,16 @@ def submit(**kwargs):
                     string_type, string_value = method, data[method]
                     break
 
-            hash = string_value
             if string_type == "url":
                 string_value = refang_url(string_value)
-            if binary:
-                hash = safe_str(hashlib.sha256(binary).hexdigest())
-                binary = io.BytesIO(binary)
-            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+                name = string_value
+            else:
+                hash = string_value
+                if binary:
+                    hash = safe_str(hashlib.sha256(binary).hexdigest())
+                    binary = io.BytesIO(binary)
+                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+
         else:
             return make_api_response({}, "Invalid content type", 400)
 
@@ -318,13 +321,15 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
-        # Create task object
-        if "ui_params" in data:
-            s_params = ui_to_submission_params(data['ui_params'])
-        else:
-            s_params = ui_to_submission_params(load_user_settings(user))
+        # Load in the user's settings in case it wasn't provided from the UI
+        # Ensure the `default_external_sources` are popped before converting UI params to submission params
+        user_settings = data['ui_params'] if "ui_params" in data else load_user_settings(user)
+        default_external_sources = user_settings.pop('default_external_sources', [])
 
+        # Create task object
+        s_params = ui_to_submission_params(user_settings)
         s_params.update(data.get("params", {}))
+        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
         if 'groups' not in s_params:
             s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
 
@@ -351,9 +356,11 @@ def submit(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file)
+                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                          default_external_sources)
                     if not found:
-                        raise FileNotFoundError(f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
+                        raise FileNotFoundError(
+                            f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
 
                 except FileTooBigException:
                     return make_api_response({}, "File too big to be scanned.", 400)

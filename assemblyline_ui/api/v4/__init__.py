@@ -12,7 +12,7 @@ apiv4._doc = "Version 4 Api Documentation"
 # API DOCUMENTATION
 # noinspection PyProtectedMember,PyBroadException
 @apiv4.route("/")
-@api_login(audit=False)
+@api_login(audit=False, count_toward_quota=False)
 def get_api_documentation(**kwargs):
     """
     Full API doc.
@@ -58,6 +58,7 @@ def get_api_documentation(**kwargs):
             func = current_app.view_functions[rule.endpoint]
             require_role = func.__dict__.get('require_role', [])
             allow_readonly = func.__dict__.get('allow_readonly', True)
+            count_towards_quota = func.__dict__.get('count_toward_quota', False)
 
             if config.ui.read_only and not allow_readonly:
                 continue
@@ -101,7 +102,8 @@ def get_api_documentation(**kwargs):
                     "function": f"api.v4.{rule.endpoint}",
                     "path": rule.rule, "ui_only": rule.rule.startswith("%sui/" % request.path),
                     "methods": methods, "description": description,
-                    "complete": "[INCOMPLETE]" not in description
+                    "complete": "[INCOMPLETE]" not in description,
+                    'count_towards_quota': count_towards_quota
                 })
 
     return make_api_response({"apis": api_list, "blueprints": api_blueprints})
