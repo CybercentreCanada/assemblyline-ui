@@ -3,6 +3,7 @@ from typing import Any, Optional
 from assemblyline_ui.config import AssemblylineDatastore, config
 from assemblyline_ui.helper.user import get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
+from assemblyline.odm.models.user import TYPES, ROLES
 
 
 def validate_saml_user(username: str,
@@ -66,11 +67,27 @@ def validate_saml_user(username: str,
 
 def _get_types(data: dict) -> list:
     valid_groups = config.auth.saml.attributes.group_type_mapping
-    user_groups = _get_attribute(data, config.auth.saml.attributes.groups_attribute) or []
-    return [valid_groups[key] for key in user_groups if key in valid_groups]
+    user_groups = _get_attribute(data, config.auth.saml.attributes.groups_attribute, False) or []
+    user_types = [valid_groups[key].lower() for key in user_groups if key in valid_groups]
+    return [
+        TYPES.lookup(user_type) 
+        for user_type in user_types
+        if TYPES.lookup(user_type) is not None
+    ]
 
-def _get_attribute(data: dict, key: str) -> Any:
-    return _normalize_saml_attribute(data.get(key))
+def _get_roles(data: dict) -> list:
+    user_roles = _get_attribute(data, config.auth.saml.attributes.roles_attribute, False) or []
+    return [
+        ROLES.lookup(user_role) 
+        for user_role in user_roles
+        if ROLES.lookup(user_role) is not None
+    ]
+
+def _get_attribute(data: dict, key: str, normalize: bool=True) -> Any:
+    attribute = data.get(key)
+    if normalize:
+        attribute = _normalize_saml_attribute(attribute)
+    return attribute
 
 def _normalize_saml_attribute(attribute: Any) -> Optional[str]:
     # SAML attributes all seem to come through as lists

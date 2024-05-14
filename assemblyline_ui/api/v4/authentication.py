@@ -477,6 +477,8 @@ def saml_sso(**_):
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
     host: str = config.ui.fqdn or request.host
     path: str = urlparse(request.referrer).path
+    if isinstance(path, bytes):
+        path = path.decode('utf-8')
     sso_built_url: str = auth.login(return_to=f"https://{host}{path}")
     flsk_session["AuthNRequestID"] = auth.get_last_request_id()
     return redirect(sso_built_url)
