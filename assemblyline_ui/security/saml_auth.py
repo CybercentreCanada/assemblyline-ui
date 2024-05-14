@@ -65,7 +65,7 @@ def validate_saml_user(username: str,
     return None
 
 def _get_types(data: dict) -> list:
-    valid_groups = config.auth.saml.attributes.group_role_mapping
+    valid_groups = config.auth.saml.attributes.group_type_mapping
     user_groups = _get_attribute(data, config.auth.saml.attributes.groups_attribute) or []
     return [valid_groups[key] for key in user_groups if key in valid_groups]
 

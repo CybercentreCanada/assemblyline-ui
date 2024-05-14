@@ -527,9 +527,9 @@ def saml_acs(**_):
         if "AuthNRequestID" in flsk_session:
             del flsk_session["AuthNRequestID"]
 
-        # if the 'User' type is defined in the group_role_mapping
+        # if the 'User' type is defined in the group_type_mapping
         # limit access to group members, else allow all athenticated users
-        valid_groups = config.auth.saml.attributes.group_role_mapping
+        valid_groups = config.auth.saml.attributes.group_type_mapping
         if 'user' in (value.lower() for value in valid_groups.values()):
             user_groups = auth.get_attribute(config.auth.saml.attributes.groups_attribute) or []
             if not any(group in valid_groups for group in user_groups):
