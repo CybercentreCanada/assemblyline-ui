@@ -209,8 +209,7 @@ def default_authenticator(auth, req, ses, storage):
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
         if not validated_user:
             validated_user, roles_limit = validate_oauth_token(oauth_token, oauth_provider)
-        # TODO - move this down to the 2FA group?
-        if not validated_user and saml_user_data:
+        if not validated_user:
             validated_user, roles_limit = validate_saml_user(uname, saml_user_data, storage)
 
         if validated_user:
