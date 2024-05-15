@@ -359,8 +359,6 @@ def login(**_):
     
     if config.auth.saml.enabled and saml_name_id and saml_user_data:
         user = saml_name_id
-        # TODO we need the equivalent of oath's `provider.authorize_redirect`
-        # to redirectly safely without CORS errors.
 
     if config.auth.oauth.enabled and oauth_provider and oauth_token is None:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')

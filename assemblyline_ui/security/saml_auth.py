@@ -10,60 +10,42 @@ def validate_saml_user(username: str,
                        saml_user_data: dict,
                        storage: AssemblylineDatastore) -> (str, list[str]):
 
-    if config.auth.saml.enabled and username:
-        if saml_user_data:
+    if config.auth.saml.enabled and username and saml_user_data:
+        cur_user = storage.user.get(username, as_obj=False) or {}
 
-            # TODO - not sure how we want to implement this, or if we even want
-            # to. If they can log into SAML would we ever want to deny someone
-            # access?
-            # if not saml_user_data['access']:
-            #     raise AuthenticationException("This user is not allowed access to the system")
+        # Make sure the user exists in AL and is in sync
+        if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
+            # Generate user data from SAML
+            email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
+            if email is not None:
+                email = email.lower()
+            name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
 
-            cur_user = storage.user.get(username, as_obj=False) or {}
+            data = dict(
+                uname=username,
+                name=name,
+                email=email,
+                password="__NO_PASSWORD__"
+            )
 
-            # Make sure the user exists in AL and is in sync
-            if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
-                # Generate user data from SAML
-                email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
-                if email is not None:
-                    email = email.lower()
-                name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
+            # Get the user type and roles
+            if (user_types :=_get_types(saml_user_data)):
+                data['type'] = user_types
+            if (user_roles := _get_roles(saml_user_data)):
+                data['roles'] = user_roles
+            if (dn := _get_attribute(saml_user_data, "dn")):
+                data['dn'] = dn
+            # Get the dynamic classification info
+            if (u_classification := _get_attribute(saml_user_data, 'classification')):
+                data["classification"] = get_dynamic_classification(u_classification, data)
 
-                data = dict(
-                    uname=username,
-                    name=name,
-                    email=email,
-                    password="__NO_PASSWORD__"
-                )
+            # Save the updated user
+            cur_user.update(data)
+            storage.user.save(username, cur_user)
 
-                # Get the user type and roles
-                if (user_types :=_get_types(saml_user_data)):
-                    data['type'] = user_types
-                if (user_roles := _get_roles(saml_user_data)):
-                    data['roles'] = user_roles
-                if (dn := _get_attribute(saml_user_data, "dn")):
-                    data['dn'] = dn
-                # Get the dynamic classification info
-                if (u_classification := _get_attribute(saml_user_data, 'classification')):
-                    data["classification"] = get_dynamic_classification(u_classification, data)
-
-                # Save the updated user
-                cur_user.update(data)
-                storage.user.save(username, cur_user)
-
-            if cur_user:
-                # TODO - read roles from saml info?
-                return username, ["R", "W"]
-            else:
-                raise AuthenticationException("User auto-creation is disabled")
-
-        elif config.auth.internal.enabled:
-            # Fallback to internal auth
-            pass
-        else:
-            raise AuthenticationException("Bad SAML user data")
-
-    return None
+        if cur_user:
+            return username, ["R", "W"]
+    return None, None
 
 def _get_types(data: dict) -> list:
     valid_groups = config.auth.saml.attributes.group_type_mapping
