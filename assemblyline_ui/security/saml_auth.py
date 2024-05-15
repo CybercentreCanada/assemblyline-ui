@@ -37,10 +37,10 @@ def validate_saml_user(username: str,
                 )
 
                 # Get the user type and roles
-                if (type :=_get_types(saml_user_data)):
-                    data['type'] = type
-                if (roles := _get_attribute(saml_user_data, config.auth.saml.attributes.roles_attribute)):
-                    data['roles'] = roles
+                if (user_types :=_get_types(saml_user_data)):
+                    data['type'] = user_types
+                if (user_roles := _get_roles(saml_user_data)):
+                    data['roles'] = user_roles
                 if (dn := _get_attribute(saml_user_data, "dn")):
                     data['dn'] = dn
                 # Get the dynamic classification info
