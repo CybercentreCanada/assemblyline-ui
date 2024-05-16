@@ -356,7 +356,7 @@ def login(**_):
     oauth_token = data.get('oauth_token', None)
     saml_name_id = flsk_session.get('samlNameId', None)
     saml_user_data = flsk_session.get('samlUserdata', None)
-    
+
     if config.auth.saml.enabled and saml_name_id and saml_user_data:
         user = saml_name_id
 
@@ -534,17 +534,17 @@ def saml_acs(**_):
             user_groups = auth.get_attribute(config.auth.saml.attributes.groups_attribute) or []
             if not any(group in valid_groups for group in user_groups):
                 error_message = (f"User was not in one of the required groups: {valid_groups.keys()}. "
-                                f"User's groups: {user_groups}")
+                                 f"User's groups: {user_groups}")
                 return make_api_response({"err_code": 1}, err=error_message, status_code=401)
-        
+
         flsk_session["samlUserdata"] = auth.get_attributes()
         flsk_session["samlNameId"] = auth.get_nameid()
-        
+
         # These are additional attributes that others may require
-        #flsk_session["samlNameIdFormat"] = auth.get_nameid_format()
-        #flsk_session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
-        #flsk_session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
-        #flsk_session["samlSessionIndex"] = auth.get_session_index()
+        # flsk_session["samlNameIdFormat"] = auth.get_nameid_format()
+        # flsk_session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
+        # flsk_session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
+        # flsk_session["samlSessionIndex"] = auth.get_session_index()
 
         login()
 
