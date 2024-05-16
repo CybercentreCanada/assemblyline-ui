@@ -48,13 +48,14 @@ def validate_saml_user(username: str,
     return None, None
 
 def _get_types(data: dict) -> list:
+    valid_types = TYPES.keys()
     valid_groups = config.auth.saml.attributes.group_type_mapping
     user_groups = _get_attribute(data, config.auth.saml.attributes.groups_attribute, False) or []
     user_types = [valid_groups[key].lower() for key in user_groups if key in valid_groups]
     return [
-        TYPES.lookup(user_type) 
+        user_type
         for user_type in user_types
-        if TYPES.lookup(user_type) is not None
+        if user_type in valid_types
     ]
 
 def _get_roles(data: dict) -> list:
