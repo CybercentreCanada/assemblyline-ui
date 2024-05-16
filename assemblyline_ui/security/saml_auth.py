@@ -2,13 +2,10 @@ from typing import Any, Optional
 
 from assemblyline_ui.config import AssemblylineDatastore, config
 from assemblyline_ui.helper.user import get_dynamic_classification
-from assemblyline_ui.http_exceptions import AuthenticationException
-from assemblyline.odm.models.user import TYPES, ROLES
+from assemblyline.odm.models.user import TYPES, ROLES, load_roles
 
 
-def validate_saml_user(username: str,
-                       saml_user_data: dict,
-                       storage: AssemblylineDatastore) -> (str, list[str]):
+def validate_saml_user(username: str, saml_user_data: dict, storage: AssemblylineDatastore):
 
     if config.auth.saml.enabled and username and saml_user_data:
         cur_user = storage.user.get(username, as_obj=False) or {}
@@ -28,13 +25,18 @@ def validate_saml_user(username: str,
                 password="__NO_PASSWORD__"
             )
 
-            # Get the user type and roles
-            if (user_types :=_get_types(saml_user_data)):
+            # Get the user type from the SAML data
+            if (user_types := _get_types(saml_user_data)):
                 data['type'] = user_types
-            if (user_roles := _get_roles(saml_user_data)):
-                data['roles'] = user_roles
+
+            # Load in user roles or get the roles from the types
+            user_roles = _get_roles(saml_user_data) or None
+            data['roles'] = load_roles(data['type'], user_roles)
+
+            # Load in the user DN
             if (dn := _get_attribute(saml_user_data, "dn")):
                 data['dn'] = dn
+
             # Get the dynamic classification info
             if (u_classification := _get_attribute(saml_user_data, 'classification')):
                 data["classification"] = get_dynamic_classification(u_classification, data)
@@ -44,8 +46,10 @@ def validate_saml_user(username: str,
             storage.user.save(username, cur_user)
 
         if cur_user:
-            return username, ["R", "W"]
-    return None, None
+            return username
+
+    return None
+
 
 def _get_types(data: dict) -> list:
     valid_types = TYPES.keys()
@@ -58,19 +62,22 @@ def _get_types(data: dict) -> list:
         if user_type in valid_types
     ]
 
+
 def _get_roles(data: dict) -> list:
     user_roles = _get_attribute(data, config.auth.saml.attributes.roles_attribute, False) or []
     return [
-        ROLES.lookup(user_role) 
+        ROLES.lookup(user_role)
         for user_role in user_roles
         if ROLES.lookup(user_role) is not None
     ]
 
-def _get_attribute(data: dict, key: str, normalize: bool=True) -> Any:
+
+def _get_attribute(data: dict, key: str, normalize: bool = True) -> Any:
     attribute = data.get(key)
     if normalize:
         attribute = _normalize_saml_attribute(attribute)
     return attribute
+
 
 def _normalize_saml_attribute(attribute: Any) -> Optional[str]:
     # SAML attributes all seem to come through as lists
