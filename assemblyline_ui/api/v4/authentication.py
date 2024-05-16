@@ -1,4 +1,6 @@
+import base64
 import hashlib
+import json
 import jwt
 import pyqrcode
 import re
@@ -25,9 +27,9 @@ from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification, API_PRIV_MAP
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
+from assemblyline_ui.security.saml_auth import _get_attribute, _get_roles, _get_types
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from onelogin.saml2.utils import OneLogin_Saml2_Utils
 
 SCOPES = {
     'r': ["R"],
@@ -331,7 +333,10 @@ def login(**_):
      "password": <ENCRYPTED_PASSWORD>,
      "otp": <OTP_TOKEN>,
      "apikey": <ENCRYPTED_APIKEY>,
-     "webauthn_auth_resp": <RESPONSE_TO_CHALLENGE_FROM_WEBAUTHN>
+     "webauthn_auth_resp": <RESPONSE_TO_CHALLENGE_FROM_WEBAUTHN>,
+     "oauth_token_id": <ID OF THE OAUTH TOKEN>,
+     "oauth_token": <JWT TOKEN TO USE FOR AUTHENTICATION>
+     "saml_token_id": <ID OF THE SAML TOKEN>
     }
 
     Result example:
@@ -354,11 +359,7 @@ def login(**_):
     oauth_provider = data.get('oauth_provider', None)
     oauth_token_id = data.get('oauth_token_id', None)
     oauth_token = data.get('oauth_token', None)
-    saml_name_id = flsk_session.get('samlNameId', None)
-    saml_user_data = flsk_session.get('samlUserdata', None)
-
-    if config.auth.saml.enabled and saml_name_id and saml_user_data:
-        user = saml_name_id
+    saml_token_id = data.get('saml_token_id', None)
 
     if config.auth.oauth.enabled and oauth_provider and oauth_token is None:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -378,7 +379,7 @@ def login(**_):
        (user and apikey) or \
        (user and oauth_token_id) or \
         oauth_token or \
-       (user and saml_user_data):
+       (user and saml_token_id):
         auth = {
             'username': user,
             'password': password,
@@ -388,7 +389,7 @@ def login(**_):
             'oauth_token_id': oauth_token_id,
             'oauth_token': oauth_token,
             'oauth_provider': oauth_provider,
-            'saml_user_data': saml_user_data
+            'saml_token_id': saml_token_id
         }
 
         logged_in_uname = None
@@ -516,17 +517,19 @@ def saml_acs(**_):
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
-    request_id: str = flsk_session.get("AuthNRequestID")
+    request_id: str = flsk_session.pop("AuthNRequestID", None)
+
+    if not request_id:
+        # Could not found the request ID, this token was already used, redirect to the UI with the error
+        msg = "Invalid SAML token"
+        data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
     auth.process_response(request_id=request_id)
     errors: list = auth.get_errors()
 
     # If authentication failed, it'll be noted in `errors`
-    # TODO: redirect on failure? something else?
     if len(errors) == 0:
-        if "AuthNRequestID" in flsk_session:
-            del flsk_session["AuthNRequestID"]
-
         # if the 'User' type is defined in the group_type_mapping
         # limit access to group members, else allow all athenticated users
         valid_groups = config.auth.saml.attributes.group_type_mapping
@@ -537,40 +540,81 @@ def saml_acs(**_):
                                  f"User's groups: {user_groups}")
                 return make_api_response({"err_code": 1}, err=error_message, status_code=401)
 
-        flsk_session["samlUserdata"] = auth.get_attributes()
-        flsk_session["samlNameId"] = auth.get_nameid()
+        # Validate or create the user right away
+        username = auth.get_nameid()
+        saml_user_data = auth.get_attributes()
 
-        # These are additional attributes that others may require
-        # flsk_session["samlNameIdFormat"] = auth.get_nameid_format()
-        # flsk_session["samlNameIdNameQualifier"] = auth.get_nameid_nq()
-        # flsk_session["samlNameIdSPNameQualifier"] = auth.get_nameid_spnq()
-        # flsk_session["samlSessionIndex"] = auth.get_session_index()
+        # Get user if exists
+        cur_user = STORAGE.user.get(username, as_obj=False) or {}
 
-        login()
+        # Make sure the user exists in AL and is in sync
+        if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
+            # Generate user data from SAML
+            email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
+            if email is not None:
+                email = email.lower()
+            name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
 
-        self_url = OneLogin_Saml2_Utils.get_self_url(request_data)
+            data = dict(
+                uname=username,
+                name=name,
+                email=email,
+                password="__NO_PASSWORD__"
+            )
 
-        redirect_to: str = request.form.get("RelayState")
+            # Get the user type from the SAML data
+            data['type'] = _get_types(saml_user_data) or ['user']
 
-        if redirect_to and self_url != redirect_to:
-            # To avoid open redirect attacks, make sure we're being redirected to the same host
-            if is_same_host(request.host, redirect_to):
-                return redirect(auth.redirect_to(redirect_to))
-            else:
-                return make_api_response({"err_code": 1},
-                                         err="SAML ACS `RelayState` attempted to redirect to an unknown host",
-                                         status_code=401)
+            # Load in user roles or get the roles from the types
+            user_roles = _get_roles(saml_user_data) or None
+            data['roles'] = load_roles(data['type'], user_roles)
+
+            # Load in the user DN
+            if (dn := _get_attribute(saml_user_data, "dn")):
+                data['dn'] = dn
+
+            # Get the dynamic classification info
+            if (u_classification := _get_attribute(saml_user_data, 'classification')):
+                data["classification"] = get_dynamic_classification(u_classification, data)
+
+            # Save the updated user
+            cur_user.update(data)
+            STORAGE.user.save(username, cur_user)
+
         else:
-            return make_api_response({"err_code": 1},
-                                     err="SAML ACS request made without a `RelayState`",
-                                     status_code=401)
+            # User does not exists and auto_create is OFF, redirect to the UI with the error
+            msg = "User does not exists"
+            data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+            return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+
+        # Generating the Token the UI will use to login
+        saml_token_id = hashlib.sha256(request_id.encode("utf-8", errors='replace')).hexdigest()
+
+        if get_token_store(username).exist(saml_token_id):
+            # Token already exists, this may be a replay attack, redirect to the UI with the error
+            msg = "Invalid SAML token"
+            data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+            return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+
+        # Saving the ID of the valid session our token store
+        get_token_store(username).add(saml_token_id)
+
+        # Create the data blob to send to the UI
+        data = {
+            'username': username,
+            'email': cur_user['email'],
+            'saml_token_id': saml_token_id
+        }
+        data = base64.b64encode(json.dumps(data).encode('utf-8')).decode()
+
+        # Redirect to the UI with the response
+        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
     else:
+        # The user could not be validated properly, redirect to the UI with the errors
         errors = "\n".join([f" - {error}\n" for error in auth.get_errors()])
         LOGGER.error(f"SAML ACS request failed: {auth.get_last_error_reason()}\n{errors}")
-        return make_api_response({"err_code": 1,
-                                  "exception": auth.get_last_error_reason()},
-                                 err="An error occured while processing SAML ACS",
-                                 status_code=401)
+        data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
+        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
 
 @auth_api.route("/saml/slo/", methods=["GET"])
