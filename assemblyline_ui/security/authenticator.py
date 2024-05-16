@@ -9,6 +9,7 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.config import AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, KV_SESSION
 from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
+from assemblyline_ui.security.saml_auth import validate_saml_user
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser
 from assemblyline_ui.security.oauth_auth import validate_oauth_id, validate_oauth_token
@@ -189,6 +190,7 @@ def default_authenticator(auth, req, ses, storage):
     oauth_token = auth.get('oauth_token', None)
     oauth_provider = auth.get('oauth_provider', None)
 
+    saml_user_data = auth.get('saml_user_data', None)
     if not uname and not oauth_token:
         raise AuthenticationException('No user specified for authentication')
 
@@ -207,6 +209,9 @@ def default_authenticator(auth, req, ses, storage):
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
         if not validated_user:
             validated_user, roles_limit = validate_oauth_token(oauth_token, oauth_provider)
+        if not validated_user:
+            validated_user, roles_limit = validate_saml_user(uname, saml_user_data, storage)
+
         if validated_user:
             return validated_user, roles_limit
 
