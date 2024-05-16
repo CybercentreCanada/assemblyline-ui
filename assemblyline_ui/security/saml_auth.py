@@ -26,8 +26,7 @@ def validate_saml_user(username: str, saml_user_data: dict, storage: Assemblylin
             )
 
             # Get the user type from the SAML data
-            if (user_types := _get_types(saml_user_data)):
-                data['type'] = user_types
+            data['type'] = _get_types(saml_user_data) or ['user']
 
             # Load in user roles or get the roles from the types
             user_roles = _get_roles(saml_user_data) or None
