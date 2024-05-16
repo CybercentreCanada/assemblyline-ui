@@ -1,51 +1,17 @@
 from typing import Any, Optional
 
-from assemblyline_ui.config import AssemblylineDatastore, config
-from assemblyline_ui.helper.user import get_dynamic_classification
-from assemblyline.odm.models.user import TYPES, ROLES, load_roles
+from assemblyline_ui.config import config, get_token_store
+from assemblyline.odm.models.user import TYPES, ROLES
+from assemblyline_ui.http_exceptions import AuthenticationException
 
 
-def validate_saml_user(username: str, saml_user_data: dict, storage: AssemblylineDatastore):
-
-    if config.auth.saml.enabled and username and saml_user_data:
-        cur_user = storage.user.get(username, as_obj=False) or {}
-
-        # Make sure the user exists in AL and is in sync
-        if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
-            # Generate user data from SAML
-            email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
-            if email is not None:
-                email = email.lower()
-            name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
-
-            data = dict(
-                uname=username,
-                name=name,
-                email=email,
-                password="__NO_PASSWORD__"
-            )
-
-            # Get the user type from the SAML data
-            data['type'] = _get_types(saml_user_data) or ['user']
-
-            # Load in user roles or get the roles from the types
-            user_roles = _get_roles(saml_user_data) or None
-            data['roles'] = load_roles(data['type'], user_roles)
-
-            # Load in the user DN
-            if (dn := _get_attribute(saml_user_data, "dn")):
-                data['dn'] = dn
-
-            # Get the dynamic classification info
-            if (u_classification := _get_attribute(saml_user_data, 'classification')):
-                data["classification"] = get_dynamic_classification(u_classification, data)
-
-            # Save the updated user
-            cur_user.update(data)
-            storage.user.save(username, cur_user)
-
-        if cur_user:
+def validate_saml_user(username: str, saml_token_id: str):
+    # This function identifies the user via a saved saml_token_id in redis
+    if config.auth.oauth.enabled and saml_token_id:
+        if get_token_store(username).exist(saml_token_id):
             return username
+
+        raise AuthenticationException("Invalid token")
 
     return None
 
