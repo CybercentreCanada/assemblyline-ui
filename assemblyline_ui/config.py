@@ -71,7 +71,7 @@ REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 
 
 def get_token_store(key):
-    return ExpiringSet(f"oauth_token_{key}", host=redis, ttl=60 * 2)
+    return ExpiringSet(f"auth_token_{key}", host=redis, ttl=60 * 2)
 
 
 def get_reset_queue(key):
