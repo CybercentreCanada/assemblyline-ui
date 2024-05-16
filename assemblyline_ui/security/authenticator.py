@@ -189,8 +189,8 @@ def default_authenticator(auth, req, ses, storage):
     oauth_token_id = auth.get('oauth_token_id', None)
     oauth_token = auth.get('oauth_token', None)
     oauth_provider = auth.get('oauth_provider', None)
-
     saml_user_data = auth.get('saml_user_data', None)
+
     if not uname and not oauth_token:
         raise AuthenticationException('No user specified for authentication')
 
@@ -209,14 +209,14 @@ def default_authenticator(auth, req, ses, storage):
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
         if not validated_user:
             validated_user, roles_limit = validate_oauth_token(oauth_token, oauth_provider)
-        if not validated_user:
-            validated_user, roles_limit = validate_saml_user(uname, saml_user_data, storage)
 
         if validated_user:
             return validated_user, roles_limit
 
         # Following steps will go through the 2FA process
         validated_user = validate_oauth_id(uname, oauth_token_id)
+        if not validated_user:
+            validated_user = validate_saml_user(uname, saml_user_data, storage)
         if not validated_user:
             validated_user = validate_ldapuser(uname, password, storage)
         if not validated_user:
