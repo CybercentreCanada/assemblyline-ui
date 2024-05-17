@@ -46,6 +46,7 @@ setup(
         'pyqrcode',
         'markdown',
         'python-ldap',
+        'python3-saml',
         'authlib<1.0.0',
         'fido2<1.0.0',
         'PyJWT',

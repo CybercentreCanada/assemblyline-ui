@@ -1,4 +1,6 @@
+import base64
 import hashlib
+import json
 import jwt
 import pyqrcode
 import re
@@ -8,6 +10,7 @@ from authlib.integrations.base_client import OAuthError
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from io import BytesIO
+from typing import Dict, Any
 from urllib.parse import urlparse
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
@@ -24,7 +27,9 @@ from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification, API_PRIV_MAP
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
+from assemblyline_ui.security.saml_auth import _get_attribute, _get_roles, _get_types
 
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
 
 SCOPES = {
     'r': ["R"],
@@ -328,7 +333,10 @@ def login(**_):
      "password": <ENCRYPTED_PASSWORD>,
      "otp": <OTP_TOKEN>,
      "apikey": <ENCRYPTED_APIKEY>,
-     "webauthn_auth_resp": <RESPONSE_TO_CHALLENGE_FROM_WEBAUTHN>
+     "webauthn_auth_resp": <RESPONSE_TO_CHALLENGE_FROM_WEBAUTHN>,
+     "oauth_token_id": <ID OF THE OAUTH TOKEN>,
+     "oauth_token": <JWT TOKEN TO USE FOR AUTHENTICATION>
+     "saml_token_id": <ID OF THE SAML TOKEN>
     }
 
     Result example:
@@ -351,6 +359,7 @@ def login(**_):
     oauth_provider = data.get('oauth_provider', None)
     oauth_token_id = data.get('oauth_token_id', None)
     oauth_token = data.get('oauth_token', None)
+    saml_token_id = data.get('saml_token_id', None)
 
     if config.auth.oauth.enabled and oauth_provider and oauth_token is None:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -366,7 +375,11 @@ def login(**_):
     except Exception:
         raise AuthenticationException('Invalid OTP token')
 
-    if (user and password) or (user and apikey) or (user and oauth_token_id) or oauth_token:
+    if (user and password) or \
+       (user and apikey) or \
+       (user and oauth_token_id) or \
+        oauth_token or \
+       (user and saml_token_id):
         auth = {
             'username': user,
             'password': password,
@@ -375,7 +388,8 @@ def login(**_):
             'apikey': apikey,
             'oauth_token_id': oauth_token_id,
             'oauth_token': oauth_token,
-            'oauth_provider': oauth_provider
+            'oauth_provider': oauth_provider,
+            'saml_token_id': saml_token_id
         }
 
         logged_in_uname = None
@@ -453,6 +467,158 @@ def logout(**_):
         return res
     except ValueError:
         return make_api_response("", err="No user logged in?", status_code=400)
+
+
+@auth_api.route("/saml/sso/", methods=["GET"])
+def saml_sso(**_):
+    """
+    SAML Single Sign-On method, sets up SSO and redirect the user to the SAML server
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <REDIRECT TO SAML AUTH SERVER>
+    """
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
+    auth: OneLogin_Saml2_Auth = _make_saml_auth()
+    host: str = config.ui.fqdn or request.host
+    path: str = urlparse(request.referrer).path
+    if isinstance(path, bytes):
+        path = path.decode('utf-8')
+    sso_built_url: str = auth.login(return_to=f"https://{host}{path}")
+    flsk_session["AuthNRequestID"] = auth.get_last_request_id()
+    return redirect(sso_built_url)
+
+
+@auth_api.route("/saml/acs/", methods=["GET", "POST"])
+def saml_acs(**_):
+    '''
+    SAML Assertion Consumer Service (ACS). This is the endpoint the SAML server will redirect to
+    with the authentication token. This endpoint will validate the token and create or link to
+    the associated user. And will then redirect the user to the login page.
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <REDIRECT TO AL's LOGIN PAGE>
+    '''
+    if not config.auth.saml.enabled:
+        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
+    request_data: Dict[str, Any] = _prepare_flask_request(request)
+    auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
+    request_id: str = flsk_session.pop("AuthNRequestID", None)
+
+    if not request_id:
+        # Could not found the request ID, this token was already used, redirect to the UI with the error
+        msg = "Invalid SAML token"
+        data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+
+    auth.process_response(request_id=request_id)
+    errors: list = auth.get_errors()
+
+    # If authentication failed, it'll be noted in `errors`
+    if len(errors) == 0:
+        # if the 'User' type is defined in the group_type_mapping
+        # limit access to group members, else allow all athenticated users
+        valid_groups = config.auth.saml.attributes.group_type_mapping
+        if 'user' in (value.lower() for value in valid_groups.values()):
+            user_groups = auth.get_attribute(config.auth.saml.attributes.groups_attribute) or []
+            if not any(group in valid_groups for group in user_groups):
+                error_message = (f"User was not in one of the required groups: {valid_groups.keys()}. "
+                                 f"User's groups: {user_groups}")
+                return make_api_response({"err_code": 1}, err=error_message, status_code=401)
+
+        # Validate or create the user right away
+        username = auth.get_nameid()
+        saml_user_data = auth.get_attributes()
+
+        # Get user if exists
+        cur_user = STORAGE.user.get(username, as_obj=False) or {}
+
+        # Make sure the user exists in AL and is in sync
+        if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
+            # Generate user data from SAML
+            email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
+            if email is not None:
+                email = email.lower()
+            name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
+
+            data = dict(
+                uname=username,
+                name=name,
+                email=email,
+                password="__NO_PASSWORD__"
+            )
+
+            # Get the user type from the SAML data
+            data['type'] = _get_types(saml_user_data) or ['user']
+
+            # Load in user roles or get the roles from the types
+            user_roles = _get_roles(saml_user_data) or None
+            data['roles'] = load_roles(data['type'], user_roles)
+
+            # Load in the user DN
+            if (dn := _get_attribute(saml_user_data, "dn")):
+                data['dn'] = dn
+
+            # Get the dynamic classification info
+            if (u_classification := _get_attribute(saml_user_data, 'classification')):
+                data["classification"] = get_dynamic_classification(u_classification, data)
+
+            # Save the updated user
+            cur_user.update(data)
+            STORAGE.user.save(username, cur_user)
+
+        else:
+            # User does not exists and auto_create is OFF, redirect to the UI with the error
+            msg = "User does not exists"
+            data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+            return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+
+        # Generating the Token the UI will use to login
+        saml_token_id = hashlib.sha256(request_id.encode("utf-8", errors='replace')).hexdigest()
+
+        if get_token_store(username).exist(saml_token_id):
+            # Token already exists, this may be a replay attack, redirect to the UI with the error
+            msg = "Invalid SAML token"
+            data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+            return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+
+        # Saving the ID of the valid session our token store
+        get_token_store(username).add(saml_token_id)
+
+        # Create the data blob to send to the UI
+        data = {
+            'username': username,
+            'email': cur_user['email'],
+            'saml_token_id': saml_token_id
+        }
+        data = base64.b64encode(json.dumps(data).encode('utf-8')).decode()
+
+        # Redirect to the UI with the response
+        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+    else:
+        # The user could not be validated properly, redirect to the UI with the errors
+        errors = "\n".join([f" - {error}\n" for error in auth.get_errors()])
+        LOGGER.error(f"SAML ACS request failed: {auth.get_last_error_reason()}\n{errors}")
+        data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
+        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
 
 # noinspection PyBroadException
@@ -950,3 +1116,47 @@ def validate_otp(token, **kwargs):
     else:
         flsk_session['temp_otp_sk'] = secret_key
         return make_api_response({'success': False}, err="OTP token does not match secret key", status_code=400)
+
+
+def _prepare_flask_request(request) -> Dict[str, Any]:
+    # If server is behind proxys or balancers use the HTTP_X_FORWARDED fields
+    return {
+        # TODO - the https switching disabled because everything redirects to http under the hood. Possibly just a
+        # local misconfiguration issue, but it screws up the URL matching later on in `saml_process_assertion`.
+        "https": "on",  # if request.scheme == "https" else "off",
+        "http_host": request.host,
+        "script_name": request.path,
+        "get_data": request.args.copy(),
+        # lowercase_urlencoding if using ADFS as IdP, https://github.com/onelogin/python-saml/pull/144
+        "lowercase_urlencoding": config.auth.saml.lowercase_urlencoding,
+        "post_data": request.form.copy()
+    }
+
+
+def _make_saml_auth(request_data: Dict[str, Any] = None) -> OneLogin_Saml2_Auth:
+    request_data: Dict[str, Any] = request_data or _prepare_flask_request(request)
+    return OneLogin_Saml2_Auth(request_data, config.auth.saml.settings.as_camel_case())
+
+
+url_regex = re.compile(
+    r'^([a-z0-9\.\-]*)://'  # scheme is validated separately
+    r'((?:[A-Z0-9_](?:[A-Z0-9-_]{0,61}[A-Z0-9_])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+    r'(?:[A-Z0-9_](?:[A-Z0-9-_]{0,61}[A-Z0-9_]))|'  # single-label-domain
+    r'localhost|'  # localhost...
+    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # ...or ipv4
+    r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # ...or ipv6
+    r'(:\d+)?'  # optional port
+    r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+
+def is_same_host(url1: str, url2: str) -> bool:
+
+    def get_host(url: str):
+        match = re.match(url_regex, url1)
+        if match:
+            groups = match.groups()
+            if len(groups) > 0:
+                return groups[1]
+        return None
+
+    return get_host(url1) == get_host(url2)
