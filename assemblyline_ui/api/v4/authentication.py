@@ -7,7 +7,7 @@ import re
 
 from authlib.integrations.requests_client import OAuth2Session
 from authlib.integrations.base_client import OAuthError
-from flask import current_app, redirect, request, make_response
+from flask import current_app, redirect, request
 from flask import session as flsk_session
 from io import BytesIO
 from typing import Dict, Any
@@ -471,6 +471,21 @@ def logout(**_):
 
 @auth_api.route("/saml/sso/", methods=["GET"])
 def saml_sso(**_):
+    """
+    SAML Single Sign-On method, sets up SSO and redirect the user to the SAML server
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <REDIRECT TO SAML AUTH SERVER>
+    """
     if not config.auth.saml.enabled:
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     auth: OneLogin_Saml2_Auth = _make_saml_auth()
@@ -483,35 +498,24 @@ def saml_sso(**_):
     return redirect(sso_built_url)
 
 
-@auth_api.route("/saml/metadata/", methods=["GET"])
-def saml_metadata(**_):
-    if not config.auth.saml.enabled:
-        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
-    """Render the metadata of this service."""
-    request_data: Dict[str, Any] = _prepare_flask_request(request)
-    auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
-    settings = auth.get_settings()
-    metadata = settings.get_sp_metadata()
-    errors = settings.validate_metadata(metadata)
-
-    if len(errors) == 0:
-        resp = make_response(metadata, 200)
-        resp.headers['Content-Type'] = 'text/xml'
-    else:
-        resp = make_response(', '.join(errors), 500)
-    return resp
-
-
 @auth_api.route("/saml/acs/", methods=["GET", "POST"])
 def saml_acs(**_):
     '''
-    A SAML Assertion Consumer Service (ACS) is a web service endpoint that is
-    used in the SAML authentication and authorization protocol. The ACS is a
-    service provided by the service provider (SP) that receives and processes
-    SAML assertions from the identity provider (IdP). The ACS is responsible
-    for extracting the relevant information from the SAML assertion, such as
-    the user's attributes or the authentication event, and using that
-    information to grant the user access to the protected resource.
+    SAML Assertion Consumer Service (ACS). This is the endpoint the SAML server will redirect to
+    with the authentication token. This endpoint will validate the token and create or link to
+    the associated user. And will then redirect the user to the login page.
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    <REDIRECT TO AL's LOGIN PAGE>
     '''
     if not config.auth.saml.enabled:
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
@@ -615,43 +619,6 @@ def saml_acs(**_):
         LOGGER.error(f"SAML ACS request failed: {auth.get_last_error_reason()}\n{errors}")
         data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
-
-
-@auth_api.route("/saml/slo/", methods=["GET"])
-def saml_logout(**_):
-    if not config.auth.saml.enabled:
-        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
-    auth: OneLogin_Saml2_Auth = _make_saml_auth()
-    return redirect(auth.logout(name_id=flsk_session.get('samlNameId'),
-                                session_index=flsk_session.get('samlSessionIndex'),
-                                nq=flsk_session.get('samlNameIdNameQualifier'),
-                                name_id_format=flsk_session.get('samlNameIdFormat'),
-                                spnq=flsk_session.get('samlNameIdSPNameQualifier')))
-
-
-@auth_api.route("/saml/sls/", methods=["GET"])
-def saml_single_logout(**_):
-    if not config.auth.saml.enabled:
-        return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
-    auth: OneLogin_Saml2_Auth = _make_saml_auth()
-    request_id: str = flsk_session.get('LogoutRequestID')
-
-    url: str = auth.process_slo(request_id=request_id,
-                                delete_session_cb=lambda: flsk_session.clear())
-
-    errors: list = auth.get_errors()
-
-    if len(errors) == 0:
-        # To avoid open redirect attacks, make sure we're being redirected to the same host
-        if url and is_same_host(request.host, url):
-            return redirect(url)
-    else:
-        errors = "\n".join([f" - {error}\n" for error in auth.get_errors()])
-        LOGGER.error(f"SAML SLO request failed: {auth.get_last_error_reason()}\n{errors}")
-        return make_api_response({"err_code": 1,
-                                  "exception": auth.get_last_error_reason()},
-                                 err="An error occured while processing SAML SLO",
-                                 status_code=401)
 
 
 # noinspection PyBroadException
