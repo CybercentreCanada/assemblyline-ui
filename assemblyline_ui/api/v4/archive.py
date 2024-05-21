@@ -75,7 +75,7 @@ def archive_submission(sid, **kwargs):
 
     # Validate the full set of metadata (use validation scheme if we have one configured for archiving)
     metadata_error = metadata_validator.check_metadata(
-        full_metadata, validation_scheme=config.submission.metadata.archive)
+        full_metadata, validation_scheme=config.submission.metadata.archive, skip_elastic_fields=True)
     if metadata_error:
         return make_api_response({}, err=metadata_error[1], status_code=400)
 
