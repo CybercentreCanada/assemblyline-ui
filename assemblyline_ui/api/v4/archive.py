@@ -7,9 +7,8 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline_core.submission_client import SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVE_MANAGER
-from assemblyline_ui.config import CLASSIFICATION as Classification
-from assemblyline_ui.config import LOGGER, STORAGE, config
+from assemblyline_ui.config import ARCHIVE_MANAGER, CLASSIFICATION as Classification, LOGGER, STORAGE, config, \
+    metadata_validator
 from flask import request
 
 SUB_API = 'archive'
@@ -65,6 +64,13 @@ def archive_submission(sid, **kwargs):
 
     try:
         metadata = request.json
+
+        # Validate the metadata (use validation scheme if we have one configured for submissions)
+        metadata_error = metadata_validator.check_metadata(
+            metadata, validation_scheme=config.submission.metadata.archive)
+        if metadata_error:
+            return make_api_response({}, err=metadata_error[1], status_code=400)
+
     except Exception as e:
         LOGGER.warning(f"Invalid metadata [{e}]")
         metadata = None
