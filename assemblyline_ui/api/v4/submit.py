@@ -384,6 +384,13 @@ def submit(**kwargs):
             if metadata_error:
                 return make_api_response({}, err=metadata_error[1], status_code=400)
 
+            if s_params.get('auto_archive', False):
+                # If the submission was set to auto-archive we need to validate the archive metadata fields also
+                metadata_error = metadata_validator.check_metadata(
+                    metadata, validation_scheme=config.submission.metadata.archive)
+                if metadata_error:
+                    return make_api_response({}, err=metadata_error[1], status_code=400)
+
             submission_obj = Submission({
                 "files": [],
                 "metadata": metadata,
