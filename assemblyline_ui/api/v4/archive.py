@@ -71,7 +71,7 @@ def archive_submission(sid, **kwargs):
     # Generate a full set of metadata that includes the current set of metadata and the added metadata.
     full_metadata = {}
     full_metadata.update(submission['metadata'])
-    full_metadata.update({k: v for k, v in metadata if k not in full_metadata})
+    full_metadata.update({k: v for k, v in metadata.items() if k not in full_metadata})
 
     # Validate the full set of metadata (use validation scheme if we have one configured for archiving)
     metadata_error = metadata_validator.check_metadata(
