@@ -64,16 +64,20 @@ def archive_submission(sid, **kwargs):
 
     try:
         metadata = request.json
-
-        # Validate the metadata (use validation scheme if we have one configured for submissions)
-        metadata_error = metadata_validator.check_metadata(
-            metadata, validation_scheme=config.submission.metadata.archive)
-        if metadata_error:
-            return make_api_response({}, err=metadata_error[1], status_code=400)
-
     except Exception as e:
         LOGGER.warning(f"Invalid metadata [{e}]")
-        metadata = None
+        metadata = {}
+
+    # Generate a full set of metadata that includes the current set of metadata and the added metadata.
+    full_metadata = {}
+    full_metadata.update(submission['metadata'])
+    full_metadata.update({k: v for k, v in metadata if k not in full_metadata})
+
+    # Validate the full set of metadata (use validation scheme if we have one configured for archiving)
+    metadata_error = metadata_validator.check_metadata(
+        full_metadata, validation_scheme=config.submission.metadata.archive)
+    if metadata_error:
+        return make_api_response({}, err=metadata_error[1], status_code=400)
 
     try:
         archive_action = ARCHIVE_MANAGER.archive_submission(
