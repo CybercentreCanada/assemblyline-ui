@@ -61,9 +61,6 @@ for section in ['submit', 'archive']:
             m_cfg['validator_params']['validation_regex'] = field_cls.validation_regex.pattern
         UI_METADATA_VALIDATION[section][m_name] = m_cfg
 
-SUBMIT_METADATA_SCHEME = config.submission.metadata.submit
-INGEST_METADATA_SCHEMES = config.submission.metadata.ingest
-
 # TRACKERS
 QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
                                  redis=redis_persistent)
