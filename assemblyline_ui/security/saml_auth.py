@@ -7,6 +7,9 @@ from assemblyline_ui.http_exceptions import AuthenticationException
 
 def validate_saml_user(username: str, saml_token_id: str):
     # This function identifies the user via a saved saml_token_id in redis
+    if not config.auth.saml.enabled and saml_token_id:
+        raise AuthenticationException("SAML login is disabled")
+
     if config.auth.saml.enabled and saml_token_id:
         if get_token_store(username, 'saml').exist(saml_token_id):
             return username
