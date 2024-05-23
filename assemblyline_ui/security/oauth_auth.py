@@ -28,6 +28,9 @@ def get_jwks_keys(url):
 @elasticapm.capture_span(span_type='authentication')
 def validate_oauth_id(username, oauth_token_id):
     # This function identifies the user via a saved oauth_token_id in redis
+    if not config.auth.oauth.enabled and oauth_token_id:
+        raise AuthenticationException("oAuth login is disabled")
+
     if config.auth.oauth.enabled and oauth_token_id:
         if get_token_store(username, 'oauth').exist(oauth_token_id):
             return username
@@ -40,6 +43,9 @@ def validate_oauth_id(username, oauth_token_id):
 @elasticapm.capture_span(span_type='authentication')
 def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
     # This function identifies the user via an externally provided oauth token
+    if not config.auth.oauth.enabled and oauth_token and oauth_provider:
+        raise AuthenticationException("oAuth login is disabled")
+
     if config.auth.oauth.enabled and oauth_token and oauth_provider:
         oauth_provider_config = config.auth.oauth.providers.get(oauth_provider, None)
 
