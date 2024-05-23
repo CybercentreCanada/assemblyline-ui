@@ -82,8 +82,8 @@ REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
 REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 
 
-def get_token_store(key):
-    return ExpiringSet(f"auth_token_{key}", host=redis, ttl=60 * 2)
+def get_token_store(key, token_type):
+    return ExpiringSet(f"auth_token_{key}_{token_type}", host=redis, ttl=60 * 2)
 
 
 def get_reset_queue(key):

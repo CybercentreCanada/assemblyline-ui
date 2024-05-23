@@ -594,14 +594,14 @@ def saml_acs(**_):
         # Generating the Token the UI will use to login
         saml_token_id = hashlib.sha256(request_id.encode("utf-8", errors='replace')).hexdigest()
 
-        if get_token_store(username).exist(saml_token_id):
+        if get_token_store(username, 'saml').exist(saml_token_id):
             # Token already exists, this may be a replay attack, redirect to the UI with the error
             msg = "Invalid SAML token"
             data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
             return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
         # Saving the ID of the valid session our token store
-        get_token_store(username).add(saml_token_id)
+        get_token_store(username, 'saml').add(saml_token_id)
 
         # Create the data blob to send to the UI
         data = {
@@ -786,7 +786,7 @@ def oauth_validate(**_):
                         if avatar is None:
                             avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
                         oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
-                        get_token_store(username).add(oauth_token_id)
+                        get_token_store(username, 'oauth').add(oauth_token_id)
                     else:
                         return make_api_response({"err_code": 3},
                                                  err="User auto-creation is disabled",
