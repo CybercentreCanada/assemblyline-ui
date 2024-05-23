@@ -29,7 +29,7 @@ def get_jwks_keys(url):
 def validate_oauth_id(username, oauth_token_id):
     # This function identifies the user via a saved oauth_token_id in redis
     if config.auth.oauth.enabled and oauth_token_id:
-        if get_token_store(username).exist(oauth_token_id):
+        if get_token_store(username, 'oauth').exist(oauth_token_id):
             return username
 
         raise AuthenticationException("Invalid token")
