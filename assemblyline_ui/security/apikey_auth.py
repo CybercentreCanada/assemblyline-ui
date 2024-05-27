@@ -10,6 +10,9 @@ from assemblyline_ui.http_exceptions import AuthenticationException
 def validate_apikey(username, apikey, storage):
     # This function identifies the user via the internal API key functionality
     #   NOTE: It is not recommended to overload this function but you can still do it
+    if not config.auth.allow_apikeys and apikey:
+        raise AuthenticationException("APIKey login is disabled")
+
     if config.auth.allow_apikeys and apikey:
         user_data = storage.user.get(username)
         if user_data:
