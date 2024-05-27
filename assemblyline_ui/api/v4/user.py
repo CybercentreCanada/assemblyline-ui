@@ -170,14 +170,20 @@ def who_am_i(**kwargs):
             external_source_tags.setdefault(tname, []).append(source_name)
 
     # Create file sources map to pass to frontend for input validation
-    file_sources = {h_type: {"pattern": h_pattern, "sources": []} for h_type, h_pattern in HASH_PATTERN_MAP.items()}
+    file_sources = {h_type: {"pattern": h_pattern, "sources": [], 'auto_selected': []}
+                    for h_type, h_pattern in HASH_PATTERN_MAP.items()}
     for src in config.submission.file_sources:
         if CLASSIFICATION.is_accessible(kwargs['user']['classification'], src.classification):
             for hash_type in src.hash_types:
                 if hash_type not in file_sources.keys():
                     # This is a custom identifier type
-                    file_sources[hash_type] = {"pattern": src.hash_patterns[hash_type], "sources": []}
+                    file_sources[hash_type] = {
+                        "pattern": src.hash_patterns[hash_type],
+                        "sources": [],
+                        'auto_selected': []}
                 file_sources[hash_type]["sources"].append(src.name)
+                if src.auto_select:
+                    file_sources[hash_type]["auto_selected"].append(src.name)
 
     # Backwards-compat: Merge sha256_sources with file_sources
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
