@@ -14,7 +14,7 @@ from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification, \
-    IDENTIFY
+    IDENTIFY, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import submission_received
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
@@ -259,6 +259,7 @@ def start_ui_submission(ui_sid, **kwargs):
             # Submit to dispatcher
             try:
                 params = ui_to_submission_params(ui_params)
+                metadata = params.pop("metadata", {})
 
                 # Enforce maximum DTL
                 if config.submission.max_dtl > 0:
@@ -266,8 +267,22 @@ def start_ui_submission(ui_sid, **kwargs):
                         int(params['ttl']),
                         config.submission.max_dtl) if int(params['ttl']) else config.submission.max_dtl
 
+                # Validate the metadata (use validation scheme if we have one configured for submissions)
+                metadata_error = metadata_validator.check_metadata(
+                    metadata, validation_scheme=config.submission.metadata.submit)
+                if metadata_error:
+                    return make_api_response({}, err=metadata_error[1], status_code=400)
+
+                if params.get('auto_archive', False):
+                    # If the submission was set to auto-archive we need to validate the archive metadata fields also
+                    metadata_error = metadata_validator.check_metadata(
+                        metadata, validation_scheme=config.submission.metadata.archive, skip_elastic_fields=True)
+                    if metadata_error:
+                        return make_api_response({}, err=metadata_error[1], status_code=400)
+
                 submission_obj = Submission({
                     "files": [],
+                    "metadata": metadata,
                     "params": params
                 })
             except (ValueError, KeyError) as e:
