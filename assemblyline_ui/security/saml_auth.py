@@ -19,10 +19,10 @@ def validate_saml_user(username: str, saml_token_id: str):
     return None
 
 
-def _get_types(data: dict) -> list:
+def get_types(data: dict) -> list:
     valid_types = TYPES.keys()
     valid_groups = config.auth.saml.attributes.group_type_mapping
-    user_groups = _get_attribute(data, config.auth.saml.attributes.groups_attribute, False) or []
+    user_groups = get_attribute(data, config.auth.saml.attributes.groups_attribute, False) or []
     user_types = [valid_groups[key].lower() for key in user_groups if key in valid_groups]
     return [
         user_type
@@ -31,8 +31,8 @@ def _get_types(data: dict) -> list:
     ]
 
 
-def _get_roles(data: dict) -> list:
-    user_roles = _get_attribute(data, config.auth.saml.attributes.roles_attribute, False) or []
+def get_roles(data: dict) -> list:
+    user_roles = get_attribute(data, config.auth.saml.attributes.roles_attribute, False) or []
     return [
         ROLES.lookup(user_role)
         for user_role in user_roles
@@ -40,7 +40,7 @@ def _get_roles(data: dict) -> list:
     ]
 
 
-def _get_attribute(data: dict, key: str, normalize: bool = True) -> Any:
+def get_attribute(data: dict, key: str, normalize: bool = True) -> Any:
     attribute = data.get(key)
     if normalize:
         attribute = _normalize_saml_attribute(attribute)
