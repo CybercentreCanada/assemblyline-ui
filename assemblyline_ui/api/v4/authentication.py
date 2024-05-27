@@ -27,7 +27,7 @@ from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification, API_PRIV_MAP
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
-from assemblyline_ui.security.saml_auth import _get_attribute, _get_roles, _get_types
+from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 
@@ -554,10 +554,10 @@ def saml_acs(**_):
         # Make sure the user exists in AL and is in sync
         if (not cur_user and config.auth.saml.auto_create) or (cur_user and config.auth.saml.auto_sync):
             # Generate user data from SAML
-            email: Any = _get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
+            email: Any = get_attribute(saml_user_data, config.auth.saml.attributes.email_attribute)
             if email is not None:
                 email = email.lower()
-            name = _get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
+            name = get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
 
             data = dict(
                 uname=username,
@@ -567,18 +567,18 @@ def saml_acs(**_):
             )
 
             # Get the user type from the SAML data
-            data['type'] = _get_types(saml_user_data) or ['user']
+            data['type'] = get_types(saml_user_data) or ['user']
 
             # Load in user roles or get the roles from the types
-            user_roles = _get_roles(saml_user_data) or None
+            user_roles = get_roles(saml_user_data) or None
             data['roles'] = load_roles(data['type'], user_roles)
 
             # Load in the user DN
-            if (dn := _get_attribute(saml_user_data, "dn")):
+            if (dn := get_attribute(saml_user_data, "dn")):
                 data['dn'] = dn
 
             # Get the dynamic classification info
-            if (u_classification := _get_attribute(saml_user_data, 'classification')):
+            if (u_classification := get_attribute(saml_user_data, 'classification')):
                 data["classification"] = get_dynamic_classification(u_classification, data)
 
             # Save the updated user
