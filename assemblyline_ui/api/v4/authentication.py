@@ -1136,27 +1136,3 @@ def _prepare_flask_request(request) -> Dict[str, Any]:
 def _make_saml_auth(request_data: Dict[str, Any] = None) -> OneLogin_Saml2_Auth:
     request_data: Dict[str, Any] = request_data or _prepare_flask_request(request)
     return OneLogin_Saml2_Auth(request_data, config.auth.saml.settings.as_camel_case())
-
-
-url_regex = re.compile(
-    r'^([a-z0-9\.\-]*)://'  # scheme is validated separately
-    r'((?:[A-Z0-9_](?:[A-Z0-9-_]{0,61}[A-Z0-9_])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-    r'(?:[A-Z0-9_](?:[A-Z0-9-_]{0,61}[A-Z0-9_]))|'  # single-label-domain
-    r'localhost|'  # localhost...
-    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # ...or ipv4
-    r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # ...or ipv6
-    r'(:\d+)?'  # optional port
-    r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-
-
-def is_same_host(url1: str, url2: str) -> bool:
-
-    def get_host(url: str):
-        match = re.match(url_regex, url1)
-        if match:
-            groups = match.groups()
-            if len(groups) > 0:
-                return groups[1]
-        return None
-
-    return get_host(url1) == get_host(url2)
