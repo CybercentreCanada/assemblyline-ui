@@ -545,8 +545,8 @@ def saml_acs(**_):
                 return make_api_response({"err_code": 1}, err=error_message, status_code=401)
 
         # Validate or create the user right away
-        username = auth.get_nameid()
         saml_user_data = auth.get_attributes()
+        username = get_attribute(saml_user_data, config.auth.saml.attributes.username_attribute) or auth.get_nameid()
 
         # Get user if exists
         cur_user = STORAGE.user.get(username, as_obj=False) or {}
