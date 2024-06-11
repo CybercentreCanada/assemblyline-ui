@@ -60,18 +60,12 @@ def proxy(server, path, **kwargs):
         url = f"{url}?{params}"
 
     # Forward to the request to the new URL
-    if request.method == "GET":
-        resp = requests.get(url, headers=headers, verify=srv_config.verify)
-    elif request.method == "DELETE":
-        resp = requests.delete(url, headers=headers, verify=srv_config.verify)
-    elif request.method == "HEAD":
-        resp = requests.head(url, headers=headers, verify=srv_config.verify)
-    elif request.method == "POST":
-        resp = requests.post(url, data=request.data, headers=headers, verify=srv_config.verify)
-    elif request.method == "PUT":
-        resp = requests.put(url, data=request.data, headers=headers, verify=srv_config.verify)
-    else:
-        abort(405, f"Method not allowed: {request.method}")
+    req_kwargs = {"headers": headers}
+    if not srv_config.verify:
+        req_kwargs['verify'] = False
+    if request.data:
+        req_kwargs['data'] = request.data
+    resp = requests.request(request.method, url, **req_kwargs)
 
     # Return the response as is
     return make_response(resp.content, resp.status_code)
