@@ -657,11 +657,19 @@ def oauth_validate(**_):
         if provider:
             # noinspection PyBroadException
             try:
+                # Load the oAuth provider config
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
-                if oauth_provider_config.app_provider:
+
+                # Validate the token
+                if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
+                else:
+                    token = provider.authorize_access_token()
 
+                # Setup alternate app provider if we need to fetch groups of user info by hand
+                if oauth_provider_config.app_provider and (
+                        oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
                     # Initialize the app_provider
                     app_provider = OAuth2Session(
                         oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
@@ -672,10 +680,9 @@ def oauth_validate(**_):
                         grant_type="client_credentials")
 
                 else:
-                    # Validate the token
-                    token = provider.authorize_access_token()
                     app_provider = None
 
+                # Create user
                 user_data = {}
 
                 # Add user_data info from received token
@@ -699,7 +706,7 @@ def oauth_validate(**_):
                     if resp.ok:
                         user_data.update(resp.json())
 
-                # Add group data if API is configured for it
+                # Add group data from app_provider endpoint
                 groups = []
                 if app_provider and oauth_provider_config.app_provider.group_get:
                     url = oauth_provider_config.app_provider.group_get
@@ -711,11 +718,13 @@ def oauth_validate(**_):
                     resp_grp = app_provider.get(url)
                     if resp_grp.ok:
                         groups = resp_grp.json()
+                # Add group data from group_get endpoint
                 elif oauth_provider_config.user_groups:
                     resp_grp = provider.get(oauth_provider_config.user_groups)
                     if resp_grp.ok:
                         groups = resp_grp.json()
 
+                # Parse received groups
                 if groups:
                     if oauth_provider_config.user_groups_data_field:
                         groups = groups[oauth_provider_config.user_groups_data_field]
@@ -787,10 +796,20 @@ def oauth_validate(**_):
                             avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
                         oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
                         get_token_store(username, 'oauth').add(oauth_token_id)
+
+                        # Return valid token
+                        return make_api_response({
+                            "avatar": avatar,
+                            "username": username,
+                            "oauth_token_id": oauth_token_id,
+                            "email_adr": email_adr
+                        })
                     else:
                         return make_api_response({"err_code": 3},
                                                  err="User auto-creation is disabled",
                                                  status_code=403)
+                else:
+                    return make_api_response({"err_code": 5}, err="Invalid oAuth token provided", status_code=401)
 
             except OAuthError as err:
                 return make_api_response({"err_code": 1}, err=str(err), status_code=401)
@@ -800,16 +819,8 @@ def oauth_validate(**_):
                 return make_api_response({"err_code": 1, "exception": str(err)},
                                          err="Unhandled exception occured while processing oAuth token",
                                          status_code=401)
-
-    if username is None:
+    else:
         return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)
-
-    return make_api_response({
-        "avatar": avatar,
-        "username": username,
-        "oauth_token_id": oauth_token_id,
-        "email_adr": email_adr
-    })
 
 
 # noinspection PyBroadException
