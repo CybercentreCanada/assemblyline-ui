@@ -678,11 +678,11 @@ def oauth_validate(**_):
                 # Validate the token
                 if oauth_provider_config.auto_no_secret:
                     workload_credential = WorkloadIdentityCredential(
-                        additionally_allowed_tenants=oauth_provider_config.client_tenents)
+                        additionally_allowed_tenants=oauth_provider_config.client_tenants)
 
                     token = workload_credential.get_token(
                             oauth_provider_config.client_scope
-                        , tenant_id=oauth_provider_config.client_tenents)
+                        , tenant_id=oauth_provider_config.client_tenants)
 
                 elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
