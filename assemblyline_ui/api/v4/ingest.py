@@ -22,7 +22,7 @@ from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classificatio
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS
-from assemblyline_ui.helper.user import check_daily_submission_quota, load_user_settings
+from assemblyline_ui.helper.user import check_async_submission_quota, load_user_settings
 
 
 SUB_API = 'ingest'
@@ -183,7 +183,7 @@ def ingest_single_file(**kwargs):
     user = kwargs['user']
 
     # Check daily submission quota
-    quota_error = check_daily_submission_quota(user)
+    quota_error = check_async_submission_quota(user)
     if quota_error:
         return make_api_response("", quota_error, 503)
 
