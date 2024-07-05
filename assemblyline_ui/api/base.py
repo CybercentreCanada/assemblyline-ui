@@ -212,14 +212,18 @@ class api_login(BaseSecurityRenderer):
                     flsk_session['quota_set'] = True
 
                     # Check current user quota
-                    quota = user.get('api_quota') or config.ui.default_quotas.concurrent_api_calls
+                    quota = user.get('api_quota')
+                    if quota is None:
+                        quota = config.ui.default_quotas.concurrent_api_calls
                     if quota != 0 and not QUOTA_TRACKER.begin(quota_user, quota):
                         LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                         return make_api_response(
                             "", f"You've exceeded your maximum concurrent API calls quota of {quota}", 503)
 
                     # Check daily quota
-                    daily_quota = user.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
+                    daily_quota = user.get('api_daily_quota')
+                    if daily_quota is None:
+                        daily_quota = config.ui.default_quotas.daily_api_calls
                     if daily_quota != 0 and self.count_toward_quota:
                         current_daily_quota = DAILY_QUOTA_TRACKER.increment_api(quota_user)
                         flsk_session['remaining_quota_api'] = max(daily_quota - current_daily_quota, 0)

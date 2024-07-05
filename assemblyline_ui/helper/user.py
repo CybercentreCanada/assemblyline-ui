@@ -51,7 +51,9 @@ def add_access_control(user):
 def check_daily_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        daily_quota = user.get('submission_daily_quota') or config.ui.default_quotas.daily_submissions
+        daily_quota = user.get('submission_daily_quota')
+        if daily_quota is None:
+            daily_quota = config.ui.default_quotas.daily_submissions
 
         if daily_quota != 0:
             current_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
@@ -66,7 +68,9 @@ def check_daily_submission_quota(user) -> Optional[str]:
 def check_async_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        max_quota = user.get('submission_async_quota') or config.ui.default_quotas.concurrent_async_submissions
+        max_quota = user.get('submission_async_quota')
+        if max_quota is None:
+            max_quota = config.ui.default_quotas.concurrent_async_submissions
 
         daily_submission_quota_error = check_daily_submission_quota(user)
         if daily_submission_quota_error:
@@ -82,7 +86,9 @@ def check_async_submission_quota(user) -> Optional[str]:
 def check_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        max_quota = user.get('submission_quota') or config.ui.default_quotas.concurrent_submissions
+        max_quota = user.get('submission_quota')
+        if max_quota is None:
+            max_quota = config.ui.default_quotas.concurrent_submissions
 
         daily_submission_quota_error = check_daily_submission_quota(user)
         if daily_submission_quota_error:
@@ -93,6 +99,10 @@ def check_submission_quota(user) -> Optional[str]:
             return f"You've exceeded your maximum concurrent submission quota of {max_quota}"
 
     return None
+
+
+def decrement_submission_ingest_quota(user):
+    ASYNC_SUBMISSION_TRACKER.begin(user['uname'])
 
 
 def decrement_submission_quota(user):
