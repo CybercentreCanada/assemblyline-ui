@@ -102,7 +102,7 @@ def check_submission_quota(user) -> Optional[str]:
 
 
 def decrement_submission_ingest_quota(user):
-    ASYNC_SUBMISSION_TRACKER.begin(user['uname'])
+    ASYNC_SUBMISSION_TRACKER.end(user['uname'])
 
 
 def decrement_submission_quota(user):
