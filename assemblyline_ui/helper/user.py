@@ -102,11 +102,13 @@ def check_submission_quota(user) -> Optional[str]:
 
 
 def decrement_submission_ingest_quota(user):
-    ASYNC_SUBMISSION_TRACKER.end(user['uname'])
+    if config.ui.enforce_quota:
+        ASYNC_SUBMISSION_TRACKER.end(user['uname'])
 
 
 def decrement_submission_quota(user):
-    SUBMISSION_TRACKER.end(user['uname'])
+    if config.ui.enforce_quota:
+        SUBMISSION_TRACKER.end(user['uname'])
 
 
 def login(uname, roles_limit, user=None):
