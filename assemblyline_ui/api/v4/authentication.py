@@ -84,21 +84,21 @@ def add_apikey(name, priv, **kwargs):
 
     if priv not in API_PRIV_MAP:
         return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()}",
-                                status_code=400)
+                                 status_code=400)
 
     if priv == "CUSTOM":
         try:
             roles = request.json
         except BadRequest:
             return make_api_response("", err="Invalid data block provided. Provide a list of roles as JSON.",
-                                    status_code=400)
+                                     status_code=400)
     else:
         roles = None
 
     random_pass = get_random_password(length=48)
     priv_map = API_PRIV_MAP[priv]
     roles = [r for r in load_roles_form_acls(priv_map, roles)
-            if r in load_roles(user_data['type'], user_data.get('roles', None))]
+             if r in load_roles(user_data['type'], user_data.get('roles', None))]
 
     if not roles:
         return make_api_response(
@@ -131,7 +131,7 @@ def delete_apikey(name, **kwargs):
 
     Result example:
     {
-    "success": True
+     "success": True
     }
     """
     user = kwargs['user']
@@ -188,7 +188,7 @@ def disable_otp(**kwargs):
 
     Result example:
     {
-    "success": true
+     "success": true
     }
     """
     uname = kwargs['user']['uname']
@@ -243,7 +243,7 @@ def get_obo_token(**kwargs):
 
     # Load roles from ACL if needed and validate them
     roles = [r for r in load_roles_form_acls(SCOPES[scope], roles)
-            if ROLES.contains_value(r)]
+             if ROLES.contains_value(r)]
 
     parsed_url = urlparse(redirect_url)
     if parsed_url.scheme != 'https':
@@ -653,9 +653,9 @@ def oauth_validate(**_):
 
     Result example:
     {
-        "avatar": "data:image...",
-        "oauth_token_id": "123123...123213",
-        "username": "user"
+     "avatar": "data:image...",
+     "oauth_token_id": "123123...123213",
+     "username": "user"
     }
     """
     oauth_provider = request.values.get('provider', None)
