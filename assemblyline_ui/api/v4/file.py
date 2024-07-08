@@ -1015,7 +1015,7 @@ def find_similar_files(sha256, **kwargs):
                                                          index_type=index_type)['items']:
         for result in service_results['items']:
             for section in result['result']['sections']:
-                vectors = vectors.union(set(section['tags']['vector']))
+                vectors = vectors.union(set(section['tags']['vector'] if section['tags']['vector'] is not None else []))
 
     # Search for all vectors at the same time
     vector_futures = {}
