@@ -1,35 +1,49 @@
 import base64
 import hashlib
 import json
+import re
+from io import BytesIO
+from typing import Any, Dict
+from urllib.parse import urlparse
+
 import jwt
 import pyqrcode
-import re
-
-from authlib.integrations.requests_client import OAuth2Session
-from authlib.integrations.base_client import OAuthError
-from flask import current_app, redirect, request
-from flask import session as flsk_session
-from io import BytesIO
-from typing import Dict, Any
-from urllib.parse import urlparse
-from werkzeug.exceptions import BadRequest, UnsupportedMediaType
-
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
-from assemblyline.common.security import (check_password_requirements, generate_random_secret, get_password_hash,
-                                          get_password_requirement_message, get_random_password, get_totp_token)
+from assemblyline.common.security import (
+    check_password_requirements,
+    generate_random_secret,
+    get_password_hash,
+    get_password_requirement_message,
+    get_random_password,
+    get_totp_token,
+)
 from assemblyline.common.uid import get_random_id
-from assemblyline.odm.models.user import User, ROLES, load_roles, load_roles_form_acls
+from assemblyline.odm.models.user import ROLES, User, load_roles, load_roles_form_acls
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import (KV_SESSION, LOGGER, SECRET_KEY, STORAGE, config, get_reset_queue,
-                                    get_signup_queue, get_token_store, CLASSIFICATION as Classification)
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import (
+    KV_SESSION,
+    LOGGER,
+    SECRET_KEY,
+    STORAGE,
+    config,
+    get_reset_queue,
+    get_signup_queue,
+    get_token_store,
+)
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
-from assemblyline_ui.helper.user import get_default_user_quotas, get_dynamic_classification, API_PRIV_MAP
+from assemblyline_ui.helper.user import API_PRIV_MAP, get_default_user_quotas, get_dynamic_classification
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
-
+from authlib.integrations.base_client import OAuthError
+from authlib.integrations.requests_client import OAuth2Session
+from azure.identity import WorkloadIdentityCredential
+from flask import current_app, redirect, request
+from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 SCOPES = {
     'r': ["R"],
@@ -649,6 +663,7 @@ def oauth_validate(**_):
     username = None
     email_adr = None
     oauth_token_id = None
+    workload_credential = None
 
     if config.auth.oauth.enabled:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -661,7 +676,15 @@ def oauth_validate(**_):
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
                 # Validate the token
-                if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
+                if oauth_provider_config.auto_no_secret:
+                    workload_credential = WorkloadIdentityCredential(
+                        additionally_allowed_tenants=oauth_provider_config.client_tenants)
+
+                    token = workload_credential.get_token(
+                            oauth_provider_config.client_scope
+                        , tenant_id=oauth_provider_config.client_tenants)
+
+                elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
                 else:
