@@ -1,11 +1,7 @@
 import logging
 import os
 
-from authlib.integrations.flask_client import OAuth
-from elasticapm.contrib.flask import ElasticAPM
-from flask import Flask
-from flask.logging import default_handler
-
+from assemblyline_ui import config
 from assemblyline_ui.api.base import api
 from assemblyline_ui.api.v4 import apiv4
 from assemblyline_ui.api.v4.alert import alert_api
@@ -23,8 +19,8 @@ from assemblyline_ui.api.v4.heuristics import heuristics_api
 from assemblyline_ui.api.v4.ingest import ingest_api
 from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.ontology import ontology_api
-from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.replay import replay_api
+from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.retrohunt import retrohunt_api
 from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.search import search_api
@@ -39,8 +35,10 @@ from assemblyline_ui.api.v4.webauthn import webauthn_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
 from assemblyline_ui.healthz import healthz
-
-from assemblyline_ui import config
+from authlib.integrations.flask_client import OAuth
+from elasticapm.contrib.flask import ElasticAPM
+from flask import Flask
+from flask.logging import default_handler
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 AL_SESSION_COOKIE_SAMESITE = os.environ.get("AL_SESSION_COOKIE_SAMESITE", None)
@@ -131,7 +129,7 @@ if config.config.auth.oauth.enabled:
     providers = []
     for name, p in config.config.auth.oauth.providers.items():
         p = p.as_primitives()
-        if p['client_id'] and p['client_secret']:
+        if (p['client_id'] and p['client_secret']) or p['auto_no_secret']:
             # Set provider name
             p['name'] = name
 
