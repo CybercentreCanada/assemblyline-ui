@@ -136,22 +136,31 @@ if config.config.auth.oauth.enabled:
     providers = []
     for name, p in config.config.auth.oauth.providers.items():
         p = p.as_primitives()
-        if p['client_id'] and p['client_secret']:
+
+        client_id = p.get('client_id')
+        client_secret = p.get('client_secret')
+        auto_no_secret = p.get('auto_no_secret', False)
+
+        if (client_id and client_secret) or auto_no_secret:
             # Set provider name
             p['name'] = name
 
-            # Remove AL specific fields
-            p.pop('auto_create', None)
-            p.pop('auto_sync', None)
-            p.pop('user_get', None)
-            p.pop('auto_properties', None)
-            p.pop('uid_field', None)
-            p.pop('uid_regex', None)
-            p.pop('uid_format', None)
-            p.pop('user_groups', None)
-            p.pop('user_groups_data_field', None)
-            p.pop('user_groups_name_field', None)
-            p.pop('app_provider', None)
+            # Remove AL specific fields safely using pop with default to None
+            fields_to_remove = ['auto_create',
+                                'auto_sync',
+                                'user_get',
+                                'auto_properties',
+                                'uid_field',
+                                'uid_regex',
+                                'uid_format',
+                                'user_groups',
+                                'user_groups_data_field',
+                                'user_groups_name_field',
+                                'app_provider'
+                                ]
+
+            for field in fields_to_remove:
+                p.pop(field, None)
 
             # Add the provider to the list of providers
             providers.append(p)
