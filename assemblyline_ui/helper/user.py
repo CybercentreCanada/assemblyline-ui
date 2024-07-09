@@ -5,8 +5,8 @@ from flask import session as flsk_session
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, config, \
-    CLASSIFICATION as Classification, SERVICE_LIST
+from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, \
+    config, CLASSIFICATION as Classification, SERVICE_LIST
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
@@ -51,7 +51,9 @@ def add_access_control(user):
 def check_daily_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        daily_quota = user.get('submission_daily_quota') or config.ui.default_quotas.daily_submissions
+        daily_quota = user.get('submission_daily_quota')
+        if daily_quota is None:
+            daily_quota = config.ui.default_quotas.daily_submissions
 
         if daily_quota != 0:
             current_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
@@ -63,10 +65,30 @@ def check_daily_submission_quota(user) -> Optional[str]:
     return None
 
 
+def check_async_submission_quota(user) -> Optional[str]:
+    if config.ui.enforce_quota:
+        quota_user = user['uname']
+        max_quota = user.get('submission_async_quota')
+        if max_quota is None:
+            max_quota = config.ui.default_quotas.concurrent_async_submissions
+
+        daily_submission_quota_error = check_daily_submission_quota(user)
+        if daily_submission_quota_error:
+            return daily_submission_quota_error
+
+        if max_quota != 0 and not ASYNC_SUBMISSION_TRACKER.begin(quota_user, max_quota):
+            LOGGER.info(f"User {quota_user} exceeded their async submission quota of {max_quota}.")
+            return f"You've exceeded your maximum concurrent async submission quota of {max_quota}"
+
+    return None
+
+
 def check_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
-        max_quota = user.get('submission_quota') or config.ui.default_quotas.concurrent_submissions
+        max_quota = user.get('submission_quota')
+        if max_quota is None:
+            max_quota = config.ui.default_quotas.concurrent_submissions
 
         daily_submission_quota_error = check_daily_submission_quota(user)
         if daily_submission_quota_error:
@@ -79,8 +101,14 @@ def check_submission_quota(user) -> Optional[str]:
     return None
 
 
+def decrement_submission_ingest_quota(user):
+    if config.ui.enforce_quota:
+        ASYNC_SUBMISSION_TRACKER.end(user['uname'])
+
+
 def decrement_submission_quota(user):
-    SUBMISSION_TRACKER.end(user['uname'])
+    if config.ui.enforce_quota:
+        SUBMISSION_TRACKER.end(user['uname'])
 
 
 def login(uname, roles_limit, user=None):
@@ -120,12 +148,21 @@ def login(uname, roles_limit, user=None):
 
 
 def get_default_user_quotas(user_profile: dict):
-    user_profile['api_quota'] = user_profile.get('api_quota') or config.ui.default_quotas.concurrent_api_calls
-    user_profile['api_daily_quota'] = user_profile.get('api_daily_quota') or config.ui.default_quotas.daily_api_calls
-    user_profile['submission_quota'] = user_profile.get('submission_quota') or \
-        config.ui.default_quotas.concurrent_submissions
-    user_profile['submission_daily_quota'] = user_profile.get('submission_daily_quota') or \
-        config.ui.default_quotas.daily_submissions
+    if user_profile.get('api_quota') is None:
+        user_profile['api_quota'] = config.ui.default_quotas.concurrent_api_calls
+
+    if user_profile.get('api_daily_quota') is None:
+        user_profile['api_daily_quota'] = config.ui.default_quotas.daily_api_calls
+
+    if user_profile.get('submission_quota') is None:
+        user_profile['submission_quota'] = config.ui.default_quotas.concurrent_submissions
+
+    if user_profile.get('submission_async_quota') is None:
+        user_profile['submission_async_quota'] = config.ui.default_quotas.concurrent_async_submissions
+
+    if user_profile.get('submission_daily_quota') is None:
+        user_profile['submission_daily_quota'] = config.ui.default_quotas.daily_submissions
+
     return user_profile
 
 

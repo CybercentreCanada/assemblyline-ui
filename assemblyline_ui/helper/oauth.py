@@ -161,7 +161,8 @@ def parse_profile(profile, provider):
                                 groups.append(group_value)
 
                 # Set API and Submission quotas
-                elif auto_prop.type in ['api_quota', 'api_daily_quota', 'submission_quota', 'submission_daily_quota']:
+                elif auto_prop.type in ['api_quota', 'api_daily_quota', 'submission_quota',
+                                        'submission_async_quota', 'submission_daily_quota']:
                     if re.match(auto_prop.pattern, value):
                         quotas[auto_prop.type] = int(auto_prop.value[0])
 

@@ -63,9 +63,11 @@ for section in ['submit', 'archive']:
         UI_METADATA_VALIDATION[section][m_name] = m_cfg
 
 # TRACKERS
-QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timout
+QUOTA_TRACKER = UserQuotaTracker('quota', timeout=60 * 2,  # 2 Minutes timeout
                                  redis=redis_persistent)
-SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minutes timout
+ASYNC_SUBMISSION_TRACKER = UserQuotaTracker('async_submissions', timeout=24 * 60 * 60,  # 1 day timeout
+                                            redis=redis_persistent)
+SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minutes timeout
                                       redis=redis_persistent)
 DAILY_QUOTA_TRACKER = DailyQuotaTracker(redis=redis_persistent)
 
