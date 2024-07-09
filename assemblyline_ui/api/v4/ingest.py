@@ -22,7 +22,8 @@ from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classificatio
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS
-from assemblyline_ui.helper.user import check_daily_submission_quota, load_user_settings
+from assemblyline_ui.helper.user import check_async_submission_quota, decrement_submission_ingest_quota, \
+    load_user_settings
 
 
 SUB_API = 'ingest'
@@ -180,18 +181,20 @@ def ingest_single_file(**kwargs):
     Result example:
     { "ingest_id": <ID OF THE INGESTED FILE> }
     """
+    success = False
     user = kwargs['user']
 
     # Check daily submission quota
-    quota_error = check_daily_submission_quota(user)
+    quota_error = check_async_submission_quota(user)
     if quota_error:
         return make_api_response("", quota_error, 503)
 
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
-    extracted_path = original_file = None
-    string_type = None
-    string_value = None
     try:
+        out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
+        extracted_path = original_file = None
+        string_type = None
+        string_value = None
+
         # Get data block and binary blob
         if 'multipart/form-data' in request.content_type:
             if 'json' in request.values:
@@ -433,9 +436,13 @@ def ingest_single_file(**kwargs):
         ingest.push(submission_obj.as_primitives())
         submission_received(submission_obj)
 
+        success = True
         return make_api_response({"ingest_id": ingest_id})
 
     finally:
+        if not success:
+            decrement_submission_ingest_quota(user)
+
         # Cleanup files on disk
         try:
             if original_file and os.path.exists(original_file):
