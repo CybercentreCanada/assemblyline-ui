@@ -1,11 +1,12 @@
 import logging
 import os
 
+from assemblyline.common import forge
+from assemblyline.common import log as al_log
 from assemblyline.common.archiving import ArchiveManager
 from assemblyline.common.identify import Identify
-from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.common.logformat import AL_LOG_FORMAT
-from assemblyline.common import forge, log as al_log
+from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
 from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP
