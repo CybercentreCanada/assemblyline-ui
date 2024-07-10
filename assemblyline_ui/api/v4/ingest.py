@@ -184,12 +184,12 @@ def ingest_single_file(**kwargs):
     success = False
     user = kwargs['user']
 
-    # Check daily submission quota
-    quota_error = check_async_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
-
     try:
+        # Check daily submission quota
+        quota_error = check_async_submission_quota(user)
+        if quota_error:
+            return make_api_response("", quota_error, 503)
+
         out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
         extracted_path = original_file = None
         string_type = None

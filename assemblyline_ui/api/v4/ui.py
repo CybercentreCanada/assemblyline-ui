@@ -214,14 +214,14 @@ def start_ui_submission(ui_sid, **kwargs):
         return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
                                                                   "classification then you're allowed to see", 403)
 
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
-
     submit_result = None
     submitted_file = None
 
     try:
+        quota_error = check_submission_quota(user)
+        if quota_error:
+            return make_api_response("", quota_error, 503)
+
         # Download the file from the cache
         with forge.get_cachestore("flowjs", config) as cache:
             ui_sid = get_cache_name(ui_sid)
