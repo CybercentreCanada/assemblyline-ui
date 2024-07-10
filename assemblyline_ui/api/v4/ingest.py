@@ -106,7 +106,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system

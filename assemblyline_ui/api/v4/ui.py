@@ -181,7 +181,7 @@ def flowjs_upload_chunk(**kwargs):
 
 # noinspection PyBroadException
 @ui_api.route("/start/<ui_sid>/", methods=["POST"])
-@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def start_ui_submission(ui_sid, **kwargs):
     """
     Start UI submission.
