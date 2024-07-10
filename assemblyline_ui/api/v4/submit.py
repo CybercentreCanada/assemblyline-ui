@@ -34,7 +34,7 @@ submission_client = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, con
 
 # noinspection PyUnusedLocal
 @submit_api.route("/dynamic/<sha256>/", methods=["GET"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     Resubmit a file for dynamic analysis
@@ -53,9 +53,6 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
 
     file_info = STORAGE.file.get(sha256, as_obj=False)
     if not file_info:
@@ -68,6 +65,10 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     submit_result = None
     metadata = {}
     try:
+        quota_error = check_submission_quota(user)
+        if quota_error:
+            return make_api_response("", quota_error, 503)
+
         copy_sid = request.args.get('copy_sid', None)
         if copy_sid:
             submission = STORAGE.submission.get(copy_sid, as_obj=False)
@@ -144,7 +145,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
 
 # noinspection PyUnusedLocal
 @submit_api.route("/resubmit/<sid>/", methods=["GET"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def resubmit_submission_for_analysis(sid, *args, **kwargs):
     """
     Resubmit a submission for analysis with the exact same parameters as before
@@ -162,12 +163,13 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
 
     submit_result = None
     try:
+        quota_error = check_submission_quota(user)
+        if quota_error:
+            return make_api_response("", quota_error, 503)
+
         submission = STORAGE.submission.get(sid, as_obj=False)
 
         if submission:
@@ -208,7 +210,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
 
 # noinspection PyBroadException
 @submit_api.route("/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def submit(**kwargs):
     """
     Submit a single file, sha256 or url for analysis
@@ -276,14 +278,14 @@ def submit(**kwargs):
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
-
     submit_result = None
     string_type = None
     string_value = None
     try:
+        quota_error = check_submission_quota(user)
+        if quota_error:
+            return make_api_response("", quota_error, 503)
+
         # Get data block and binary blob
         if 'multipart/form-data' in request.content_type:
             if 'json' in request.values:

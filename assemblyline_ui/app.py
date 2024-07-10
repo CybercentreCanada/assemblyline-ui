@@ -137,8 +137,8 @@ if config.config.auth.oauth.enabled:
     for name, p in config.config.auth.oauth.providers.items():
         p = p.as_primitives()
 
-        client_id = p.get('client_id')
-        client_secret = p.get('client_secret')
+        client_id = p.get('client_id', None)
+        client_secret = p.get('client_secret', None)
         auto_no_secret = p.get('auto_no_secret', False)
 
         if (client_id and client_secret) or auto_no_secret:
