@@ -267,8 +267,9 @@ def ingest_single_file(**kwargs):
             "type": "INGEST"
         })
 
-        # Apply provided params
-        s_params.update(data.get("params", {}))
+        # Apply provided params (if the user is allowed to)
+        if ROLES.submission_customize in user['roles']:
+            s_params.update(data.get("params", {}))
 
         # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources

@@ -328,7 +328,11 @@ def submit(**kwargs):
 
         # Create task object
         s_params = ui_to_submission_params(user_settings)
-        s_params.update(data.get("params", {}))
+
+        # Apply provided params (if the user is allowed to)
+        if ROLES.submission_customize in user['roles']:
+            s_params.update(data.get("params", {}))
+
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
         if 'groups' not in s_params:
             s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
