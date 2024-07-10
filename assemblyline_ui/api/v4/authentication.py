@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import re
+import os
 from io import BytesIO
 from typing import Any, Dict
 from urllib.parse import urlparse
@@ -39,7 +40,7 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, WorkloadIdentityCredential
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -663,7 +664,6 @@ def oauth_validate(**_):
     username = None
     email_adr = None
     oauth_token_id = None
-    workload_credential = None
 
     if config.auth.oauth.enabled:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -677,7 +677,17 @@ def oauth_validate(**_):
 
                 # Validate the token
                 if oauth_provider_config.auto_no_secret:
-                    credential = DefaultAzureCredential()
+
+                    # Each pod is allowed 1 service account, which supports 1 client id.
+                    # If that service account / client id is already being used, we need to specify this env.
+                    # Also configure the AZURE_TENANT_ID_AAD if you're doing cross tenant auth
+                    aad_client_id = os.getenv("AZURE_CLIENT_ID_AAD")
+                    aad_tenant_id = os.getenv("AZURE_TENANT_ID_AAD")
+                    if aad_client_id and aad_tenant_id:
+                        credential = WorkloadIdentityCredential(tenant_id=aad_tenant_id, client_id=aad_client_id)
+                    else:
+                        # Service accounts will by default create the enviromental variables, and use them as params
+                        credential = DefaultAzureCredential()
 
                     try:
                         token = credential.get_token(oauth_provider_config.client_scope)
