@@ -676,13 +676,12 @@ def oauth_validate(**_):
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
                 # Validate the token
-                if oauth_provider_config.auto_no_secret:
+                if oauth_provider_config.use_aad_managed_identity:
 
-                    # Each pod is allowed 1 service account, which supports 1 client id.
-                    # If that service account / client id is already being used, we need to specify this env.
-                    # Also configure the AZURE_TENANT_ID_AAD if you're doing cross tenant auth
-                    aad_client_id = os.getenv("AZURE_CLIENT_ID_AAD")
-                    aad_tenant_id = os.getenv("AZURE_TENANT_ID_AAD")
+                    aad_client_id = oauth_provider_config.client_id
+                    aad_tenant_id = oauth_provider_config.aad_mi_tenant_id
+                    aad_client_scope = oauth_provider_config.aad_mi_client_scope
+
                     if aad_client_id and aad_tenant_id:
                         credential = WorkloadIdentityCredential(tenant_id=aad_tenant_id, client_id=aad_client_id)
                     else:
@@ -690,7 +689,7 @@ def oauth_validate(**_):
                         credential = DefaultAzureCredential()
 
                     try:
-                        token = credential.get_token(oauth_provider_config.client_scope)
+                        token = credential.get_token(aad_client_scope)
                     except Exception as e:
                         LOGGER.warning(f"Failed to get no secret token: {str(e)}")
 
