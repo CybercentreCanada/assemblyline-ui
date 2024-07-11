@@ -682,27 +682,28 @@ def oauth_validate(**_):
                     aad_tenant_id = oauth_provider_config.aad_mi_tenant_id
                     aad_client_scope = oauth_provider_config.aad_mi_client_scope
 
-                    LOGGER.info(f"AAD Managed Identity Config - Client ID: {aad_client_id}, Tenant ID: {aad_tenant_id}, Scope: {aad_client_scope}")
-
                     if aad_client_id and aad_tenant_id:
                         credential = WorkloadIdentityCredential(tenant_id=aad_tenant_id,
                                                                 client_id=aad_client_id,
                                                                 additionally_allowed_tenants=[aad_tenant_id])
-                        LOGGER.info(f"WorkloadIdentityCredential aquired")
+                        LOGGER.info(f"WorkloadIdentityCredential acquired")
                     else:
-                        # Service accounts will by default create the enviromental variables, and use them as params
+                        # Service accounts will by default create the environmental variables, and use them as params
                         credential = DefaultAzureCredential()
-                        LOGGER.info(f"DefaultAzureCredential aquired")
+                        LOGGER.info(f"DefaultAzureCredential acquired")
 
                     try:
-                        token = credential.get_token(aad_client_scope, tenant_id=aad_tenant_id)
+                        token_response = credential.get_token(aad_client_scope, tenant_id=aad_tenant_id)
 
-                        if token:
+                        if token_response:
                             LOGGER.info(f"Token acquired with scope {aad_client_scope}")
+                            token = token_response.token
                         else:
                             LOGGER.info(f"Failed to get token")
+                            token = None
                     except Exception as e:
                         LOGGER.warning(f"Failed to get no secret token: {str(e)}")
+                        token = None
 
                 elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
@@ -713,17 +714,19 @@ def oauth_validate(**_):
                 # Setup alternate app provider if we need to fetch groups of user info by hand
                 if oauth_provider_config.app_provider and (
                         oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
-                    # Initialize the app_provider
-                    app_provider = OAuth2Session(
-                        oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
-                        oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
-                        scope=oauth_provider_config.app_provider.scope)
-                    app_provider.fetch_token(
-                        oauth_provider_config.app_provider.access_token_url,
-                        grant_type="client_credentials")
 
-                else:
-                    app_provider = None
+                    oauth_client_id = oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id
+                    oauth_client_secret = oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret
+
+                    if oauth_provider_config.use_aad_managed_identity:
+                        app_provider = OAuth2Session(client_id=oauth_client_id,
+                            token={"access_token": token, "token_type": "Bearer"})
+                    else:
+                        # Initialize the app_provider
+                        app_provider = OAuth2Session(oauth_client_id, oauth_client_secret,
+                                                    scope=oauth_provider_config.app_provider.scope)
+
+                    app_provider.fetch_token(oauth_provider_config.app_provider.access_token_url, grant_type="client_credentials")
 
                 # Create user
                 user_data = {}
