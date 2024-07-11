@@ -139,9 +139,9 @@ if config.config.auth.oauth.enabled:
 
         client_id = p.get('client_id', None)
         client_secret = p.get('client_secret', None)
-        auto_no_secret = p.get('auto_no_secret', False)
+        use_aad_managed_identity = p.get('use_aad_managed_identity', False)
 
-        if (client_id and client_secret) or auto_no_secret:
+        if (client_id and client_secret) or use_aad_managed_identity:
             # Set provider name
             p['name'] = name
 
