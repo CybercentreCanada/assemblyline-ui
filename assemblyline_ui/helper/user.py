@@ -48,7 +48,7 @@ def add_access_control(user):
     user['access_control'] = safe_str(query)
 
 
-def check_daily_submission_quota(user) -> Optional[str]:
+def increase_daily_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
         daily_quota = user.get('submission_daily_quota')
@@ -65,6 +65,16 @@ def check_daily_submission_quota(user) -> Optional[str]:
     return None
 
 
+def release_daily_submission_quota(user):
+    if config.ui.enforce_quota:
+        daily_quota = user.get('submission_daily_quota')
+        if daily_quota is None:
+            daily_quota = config.ui.default_quotas.daily_submissions
+
+        if daily_quota != 0:
+            DAILY_QUOTA_TRACKER.decrement_submission(user['uname'])
+
+
 def check_async_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
@@ -72,12 +82,17 @@ def check_async_submission_quota(user) -> Optional[str]:
         if max_quota is None:
             max_quota = config.ui.default_quotas.concurrent_async_submissions
 
-        daily_submission_quota_error = check_daily_submission_quota(user)
+        daily_submission_quota_error = increase_daily_submission_quota(user)
         if daily_submission_quota_error:
             return daily_submission_quota_error
 
         if max_quota != 0 and not ASYNC_SUBMISSION_TRACKER.begin(quota_user, max_quota):
             LOGGER.info(f"User {quota_user} exceeded their async submission quota of {max_quota}.")
+
+            # Decrease the daily quota as we have increase it in the increase_daily_submission_quota call
+            # but the user is out of concurrent async submission quotas
+            release_daily_submission_quota(user)
+
             return f"You've exceeded your maximum concurrent async submission quota of {max_quota}"
 
     return None
@@ -90,12 +105,17 @@ def check_submission_quota(user) -> Optional[str]:
         if max_quota is None:
             max_quota = config.ui.default_quotas.concurrent_submissions
 
-        daily_submission_quota_error = check_daily_submission_quota(user)
+        daily_submission_quota_error = increase_daily_submission_quota(user)
         if daily_submission_quota_error:
             return daily_submission_quota_error
 
         if max_quota != 0 and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
             LOGGER.info(f"User {quota_user} exceeded their submission quota of {max_quota}.")
+
+            # Decrease the daily quota as we have increase it in the increase_daily_submission_quota call
+            # but the user is out of concurrent submission quotas
+            release_daily_submission_quota(user)
+
             return f"You've exceeded your maximum concurrent submission quota of {max_quota}"
 
     return None
@@ -111,12 +131,7 @@ def decrement_submission_ingest_quota(user):
         if max_async_quota != 0:
             ASYNC_SUBMISSION_TRACKER.end(quota_user)
 
-        daily_quota = user.get('submission_daily_quota')
-        if daily_quota is None:
-            daily_quota = config.ui.default_quotas.daily_submissions
-
-        if daily_quota != 0:
-            DAILY_QUOTA_TRACKER.decrement_submission(quota_user)
+        release_daily_submission_quota(user)
 
 
 def decrement_submission_quota(user):
@@ -129,12 +144,7 @@ def decrement_submission_quota(user):
         if max_quota != 0:
             SUBMISSION_TRACKER.end(quota_user)
 
-        daily_quota = user.get('submission_daily_quota')
-        if daily_quota is None:
-            daily_quota = config.ui.default_quotas.daily_submissions
-
-        if daily_quota != 0:
-            DAILY_QUOTA_TRACKER.decrement_submission(quota_user)
+        release_daily_submission_quota(user)
 
 
 def login(uname, roles_limit, user=None):
