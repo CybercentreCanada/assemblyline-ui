@@ -682,14 +682,25 @@ def oauth_validate(**_):
                     aad_tenant_id = oauth_provider_config.aad_mi_tenant_id
                     aad_client_scope = oauth_provider_config.aad_mi_client_scope
 
+                    LOGGER.info(f"AAD Managed Identity Config - Client ID: {aad_client_id}, Tenant ID: {aad_tenant_id}, Scope: {aad_client_scope}")
+
                     if aad_client_id and aad_tenant_id:
-                        credential = WorkloadIdentityCredential(tenant_id=aad_tenant_id, client_id=aad_client_id)
+                        credential = WorkloadIdentityCredential(tenant_id=aad_tenant_id,
+                                                                client_id=aad_client_id,
+                                                                additionally_allowed_tenants=[aad_tenant_id])
+                        LOGGER.info(f"WorkloadIdentityCredential aquired")
                     else:
                         # Service accounts will by default create the enviromental variables, and use them as params
                         credential = DefaultAzureCredential()
+                        LOGGER.info(f"DefaultAzureCredential aquired")
 
                     try:
-                        token = credential.get_token(aad_client_scope)
+                        token = credential.get_token(aad_client_scope, tenant_id=aad_tenant_id)
+
+                        if token:
+                            LOGGER.info(f"Token acquired with scope {aad_client_scope}")
+                        else:
+                            LOGGER.info(f"Failed to get token")
                     except Exception as e:
                         LOGGER.warning(f"Failed to get no secret token: {str(e)}")
 

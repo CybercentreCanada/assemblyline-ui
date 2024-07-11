@@ -31,8 +31,8 @@ def handle_401(e):
     else:
         msg = str(e)
 
+    oauth_providers = []
     if config.auth.oauth.enabled:
-        oauth_providers = []
         for name, provider in config.auth.oauth.providers.items():
             client_id = provider.get('client_id')
             client_secret = provider.get('client_secret')
@@ -41,8 +41,6 @@ def handle_401(e):
             # Include provider if it has both client_id and client_secret, or if it uses Azure AD Managed Identity
             if (client_id and client_secret) or use_aad_managed_identity:
                 oauth_providers.append(name)
-    else:
-        oauth_providers = []
 
     data = {
         "oauth_providers": oauth_providers,
