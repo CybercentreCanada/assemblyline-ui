@@ -205,6 +205,11 @@ def start_ui_submission(ui_sid, **kwargs):
     """
     user = kwargs['user']
 
+    # Check if we've reached the quotas
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     ui_params = request.json
     ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']]
     ui_params['quota_item'] = True
@@ -218,10 +223,6 @@ def start_ui_submission(ui_sid, **kwargs):
     submitted_file = None
 
     try:
-        quota_error = check_submission_quota(user)
-        if quota_error:
-            return make_api_response("", quota_error, 503)
-
         # Download the file from the cache
         with forge.get_cachestore("flowjs", config) as cache:
             ui_sid = get_cache_name(ui_sid)
@@ -306,6 +307,7 @@ def start_ui_submission(ui_sid, **kwargs):
                                                                       "Try again..." % ui_sid, 404)
     finally:
         if submit_result is None:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_quota(user)
 
         # Remove file

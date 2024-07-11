@@ -54,6 +54,11 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     """
     user = kwargs['user']
 
+    # Check if we've reached the quotas
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     file_info = STORAGE.file.get(sha256, as_obj=False)
     if not file_info:
         return make_api_response({}, f"File {sha256} cannot be found on the server therefore it cannot be resubmitted.",
@@ -65,10 +70,6 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     submit_result = None
     metadata = {}
     try:
-        quota_error = check_submission_quota(user)
-        if quota_error:
-            return make_api_response("", quota_error, 503)
-
         copy_sid = request.args.get('copy_sid', None)
         if copy_sid:
             submission = STORAGE.submission.get(copy_sid, as_obj=False)
@@ -140,6 +141,7 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         return make_api_response("", err=str(e), status_code=400)
     finally:
         if submit_result is None:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_quota(user)
 
 
@@ -164,12 +166,13 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     """
     user = kwargs['user']
 
+    # Check if we've reached the quotas
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     submit_result = None
     try:
-        quota_error = check_submission_quota(user)
-        if quota_error:
-            return make_api_response("", quota_error, 503)
-
         submission = STORAGE.submission.get(sid, as_obj=False)
 
         if submission:
@@ -205,6 +208,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         return make_api_response("", err=str(e), status_code=400)
     finally:
         if submit_result is None:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_quota(user)
 
 
@@ -278,14 +282,15 @@ def submit(**kwargs):
     user = kwargs['user']
     out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
+    # Check if we've reached the quotas
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     submit_result = None
     string_type = None
     string_value = None
     try:
-        quota_error = check_submission_quota(user)
-        if quota_error:
-            return make_api_response("", quota_error, 503)
-
         # Get data block and binary blob
         if 'multipart/form-data' in request.content_type:
             if 'json' in request.values:
@@ -412,6 +417,7 @@ def submit(**kwargs):
 
     finally:
         if submit_result is None:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_quota(user)
 
         try:
