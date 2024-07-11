@@ -103,12 +103,38 @@ def check_submission_quota(user) -> Optional[str]:
 
 def decrement_submission_ingest_quota(user):
     if config.ui.enforce_quota:
-        ASYNC_SUBMISSION_TRACKER.end(user['uname'])
+        quota_user = user['uname']
+        max_async_quota = user.get('submission_async_quota')
+        if max_async_quota is None:
+            max_async_quota = config.ui.default_quotas.concurrent_async_submissions
+
+        if max_async_quota != 0:
+            ASYNC_SUBMISSION_TRACKER.end(quota_user)
+
+        daily_quota = user.get('submission_daily_quota')
+        if daily_quota is None:
+            daily_quota = config.ui.default_quotas.daily_submissions
+
+        if daily_quota != 0:
+            DAILY_QUOTA_TRACKER.decrement_submission(quota_user)
 
 
 def decrement_submission_quota(user):
     if config.ui.enforce_quota:
-        SUBMISSION_TRACKER.end(user['uname'])
+        quota_user = user['uname']
+        max_quota = user.get('submission_quota')
+        if max_quota is None:
+            max_quota = config.ui.default_quotas.concurrent_submissions
+
+        if max_quota != 0:
+            SUBMISSION_TRACKER.end(quota_user)
+
+        daily_quota = user.get('submission_daily_quota')
+        if daily_quota is None:
+            daily_quota = config.ui.default_quotas.daily_submissions
+
+        if daily_quota != 0:
+            DAILY_QUOTA_TRACKER.decrement_submission(quota_user)
 
 
 def login(uname, roles_limit, user=None):
