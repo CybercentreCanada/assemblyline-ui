@@ -1,6 +1,7 @@
 import logging
 import os
 
+from authlib.integrations.base_client.base_oauth import OAUTH_CLIENT_PARAMS
 from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
@@ -136,25 +137,15 @@ if config.config.auth.oauth.enabled:
         client_secret = p.get('client_secret', None)
 
         if client_id:
+            # Remove AL specific fields safely using pop with default to None
+            # as those fields will end up being sent as metadata
+            safe_fields = set(list(OAUTH_CLIENT_PARAMS) + ["jwks_uri"])
+            for field in list(p.keys()):
+                if field not in safe_fields:
+                    p.pop(field, None)
+
             # Set provider name
             p['name'] = name
-
-            # Remove AL specific fields safely using pop with default to None
-            fields_to_remove = ['auto_create',
-                                'auto_sync',
-                                'user_get',
-                                'auto_properties',
-                                'uid_field',
-                                'uid_regex',
-                                'uid_format',
-                                'user_groups',
-                                'user_groups_data_field',
-                                'user_groups_name_field',
-                                'app_provider'
-                                ]
-
-            for field in fields_to_remove:
-                p.pop(field, None)
 
             # Add the provider to the list of providers
             providers.append(p)
