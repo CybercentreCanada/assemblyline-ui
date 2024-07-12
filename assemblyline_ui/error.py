@@ -31,24 +31,13 @@ def handle_401(e):
     else:
         msg = str(e)
 
-    oauth_providers = []
-    if config.auth.oauth.enabled:
-        for name, provider in config.auth.oauth.providers.items():
-            client_id = provider.client_id
-            client_secret = provider.client_secret
-            use_aad_managed_identity = provider.use_aad_managed_identity
-
-            # Include provider if it has both client_id and client_secret, or if it uses Azure AD Managed Identity
-            if (client_id and client_secret) or use_aad_managed_identity:
-                oauth_providers.append(name)
-
     data = {
-        "oauth_providers": oauth_providers,
+        "oauth_providers": [name for name, p in config.auth.oauth.providers.items()
+                            if p['client_id']] if config.auth.oauth.enabled else [],
         "allow_userpass_login": config.auth.ldap.enabled or config.auth.internal.enabled,
         "allow_signup": config.auth.internal.enabled and config.auth.internal.signup.enabled,
         "allow_saml_login": config.auth.saml.enabled,
     }
-
     session_id = flsk_session.get('session_id', None)
     if session_id:
         KV_SESSION.pop(session_id)
