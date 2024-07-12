@@ -718,6 +718,7 @@ def oauth_validate(**_):
                     oauth_client_id = oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id
                     oauth_client_secret = oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret
 
+                    app_provider = None
                     if oauth_provider_config.use_aad_managed_identity:
                         app_provider = OAuth2Session(client_id=oauth_client_id,
                             token={"access_token": token, "token_type": "Bearer"})
@@ -726,7 +727,8 @@ def oauth_validate(**_):
                         app_provider = OAuth2Session(oauth_client_id, oauth_client_secret,
                                                     scope=oauth_provider_config.app_provider.scope)
 
-                    app_provider.fetch_token(oauth_provider_config.app_provider.access_token_url, grant_type="client_credentials")
+                    if app_provider:
+                        app_provider.fetch_token(oauth_provider_config.app_provider.access_token_url, grant_type="client_credentials")
 
                 # Create user
                 user_data = {}
