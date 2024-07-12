@@ -39,7 +39,7 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
-from azure.identity import DefaultAzureCredential
+from authlib.integrations.flask_client import OAuth
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -663,10 +663,9 @@ def oauth_validate(**_):
     username = None
     email_adr = None
     oauth_token_id = None
-    workload_credential = None
 
     if config.auth.oauth.enabled:
-        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        oauth: OAuth = current_app.extensions.get('authlib.integrations.flask_client')
         provider = oauth.create_client(oauth_provider)
 
         if provider:
@@ -675,16 +674,7 @@ def oauth_validate(**_):
                 # Load the oAuth provider config
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
-                # Validate the token
-                if oauth_provider_config.auto_no_secret:
-                    credential = DefaultAzureCredential()
-
-                    try:
-                        token = credential.get_token(oauth_provider_config.client_scope)
-                    except Exception as e:
-                        LOGGER.warning(f"Failed to get no secret token: {str(e)}")
-
-                elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
+                if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
                 else:
