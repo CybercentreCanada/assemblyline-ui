@@ -678,6 +678,8 @@ def oauth_validate(**_):
                 # Load the oAuth provider config
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
+                # If not secrets are provided and Azure federated credentials vars are loaded in the pod,
+                # we will use the federated credential to login our provider to Azure AD
                 if not provider.client_secret and os.environ.get("AZURE_TENANT_ID") and os.environ.get(
                         "AZURE_CLIENT_ID") and os.environ.get("AZURE_FEDERATED_TOKEN_FILE"):
                     credentials = WorkloadIdentityCredential()
