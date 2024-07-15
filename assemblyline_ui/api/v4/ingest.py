@@ -106,7 +106,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system
@@ -441,6 +441,7 @@ def ingest_single_file(**kwargs):
 
     finally:
         if not success:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_ingest_quota(user)
 
         # Cleanup files on disk
