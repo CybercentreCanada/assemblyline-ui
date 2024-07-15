@@ -679,7 +679,7 @@ def oauth_validate(**_):
                 # we will use the federated credential to login our provider to Azure AD
                 if not provider.client_secret:
                     credentials = None
-                    if oauth_provider_config.aad_wic_tenant_id and oauth_provider_config.aad_wic_token_file_path:
+                    if oauth_provider_config.aad_wic_tenant_id:
                         credentials = WorkloadIdentityCredential(
                             client_id=oauth_provider_config.client_id,
                             tenant_id=oauth_provider_config.aad_wic_tenant_id,
@@ -690,8 +690,8 @@ def oauth_validate(**_):
 
                     if credentials:
                         try:
-                            client_assertion = credentials.get_token(
-                                oauth_provider_config.aad_credentials_scope or ".default").token
+                            scope = oauth_provider_config.aad_credentials_scope or ".default"
+                            client_assertion = credentials.get_token(scope).token
                         except Exception as e:
                             return make_api_response(
                                 {"err_code": 6},
