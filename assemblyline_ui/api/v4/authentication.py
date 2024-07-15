@@ -57,8 +57,6 @@ SUB_API = 'auth'
 auth_api = make_subapi_blueprint(SUB_API, api_version=4)
 auth_api._doc = "Allow user to authenticate to the web server"
 
-TEMP_SECRET = "4mvvugJEuW=dA:3XqIDpHg2XqACWw/0-"
-
 
 @auth_api.route("/apikey/<name>/<priv>/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
