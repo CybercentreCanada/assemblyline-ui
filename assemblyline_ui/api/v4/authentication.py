@@ -690,7 +690,8 @@ def oauth_validate(**_):
 
                     if credentials:
                         try:
-                            client_assertion = credentials.get_token(".default").token
+                            client_assertion = credentials.get_token(
+                                oauth_provider_config.aad_credentials_scope or ".default").token
                         except Exception as e:
                             return make_api_response(
                                 {"err_code": 6},
