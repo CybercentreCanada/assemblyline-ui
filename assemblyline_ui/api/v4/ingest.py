@@ -22,7 +22,8 @@ from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classificatio
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS
-from assemblyline_ui.helper.user import check_daily_submission_quota, load_user_settings
+from assemblyline_ui.helper.user import check_async_submission_quota, decrement_submission_ingest_quota, \
+    load_user_settings
 
 
 SUB_API = 'ingest'
@@ -105,7 +106,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system
@@ -180,18 +181,20 @@ def ingest_single_file(**kwargs):
     Result example:
     { "ingest_id": <ID OF THE INGESTED FILE> }
     """
+    success = False
     user = kwargs['user']
 
     # Check daily submission quota
-    quota_error = check_daily_submission_quota(user)
+    quota_error = check_async_submission_quota(user)
     if quota_error:
         return make_api_response("", quota_error, 503)
 
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
-    extracted_path = original_file = None
-    string_type = None
-    string_value = None
     try:
+        out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
+        extracted_path = original_file = None
+        string_type = None
+        string_value = None
+
         # Get data block and binary blob
         if 'multipart/form-data' in request.content_type:
             if 'json' in request.values:
@@ -399,8 +402,9 @@ def ingest_single_file(**kwargs):
             metadata['ts'] = now_as_iso()
 
         # Validate the metadata (use validation scheme if we have one configured for the ingest_type)
-        metadata_error = metadata_validator.check_metadata(
-            metadata, validation_scheme=config.submission.metadata.ingest.get(s_params['type']))
+        validation_scheme = config.submission.metadata.ingest.get('_default', {})
+        validation_scheme.update(config.submission.metadata.ingest.get(s_params['type'], {}))
+        metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=validation_scheme)
         if metadata_error:
             return make_api_response({}, err=metadata_error[1], status_code=400)
 
@@ -432,9 +436,14 @@ def ingest_single_file(**kwargs):
         ingest.push(submission_obj.as_primitives())
         submission_received(submission_obj)
 
+        success = True
         return make_api_response({"ingest_id": ingest_id})
 
     finally:
+        if not success:
+            # We had an error during the submission, release the quotas for the user
+            decrement_submission_ingest_quota(user)
+
         # Cleanup files on disk
         try:
             if original_file and os.path.exists(original_file):
