@@ -9,7 +9,8 @@ from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
-from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP
+from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP, SubmissionProfileParams
+from assemblyline.odm.models.submission import SubmissionParams
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
 from assemblyline.remote.datatypes.daily_quota_tracker import DailyQuotaTracker
@@ -170,5 +171,9 @@ IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_ca
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
+SUBMISSION_PROFILES = {profile.name: profile for profile in config.submission.profiles}
+USER_CONFIGURABLE_SUBMISSION_PARAMS = list(set(SubmissionParams.fields().keys()) - \
+                                           set(SubmissionProfileParams.fields().keys()) - \
+                                            set(['quota_item', 'type', 'groups']))
 # End global
 #################################################################
