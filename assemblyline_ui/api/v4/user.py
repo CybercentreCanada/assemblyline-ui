@@ -12,8 +12,8 @@ from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, CLASSIFICATION_ALIASES, DAILY_QUOTA_TRACKER, LOGGER, \
-    STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT, UI_METADATA_VALIDATION
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
+    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION, SUBMISSION_PROFILES, USER_CONFIGURABLE_SUBMISSION_PARAMS
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
@@ -91,10 +91,12 @@ def who_am_i(**kwargs):
          "max_dtl": 30,                             # Maximum number of days retrohunt job stay in the system
        },
        "submission": {                            # Submission Configuration
+         "configurable_params": [],                 # Submission parameters that are configurable when using profiles
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
          "file_sources": [],                        # List of file sources to perform remote submission into the system
          "metadata": {},                            # Metadata compliance policy to submit to the system
+         "profiles": {},                            # Submission profiles
          "verdicts": {                              # Verdict scoring configuration
             "info": 0,                                # Default minimum score for info
             "suspicious": 300,                        # Default minimum score for suspicious
@@ -216,10 +218,13 @@ def who_am_i(**kwargs):
             "max_dtl": config.retrohunt.max_dtl,
         },
         "submission": {
+            "configurable_params": USER_CONFIGURABLE_SUBMISSION_PARAMS,
             "dtl": config.submission.dtl,
             "max_dtl": config.submission.max_dtl,
             "file_sources": file_sources,
             "metadata": UI_METADATA_VALIDATION,
+            "profiles": {name: profile.params.as_primitives() for name, profile in SUBMISSION_PROFILES.items() \
+                         if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification)},
             "verdicts": {
                 "info": config.submission.verdicts.info,
                 "suspicious": config.submission.verdicts.suspicious,
