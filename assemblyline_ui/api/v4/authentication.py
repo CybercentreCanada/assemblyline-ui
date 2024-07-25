@@ -635,6 +635,7 @@ def saml_acs(**_):
         data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
+# noinspection PyBroadException
 @auth_api.route("/oauth/", methods=["GET"])
 def oauth_validate(**_):
     """
@@ -648,9 +649,9 @@ def oauth_validate(**_):
     None
     Result example:
     {
-     "avatar": "data:image...",
-     "oauth_token_id": "123123...123213",
-     "username": "user"
+        "avatar": "data:image...",
+        "oauth_token_id": "123123...123213",
+        "username": "user"
     }
     """
     oauth_provider = request.values.get('provider', None)
@@ -720,7 +721,7 @@ def oauth_validate(**_):
                     if oauth_provider_config.jwks_uri:
                         user_data = provider.parse_id_token(token)
                 else:
-                    headers = {'Authorization': f"Bearer {token['access_token']}"}
+                    headers = {'Authorization': f"Bearer {federated_token}"}
                     profile_url = 'https://graph.microsoft.com/v1.0/me'
                     profile_response = requests.get(profile_url, headers=headers)
                     if profile_response.ok:
