@@ -636,6 +636,95 @@ def saml_acs(**_):
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
 
+def handle_user_data(user_data, provider, oauth_provider_config, token):
+    username = user_data.get('displayName')
+    email_adr = user_data.get('mail') or user_data.get('userPrincipalName')
+
+    # Fetch groups if configured
+    groups = []
+    if oauth_provider_config.user_groups:
+        groups_url = oauth_provider_config.user_groups
+        groups_response = requests.get(groups_url, headers={'Authorization': f"Bearer {token}"})
+        if groups_response.ok:
+            groups_data = groups_response.json().get('value', [])
+            groups = [group['displayName'] for group in groups_data if 'displayName' in group]
+
+    user_data['groups'] = groups
+
+    # Process user creation or update logic here
+    users = STORAGE.user.search(f"email:{user_data['mail']}", fl="*", as_obj=False)['items']
+    if users:
+        cur_user = users[0]
+        user_data['uname'] = cur_user.get('uname', user_data['mail'])
+        user_data['password'] = cur_user.get('password')
+    else:
+        user_data['uname'] = user_data['mail']
+        cur_user = {}
+
+    username = user_data['uname']
+    email_adr = user_data['mail']
+
+    # Add dynamic classification group
+    user_data['classification'] = get_dynamic_classification(user_data.get('classification', ''), user_data)
+
+    if (not cur_user and oauth_provider_config.auto_create) or (cur_user and oauth_provider_config.auto_sync):
+        cur_user.update(user_data)
+
+        # Save avatar
+        if 'photo' in user_data:
+            avatar = fetch_avatar(user_data['photo'], provider, oauth_provider_config)
+            if avatar:
+                STORAGE.user_avatar.save(username, avatar)
+
+        # Save updated user
+        STORAGE.user.save(username, get_default_user_quotas(cur_user))
+
+    if cur_user:
+        if 'avatar' not in locals():
+            avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
+        oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
+        get_token_store(username, 'oauth').add(oauth_token_id)
+
+        # Return valid token
+        return {
+            "avatar": avatar,
+            "username": username,
+            "oauth_token_id": oauth_token_id,
+            "email_adr": email_adr
+        }
+    else:
+        return None
+
+def fetch_and_handle_user_data(provider, oauth_provider_config, token, federated=False):
+    user_data = {}
+    headers = {'Authorization': f"Bearer {token}"}
+
+    # Fetch user data
+    profile_url = oauth_provider_config.user_get
+    profile_response = requests.get(profile_url, headers=headers)
+    if profile_response.ok:
+        user_data = profile_response.json()
+    else:
+        return make_api_response({"err_code": 3}, err="Failed to retrieve user data", status_code=500)
+
+    # Fetch user groups if configured
+    if oauth_provider_config.user_groups:
+        groups_url = oauth_provider_config.user_groups
+        groups_response = requests.get(groups_url, headers=headers)
+        if groups_response.ok:
+            groups_data = groups_response.json().get('value', [])
+            groups = [group['displayName'] for group in groups_data if 'displayName' in group]
+            user_data['groups'] = groups
+
+    if federated:
+        user_data['access_token'] = token
+
+    result = handle_user_data(user_data, provider, oauth_provider_config, token)
+    if result:
+        return make_api_response(result)
+    else:
+        return make_api_response({"err_code": 3}, err="User auto-creation is disabled", status_code=403)
+
 # noinspection PyBroadException
 @auth_api.route("/oauth/", methods=["GET"])
 def oauth_validate(**_):
@@ -660,10 +749,6 @@ def oauth_validate(**_):
     }
     """
     oauth_provider = request.values.get('provider', None)
-    avatar = None
-    username = None
-    email_adr = None
-    oauth_token_id = None
 
     if config.auth.oauth.enabled:
         oauth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -673,43 +758,22 @@ def oauth_validate(**_):
             try:
                 # Load the OAuth provider config
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
+                scope = oauth_provider_config.client_kwargs.get('scope', 'openid email profile')
 
                 if oauth_provider_config.use_federated_credentials:
                     # Use DefaultAzureCredential to get a federated token
-                    client_id = oauth_provider_config.client_id
-                    federated_credential_scope = oauth_provider_config.federated_credential_scope
-                    credential = DefaultAzureCredential(client_id=client_id)
+                    credential = DefaultAzureCredential()
 
                     try:
-                        federated_token_response = credential.get_token(federated_credential_scope)
+                        federated_token_response = credential.get_token(scope)
                         federated_token = federated_token_response.token
                         LOGGER.info("Federated token retrieved successfully.")
-                        token = {'access_token': federated_token}
                     except Exception as e:
                         error_msg = f"Failed to retrieve federated token: {str(e)}"
                         return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {error_msg}", status_code=500)
 
-                    # Fetch user profile from Microsoft Graph
-                    headers = {'Authorization': 'Bearer ' + federated_token}
-                    profile_url = oauth_provider_config.user_get
-                    profile_response = requests.get(profile_url, headers=headers)
-                    if profile_response.ok:
-                        user_data = profile_response.json()
-                        username = user_data.get('displayName')
-                        email_adr = user_data.get('mail') or user_data.get('userPrincipalName')
-
-                        # Fetch groups if configured
-                        groups = []
-                        if oauth_provider_config.user_groups:
-                            groups_url = oauth_provider_config.user_groups
-                            groups_response = requests.get(groups_url, headers=headers)
-                            if groups_response.ok:
-                                groups_data = groups_response.json().get('value', [])
-                                groups = [group['displayName'] for group in groups_data if 'displayName' in group]
-
-                        user_data['groups'] = groups
-                    else:
-                        return make_api_response({"err_code": 3}, err="Failed to retrieve user data from Microsoft Graph", status_code=500)
+                    # Fetch and handle user data
+                    return fetch_and_handle_user_data(provider, oauth_provider_config, federated_token, federated=True)
                 else:
                     if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                         token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
@@ -730,128 +794,8 @@ def oauth_validate(**_):
                     else:
                         app_provider = None
 
-                    # Create user
-                    user_data = {}
-
-                    # Add user_data info from received token
-                    if oauth_provider_config.jwks_uri:
-                        user_data = provider.parse_id_token(token)
-
-                    # Add user data from app_provider endpoint
-                    if app_provider and oauth_provider_config.app_provider.user_get:
-                        url = oauth_provider_config.app_provider.user_get
-                        uid = user_data.get('id', None)
-                        if not uid and user_data and oauth_provider_config.uid_field:
-                            uid = user_data.get(oauth_provider_config.uid_field, None)
-                        if uid:
-                            url = url.format(id=uid)
-                        resp = app_provider.get(url)
-                        if resp.ok:
-                            user_data.update(resp.json())
-                    # Add user data from user_get endpoint
-                    elif oauth_provider_config.user_get:
-                        resp = provider.get(oauth_provider_config.user_get)
-                        if resp.ok:
-                            user_data.update(resp.json())
-
-                    # Add group data from app_provider endpoint
-                    groups = []
-                    if app_provider and oauth_provider_config.app_provider.group_get:
-                        url = oauth_provider_config.app_provider.group_get
-                        uid = user_data.get('id', None)
-                        if not uid and user_data and oauth_provider_config.uid_field:
-                            uid = user_data.get(oauth_provider_config.uid_field, None)
-                        if uid:
-                            url = url.format(id=uid)
-                        resp_grp = app_provider.get(url)
-                        if resp_grp.ok:
-                            groups = resp_grp.json()
-                    # Add group data from group_get endpoint
-                    elif oauth_provider_config.user_groups:
-                        resp_grp = provider.get(oauth_provider_config.user_groups)
-                        if resp_grp.ok:
-                            groups = resp_grp.json()
-
-                    # Parse received groups
-                    if groups:
-                        if oauth_provider_config.user_groups_data_field:
-                            groups = groups[oauth_provider_config.user_groups_data_field]
-
-                        if oauth_provider_config.user_groups_name_field:
-                            groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
-
-                        user_data['groups'] = groups
-
-                if user_data:
-                    data = parse_profile(user_data, oauth_provider_config)
-                    has_access = data.pop('access', False)
-
-                    if data['email'] is None:
-                        return make_api_response({"err_code": 4}, err="Could not find an email address for the user", status_code=403)
-
-                    if not has_access:
-                        return make_api_response({"err_code": 2}, err="This user is not allowed access to the system", status_code=403)
-
-                    oauth_avatar = data.pop('avatar', None)
-
-                    # Find if user already exists
-                    users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
-                    if users:
-                        cur_user = users[0]
-                        # Do not update username and password from the current user
-                        data['uname'] = cur_user.get('uname', data['uname'])
-                        data['password'] = cur_user.get('password', data['password'])
-                    else:
-                        if data['uname'] != data['email']:
-                            # Username was computed using a regular expression, lets make sure we don't
-                            # assign the same username to two users
-                            res = STORAGE.user.search(f"uname:{data['uname']}", rows=0, as_obj=False)
-                            if res['total'] > 0:
-                                cnt = res['total']
-                                new_uname = f"{data['uname']}{cnt}"
-                                while STORAGE.user.exists(new_uname):
-                                    cnt += 1
-                                    new_uname = f"{data['uname']}{cnt}"
-                                data['uname'] = new_uname
-                        cur_user = {}
-
-                    username = data['uname']
-                    email_adr = data['email']
-
-                    # Add dynamic classification group
-                    data['classification'] = get_dynamic_classification(data['classification'], data)
-
-                    # Make sure the user exists in AL and is in sync
-                    if (not cur_user and oauth_provider_config.auto_create) or (cur_user and oauth_provider_config.auto_sync):
-                        cur_user.update(data)
-
-                        # Save avatar
-                        if oauth_avatar:
-                            avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
-                            if avatar:
-                                STORAGE.user_avatar.save(username, avatar)
-
-                        # Save updated user
-                        STORAGE.user.save(username, get_default_user_quotas(cur_user))
-
-                    if cur_user:
-                        if avatar is None:
-                            avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-                        oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
-                        get_token_store(username, 'oauth').add(oauth_token_id)
-
-                        # Return valid token
-                        return make_api_response({
-                            "avatar": avatar,
-                            "username": username,
-                            "oauth_token_id": oauth_token_id,
-                            "email_adr": email_adr
-                        })
-                    else:
-                        return make_api_response({"err_code": 3}, err="User auto-creation is disabled", status_code=403)
-                else:
-                    return make_api_response({"err_code": 5}, err="Invalid OAuth token provided", status_code=401)
-
+                    # Fetch and handle user data
+                    return fetch_and_handle_user_data(provider, oauth_provider_config, token['access_token'])
             except OAuthError as err:
                 return make_api_response({"err_code": 1}, err=str(err), status_code=401)
             except Exception as err:
@@ -859,7 +803,6 @@ def oauth_validate(**_):
                 return make_api_response({"err_code": 1, "exception": str(err)}, err="Unhandled exception occurred while processing OAuth token", status_code=401)
     else:
         return make_api_response({"err_code": 0}, err="OAuth is disabled on the server", status_code=401)
-
 
 # noinspection PyBroadException
 @auth_api.route("/reset_pwd/", methods=["GET", "POST"])
