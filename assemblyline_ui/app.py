@@ -139,7 +139,6 @@ if config.config.auth.oauth.enabled:
         p = p.as_primitives()
 
         client_id = p.get('client_id', None)
-        client_secret = p.get('client_secret', None)
 
         if client_id:
             # Remove AL specific fields safely using pop with default to None
