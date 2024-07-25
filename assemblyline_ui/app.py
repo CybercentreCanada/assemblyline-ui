@@ -135,7 +135,7 @@ if config.config.auth.oauth.enabled:
         client_id = p.get('client_id', None)
         client_secret = p.get('client_secret', None)
 
-        if client_id and client_secret:
+        if client_id:
             # Set provider name
             p['name'] = name
 

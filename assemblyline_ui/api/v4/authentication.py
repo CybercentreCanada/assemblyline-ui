@@ -675,10 +675,12 @@ def oauth_validate(**_):
 
                 if use_fic:
                     # Use DefaultAzureCredential to get a federated token
-                    credential = DefaultAzureCredential()
+                    tenant_id = oauth_provider_config.tenant_id
+                    client_id = oauth_provider_config.client_id
+                    scope = oauth_provider_config.federated_credential_scope
+                    credential = DefaultAzureCredential(workload_identity_client_id=client_id,workload_identity_tenant_id=tenant_id)
 
                     try:
-                        scope = oauth_provider_config.client_kwargs.get('scope', 'openid email profile')
                         federated_token_response = credential.get_token(scope)
                         federated_token = federated_token_response.token
                         LOGGER.info("Federated token retrieved successfully.")
@@ -718,14 +720,23 @@ def oauth_validate(**_):
                     if oauth_provider_config.jwks_uri:
                         user_data = provider.parse_id_token(token)
                 else:
-                    # Fetch user data
-                    profile_url = oauth_provider_config.user_get
-                    headers = {'Authorization': f"Bearer {federated_token}"}
+                    headers = {'Authorization': f"Bearer {token['access_token']}"}
+                    profile_url = 'https://graph.microsoft.com/v1.0/me'
                     profile_response = requests.get(profile_url, headers=headers)
                     if profile_response.ok:
                         user_data = profile_response.json()
                     else:
-                        return make_api_response({"err_code": 3}, err="Failed to retrieve user data using Federated Identity Credentials", status_code=500)
+                        return make_api_response({"err_code": 3}, err="Failed to retrieve user data using token", status_code=500)
+
+                    # Extract the user ID from the user data
+                    user_id = user_data.get('id')
+                    if user_id:
+                        profile_url = oauth_provider_config.user_get.format(id=user_id)
+                        profile_response = requests.get(profile_url, headers=headers)
+                        if profile_response.ok:
+                            user_data.update(profile_response.json())
+                        else:
+                            return make_api_response({"err_code": 3}, err="Failed to retrieve user data using user ID", status_code=500)
 
                 # Add user data from app_provider endpoint
                 if app_provider and oauth_provider_config.app_provider.user_get:
