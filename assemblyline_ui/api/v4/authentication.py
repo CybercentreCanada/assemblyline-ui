@@ -721,7 +721,7 @@ def oauth_validate(**_):
                 # Create user
                 user_data = {}
 
-                if use_fic:
+                if not use_fic:
                     # Add user_data info from received token
                     if oauth_provider_config.jwks_uri:
                         user_data = provider.parse_id_token(token)
