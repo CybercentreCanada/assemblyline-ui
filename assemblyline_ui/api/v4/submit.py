@@ -17,10 +17,10 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
-    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, SUBMISSION_PROFILES, USER_CONFIGURABLE_SUBMISSION_PARAMS
+    CLASSIFICATION as Classification, IDENTIFY, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS
+    FETCH_METHODS, update_submission_parameters
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -331,27 +331,12 @@ def submit(**kwargs):
 
         # Create task object
         s_params = ui_to_submission_params(user_settings)
-        s_profile = SUBMISSION_PROFILES.get(data.get('profile'))
-        if s_profile and not Classification.is_accessible(user['classification'], s_profile.classification):
-            # User isn't allowed to use the submission profile specified
-            return make_api_response({}, f"You aren't allowed to use '{s_profile.name}' submission profile", 400)
 
-        if ROLES.submission_customize in user['roles']:
-            # Apply provided params (if the user is allowed to)
-            s_params.update(data.get("params", {}))
-        elif s_profile:
-            # Apply the profile (but allow the user to change some properties)
-            s_params.update(s_profile.params.as_primitives())
-            params_data = data.get("params", {})
-            for param in USER_CONFIGURABLE_SUBMISSION_PARAMS:
-                if param in params_data:
-                    # Overwrite/Set parameter with user-defined input
-                    s_params[param] = params_data[param]
-
-        else:
-            # No profile specified, raise an exception back to the user
-            return make_api_response({}, "You must specify a submission profile. " \
-                                     f"One of: {list(SUBMISSION_PROFILES.keys())}", 400)
+        # Update submission parameters as specified by the user
+        try:
+            update_submission_parameters(s_params, data, user)
+        except Exception as e:
+            return make_api_response({}, str(e), 400)
 
 
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources

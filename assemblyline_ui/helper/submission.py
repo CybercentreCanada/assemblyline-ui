@@ -16,7 +16,7 @@ from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.models.config import HASH_PATTERN_MAP
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, USER_CONFIGURABLE_SUBMISSION_PARAMS
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -28,6 +28,7 @@ try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
 except socket.gaierror:
     MYIP = '127.0.0.1'
+
 
 
 #############################
@@ -147,7 +148,25 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     return found, fileinfo
 
-
+def update_submission_parameters(s_params: dict, data: dict, user: dict):
+    s_profile = SUBMISSION_PROFILES.get(data.get('profile'))
+    # Apply provided params (if the user is allowed to)
+    if ROLES.submission_customize in user['roles']:
+        s_params.update(data.get("params", {}))
+    elif s_profile:
+        if not CLASSIFICATION.is_accessible(user['classification'], s_profile.classification):
+            # User isn't allowed to use the submission profile specified
+            raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
+        # Apply the profile (but allow the user to change some properties)
+        s_params.update(s_profile.params.as_primitives())
+        params_data = data.get("params", {})
+        for param in USER_CONFIGURABLE_SUBMISSION_PARAMS:
+            if param in params_data:
+                # Overwrite/Set parameter with user-defined input
+                s_params[param] = params_data[param]
+    else:
+        # No profile specified, raise an exception back to the user
+        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
 
 
 
