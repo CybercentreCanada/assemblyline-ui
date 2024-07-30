@@ -639,9 +639,14 @@ def saml_acs(**_):
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
 def get_fic_access_token(client_id, tenant_id, scope):
-    credential = DefaultAzureCredential(
-        workload_identity_client_id=client_id, workload_identity_tenant_id=tenant_id)
-    token = credential.get_token(scope)
+    try:
+        credential = DefaultAzureCredential(
+            workload_identity_client_id=client_id, workload_identity_tenant_id=tenant_id)
+        token = credential.get_token(scope)
+    except Exception as e:
+        error_msg = f"Failed to retrieve federated token: {str(e)}"
+        raise Exception(error_msg)
+
     return token.token
 
 def get_current_user_profile(access_token):
@@ -737,12 +742,25 @@ def oauth_validate(**_):
                     tenant_id = oauth_provider_config.tenant_id
                     client_id = oauth_provider_config.client_id
                     scope = oauth_provider_config.federated_credential_scope
-                    fic_access_token = get_fic_access_token(
-                        client_id=client_id, tenant_id=tenant_id, scope=scope)
+
+                    try:
+                        fic_access_token = get_fic_access_token(
+                            client_id=client_id, tenant_id=tenant_id, scope=scope)
+                    except Exception as e:
+                        return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
 
                     user_profile = get_current_user_profile(access_token=fic_access_token)
+
+                    if not user_profile:
+                        return make_api_response(
+                            {"err_code": 3}, err=f"Unable to fetch user profile:", status_code=500)
+
                     user_email = user_profile.get('mail') or user_profile.get('userPrincipalName')
                     LOGGER.info(f"Logging in as {user_email}")
+
+                    if not user_email:
+                        return make_api_response(
+                            {"err_code": 3}, err=f"Unable to find current user:", status_code=500)
 
                     user_profile = get_user_profile(
                         access_token=fic_access_token, user_email=user_email)
@@ -750,6 +768,9 @@ def oauth_validate(**_):
                         access_token=fic_access_token, user_email=user_email)
 
                     user_data.update(user_profile)
+
+                    if user_data:
+                        LOGGER.info(f"User Data for {user_email} has been retrived")
 
                     # This is set so it can be used in line 899
                     token = fic_access_token
