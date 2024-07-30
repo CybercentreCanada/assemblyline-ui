@@ -649,46 +649,6 @@ def get_fic_access_token(client_id, tenant_id, scope):
 
     return token.token
 
-def get_current_user_profile(access_token):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    response = requests.get(f'{GRAPH_API_ENDPOINT}/me', headers=headers)
-    if response.ok:
-        user_profile = response.json()
-        LOGGER.info("User Profile Response: ", user_profile)
-        return user_profile
-    else:
-        LOGGER.exception("Failed to fetch current user profile")
-        return None
-
-def get_user_profile(access_token, user_email):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    user_profile_response = requests.get(f'{GRAPH_API_ENDPOINT}/users/{user_email}', headers=headers)
-    user_profile = user_profile_response.json()
-
-    user_avatar_response = requests.get(f'{GRAPH_API_ENDPOINT}/users/{user_email}/photo/$value', headers=headers)
-
-    if user_avatar_response.status_code == 200:
-        user_profile['avatar'] = user_avatar_response.content
-    else:
-        user_profile['avatar'] = None
-
-    return user_profile
-
-def get_user_groups(access_token, user_email):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    groups_response = requests.get(f'{GRAPH_API_ENDPOINT}/users/{user_email}/memberOf', headers=headers)
-    groups = groups_response.json()
-    return groups
-
 # noinspection PyBroadException
 @auth_api.route("/oauth/", methods=["GET"])
 def oauth_validate(**_):
@@ -737,110 +697,83 @@ def oauth_validate(**_):
                 # Federated Identity Credentials
                 use_fic = oauth_provider_config.use_federated_credentials
 
+                # Use DefaultAzureCredential to get a federated token
+                tenant_id = oauth_provider_config.tenant_id
+                client_id = oauth_provider_config.client_id
+                scope = oauth_provider_config.federated_credential_scope
+
+                try:
+                    client_secret = get_fic_access_token(
+                        client_id=client_id, tenant_id=tenant_id, scope=scope)
+                except Exception as e:
+                    return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
+
+                # Validate the token in non fic workflows
                 if use_fic:
-                    # Use DefaultAzureCredential to get a federated token
-                    tenant_id = oauth_provider_config.tenant_id
-                    client_id = oauth_provider_config.client_id
-                    scope = oauth_provider_config.federated_credential_scope
-
-                    try:
-                        fic_access_token = get_fic_access_token(
-                            client_id=client_id, tenant_id=tenant_id, scope=scope)
-                    except Exception as e:
-                        return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
-
-                    user_profile = get_current_user_profile(access_token=fic_access_token)
-
-                    if not user_profile:
-                        return make_api_response(
-                            {"err_code": 3}, err=f"Unable to fetch user profile:", status_code=500)
-
-                    user_email = user_profile.get('mail') or user_profile.get('userPrincipalName')
-                    LOGGER.info(f"Logging in as {user_email}")
-
-                    if not user_email:
-                        return make_api_response(
-                            {"err_code": 3}, err=f"Unable to find current user:", status_code=500)
-
-                    user_profile = get_user_profile(
-                        access_token=fic_access_token, user_email=user_email)
-                    groups = get_user_groups(
-                        access_token=fic_access_token, user_email=user_email)
-
-                    user_data.update(user_profile)
-
-                    if user_data:
-                        LOGGER.info(f"User Data for {user_email} has been retrived")
-
-                    # This is set so it can be used in line 899
-                    token = fic_access_token
+                    token = provider.authorize_access_token(client_secret)
+                elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
+                    # Validate the token that we've received using the secret
+                    token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
                 else:
-                    # Validate the token in non fic workflows
-                    if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
-                        # Validate the token that we've received using the secret
-                        token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
-                    else:
-                        token = provider.authorize_access_token()
+                    token = provider.authorize_access_token()
 
-                    # Setup alternate app provider if we need to fetch groups of user info by hand
-                    if oauth_provider_config.app_provider and (
-                            oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
-                        # Initialize the app_provider
-                        app_provider = OAuth2Session(
-                            oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
-                            oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
-                            scope=oauth_provider_config.app_provider.scope)
-                        app_provider.fetch_token(
-                            oauth_provider_config.app_provider.access_token_url,
-                            grant_type="client_credentials")
+                # Setup alternate app provider if we need to fetch groups of user info by hand
+                # Initialize the app_provider
+                if oauth_provider_config.app_provider and (
+                        oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
+                    app_provider = OAuth2Session(
+                        oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
+                        oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret or client_secret,
+                        scope=oauth_provider_config.app_provider.scope)
+                    app_provider.fetch_token(
+                        oauth_provider_config.app_provider.access_token_url,
+                        grant_type="client_credentials")
 
-                # Check if user_data is still empty and proceed with other methods if so
-                if not user_data:
-                    # Add user_data info from received token
-                    if oauth_provider_config.jwks_uri:
-                        user_data = provider.parse_id_token(token)
+                # Add user_data info from received token
+                if oauth_provider_config.jwks_uri:
+                    user_data = provider.parse_id_token(token)
 
-                    # Add user data from app_provider endpoint
-                    if app_provider and oauth_provider_config.app_provider.user_get:
-                        url = oauth_provider_config.app_provider.user_get
-                        uid = user_data.get('id', None)
+                # Add user data from app_provider endpoint
+                if app_provider and oauth_provider_config.app_provider.user_get:
+                    url = oauth_provider_config.app_provider.user_get
+                    uid = user_data.get('id', None)
 
-                        if not uid and user_data and oauth_provider_config.uid_field:
-                            uid = user_data.get(oauth_provider_config.uid_field, None)
+                    if not uid and user_data and oauth_provider_config.uid_field:
+                        uid = user_data.get(oauth_provider_config.uid_field, None)
 
-                        if uid:
-                            url = url.format(id=uid)
+                    if uid:
+                        url = url.format(id=uid)
 
-                        resp = app_provider.get(url)
-                        if resp.ok:
-                            user_data.update(resp.json())
+                    resp = app_provider.get(url)
+                    if resp.ok:
+                        user_data.update(resp.json())
 
-                    # Add user data from user_get endpoint
-                    elif oauth_provider_config.user_get:
-                        resp = provider.get(oauth_provider_config.user_get)
-                        if resp.ok:
-                            user_data.update(resp.json())
+                # Add user data from user_get endpoint
+                elif oauth_provider_config.user_get:
+                    resp = provider.get(oauth_provider_config.user_get)
+                    if resp.ok:
+                        user_data.update(resp.json())
 
-                    # Add group data from app_provider endpoint
-                    if app_provider and oauth_provider_config.app_provider.group_get:
-                        url = oauth_provider_config.app_provider.group_get
-                        uid = user_data.get('id', None)
+                # Add group data from app_provider endpoint
+                if app_provider and oauth_provider_config.app_provider.group_get:
+                    url = oauth_provider_config.app_provider.group_get
+                    uid = user_data.get('id', None)
 
-                        if not uid and user_data and oauth_provider_config.uid_field:
-                            uid = user_data.get(oauth_provider_config.uid_field, None)
+                    if not uid and user_data and oauth_provider_config.uid_field:
+                        uid = user_data.get(oauth_provider_config.uid_field, None)
 
-                        if uid:
-                            url = url.format(id=uid)
+                    if uid:
+                        url = url.format(id=uid)
 
-                        resp_grp = app_provider.get(url)
-                        if resp_grp.ok:
-                            groups = resp_grp.json()
+                    resp_grp = app_provider.get(url)
+                    if resp_grp.ok:
+                        groups = resp_grp.json()
 
-                    # Add group data from group_get endpoint
-                    elif oauth_provider_config.user_groups:
-                        resp_grp = provider.get(oauth_provider_config.user_groups)
-                        if resp_grp.ok:
-                            groups = resp_grp.json()
+                # Add group data from group_get endpoint
+                elif oauth_provider_config.user_groups:
+                    resp_grp = provider.get(oauth_provider_config.user_groups)
+                    if resp_grp.ok:
+                        groups = resp_grp.json()
 
                 # Parse received groups
                 if groups:
@@ -902,10 +835,7 @@ def oauth_validate(**_):
 
                         # Save avatar
                         if oauth_avatar:
-                            if use_fic:
-                                avatar = user_data.get('avatar', None)
-                            else:
-                                avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
+                            avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
                             if avatar:
                                 STORAGE.user_avatar.save(username, avatar)
 
