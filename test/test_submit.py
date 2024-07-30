@@ -6,7 +6,7 @@ import pytest
 import random
 import tempfile
 
-from conftest import get_api_data
+from conftest import get_api_data, APIError
 
 from assemblyline.common import forge
 from assemblyline.odm.models.config import HASH_PATTERN_MAP
@@ -282,3 +282,34 @@ def test_submit_base64_nameless(datastore, login_session, scheduler):
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
+
+def test_submit_submission_profile(datastore, login_session, scheduler):
+    _, session, host = login_session
+    sq.delete()
+
+    # Make the user a simple user and try to submit
+    datastore.user.update('admin', [(datastore.user.UPDATE_REMOVE, 'type', 'admin'),
+                                    (datastore.user.UPDATE_APPEND, 'type', 'user')])
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    sha256 = hashlib.sha256(byte_str).hexdigest()
+    data = {
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'metadata': {'test': 'test_submit_base64_nameless'}
+    }
+    with pytest.raises(APIError, match="You must specify a submission profile"):
+        # A basic user must specify a submission profile name
+        get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Try using a submission profile with no parameters
+    data['profile'] = "Static Analysis"
+    get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Try using a submission profile with a parameter you aren't allowed to set
+    # The system should silently ignore your parameter and still create a submission
+    data['params'] = {'deep_scan': True}
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    assert resp['params']['deep_scan'] == False
+
+    # Restore original roles for later tests
+    datastore.user.update('admin', [(datastore.user.UPDATE_REMOVE, 'type', 'user'),
+                                    (datastore.user.UPDATE_APPEND, 'type', 'admin')])
