@@ -13,7 +13,7 @@ from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
-    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION, SUBMISSION_PROFILES, USER_CONFIGURABLE_SUBMISSION_PARAMS
+    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION, SUBMISSION_PROFILES
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
@@ -215,7 +215,6 @@ def who_am_i(**kwargs):
             "max_dtl": config.retrohunt.max_dtl,
         },
         "submission": {
-            "configurable_params": USER_CONFIGURABLE_SUBMISSION_PARAMS,
             "dtl": config.submission.dtl,
             "max_dtl": config.submission.max_dtl,
             "file_sources": file_sources,
@@ -883,7 +882,6 @@ def get_user_settings(username, **kwargs):
 
     Result example:
     {
-     "profile": true,               # Should submissions be profiled
      "classification": "",          # Default classification for this user sumbissions
      "description": "",             # Default description for this user's submissions
      "download_encoding": "blah",   # Default encoding for downloaded files
@@ -921,7 +919,6 @@ def set_user_settings(username, **kwargs):
 
     Data Block:
     {
-     "profile": true,                       # Should submissions be profiled
      "classification": "",                  # Default classification for this user sumbissions
      "default_zip_password": "zippy"        # Default password used for protected file downloads
      "description": "",                     # Default description for this user's submissions
@@ -982,7 +979,6 @@ def get_user_submission_params(username, **kwargs):
 
     Result example:
     {
-     "profile": true,               # Should submissions be profiled
      "classification": "",          # Default classification for this user sumbissions
      "description": "",             # Default description for this user's submissions
      "priority": 1000,              # Default submission priority
