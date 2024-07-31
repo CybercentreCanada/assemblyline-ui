@@ -1,4 +1,5 @@
 import base64
+import datetime
 import hashlib
 import json
 import re
@@ -638,6 +639,26 @@ def saml_acs(**_):
         data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
+def create_token_dict(access_token_obj):
+    """
+    Process the AccessToken object to create a dictionary suitable for OAuth2Session.
+
+    :param access_token_obj: The AccessToken object returned from `get_fic_access_token`.
+    :return: A dictionary with token details.
+    """
+    token = access_token_obj.token
+    expires_on = access_token_obj.expires_on
+
+    # Calculate the expiration time from the current time and the 'expires_on' timestamp
+    expires_in = expires_on - int(datetime.utcnow().timestamp())
+
+    return {
+        'access_token': token,
+        'token_type': 'Bearer',
+        'expires_in': expires_in,
+        'expires_at': expires_on
+    }
+
 def get_fic_access_token(client_id, tenant_id, scope):
     try:
         credential = DefaultAzureCredential(
@@ -697,20 +718,21 @@ def oauth_validate(**_):
                 # Federated Identity Credentials
                 use_fic = oauth_provider_config.use_federated_credentials
 
-                # Use DefaultAzureCredential to get a federated token
-                tenant_id = oauth_provider_config.tenant_id
-                client_id = oauth_provider_config.client_id
-                scope = oauth_provider_config.federated_credential_scope
+                if use_fic:
+                    # Use DefaultAzureCredential to get a federated token
+                    tenant_id = oauth_provider_config.tenant_id
+                    client_id = oauth_provider_config.client_id
+                    scope = oauth_provider_config.federated_credential_scope
 
-                try:
-                    fic_token = get_fic_access_token(
-                        client_id=client_id, tenant_id=tenant_id, scope=scope)
-                except Exception as e:
-                    return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
+                    try:
+                        fic_token = get_fic_access_token(client_id=client_id, tenant_id=tenant_id, scope=scope)
+                        token_dict = create_token_dict(fic_token)
+                        token = provider.token = token_dict
+                    except Exception as e:
+                        return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
 
                 # Validate the token in non fic workflows
                 if use_fic:
-                    provider.token = fic_token
                     token = fic_token
                 elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
