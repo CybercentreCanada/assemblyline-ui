@@ -711,6 +711,7 @@ def oauth_validate(**_):
                 # Validate the token in non fic workflows
                 if use_fic:
                     provider.token = fic_token
+                    token = fic_token
                 elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
