@@ -301,7 +301,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with no parameters
-    data['profile'] = "Static Analysis"
+    data['profile_name'] = "Static Analysis"
     get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
