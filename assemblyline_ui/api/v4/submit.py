@@ -258,7 +258,7 @@ def submit(**kwargs):
       // OPTIONAL VALUES
       "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
 
-      "profile_name": "Static Analysis",    # Name of submission profile to use
+      "submission_profile": "Static Analysis",    # Name of submission profile to use
 
       "metadata": {                         # Submission metadata
         "key": val,                             # Key/Value pair for metadata parameters

@@ -183,7 +183,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
     return found, fileinfo
 
 def update_submission_parameters(s_params: dict, data: dict, user: dict):
-    s_profile = SUBMISSION_PROFILES.get(data.get('profile_name'))
+    s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     # Apply provided params (if the user is allowed to)
     if ROLES.submission_customize in user['roles']:
         s_params.update(data.get("params", {}))

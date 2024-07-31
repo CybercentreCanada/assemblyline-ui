@@ -375,7 +375,7 @@ def test_ingest_submission_profile(datastore, login_session, scheduler):
         get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with no parameters
-    data['profile_name'] = "Static Analysis"
+    data['submission_profile'] = "Static Analysis"
     get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
