@@ -192,6 +192,13 @@ def who_am_i(**kwargs):
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
      if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
+    submission_profiles = {}
+    for name, profile in SUBMISSION_PROFILES.items():
+        if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
+            # We want to pass forward the configurations that have been explicitly set as a configuration
+            submission_profiles[name] = {p_cls.name: getattr(profile.params, p_cls.name)
+                                         for p_cls in profile.params.fields().values() if p_cls.default_set == False}
+
     user_data['configuration'] = {
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
