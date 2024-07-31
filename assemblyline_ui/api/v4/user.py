@@ -7,7 +7,7 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.config import HASH_PATTERN_MAP
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
 from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
@@ -193,11 +193,16 @@ def who_am_i(**kwargs):
      if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
     submission_profiles = {}
-    for name, profile in SUBMISSION_PROFILES.items():
-        if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
-            # We want to pass forward the configurations that have been explicitly set as a configuration
-            submission_profiles[name] = {p_cls.name: getattr(profile.params, p_cls.name)
-                                         for p_cls in profile.params.fields().values() if p_cls.default_set == False}
+    if config.submission.profiles == DEFAULT_SUBMISSION_PROFILES:
+        # If these are exactly the same as the default values, then it's accessible to everyone
+        submission_profiles = {profile['name']: profile['params'] for profile in DEFAULT_SUBMISSION_PROFILES}
+    else:
+        # Filter profiles based on accessibility to the user
+        for name, profile in SUBMISSION_PROFILES.items():
+            if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
+                # We want to pass forward the configurations that have been explicitly set as a configuration
+                submission_profiles[name] = {p_cls.name: getattr(profile.params, p_cls.name)
+                                            for p_cls in profile.params.fields().values() if p_cls.default_set == False}
 
     user_data['configuration'] = {
         "auth": {
@@ -226,8 +231,7 @@ def who_am_i(**kwargs):
             "max_dtl": config.submission.max_dtl,
             "file_sources": file_sources,
             "metadata": UI_METADATA_VALIDATION,
-            "profiles": {name: profile.params.as_primitives() for name, profile in SUBMISSION_PROFILES.items() \
-                         if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification)},
+            "profiles": submission_profiles,
             "verdicts": {
                 "info": config.submission.verdicts.info,
                 "suspicious": config.submission.verdicts.suspicious,
