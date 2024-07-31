@@ -1,15 +1,14 @@
 import base64
-import datetime
 import hashlib
 import json
 import re
-import requests
 from io import BytesIO
 from typing import Any, Dict
 from urllib.parse import urlparse
 
 import jwt
 import pyqrcode
+from datetime import datetime, timezone
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
 from assemblyline.common.security import (
@@ -41,7 +40,7 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
-from authlib.integrations.flask_client import OAuth, FlaskRemoteApp
+from authlib.integrations.flask_client import OAuth
 from azure.identity import DefaultAzureCredential
 from flask import current_app, redirect, request
 from flask import session as flsk_session
@@ -650,7 +649,7 @@ def create_token_dict(access_token_obj):
     expires_on = access_token_obj.expires_on
 
     # Calculate the expiration time from the current time and the 'expires_on' timestamp
-    expires_in = expires_on - int(datetime.utcnow().timestamp())
+    expires_in = expires_on - int(datetime.now(timezone.utc).timestamp())
 
     return {
         'access_token': token,
