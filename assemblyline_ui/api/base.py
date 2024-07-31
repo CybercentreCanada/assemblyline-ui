@@ -266,9 +266,12 @@ def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
 
     if type(err) is Exception:
         trace = exc_info()[2]
-        err = ''.join(['\n'] + format_tb(trace) +
-                      ['%s: %s\n' % (err.__class__.__name__, str(err))]).rstrip('\n')
         log_with_traceback(LOGGER, trace, "Exception", is_exception=True)
+        if config.ui.debug:
+            err = ''.join(['\n'] + format_tb(trace) +
+                          ['%s: %s\n' % (err.__class__.__name__, str(err))]).rstrip('\n')
+        else:
+            err = "Internal Server Error"
 
     resp = make_response(jsonify({"api_response": data,
                                   "api_error_message": err,
