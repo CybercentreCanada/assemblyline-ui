@@ -184,8 +184,6 @@ ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 SUBMISSION_PROFILES = {profile.name: profile for profile in config.submission.profiles}
-USER_CONFIGURABLE_SUBMISSION_PARAMS = list(set(SubmissionParams.fields().keys()) - \
-                                           set(SubmissionProfileParams.fields().keys()) - \
-                                            set(['quota_item', 'type', 'groups']))
+
 # End global
 #################################################################

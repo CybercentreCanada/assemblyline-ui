@@ -16,7 +16,7 @@ from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.odm.models.config import HASH_PATTERN_MAP
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, USER_CONFIGURABLE_SUBMISSION_PARAMS
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -183,7 +183,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
     return found, fileinfo
 
 def update_submission_parameters(s_params: dict, data: dict, user: dict):
-    s_profile = SUBMISSION_PROFILES.get(data.get('profile'))
+    s_profile = SUBMISSION_PROFILES.get(data.get('profile_name'))
     # Apply provided params (if the user is allowed to)
     if ROLES.submission_customize in user['roles']:
         s_params.update(data.get("params", {}))
@@ -193,11 +193,12 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict):
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
         s_params.update(s_profile.params.as_primitives())
+        s_fields = s_profile.params.fields()
         params_data = data.get("params", {})
-        for param in USER_CONFIGURABLE_SUBMISSION_PARAMS:
-            if param in params_data:
-                # Overwrite/Set parameter with user-defined input
-                s_params[param] = params_data[param]
+        for param, value in params_data.items():
+            if param in s_fields and s_fields[param].default_set == True:
+                # Set parameter with user-defined input since it wasn't explicitly declared in the configuration
+                s_params[param] = value
     else:
         # No profile specified, raise an exception back to the user
         raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
