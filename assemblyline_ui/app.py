@@ -1,6 +1,7 @@
 import logging
 import os
 
+from authlib.integrations.base_client.base_oauth import OAUTH_CLIENT_PARAMS
 from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
@@ -23,6 +24,7 @@ from assemblyline_ui.api.v4.heuristics import heuristics_api
 from assemblyline_ui.api.v4.ingest import ingest_api
 from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.ontology import ontology_api
+from assemblyline_ui.api.v4.proxy import proxy_api
 from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.replay import replay_api
 from assemblyline_ui.api.v4.retrohunt import retrohunt_api
@@ -111,9 +113,13 @@ app.register_blueprint(heuristics_api)
 app.register_blueprint(ingest_api)
 app.register_blueprint(live_api)
 app.register_blueprint(ontology_api)
+if len(config.config.ui.api_proxies) > 0:
+    app.register_blueprint(proxy_api)
 app.register_blueprint(result_api)
-app.register_blueprint(replay_api)
-app.register_blueprint(retrohunt_api)
+if config.config.ui.allow_replay:
+    app.register_blueprint(replay_api)
+if config.config.retrohunt.enabled:
+    app.register_blueprint(retrohunt_api)
 app.register_blueprint(search_api)
 app.register_blueprint(service_api)
 app.register_blueprint(signature_api)
@@ -133,28 +139,17 @@ if config.config.auth.oauth.enabled:
         p = p.as_primitives()
 
         client_id = p.get('client_id', None)
-        client_secret = p.get('client_secret', None)
 
-        if client_id and client_secret:
+        if client_id:
+            # Remove AL specific fields safely using pop with default to None
+            # as those fields will end up being sent as metadata
+            safe_fields = set(list(OAUTH_CLIENT_PARAMS) + ["jwks_uri"])
+            for field in list(p.keys()):
+                if field not in safe_fields:
+                    p.pop(field, None)
+
             # Set provider name
             p['name'] = name
-
-            # Remove AL specific fields safely using pop with default to None
-            fields_to_remove = ['auto_create',
-                                'auto_sync',
-                                'user_get',
-                                'auto_properties',
-                                'uid_field',
-                                'uid_regex',
-                                'uid_format',
-                                'user_groups',
-                                'user_groups_data_field',
-                                'user_groups_name_field',
-                                'app_provider'
-                                ]
-
-            for field in fields_to_remove:
-                p.pop(field, None)
 
             # Add the provider to the list of providers
             providers.append(p)
