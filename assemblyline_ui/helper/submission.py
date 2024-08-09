@@ -9,6 +9,7 @@ import tempfile
 from typing import List
 from urllib.parse import urlparse
 
+from assemblyline.common.dict_utils import recursive_update
 from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
@@ -192,7 +193,7 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict):
             # User isn't allowed to use the submission profile specified
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
-        s_params.update(s_profile.params.as_primitives())
+        s_params = recursive_update(s_params, s_profile.params.as_primitives())
         s_fields = s_profile.params.fields()
         params_data = data.get("params", {})
         for param, value in params_data.items():
