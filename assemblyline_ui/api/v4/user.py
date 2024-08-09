@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import List
 from assemblyline.odm.models.config import ExternalLinks
 from flask import request, session as flsk_session
@@ -21,7 +22,7 @@ from assemblyline_ui.helper.user import (
     API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
-from .federated_lookup import filtered_tag_names
+from assemblyline_ui.api.v4.federated_lookup import filtered_tag_names
 
 
 SUB_API = 'user'
@@ -192,10 +193,11 @@ def who_am_i(**kwargs):
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
      if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
+    # Prepare submission profile configurations for UI
     submission_profiles = {}
     if config.submission.profiles == DEFAULT_SUBMISSION_PROFILES:
         # If these are exactly the same as the default values, then it's accessible to everyone
-        submission_profiles = {profile['name']: profile['params'] for profile in DEFAULT_SUBMISSION_PROFILES}
+        submission_profiles = {profile['name']: deepcopy(profile['params']) for profile in DEFAULT_SUBMISSION_PROFILES}
     else:
         # Filter profiles based on accessibility to the user
         for name, profile in SUBMISSION_PROFILES.items():
@@ -203,6 +205,16 @@ def who_am_i(**kwargs):
                 # We want to pass forward the configurations that have been explicitly set as a configuration
                 submission_profiles[name] = {p_cls.name: getattr(profile.params, p_cls.name)
                                             for p_cls in profile.params.fields().values() if p_cls.default_set == False}
+
+    # Expand service categories if used in submission profiles (assists with the UI locking down service selection)
+    service_categories = list(STORAGE.service.facet('category').keys())
+    for profile in submission_profiles.values():
+        for key, services in profile.get("services", {}).items():
+            expanded_services = list()
+            for srv in services:
+                if srv in service_categories:
+                    expanded_services.extend([i['name'] for i in STORAGE.service.search(f"category:{srv}", as_obj=False, fl="name")['items']])
+            profile['services'][key] = list(set(services).union(set(expanded_services)))
 
     user_data['configuration'] = {
         "auth": {
