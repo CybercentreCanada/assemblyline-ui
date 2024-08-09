@@ -21,7 +21,7 @@ from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classificatio
     STORAGE, config, FILESTORE, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS
+    FETCH_METHODS, update_submission_parameters
 from assemblyline_ui.helper.user import check_async_submission_quota, decrement_submission_ingest_quota, \
     load_user_settings
 
@@ -150,15 +150,17 @@ def ingest_single_file(**kwargs):
       "base64": "<BINARY DATA OF THE FILE TO SCAN... ENCODED AS BASE64 STRING>",
 
       // OPTIONAL VALUES
-      "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
+      "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
 
-      "metadata": {               # Submission metadata
-        "key": val,                 # Key/Value pair for metadata parameters
+      "submission_profile": "Static Analysis",    # Name of submission profile to use
+
+      "metadata": {                         # Submission metadata
+        "key": val,                             # Key/Value pair for metadata parameters
       },
 
-      "params": {                 # Submission parameters
-        "key": val,                 # Key/Value pair for params that differ from the user's defaults
-      },                            # Default params can be fetch at /api/v3/user/submission_params/<user>/
+      "params": {                           # Submission parameters
+        "key": val,                             # Key/Value pair for params that differ from the user's defaults
+      },                                        # Default params can be fetch at /api/v3/user/submission_params/<user>/
 
       "generate_alert": False,        # Generate an alert in our alerting system or not
       "notification_queue": None,     # Name of the notification queue
@@ -269,8 +271,11 @@ def ingest_single_file(**kwargs):
             "type": "INGEST"
         })
 
-        # Apply provided params
-        s_params.update(data.get("params", {}))
+        # Update submission parameters as specified by the user
+        try:
+            update_submission_parameters(s_params, data, user)
+        except Exception as e:
+            return make_api_response({}, str(e), 400)
 
         # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
