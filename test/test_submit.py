@@ -9,7 +9,7 @@ import tempfile
 from conftest import get_api_data, APIError
 
 from assemblyline.common import forge
-from assemblyline.odm.models.config import HASH_PATTERN_MAP
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -301,14 +301,18 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with no parameters
-    data['submission_profile'] = "Static Analysis"
+    profile = DEFAULT_SUBMISSION_PROFILES[0]
+    data['submission_profile'] = profile['name']
     get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
     # The system should silently ignore your parameter and still create a submission
+    data['params'] = {'services': {'selected': ['blah']}}
+    # But also try setting a parameter that you are allowed to set
     data['params'] = {'deep_scan': True}
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
-    assert resp['params']['deep_scan'] == False
+    assert resp['params']['services']['selected'] == profile['params']['services']['selected']
+    assert resp['params']['deep_scan'] == True
 
     # Restore original roles for later tests
     datastore.user.update('admin', [(datastore.user.UPDATE_REMOVE, 'type', 'user'),

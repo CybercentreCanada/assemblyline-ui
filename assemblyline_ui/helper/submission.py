@@ -193,13 +193,8 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict):
             # User isn't allowed to use the submission profile specified
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
-        s_params = recursive_update(s_params, s_profile.params.as_primitives())
-        s_fields = s_profile.params.fields()
-        params_data = data.get("params", {})
-        for param, value in params_data.items():
-            if param in s_fields and s_fields[param].default_set == True:
-                # Set parameter with user-defined input since it wasn't explicitly declared in the configuration
-                s_params[param] = value
+        s_params = recursive_update(s_params, data.get("params", {}))
+        s_params = recursive_update(s_params, s_profile.params.as_primitives(strip_null=True))
     else:
         # No profile specified, raise an exception back to the user
         raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")

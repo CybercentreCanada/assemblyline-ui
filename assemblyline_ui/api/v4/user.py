@@ -198,16 +198,10 @@ def who_am_i(**kwargs):
 
     # Prepare submission profile configurations for UI
     submission_profiles = {}
-    if config.submission.profiles == DEFAULT_SUBMISSION_PROFILES:
-        # If these are exactly the same as the default values, then it's accessible to everyone
-        submission_profiles = {profile['name']: deepcopy(profile['params']) for profile in DEFAULT_SUBMISSION_PROFILES}
-    else:
-        # Filter profiles based on accessibility to the user
-        for name, profile in SUBMISSION_PROFILES.items():
-            if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
-                # We want to pass forward the configurations that have been explicitly set as a configuration
-                submission_profiles[name] = {p_cls.name: getattr(profile.params, p_cls.name)
-                                            for p_cls in profile.params.fields().values() if p_cls.default_set == False}
+    for name, profile in SUBMISSION_PROFILES.items():
+        if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
+            # We want to pass forward the configurations that have been explicitly set as a configuration
+            submission_profiles[name] = profile.params.as_primitives(strip_null=True)
 
     # Expand service categories if used in submission profiles (assists with the UI locking down service selection)
     service_categories = list(STORAGE.service.facet('category').keys())
