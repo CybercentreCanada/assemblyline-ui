@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import List
 from assemblyline.odm.models.config import ExternalLinks
 from flask import request, session as flsk_session
@@ -7,13 +8,13 @@ from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.security import (check_password_requirements, get_password_hash,
                                           get_password_requirement_message)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.config import HASH_PATTERN_MAP
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
 from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
-    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION
+    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION, SUBMISSION_PROFILES
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
@@ -21,7 +22,7 @@ from assemblyline_ui.helper.user import (
     API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
-from .federated_lookup import filtered_tag_names
+from assemblyline_ui.api.v4.federated_lookup import filtered_tag_names
 
 
 SUB_API = 'user'
@@ -91,10 +92,12 @@ def who_am_i(**kwargs):
          "max_dtl": 30,                             # Maximum number of days retrohunt job stay in the system
        },
        "submission": {                            # Submission Configuration
+         "configurable_params": [],                 # Submission parameters that are configurable when using profiles
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
          "file_sources": [],                        # List of file sources to perform remote submission into the system
          "metadata": {},                            # Metadata compliance policy to submit to the system
+         "profiles": {},                            # Submission profiles
          "verdicts": {                              # Verdict scoring configuration
             "info": 0,                                # Default minimum score for info
             "suspicious": 300,                        # Default minimum score for suspicious
@@ -190,6 +193,29 @@ def who_am_i(**kwargs):
     [file_sources["sha256"]["sources"].append(x.name) for x in config.submission.sha256_sources
      if CLASSIFICATION.is_accessible(kwargs['user']['classification'], x.classification)]
 
+    # Prepare submission profile configurations for UI
+    submission_profiles = {}
+    if config.submission.profiles == DEFAULT_SUBMISSION_PROFILES:
+        # If these are exactly the same as the default values, then it's accessible to everyone
+        submission_profiles = {profile['name']: deepcopy(profile['params']) for profile in DEFAULT_SUBMISSION_PROFILES}
+    else:
+        # Filter profiles based on accessibility to the user
+        for name, profile in SUBMISSION_PROFILES.items():
+            if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
+                # We want to pass forward the configurations that have been explicitly set as a configuration
+                submission_profiles[name] = {p_cls.name: getattr(profile.params, p_cls.name)
+                                            for p_cls in profile.params.fields().values() if p_cls.default_set == False}
+
+    # Expand service categories if used in submission profiles (assists with the UI locking down service selection)
+    service_categories = list(STORAGE.service.facet('category').keys())
+    for profile in submission_profiles.values():
+        for key, services in profile.get("services", {}).items():
+            expanded_services = list()
+            for srv in services:
+                if srv in service_categories:
+                    expanded_services.extend([i['name'] for i in STORAGE.service.search(f"category:{srv}", as_obj=False, fl="name")['items']])
+            profile['services'][key] = list(set(services).union(set(expanded_services)))
+
     user_data['configuration'] = {
         "auth": {
             "allow_2fa": config.auth.allow_2fa,
@@ -217,6 +243,7 @@ def who_am_i(**kwargs):
             "max_dtl": config.submission.max_dtl,
             "file_sources": file_sources,
             "metadata": UI_METADATA_VALIDATION,
+            "profiles": submission_profiles,
             "verdicts": {
                 "info": config.submission.verdicts.info,
                 "suspicious": config.submission.verdicts.suspicious,
@@ -878,7 +905,6 @@ def get_user_settings(username, **kwargs):
 
     Result example:
     {
-     "profile": true,               # Should submissions be profiled
      "classification": "",          # Default classification for this user sumbissions
      "description": "",             # Default description for this user's submissions
      "download_encoding": "blah",   # Default encoding for downloaded files
@@ -916,7 +942,6 @@ def set_user_settings(username, **kwargs):
 
     Data Block:
     {
-     "profile": true,                       # Should submissions be profiled
      "classification": "",                  # Default classification for this user sumbissions
      "default_zip_password": "zippy"        # Default password used for protected file downloads
      "description": "",                     # Default description for this user's submissions
@@ -977,7 +1002,6 @@ def get_user_submission_params(username, **kwargs):
 
     Result example:
     {
-     "profile": true,               # Should submissions be profiled
      "classification": "",          # Default classification for this user sumbissions
      "description": "",             # Default description for this user's submissions
      "priority": 1000,              # Default submission priority
