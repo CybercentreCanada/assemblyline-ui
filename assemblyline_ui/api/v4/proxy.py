@@ -12,7 +12,7 @@ SUB_API = 'proxy'
 proxy_api = make_subapi_blueprint(SUB_API, api_version=4)
 proxy_api._doc = "Proxy API requests to another server adding some metadata"
 
-DO_NOT_PROXY = {"authorization", "x-user", "x-apikey", "cookie"}
+DO_NOT_PROXY = {"authorization", "x-user", "x-apikey", "cookie", "host", "scheme", "server-port", "x-xsrf-token"}
 
 
 @proxy_api.route("/<server>/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "HEAD"])
