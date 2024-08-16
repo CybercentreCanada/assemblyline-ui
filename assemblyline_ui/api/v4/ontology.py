@@ -18,12 +18,6 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
     # Load ontology files
     sio = StringIO()
 
-    # Compute files' score based on results
-    file_scores = {}
-    for r in results:
-        file_scores.setdefault(r['sha256'], 0)
-        file_scores[r['sha256']] += r["result"]["score"]
-
     # Start downloading all ontology files
     for r in results:
         for supp in r.get('response', {}).get('supplementary', {}):
@@ -67,7 +61,10 @@ def generate_ontology_file(results, user, updates={}, fnames={}):
 
                         # Aggregated file score related to the results
                         ontology.setdefault('results', {})
-                        ontology['results']['score'] = file_scores[sha256]
+
+                        # If the score hasn't already been assigned, then assign it based on result score
+                        if 'score' not in ontology['results']:
+                            ontology['results']['score'] = r['result']['score']
 
                         sio.write(json.dumps(ontology, indent=None, separators=(',', ':')) + '\n')
                 except Exception as e:
