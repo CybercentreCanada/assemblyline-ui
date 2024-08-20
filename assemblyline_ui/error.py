@@ -33,7 +33,7 @@ def handle_401(e):
 
     data = {
         "oauth_providers": [name for name, p in config.auth.oauth.providers.items()
-                            if p['client_id'] and p['client_secret']] if config.auth.oauth.enabled else [],
+                            if p['client_id']] if config.auth.oauth.enabled else [],
         "allow_userpass_login": config.auth.ldap.enabled or config.auth.internal.enabled,
         "allow_signup": config.auth.internal.enabled and config.auth.internal.signup.enabled,
         "allow_saml_login": config.auth.saml.enabled,
@@ -116,5 +116,8 @@ def handle_500(e):
     trace = exc_info()[2]
     log_with_traceback(LOGGER, trace, "Exception", is_exception=True)
 
-    message = ''.join(['\n'] + format_tb(exc_info()[2]) + ['%s: %s\n' % (oe.__class__.__name__, str(oe))]).rstrip('\n')
+    if config.ui.debug:
+        message = ''.join(['\n'] + format_tb(exc_info()[2]) + ['%s: %s\n' % (oe.__class__.__name__, str(oe))]).rstrip('\n')
+    else:
+        message = "Internal Server Error"
     return make_api_response("", message, 500)

@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 import jwt
 import pyqrcode
+from datetime import datetime, timezone
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.isotime import now
 from assemblyline.common.security import (
@@ -39,10 +40,14 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
+from authlib.integrations.flask_client import OAuth
+from azure.identity import DefaultAzureCredential
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
+
+GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0'
 
 SCOPES = {
     'r': ["R"],
@@ -633,6 +638,36 @@ def saml_acs(**_):
         data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
+def create_token_dict(access_token_obj):
+    """
+    Process the AccessToken object to create a dictionary suitable for OAuth2Session.
+
+    :param access_token_obj: The AccessToken object returned from `get_fic_access_token`.
+    :return: A dictionary with token details.
+    """
+    token = access_token_obj.token
+    expires_on = access_token_obj.expires_on
+
+    # Calculate the expiration time from the current time and the 'expires_on' timestamp
+    expires_in = expires_on - int(datetime.now(timezone.utc).timestamp())
+
+    return {
+        'access_token': token,
+        'token_type': 'Bearer',
+        'expires_in': expires_in,
+        'expires_at': expires_on
+    }
+
+def get_fic_access_token(client_id, tenant_id, scope):
+    try:
+        credential = DefaultAzureCredential(
+            workload_identity_client_id=client_id, workload_identity_tenant_id=tenant_id)
+        token = credential.get_token(scope)
+    except Exception as e:
+        error_msg = f"Failed to retrieve federated token: {str(e)}"
+        raise Exception(error_msg)
+
+    return token
 
 # noinspection PyBroadException
 @auth_api.route("/oauth/", methods=["GET"])
@@ -652,19 +687,25 @@ def oauth_validate(**_):
 
     Result example:
     {
-     "avatar": "data:image...",
-     "oauth_token_id": "123123...123213",
-     "username": "user"
+        "avatar": "data:image...",
+        "oauth_token_id": "123123...123213",
+        "username": "user"
     }
     """
     oauth_provider = request.values.get('provider', None)
     avatar = None
     username = None
     email_adr = None
+    app_provider = None
     oauth_token_id = None
 
+    # Current user data
+    user_data = {}
+    # Current user groups
+    groups = []
+
     if config.auth.oauth.enabled:
-        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        oauth: OAuth = current_app.extensions.get('authlib.integrations.flask_client')
         provider = oauth.create_client(oauth_provider)
 
         if provider:
@@ -673,17 +714,35 @@ def oauth_validate(**_):
                 # Load the oAuth provider config
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
 
-                # Validate the token
-                if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
+                # Federated Identity Credentials
+                use_fic = oauth_provider_config.use_federated_credentials
+
+                if use_fic:
+                    # Use DefaultAzureCredential to get a federated token
+                    tenant_id = oauth_provider_config.tenant_id
+                    client_id = oauth_provider_config.client_id
+                    scope = oauth_provider_config.federated_credential_scope
+
+                    try:
+                        fic_token = get_fic_access_token(client_id=client_id, tenant_id=tenant_id, scope=scope)
+                        token_dict = create_token_dict(fic_token)
+                        token = provider.token = token_dict
+                    except Exception as e:
+                        return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
+
+                # Validate the token in non fic workflows
+                if use_fic:
+                    token = fic_token
+                elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
                 else:
                     token = provider.authorize_access_token()
 
                 # Setup alternate app provider if we need to fetch groups of user info by hand
+                # Initialize the app_provider
                 if oauth_provider_config.app_provider and (
                         oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
-                    # Initialize the app_provider
                     app_provider = OAuth2Session(
                         oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
                         oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
@@ -691,12 +750,6 @@ def oauth_validate(**_):
                     app_provider.fetch_token(
                         oauth_provider_config.app_provider.access_token_url,
                         grant_type="client_credentials")
-
-                else:
-                    app_provider = None
-
-                # Create user
-                user_data = {}
 
                 # Add user_data info from received token
                 if oauth_provider_config.jwks_uri:
@@ -706,13 +759,17 @@ def oauth_validate(**_):
                 if app_provider and oauth_provider_config.app_provider.user_get:
                     url = oauth_provider_config.app_provider.user_get
                     uid = user_data.get('id', None)
+
                     if not uid and user_data and oauth_provider_config.uid_field:
                         uid = user_data.get(oauth_provider_config.uid_field, None)
+
                     if uid:
                         url = url.format(id=uid)
+
                     resp = app_provider.get(url)
                     if resp.ok:
                         user_data.update(resp.json())
+
                 # Add user data from user_get endpoint
                 elif oauth_provider_config.user_get:
                     resp = provider.get(oauth_provider_config.user_get)
@@ -720,17 +777,20 @@ def oauth_validate(**_):
                         user_data.update(resp.json())
 
                 # Add group data from app_provider endpoint
-                groups = []
                 if app_provider and oauth_provider_config.app_provider.group_get:
                     url = oauth_provider_config.app_provider.group_get
                     uid = user_data.get('id', None)
+
                     if not uid and user_data and oauth_provider_config.uid_field:
                         uid = user_data.get(oauth_provider_config.uid_field, None)
+
                     if uid:
                         url = url.format(id=uid)
+
                     resp_grp = app_provider.get(url)
                     if resp_grp.ok:
                         groups = resp_grp.json()
+
                 # Add group data from group_get endpoint
                 elif oauth_provider_config.user_groups:
                     resp_grp = provider.get(oauth_provider_config.user_groups)
@@ -753,13 +813,11 @@ def oauth_validate(**_):
 
                     if data['email'] is None:
                         return make_api_response({"err_code": 4}, err="Could not find an email address for the user",
-                                                 status_code=403)
+                                                    status_code=403)
 
                     if not has_access:
                         return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
-                                                 status_code=403)
-
-                    oauth_avatar = data.pop('avatar', None)
+                                                    status_code=403)
 
                     # Find if user already exists
                     users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
@@ -787,6 +845,8 @@ def oauth_validate(**_):
 
                     # Add add dynamic classification group
                     data['classification'] = get_dynamic_classification(data['classification'], data)
+
+                    oauth_avatar = data.pop('avatar', None)
 
                     # Make sure the user exists in AL and is in sync
                     if (not cur_user and oauth_provider_config.auto_create) or \
@@ -819,8 +879,8 @@ def oauth_validate(**_):
                         })
                     else:
                         return make_api_response({"err_code": 3},
-                                                 err="User auto-creation is disabled",
-                                                 status_code=403)
+                                                    err="User auto-creation is disabled",
+                                                    status_code=403)
                 else:
                     return make_api_response({"err_code": 5}, err="Invalid oAuth token provided", status_code=401)
 
@@ -830,11 +890,10 @@ def oauth_validate(**_):
             except Exception as err:
                 LOGGER.exception(str(err))
                 return make_api_response({"err_code": 1, "exception": str(err)},
-                                         err="Unhandled exception occured while processing oAuth token",
-                                         status_code=401)
+                                            err="Unhandled exception occured while processing oAuth token",
+                                            status_code=401)
     else:
         return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)
-
 
 # noinspection PyBroadException
 @auth_api.route("/reset_pwd/", methods=["GET", "POST"])
