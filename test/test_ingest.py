@@ -6,7 +6,7 @@ import pytest
 import random
 import tempfile
 
-from conftest import get_api_data
+from conftest import get_api_data, APIError
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
@@ -278,6 +278,35 @@ def test_ingest_base64_nameless(datastore, login_session):
     assert msg.metadata['ingest_id'] == resp['ingest_id']
     assert msg.files[0].sha256 == sha256
     assert msg.files[0].name == sha256
+
+def test_ingest_metadata_validation(datastore, login_session):
+    _, session, host = login_session
+
+    iq.delete()
+
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    sha256 = hashlib.sha256(byte_str).hexdigest()
+
+    # Test with strict metadata validation that should pass
+    data = {
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'metadata': {'test': 'ingest_base64_nameless'},
+        "params": {'type': 'strict_ingest'}
+
+    }
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['ingest_id'], str)
+
+    # Test with strict metadata validation that should fail due to extra metadata
+    with pytest.raises(APIError, match="Extra metadata found from submission"):
+        data['metadata'] = {'test': 'ingest_base64_nameless', 'blah': 'blah'}
+        get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+
+    # Test with metadata validation against a scheme that's not known to the system
+    # This should succeed because there is no scheme to enforce validation
+    data["params"] = {'type': 'blah'}
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['ingest_id'], str)
 
 
 # noinspection PyUnusedLocal
