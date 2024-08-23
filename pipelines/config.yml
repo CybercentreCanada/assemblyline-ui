@@ -29,6 +29,19 @@ filestore:
       "s3://al_storage_key:Ch@ngeTh!sPa33w0rd@localhost:9000?s3_bucket=al-storage&use_ssl=False",
     ]
 
+submission:
+  metadata:
+    ingest:
+      _default:
+        test:
+          validator_type: keyword
+          required: true
+      strict_ingest:
+        test:
+          validator_type: keyword
+    strict_schemes:
+      - strict_ingest
+
 logging:
   log_level: DISABLED
   log_to_console: false

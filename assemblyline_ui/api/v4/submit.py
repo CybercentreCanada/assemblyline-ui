@@ -386,6 +386,7 @@ def submit(**kwargs):
 
         try:
             # Validate the metadata (use validation scheme if we have one configured for submissions)
+            strict = 'submit' in config.submission.metadata.strict_schemes
             metadata_error = metadata_validator.check_metadata(
                 metadata, validation_scheme=config.submission.metadata.submit)
             if metadata_error:
@@ -393,8 +394,10 @@ def submit(**kwargs):
 
             if s_params.get('auto_archive', False):
                 # If the submission was set to auto-archive we need to validate the archive metadata fields also
+                strict = 'archive' in config.submission.metadata.strict_schemes
                 metadata_error = metadata_validator.check_metadata(
-                    metadata, validation_scheme=config.submission.metadata.archive, skip_elastic_fields=True)
+                    metadata, validation_scheme=config.submission.metadata.archive,
+                    strict=strict, skip_elastic_fields=True)
                 if metadata_error:
                     return make_api_response({}, err=metadata_error[1], status_code=400)
 

@@ -406,14 +406,16 @@ def ingest_single_file(**kwargs):
         # Validate the metadata (use validation scheme if we have one configured for the ingest_type)
         validation_scheme = config.submission.metadata.ingest.get('_default', {})
         validation_scheme.update(config.submission.metadata.ingest.get(s_params['type'], {}))
-        metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=validation_scheme)
+        strict = s_params['type'] in config.submission.metadata.strict_schemes
+        metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=validation_scheme, strict=strict)
         if metadata_error:
             return make_api_response({}, err=metadata_error[1], status_code=400)
 
         if s_params.get('auto_archive', False):
             # If the submission was set to auto-archive we need to validate the archive metadata fields also
+            strict = 'archive' in config.submission.metadata.strict_schemes
             metadata_error = metadata_validator.check_metadata(
-                metadata, validation_scheme=config.submission.metadata.archive, skip_elastic_fields=True)
+                metadata, validation_scheme=config.submission.metadata.archive, strict=strict, skip_elastic_fields=True)
             if metadata_error:
                 return make_api_response({}, err=metadata_error[1], status_code=400)
 
