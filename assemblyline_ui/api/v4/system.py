@@ -21,7 +21,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_core import PAUSABLE_COMPONENTS
-from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config, redis_persistent
+from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, CLASSIFICATION_ALIASES, config, redis_persistent
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -64,6 +64,33 @@ def clear_system_message(**_):
     """
     UI_MESSAGING.pop('system_message')
     return make_api_response({'success': True})
+
+
+@system_api.route("/classification_aliases/", methods=["GET"])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
+def get_classification_aliases(**_):
+    """
+    Get the current display aliases for the classification engine
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+      "ORG_000000": {"name": "Communication Security Establishment",
+                     "short_name": "CSE"},
+      "ORG_000001": {"name": "Canadian Center for Cyber Security",
+                     "short_name": "CCCS"},
+      ...
+    }
+    """
+    return make_api_response(CLASSIFICATION_ALIASES.items())
 
 
 @system_api.route("/system_message/", methods=["GET"])
@@ -267,6 +294,47 @@ def get_system_status(component, **_):
         status = system.get(f'{component}.active') or False
 
         return make_api_response({component: status})
+
+
+@system_api.route("/classification_aliases/", methods=["PUT", "POST"])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
+def set_classification_aliases(**_):
+    """
+    Save display aliases for the classification engine
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+      "ORG_000000": {"name": "Communication Security Establishment",
+                     "short_name": "CSE"},
+      "ORG_000001": {"name": "Canadian Center for Cyber Security",
+                     "short_name": "CCCS"},
+      ...
+    }
+
+    Result example:
+    {"success": true}
+    """
+    msg = request.json
+
+    if not isinstance(msg, dict):
+        return make_api_response(None, "Invalid data provided for classification alias. It should be a dict...", 400)
+
+    for k, v in msg.items():
+        if not isinstance(v, dict):
+            return make_api_response(None, f"Invalid value for classification alias {v}. It should be a dict...", 400)
+        if "name" not in v or "short_name" not in v:
+            return make_api_response(
+                None, f"Invalid value for classification alias {v}. It should contain a name and a short_name field.",
+                400)
+
+    CLASSIFICATION_ALIASES.multi_set(msg)
+    return make_api_response({'success': True})
 
 
 @system_api.route("/system_message/", methods=["PUT", "POST"])
