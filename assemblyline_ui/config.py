@@ -51,6 +51,9 @@ TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 redis_persistent = get_client(config.core.redis.persistent.host, config.core.redis.persistent.port, False)
 redis = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpersistent.port, False)
 
+# Metadata dynamic suggestions
+METADATA_SUGGESTIONS = Hash("meta_suggestions", host=redis_persistent)
+
 # Metadata validation for the frontend
 UI_METADATA_VALIDATION = {'submit': {}, 'archive': {}}
 meta_config = config.submission.metadata.as_primitives()
@@ -60,6 +63,12 @@ for section in ['submit', 'archive']:
         if m_cfg['validator_type'] != "uri" and hasattr(field_cls, 'validation_regex'):
             # Extract regex validation for UI (except for URI, we'll re-use the existing pattern on the frontend)
             m_cfg['validator_params']['validation_regex'] = field_cls.validation_regex.pattern
+        suggestion_key = m_cfg.get('suggestion_key', None)
+        if suggestion_key:
+            new_suggestions = METADATA_SUGGESTIONS.get(suggestion_key)
+            if new_suggestions:
+                m_cfg['suggestions'] = m_cfg.get('suggestions', []) + new_suggestions
+
         UI_METADATA_VALIDATION[section][m_name] = m_cfg
 
 # TRACKERS
