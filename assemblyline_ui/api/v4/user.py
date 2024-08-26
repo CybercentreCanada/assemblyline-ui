@@ -12,8 +12,8 @@ from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_
                                           load_roles_form_acls)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
-    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION
+from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, CLASSIFICATION_ALIASES, DAILY_QUOTA_TRACKER, LOGGER, \
+    STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT, UI_METADATA_VALIDATION
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
@@ -164,6 +164,9 @@ def who_am_i(**kwargs):
 
     # System configuration
     user_data['c12nDef'] = classification_definition
+    user_data['classification_aliases'] = {k: v for k, v in CLASSIFICATION_ALIASES.items().items()
+                                           if k in user_data['classification']}
+
     # create tag-to-source lookup mapping
     external_source_tags = {}
     for source_name, tag_names in filtered_tag_names(kwargs['user']).items():
