@@ -23,6 +23,7 @@ from assemblyline_ui.api.v4.heuristics import heuristics_api
 from assemblyline_ui.api.v4.ingest import ingest_api
 from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.ontology import ontology_api
+from assemblyline_ui.api.v4.proxy import proxy_api
 from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.replay import replay_api
 from assemblyline_ui.api.v4.retrohunt import retrohunt_api
@@ -111,9 +112,13 @@ app.register_blueprint(heuristics_api)
 app.register_blueprint(ingest_api)
 app.register_blueprint(live_api)
 app.register_blueprint(ontology_api)
+if len(config.config.ui.api_proxies) > 0:
+    app.register_blueprint(proxy_api)
 app.register_blueprint(result_api)
-app.register_blueprint(replay_api)
-app.register_blueprint(retrohunt_api)
+if config.config.ui.allow_replay:
+    app.register_blueprint(replay_api)
+if config.config.retrohunt.enabled:
+    app.register_blueprint(retrohunt_api)
 app.register_blueprint(search_api)
 app.register_blueprint(service_api)
 app.register_blueprint(signature_api)
