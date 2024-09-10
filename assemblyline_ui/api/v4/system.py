@@ -21,7 +21,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_core import PAUSABLE_COMPONENTS
-from assemblyline_ui.config import LOGGER, STORAGE, UI_MESSAGING, config, redis_persistent
+from assemblyline_ui.config import LOGGER, METADATA_SUGGESTIONS, STORAGE, UI_MESSAGING, config, redis_persistent
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -90,6 +90,38 @@ def get_system_message(**_):
     }
     """
     return make_api_response(UI_MESSAGING.get('system_message'))
+
+
+@system_api.route("/metadata_suggestions/", methods=["GET"])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
+def get_metadata_suggestions(**_):
+    """
+    Get the current metadata suggestions
+
+    Variables:
+    None
+
+    Arguments:
+    key     =>    Optional key to get
+
+    Data Block:
+    None
+
+    Result example:
+    {
+      "key_1": ["a", "b", "c"],
+      "key_2": ["d", "e", "f"],
+    }
+
+    or
+
+    ["a", "b", "c"]  # If use with a key
+    """
+    key = request.args.get('key', None)
+    if key:
+        return make_api_response(METADATA_SUGGESTIONS.get(key))
+
+    return make_api_response(METADATA_SUGGESTIONS.items())
 
 
 @system_api.route("/tag_safelist/", methods=["GET"])
@@ -299,6 +331,47 @@ def set_system_message(**kwargs):
         return make_api_response({"success": True})
 
     return make_api_response(None, "Invalid system message submitted.", 400)
+
+
+@system_api.route("/metadata_suggestions/", methods=["PUT", "POST"])
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
+def set_metadata_suggestions(**kwargs):
+    """
+    Set the metadata suggestions
+
+    Variables:
+    None
+
+    Arguments:
+    key     =>    Optional key to set data into
+
+    Data Block:
+    {
+      "key_1": ["a", "b", "c"],
+      "key_2": ["d", "e", "f"],
+    }
+
+    or
+
+    ["a", "b", "c"]  # If use with a key
+
+    Result example:
+    {"success": true}
+    """
+    data = request.json
+    key = request.args.get('key', None)
+
+    if key:
+        if not isinstance(data, list):
+            return make_api_response(None, "Invalid metadata_suggestion for using with a key, should be a list.", 400)
+        METADATA_SUGGESTIONS.set(key, data)
+
+    else:
+        if not isinstance(data, dict):
+            return make_api_response(None, "Invalid metadata_suggestion map, should be a dict.", 400)
+        METADATA_SUGGESTIONS.multi_set(data)
+
+    return make_api_response({"success": True})
 
 
 @system_api.route("/tag_safelist/", methods=["PUT"])
