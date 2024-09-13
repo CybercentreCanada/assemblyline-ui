@@ -307,7 +307,7 @@ def test_badlist_invalid(datastore, login_session):
     with pytest.raises(APIError) as invalid_exc:
         get_api_data(session, f"{host}/api/v4/badlist/{get_random_hash(12)}/")
 
-    assert 'hash length' in invalid_exc.value.args[0]
+    assert 'hash was not found' in invalid_exc.value.args[0]
 
 
 # noinspection PyUnusedLocal
