@@ -176,7 +176,7 @@ def check_hash_exists(qhash, **kwargs):
     Check if a hash exists in the badlist.
 
     Variables:
-    qhash       => Hash to check is exist (either md5, sha1 or sha256)
+    qhash       => Hash to check is exist (either md5, sha1, sha256, tlsh, or ssdeep)
 
     Arguments:
     None
@@ -231,9 +231,6 @@ def check_hash_exists(qhash, **kwargs):
      "type": "tag"                # Type of badlist hash (tag or file)
     }
     """
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
-
     badlist = STORAGE.badlist.get_if_exists(qhash, as_obj=False)
     if badlist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], badlist['classification']):
         return make_api_response(badlist)
