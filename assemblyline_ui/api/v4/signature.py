@@ -5,6 +5,7 @@ from hashlib import sha256
 
 from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
+from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline.odm.messages.changes import Operation
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.hash import Hash
@@ -231,6 +232,46 @@ def change_status(signature_id, status, **kwargs):
         make_api_response("", str(e), 403)
     except FileNotFoundError as e:
         make_api_response("", str(e), 404)
+
+
+@signature_api.route("/clear_status/<signature_id>/", methods=["GET"])
+@api_login(allow_readonly=False, require_role=[ROLES.signature_manage])
+def clear_status(signature_id, **kwargs):
+    """
+    Clear the user's status change of a signature
+
+    Variables:
+    signature_id    =>  ID of the signature
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    { "success" : true }      #If saving the rule was a success or not
+    """
+    user = kwargs['user']
+
+    while True:
+        signature_obj, version = STORAGE.signature.get_if_exists(signature_id, as_obj=False, version=True)
+
+        if not signature_obj:
+            return make_api_response({"success": False}, "This signature was not found in the system.", 404)
+
+        if not user or not Classification.is_accessible(user['classification'], signature_obj['classification']):
+            return make_api_response({"success": False}, "You are not allowed to make changes to this signature...", 403)
+
+        try:
+            signature_obj['state_change_date'] = None
+            signature_obj['state_change_user'] = None
+            response = STORAGE.signature.save(signature_id, signature_obj, version=version)
+            break
+        except VersionConflictException as vce:
+            LOGGER.info(f"Retrying saving signature due to version conflict: {str(vce)}")
+
+    return make_api_response({"success": response})
 
 
 @signature_api.route("/<signature_id>/", methods=["DELETE"])
