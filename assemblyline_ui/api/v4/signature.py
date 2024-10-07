@@ -271,6 +271,13 @@ def clear_status(signature_id, **kwargs):
         except VersionConflictException as vce:
             LOGGER.info(f"Retrying saving signature due to version conflict: {str(vce)}")
 
+    signature_event_sender.send(signature_obj['type'], {
+        'signature_id': signature_id,
+        'signature_type': signature_obj['type'],
+        'source': signature_obj['source'],
+        'operation': Operation.Modified
+    })
+
     return make_api_response({"success": response})
 
 
