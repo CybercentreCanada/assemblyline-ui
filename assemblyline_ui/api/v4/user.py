@@ -202,6 +202,7 @@ def who_am_i(**kwargs):
         if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
             # We want to pass forward the configurations that have been explicitly set as a configuration
             submission_profiles[name] = profile.params.as_primitives(strip_null=True)
+            submission_profiles[name]["editable_params"] = profile.editable_params
 
     # Expand service categories if used in submission profiles (assists with the UI locking down service selection)
     service_categories = list(STORAGE.service.facet('category').keys())

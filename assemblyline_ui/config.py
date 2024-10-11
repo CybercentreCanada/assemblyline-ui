@@ -9,8 +9,7 @@ from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
-from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP, SubmissionProfileParams
-from assemblyline.odm.models.submission import SubmissionParams
+from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
 from assemblyline.remote.datatypes.daily_quota_tracker import DailyQuotaTracker
