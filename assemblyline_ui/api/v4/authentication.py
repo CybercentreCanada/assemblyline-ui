@@ -703,14 +703,14 @@ def oauth_validate(**_):
                 scope = oauth_provider_config.federated_credential_scope
 
                 try:
-                    fic_token = get_fic_access_token(
+                    client_secret = get_fic_access_token(
                         client_id=client_id, tenant_id=tenant_id, scope=scope)
                 except Exception as e:
                     return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
 
                 # Validate the token in non fic workflows
                 if use_fic:
-                    provider.token = fic_token
+                    token = provider.authorize_access_token(client_secret)
                 elif oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
@@ -723,7 +723,7 @@ def oauth_validate(**_):
                         oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
                     app_provider = OAuth2Session(
                         oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
-                        oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
+                        oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret or client_secret,
                         scope=oauth_provider_config.app_provider.scope)
                     app_provider.fetch_token(
                         oauth_provider_config.app_provider.access_token_url,
