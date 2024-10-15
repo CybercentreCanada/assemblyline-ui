@@ -47,8 +47,6 @@ from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
-GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0'
-
 SCOPES = {
     'r': ["R"],
     'w': ["W"],
@@ -638,57 +636,6 @@ def saml_acs(**_):
         data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
-def get_fic_access_token(client_id, tenant_id, scope):
-    try:
-        credential = DefaultAzureCredential(
-            workload_identity_client_id=client_id, workload_identity_tenant_id=tenant_id)
-        token = credential.get_token(scope)
-    except Exception as e:
-        error_msg = f"Failed to retrieve federated token: {str(e)}"
-        raise Exception(error_msg)
-
-    return token.token
-
-def get_current_user_profile(access_token):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    response = requests.get(f'{GRAPH_API_ENDPOINT}/me', headers=headers)
-    if response.ok:
-        user_profile = response.json()
-        LOGGER.info("User Profile Response: ", user_profile)
-        return user_profile
-    else:
-        LOGGER.exception("Failed to fetch current user profile")
-        return None
-
-def get_user_profile(access_token, user_email):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    user_profile_response = requests.get(f'{GRAPH_API_ENDPOINT}/users/{user_email}', headers=headers)
-    user_profile = user_profile_response.json()
-
-    user_avatar_response = requests.get(f'{GRAPH_API_ENDPOINT}/users/{user_email}/photo/$value', headers=headers)
-
-    if user_avatar_response.status_code == 200:
-        user_profile['avatar'] = user_avatar_response.content
-    else:
-        user_profile['avatar'] = None
-
-    return user_profile
-
-def get_user_groups(access_token, user_email):
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
-    groups_response = requests.get(f'{GRAPH_API_ENDPOINT}/users/{user_email}/memberOf', headers=headers)
-    groups = groups_response.json()
-    return groups
-
 # noinspection PyBroadException
 @auth_api.route("/oauth/", methods=["GET"])
 def oauth_validate(**_):
@@ -707,22 +654,17 @@ def oauth_validate(**_):
 
     Result example:
     {
-        "avatar": "data:image...",
-        "oauth_token_id": "123123...123213",
-        "username": "user"
+     "avatar": "data:image...",
+     "oauth_token_id": "123123...123213",
+     "username": "user"
     }
     """
     oauth_provider = request.values.get('provider', None)
     avatar = None
     username = None
     email_adr = None
-    app_provider = None
     oauth_token_id = None
-
-    # Current user data
-    user_data = {}
-    # Current user groups
-    groups = []
+    federated_token = None
 
     if config.auth.oauth.enabled:
         oauth: OAuth = current_app.extensions.get('authlib.integrations.flask_client')
@@ -742,40 +684,19 @@ def oauth_validate(**_):
                     tenant_id = oauth_provider_config.tenant_id
                     client_id = oauth_provider_config.client_id
                     scope = oauth_provider_config.federated_credential_scope
+                    credential = DefaultAzureCredential(workload_identity_client_id=client_id,workload_identity_tenant_id=tenant_id)
 
                     try:
-                        fic_access_token = get_fic_access_token(
-                            client_id=client_id, tenant_id=tenant_id, scope=scope)
+                        federated_token_response = credential.get_token(scope)
+                        federated_token = federated_token_response.token
+                        LOGGER.info("Federated token retrieved successfully.")
+
                     except Exception as e:
-                        return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {e}", status_code=500)
+                        error_msg = f"Failed to retrieve federated token: {str(e)}"
+                        return make_api_response({"err_code": 3}, err=f"Unable to authenticate using Federated Credentials: {error_msg}", status_code=500)
 
-                    user_profile = get_current_user_profile(access_token=fic_access_token)
-
-                    if not user_profile:
-                        return make_api_response(
-                            {"err_code": 3}, err=f"Unable to fetch user profile:", status_code=500)
-
-                    user_email = user_profile.get('mail') or user_profile.get('userPrincipalName')
-                    LOGGER.info(f"Logging in as {user_email}")
-
-                    if not user_email:
-                        return make_api_response(
-                            {"err_code": 3}, err=f"Unable to find current user:", status_code=500)
-
-                    user_profile = get_user_profile(
-                        access_token=fic_access_token, user_email=user_email)
-                    groups = get_user_groups(
-                        access_token=fic_access_token, user_email=user_email)
-
-                    user_data.update(user_profile)
-
-                    if user_data:
-                        LOGGER.info(f"User Data for {user_email} has been retrived")
-
-                    # This is set so it can be used in line 899
-                    token = fic_access_token
-                else:
-                    # Validate the token in non fic workflows
+                # Validate the token in non fic workflows
+                if not use_fic:
                     if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                         # Validate the token that we've received using the secret
                         token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
@@ -794,53 +715,69 @@ def oauth_validate(**_):
                             oauth_provider_config.app_provider.access_token_url,
                             grant_type="client_credentials")
 
-                # Check if user_data is still empty and proceed with other methods if so
-                if not user_data:
+                    else:
+                        app_provider = None
+
+                # Create user
+                user_data = {}
+
+                if not use_fic:
                     # Add user_data info from received token
                     if oauth_provider_config.jwks_uri:
                         user_data = provider.parse_id_token(token)
+                else:
+                    headers = {'Authorization': f"Bearer {federated_token}"}
+                    profile_url = 'https://graph.microsoft.com/v1.0/me'
+                    profile_response = requests.get(profile_url, headers=headers)
+                    if profile_response.ok:
+                        user_data = profile_response.json()
+                    else:
+                        return make_api_response({"err_code": 3}, err="Failed to retrieve user data using token", status_code=500)
 
-                    # Add user data from app_provider endpoint
-                    if app_provider and oauth_provider_config.app_provider.user_get:
-                        url = oauth_provider_config.app_provider.user_get
-                        uid = user_data.get('id', None)
+                    # Extract the user ID from the user data
+                    user_id = user_data.get('id')
+                    if user_id:
+                        profile_url = oauth_provider_config.user_get.format(id=user_id)
+                        profile_response = requests.get(profile_url, headers=headers)
+                        if profile_response.ok:
+                            user_data.update(profile_response.json())
+                        else:
+                            return make_api_response({"err_code": 3}, err="Failed to retrieve user data using user ID", status_code=500)
 
-                        if not uid and user_data and oauth_provider_config.uid_field:
-                            uid = user_data.get(oauth_provider_config.uid_field, None)
+                # Add user data from app_provider endpoint
+                if app_provider and oauth_provider_config.app_provider.user_get:
+                    url = oauth_provider_config.app_provider.user_get
+                    uid = user_data.get('id', None)
+                    if not uid and user_data and oauth_provider_config.uid_field:
+                        uid = user_data.get(oauth_provider_config.uid_field, None)
+                    if uid:
+                        url = url.format(id=uid)
+                    resp = app_provider.get(url)
+                    if resp.ok:
+                        user_data.update(resp.json())
+                # Add user data from user_get endpoint
+                elif oauth_provider_config.user_get:
+                    resp = provider.get(oauth_provider_config.user_get)
+                    if resp.ok:
+                        user_data.update(resp.json())
 
-                        if uid:
-                            url = url.format(id=uid)
-
-                        resp = app_provider.get(url)
-                        if resp.ok:
-                            user_data.update(resp.json())
-
-                    # Add user data from user_get endpoint
-                    elif oauth_provider_config.user_get:
-                        resp = provider.get(oauth_provider_config.user_get)
-                        if resp.ok:
-                            user_data.update(resp.json())
-
-                    # Add group data from app_provider endpoint
-                    if app_provider and oauth_provider_config.app_provider.group_get:
-                        url = oauth_provider_config.app_provider.group_get
-                        uid = user_data.get('id', None)
-
-                        if not uid and user_data and oauth_provider_config.uid_field:
-                            uid = user_data.get(oauth_provider_config.uid_field, None)
-
-                        if uid:
-                            url = url.format(id=uid)
-
-                        resp_grp = app_provider.get(url)
-                        if resp_grp.ok:
-                            groups = resp_grp.json()
-
-                    # Add group data from group_get endpoint
-                    elif oauth_provider_config.user_groups:
-                        resp_grp = provider.get(oauth_provider_config.user_groups)
-                        if resp_grp.ok:
-                            groups = resp_grp.json()
+                # Add group data from app_provider endpoint
+                groups = []
+                if app_provider and oauth_provider_config.app_provider.group_get:
+                    url = oauth_provider_config.app_provider.group_get
+                    uid = user_data.get('id', None)
+                    if not uid and user_data and oauth_provider_config.uid_field:
+                        uid = user_data.get(oauth_provider_config.uid_field, None)
+                    if uid:
+                        url = url.format(id=uid)
+                    resp_grp = app_provider.get(url)
+                    if resp_grp.ok:
+                        groups = resp_grp.json()
+                # Add group data from group_get endpoint
+                elif oauth_provider_config.user_groups:
+                    resp_grp = provider.get(oauth_provider_config.user_groups)
+                    if resp_grp.ok:
+                        groups = resp_grp.json()
 
                 # Parse received groups
                 if groups:
@@ -858,11 +795,13 @@ def oauth_validate(**_):
 
                     if data['email'] is None:
                         return make_api_response({"err_code": 4}, err="Could not find an email address for the user",
-                                                    status_code=403)
+                                                 status_code=403)
 
                     if not has_access:
                         return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
-                                                    status_code=403)
+                                                 status_code=403)
+
+                    oauth_avatar = data.pop('avatar', None)
 
                     # Find if user already exists
                     users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
@@ -891,8 +830,6 @@ def oauth_validate(**_):
                     # Add add dynamic classification group
                     data['classification'] = get_dynamic_classification(data['classification'], data)
 
-                    oauth_avatar = data.pop('avatar', None)
-
                     # Make sure the user exists in AL and is in sync
                     if (not cur_user and oauth_provider_config.auto_create) or \
                             (cur_user and oauth_provider_config.auto_sync):
@@ -902,10 +839,7 @@ def oauth_validate(**_):
 
                         # Save avatar
                         if oauth_avatar:
-                            if use_fic:
-                                avatar = user_data.get('avatar', None)
-                            else:
-                                avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
+                            avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
                             if avatar:
                                 STORAGE.user_avatar.save(username, avatar)
 
@@ -927,8 +861,8 @@ def oauth_validate(**_):
                         })
                     else:
                         return make_api_response({"err_code": 3},
-                                                    err="User auto-creation is disabled",
-                                                    status_code=403)
+                                                 err="User auto-creation is disabled",
+                                                 status_code=403)
                 else:
                     return make_api_response({"err_code": 5}, err="Invalid oAuth token provided", status_code=401)
 
@@ -938,8 +872,8 @@ def oauth_validate(**_):
             except Exception as err:
                 LOGGER.exception(str(err))
                 return make_api_response({"err_code": 1, "exception": str(err)},
-                                            err="Unhandled exception occured while processing oAuth token",
-                                            status_code=401)
+                                         err="Unhandled exception occured while processing oAuth token",
+                                         status_code=401)
     else:
         return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)
 
