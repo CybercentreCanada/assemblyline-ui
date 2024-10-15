@@ -144,11 +144,7 @@ def test_badlist_add_tag(datastore, login_session):
             'network': None
         },
         'dtl': 15,
-        'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
-                   'sha1': hashlib.sha1(hashed_value).hexdigest(),
-                   'sha256': hashlib.sha256(hashed_value).hexdigest(),
-                   'ssdeep': None,
-                   'tlsh': None},
+        'hashes': {'sha256': hashlib.sha256(hashed_value).hexdigest()},
         'tag': {'type': tag_type,
                 'value': tag_value},
         'sources': [BAD_SOURCE, ADMIN_SOURCE],
@@ -184,6 +180,9 @@ def test_badlist_add_tag(datastore, login_session):
     # Test enabled
     enabled = ds_sl.pop('enabled', None)
     assert enabled
+
+    for hashtype in ['md5', 'sha1', 'ssdeep', 'tlsh']:
+        ds_sl['hashes'].pop(hashtype, None)
 
     # Test rest, (dtl should be gone)
     sl_data.pop('dtl', None)
@@ -308,7 +307,7 @@ def test_badlist_invalid(datastore, login_session):
     with pytest.raises(APIError) as invalid_exc:
         get_api_data(session, f"{host}/api/v4/badlist/{get_random_hash(12)}/")
 
-    assert 'hash length' in invalid_exc.value.args[0]
+    assert 'hash was not found' in invalid_exc.value.args[0]
 
 
 # noinspection PyUnusedLocal

@@ -185,18 +185,24 @@ def set_workflow_status(workflow_id, **_):
     None
 
     Data Block:
-    "true"
+    {
+     "enabled": "true"              # Enable or disable the workflow
+    }
 
     Result example:
     {"success": True}
     """
     data = request.json
+    enabled = data.get('enabled', None)
 
-    return make_api_response({'success': STORAGE.workflow.update(
-        workflow_id, [
-            (STORAGE.workflow.UPDATE_SET, 'enabled', data),
-            (STORAGE.workflow.UPDATE_SET, 'last_edit', now_as_iso()),
-        ])})
+    if enabled is None:
+        return make_api_response({"success": False}, err="Enabled field is required", status_code=400)
+    else:
+        return make_api_response({'success': STORAGE.workflow.update(
+            workflow_id, [
+                (STORAGE.workflow.UPDATE_SET, 'enabled', enabled),
+                (STORAGE.workflow.UPDATE_SET, 'last_edit', now_as_iso()),
+            ])})
 
 
 @workflow_api.route("/<workflow_id>/", methods=["GET"])

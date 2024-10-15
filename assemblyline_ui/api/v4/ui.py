@@ -181,7 +181,7 @@ def flowjs_upload_chunk(**kwargs):
 
 # noinspection PyBroadException
 @ui_api.route("/start/<ui_sid>/", methods=["POST"])
-@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def start_ui_submission(ui_sid, **kwargs):
     """
     Start UI submission.
@@ -205,6 +205,11 @@ def start_ui_submission(ui_sid, **kwargs):
     """
     user = kwargs['user']
 
+    # Check if we've reached the quotas
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
     ui_params = request.json
     ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']]
     ui_params['quota_item'] = True
@@ -213,10 +218,6 @@ def start_ui_submission(ui_sid, **kwargs):
     if not Classification.is_accessible(user['classification'], ui_params['classification']):
         return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
                                                                   "classification then you're allowed to see", 403)
-
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
 
     submit_result = None
     submitted_file = None
@@ -275,15 +276,20 @@ def start_ui_submission(ui_sid, **kwargs):
                         config.submission.max_dtl) if int(params['ttl']) else config.submission.max_dtl
 
                 # Validate the metadata (use validation scheme if we have one configured for submissions)
-                metadata_error = metadata_validator.check_metadata(
-                    metadata, validation_scheme=config.submission.metadata.submit)
+                strict = 'submit' in config.submission.metadata.strict_schemes
+                metadata_error = metadata_validator.check_metadata(metadata,
+                                                                   validation_scheme=config.submission.metadata.submit,
+                                                                   strict=strict)
                 if metadata_error:
                     return make_api_response({}, err=metadata_error[1], status_code=400)
 
                 if params.get('auto_archive', False):
                     # If the submission was set to auto-archive we need to validate the archive metadata fields also
-                    metadata_error = metadata_validator.check_metadata(
-                        metadata, validation_scheme=config.submission.metadata.archive, skip_elastic_fields=True)
+                    strict = 'archive' in config.submission.metadata.strict_schemes
+                    metadata_error = metadata_validator.check_metadata(metadata,
+                                                                       validation_scheme=config.submission.metadata.archive,
+                                                                       strict=strict,
+                                                                       skip_elastic_fields=True)
                     if metadata_error:
                         return make_api_response({}, err=metadata_error[1], status_code=400)
 
@@ -313,6 +319,7 @@ def start_ui_submission(ui_sid, **kwargs):
                                                                       "Try again..." % ui_sid, 404)
     finally:
         if submit_result is None:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_quota(user)
 
         # Remove file

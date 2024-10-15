@@ -178,6 +178,36 @@ def test_change_status(datastore, login_session):
     assert "DISABLED" == modded_sig.pop('status')
 
 
+def test_clear_status(datastore, login_session):
+    _, session, host = login_session
+    ds = datastore
+
+    signature = random.choice(ds.signature.search("status:DEPLOYED", rows=100, as_obj=False)['items'])
+    sid = f"{signature['type']}_{signature['source']}_{signature['signature_id']}"
+    status = "DISABLED"
+
+    resp = get_api_data(session, f"{host}/api/v4/signature/change_status/{sid}/{status}/")
+    ds.signature.commit()
+
+    assert resp['success']
+
+    # Check if the user's detail was saved
+    ds.signature.commit()
+    modded_sig = ds.signature.get(sid, as_obj=False)
+    assert modded_sig.pop('state_change_date') is not None
+    assert modded_sig.pop('state_change_user') is not None
+
+    resp = get_api_data(session, f"{host}/api/v4/signature/clear_status/{sid}/")
+    ds.signature.commit()
+
+    assert resp['success']
+
+    # Check if the user's detail was clear
+    modded_sig = ds.signature.get(sid, as_obj=False)
+    assert modded_sig.pop('state_change_date') is None
+    assert modded_sig.pop('state_change_user') is None
+
+
 # noinspection PyUnusedLocal
 def test_delete_signature(datastore, login_session):
     _, session, host = login_session
