@@ -176,7 +176,7 @@ def check_hash_exists(qhash, **kwargs):
     Check if a hash exists in the badlist.
 
     Variables:
-    qhash       => Hash to check is exist (either md5, sha1 or sha256)
+    qhash       => Hash to check is exist (either md5, sha1, sha256, tlsh, or ssdeep)
 
     Arguments:
     None
@@ -231,9 +231,6 @@ def check_hash_exists(qhash, **kwargs):
      "type": "tag"                # Type of badlist hash (tag or file)
     }
     """
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
-
     badlist = STORAGE.badlist.get_if_exists(qhash, as_obj=False)
     if badlist and CLASSIFICATION.is_accessible(kwargs['user']['classification'], badlist['classification']):
         return make_api_response(badlist)
@@ -460,9 +457,6 @@ def set_hash_status(qhash, **_):
     """
     data = request.json
 
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
-
     return make_api_response({'success': STORAGE.badlist.update(
         qhash, [
             (STORAGE.badlist.UPDATE_SET, 'enabled', data),
@@ -488,8 +482,6 @@ def clear_expiry(qhash, **_):
     Result example:
     {"success": True}
     """
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
 
     return make_api_response({'success': STORAGE.badlist.update(
         qhash, [
@@ -519,9 +511,6 @@ def remove_source(qhash, source, stype, **kwargs):
     {"success": True}
     """
     user = kwargs['user']
-
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
 
     if (source != user['uname'] or stype != 'user') and ROLES.administration not in user['roles']:
         return make_api_response(
@@ -586,9 +575,6 @@ def set_classification(qhash, source, stype, **kwargs):
     classification = request.json
     user = kwargs['user']
 
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
-
     if not CLASSIFICATION.is_valid(classification):
         return make_api_response(None, f"Classification {classification} is not valid.", 400)
 
@@ -651,9 +637,6 @@ def set_expiry(qhash, **_):
     """
     expiry = request.json
 
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
-
     if not re.match(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z', expiry):
         return make_api_response(
             None, "Invalid date format, must match ISO9660 format (0000-00-00T00:00:00.000000Z)", 400)
@@ -685,9 +668,6 @@ def add_attribution(qhash, attrib_type, value, **_):
     Result example:
     {"success": True}
     """
-
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
 
     if attrib_type not in ATTRIBUTION_TYPES:
         return make_api_response(None, f"Invalid attribution type, must in : {ATTRIBUTION_TYPES}", 400)
@@ -733,9 +713,6 @@ def remove_attribution(qhash, attrib_type, value, **_):
     Result example:
     {"success": True}
     """
-
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
 
     if attrib_type not in ATTRIBUTION_TYPES:
         return make_api_response(None, f"Invalid attribution type, must in : {ATTRIBUTION_TYPES}", 400)
@@ -784,9 +761,6 @@ def delete_hash(qhash, **kwargs):
     {"success": True}
     """
     user = kwargs['user']
-
-    if len(qhash) not in [64, 40, 32]:
-        return make_api_response(None, "Invalid hash length", 400)
 
     if ROLES.administration in user['roles'] or ROLES.signature_manage in user['roles']:
         return make_api_response({'success': STORAGE.badlist.delete(qhash)})

@@ -692,6 +692,7 @@ def oauth_validate(**_):
                         provider.access_token_params['client_assertion'] = client_assertion
                         provider.access_token_params['client_assertion_type'] = client_assertion_type
 
+                # Validate the token
                 if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)

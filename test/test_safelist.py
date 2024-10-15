@@ -134,9 +134,7 @@ def test_safelist_add_tag(datastore, login_session):
     # Generate a random safelist
     sl_data = {
         'dtl': 15,
-        'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
-                   'sha1': hashlib.sha1(hashed_value).hexdigest(),
-                   'sha256': hashlib.sha256(hashed_value).hexdigest()},
+        'hashes': {'sha256': hashlib.sha256(hashed_value).hexdigest()},
         'tag': {'type': tag_type,
                 'value': tag_value},
         'sources': [NSRL_SOURCE, ADMIN_SOURCE],
@@ -175,6 +173,9 @@ def test_safelist_add_tag(datastore, login_session):
     enabled = ds_sl.pop('enabled', None)
     assert enabled
 
+    for hashtype in ['md5', 'sha1']:
+        ds_sl['hashes'].pop(hashtype, None)
+
     # Test rest, dtl should not exist anymore
     sl_data.pop('dtl', None)
     assert ds_sl == sl_data
@@ -188,9 +189,7 @@ def test_safelist_add_signature(datastore, login_session):
 
     # Generate a random safelist
     sl_data = {
-        'hashes': {'md5': hashlib.md5(hashed_value).hexdigest(),
-                   'sha1': hashlib.sha1(hashed_value).hexdigest(),
-                   'sha256': hashlib.sha256(hashed_value).hexdigest()},
+        'hashes': {'sha256': hashlib.sha256(hashed_value).hexdigest()},
         'signature': {'name': sig_name},
         'sources': [ADMIN_SOURCE],
         'type': 'signature'
@@ -227,6 +226,9 @@ def test_safelist_add_signature(datastore, login_session):
     # Test enabled
     enabled = ds_sl.pop('enabled', None)
     assert enabled
+
+    for hashtype in ['md5', 'sha1']:
+        ds_sl['hashes'].pop(hashtype, None)
 
     # Test rest
     assert ds_sl == sl_data

@@ -106,7 +106,7 @@ def get_all_messages(notification_queue, **kwargs):
 
 # noinspection PyBroadException
 @ingest_api.route("/", methods=["POST"])
-@api_login(allow_readonly=False, require_role=[ROLES.submission_create])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def ingest_single_file(**kwargs):
     """
     Ingest a single file, sha256 or URL in the system
@@ -262,7 +262,9 @@ def ingest_single_file(**kwargs):
             'deep_scan': False,
             "priority": 150,
             "ignore_cache": False,
+            # the following one line can be removed after assemblyline 4.6+
             "ignore_dynamic_recursion_prevention": False,
+            "ignore_recursion_prevention": False,
             "ignore_filtering": False,
             "type": "INGEST"
         })
@@ -404,14 +406,16 @@ def ingest_single_file(**kwargs):
         # Validate the metadata (use validation scheme if we have one configured for the ingest_type)
         validation_scheme = config.submission.metadata.ingest.get('_default', {})
         validation_scheme.update(config.submission.metadata.ingest.get(s_params['type'], {}))
-        metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=validation_scheme)
+        strict = s_params['type'] in config.submission.metadata.strict_schemes
+        metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=validation_scheme, strict=strict)
         if metadata_error:
             return make_api_response({}, err=metadata_error[1], status_code=400)
 
         if s_params.get('auto_archive', False):
             # If the submission was set to auto-archive we need to validate the archive metadata fields also
+            strict = 'archive' in config.submission.metadata.strict_schemes
             metadata_error = metadata_validator.check_metadata(
-                metadata, validation_scheme=config.submission.metadata.archive, skip_elastic_fields=True)
+                metadata, validation_scheme=config.submission.metadata.archive, strict=strict, skip_elastic_fields=True)
             if metadata_error:
                 return make_api_response({}, err=metadata_error[1], status_code=400)
 
@@ -441,6 +445,7 @@ def ingest_single_file(**kwargs):
 
     finally:
         if not success:
+            # We had an error during the submission, release the quotas for the user
             decrement_submission_ingest_quota(user)
 
         # Cleanup files on disk
