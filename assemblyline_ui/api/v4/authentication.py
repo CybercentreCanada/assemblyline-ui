@@ -647,7 +647,7 @@ def get_fic_access_token(client_id, tenant_id, scope):
         error_msg = f"Failed to retrieve federated token: {str(e)}"
         raise Exception(error_msg)
 
-    return token
+    return token.token
 
 # noinspection PyBroadException
 @auth_api.route("/oauth/", methods=["GET"])
