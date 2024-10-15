@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import os
 import re
 from io import BytesIO
 from typing import Any, Dict
@@ -40,7 +41,6 @@ from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_typ
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
 from authlib.integrations.flask_client import OAuth, FlaskRemoteApp
-from azure.identity import WorkloadIdentityCredential, DefaultAzureCredential
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -678,25 +678,13 @@ def oauth_validate(**_):
                 # If not secrets are provided and Azure federated credentials vars are loaded in the pod,
                 # we will use the federated credential to login our provider to Azure AD
                 if not provider.client_secret:
-                    credentials = None
-                    if oauth_provider_config.aad_wic_tenant_id:
-                        credentials = WorkloadIdentityCredential(
-                            client_id=oauth_provider_config.client_id,
-                            tenant_id=oauth_provider_config.aad_wic_tenant_id,
-                            token_file_path=oauth_provider_config.aad_wic_token_file_path,
-                            additionally_allowed_tenants=oauth_provider_config.aad_wic_additionally_allowed_tenants)
-                    else:
-                        credentials = DefaultAzureCredential()
+                    client_assertion = None
+                    token_file = oauth_provider_config.aad_fic_token_file_path or \
+                        os.environ.get("AZURE_FEDERATED_TOKEN_FILE")
+                    if os.path.exists(token_file):
+                        client_assertion = open(token_file).read()
 
-                    if credentials:
-                        try:
-                            scope = oauth_provider_config.aad_credentials_scope or ".default"
-                            client_assertion = credentials.get_token(scope).token
-                        except Exception as e:
-                            return make_api_response(
-                                {"err_code": 6},
-                                err=f"No client secret set and could not authenticate using AzureCredentials. {e}",
-                                status_code=401)
+                    if client_assertion:
                         client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
                         if not provider.access_token_params:
@@ -704,6 +692,7 @@ def oauth_validate(**_):
                         provider.access_token_params['client_assertion'] = client_assertion
                         provider.access_token_params['client_assertion_type'] = client_assertion_type
 
+                # Validate the token
                 if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
                     # Validate the token that we've received using the secret
                     token = provider.authorize_access_token(client_secret=oauth_provider_config.client_secret)
