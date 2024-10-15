@@ -679,7 +679,7 @@ def oauth_validate(**_):
                 # we will use the federated credential to login our provider to Azure AD
                 if not provider.client_secret:
                     client_assertion = None
-                    token_file = oauth_provider_config.aad_wic_token_file_path or \
+                    token_file = oauth_provider_config.aad_fic_token_file_path or \
                         os.environ.get("AZURE_FEDERATED_TOKEN_FILE")
                     if os.path.exists(token_file):
                         client_assertion = open(token_file).read()
