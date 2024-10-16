@@ -38,6 +38,7 @@ AUDIT = config.ui.audit
 SECRET_KEY = config.ui.secret_key
 DEBUG = config.ui.debug
 DOWNLOAD_ENCODING = config.ui.download_encoding
+DEFAULT_ZIP_PASSWORD = config.ui.default_zip_password
 MAX_CLASSIFICATION = CLASSIFICATION.UNRESTRICTED
 ORGANISATION = config.system.organisation
 SYSTEM_TYPE = config.system.type
