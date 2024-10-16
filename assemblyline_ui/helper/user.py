@@ -6,7 +6,7 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, \
-    config, CLASSIFICATION as Classification, SERVICE_LIST
+    config, CLASSIFICATION as Classification, SERVICE_LIST, DOWNLOAD_ENCODING, DEFAULT_ZIP_PASSWORD
 from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
@@ -260,7 +260,9 @@ def get_dynamic_classification(current_c12n, user_info):
 
 def get_default_user_settings(user):
     return UserSettings({"classification": Classification.default_user_classification(user),
-                         "ttl": config.submission.dtl}).as_primitives()
+                         "ttl": config.submission.dtl,
+                         "default_zip_password": DEFAULT_ZIP_PASSWORD,
+                         "download_encoding": DOWNLOAD_ENCODING}).as_primitives()
 
 
 def load_user_settings(user):
