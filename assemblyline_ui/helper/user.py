@@ -290,7 +290,7 @@ def load_user_settings(user):
     # Only display services that a user is allowed to see
     settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}), user_classfication)
     settings['services'] = get_default_service_list(srv_list, def_srv_list, user_classfication)
-    settings['default_zip_password'] = settings.get('default_zip_password', None)
+    settings['default_zip_password'] = settings.get('default_zip_password', DEFAULT_ZIP_PASSWORD)
 
     # Normalize the user's classification
     settings['classification'] = Classification.normalize_classification(settings['classification'])
