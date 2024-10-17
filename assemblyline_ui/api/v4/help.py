@@ -121,6 +121,7 @@ def get_system_configuration(**_):
         "ui.allow_zip_downloads",
         "ui.audit",
         "ui.download_encoding",
+        "ui.default_zip_password",
         "ui.enforce_quota",
         "ui.ingest_max_priority"
     ]
