@@ -814,8 +814,16 @@ def get_file_results(sha256, **kwargs):
                 for t in sec['tags']:
                     output["tags"].setdefault(t['type'], [])
                     t_item = (t['value'], h_type, t['safelisted'], sec['classification'])
-                    if t_item not in output["tags"][t['type']]:
+                    index = next((i for i, x in enumerate(output["tags"][t['type']])
+                                  if x[0] == t_item[0] and x[1] == t_item[1]), None)
+
+                    if index == None:
                         output["tags"][t['type']].append(t_item)
+                    else:
+                        existing = output["tags"][t['type']][index]
+                        safelisted = t_item[2] or existing[2]
+                        classification = Classification.min_classification(t_item[3], existing[3])
+                        output["tags"][t['type']][index] = (t['value'], h_type, safelisted, classification)
 
         output['signatures'] = list(output['signatures'])
 
