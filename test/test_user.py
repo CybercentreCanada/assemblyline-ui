@@ -150,7 +150,7 @@ def test_get_user_settings(datastore, login_session):
     username = random.choice(user_list)
 
     resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/")
-    assert {'deep_scan', 'download_encoding', 'ignore_cache'}.issubset(set(resp.keys()))
+    assert {'deep_scan', 'download_encoding', 'default_zip_password', 'ignore_cache'}.issubset(set(resp.keys()))
 
 
 # noinspection PyUnusedLocal
