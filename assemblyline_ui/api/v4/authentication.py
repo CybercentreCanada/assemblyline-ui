@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import os
 import re
 from io import BytesIO
 from typing import Any, Dict
@@ -39,6 +40,7 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
+from authlib.integrations.flask_client import OAuth, FlaskRemoteApp
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -664,14 +666,31 @@ def oauth_validate(**_):
     oauth_token_id = None
 
     if config.auth.oauth.enabled:
-        oauth = current_app.extensions.get('authlib.integrations.flask_client')
-        provider = oauth.create_client(oauth_provider)
+        oauth: OAuth = current_app.extensions.get('authlib.integrations.flask_client')
+        provider: FlaskRemoteApp = oauth.create_client(oauth_provider)
 
         if provider:
             # noinspection PyBroadException
             try:
                 # Load the oAuth provider config
                 oauth_provider_config = config.auth.oauth.providers[oauth_provider]
+
+                # If not secrets are provided and Azure federated credentials vars are loaded in the pod,
+                # we will use the federated credential to login our provider to Azure AD
+                if not provider.client_secret:
+                    client_assertion = None
+                    token_file = oauth_provider_config.aad_fic_token_file_path or \
+                        os.environ.get("AZURE_FEDERATED_TOKEN_FILE")
+                    if os.path.exists(token_file):
+                        client_assertion = open(token_file).read()
+
+                    if client_assertion:
+                        client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+
+                        if not provider.access_token_params:
+                            provider.access_token_params = {}
+                        provider.access_token_params['client_assertion'] = client_assertion
+                        provider.access_token_params['client_assertion_type'] = client_assertion_type
 
                 # Validate the token
                 if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
