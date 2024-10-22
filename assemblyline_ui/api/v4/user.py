@@ -246,7 +246,7 @@ def who_am_i(**kwargs):
             "allow_zip_downloads": config.ui.allow_zip_downloads,
             "allow_replay": config.ui.allow_replay,
             "allow_url_submissions": config.ui.allow_url_submissions,
-            "api_proxies": [x for x in config.ui.api_proxies.keys()],
+            "api_proxies": {k: v.get("public", None) for k, v in config.as_primitives()["ui"]["api_proxies"].items()},
             "apps": [x for x in APPS_LIST['apps']
                      if CLASSIFICATION.is_accessible(kwargs['user']['classification'],
                                                      x['classification'] or CLASSIFICATION.UNRESTRICTED,
