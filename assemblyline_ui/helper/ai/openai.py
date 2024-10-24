@@ -1,7 +1,7 @@
 import requests
 import yaml
 
-from azure.identity import WorkloadIdentityCredential
+from azure.identity import DefaultAzureCredential
 
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.config import AIFunctionParameters, AIConnection
@@ -17,7 +17,7 @@ class OpenAIAgent(AIAgent):
         self.session.headers = self.config.headers
         if config.use_fic and "openai.azure.com" in config.chat_url:
             try:
-                credentials = WorkloadIdentityCredential(token_file_path = config.fic_token_path or None)
+                credentials = DefaultAzureCredential()
                 aad_token = credentials.get_token('https://cognitiveservices.azure.com/.default').token
                 self.config.headers['Authorization'] = f"Bearer {aad_token}"
             except Exception as e:
