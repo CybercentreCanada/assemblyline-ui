@@ -312,7 +312,6 @@ def get_full_results(sid, **kwargs):
        },
      "state": "completed",              # State of the submission
      "submission": {                    # Submission Block
-       "profile": true,                     # Should keep stats about execution?
        "description": "",                   # Submission description
        "ttl": 30,                           # Submission days to live
        "ignore_filtering": false,           # Ignore filtering services?
@@ -451,7 +450,6 @@ def get_submission(sid, **kwargs):
        ["FNAME", "sha256"], ...],    # Each file = List of name/sha256
      "errors": [],              # List of error keys (sha256.ServiceName)
      "submission": {            # Submission Block
-       "profile": true,           # Should keep stats about execution?
        "description": "",         # Submission description
        "ttl": 30,                 # Submission days to live
        "ignore_filtering": false, # Ignore filtering services?

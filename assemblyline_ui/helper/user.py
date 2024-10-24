@@ -7,7 +7,7 @@ from assemblyline.odm.models.user import User, load_roles, ROLES
 from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, \
     config, CLASSIFICATION as Classification, SERVICE_LIST, DOWNLOAD_ENCODING, DEFAULT_ZIP_PASSWORD
-from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
+from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services, get_default_submission_profiles
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "password"]
@@ -290,6 +290,10 @@ def load_user_settings(user):
     # Only display services that a user is allowed to see
     settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}), user_classfication)
     settings['services'] = get_default_service_list(srv_list, def_srv_list, user_classfication)
+    settings['submission_profiles'] = get_default_submission_profiles(settings['submission_profiles'],
+                                                                      user_classfication)
+    settings['preferred_submission_profile'] = user.get('preferred_submission_profile') or \
+        list(settings['submission_profiles'].keys())[0]
     settings['default_zip_password'] = settings.get('default_zip_password', DEFAULT_ZIP_PASSWORD)
 
     # Normalize the user's classification
@@ -300,5 +304,13 @@ def load_user_settings(user):
 
 def save_user_settings(username, data):
     data["services"] = {'selected': simplify_services(data["services"])}
+
+    # Ensure submission profile changes are valid
+    for profile_name, profile_spec in data["submission_profiles"].items():
+        saved_spec = {}
+        for spec in profile_spec["service_spec"]:
+            saved_spec[spec["name"]] = {param['name']: param['value'] for param in spec["params"] if param['name'] in config.submission.profiles[profile_name].editable_params}
+        data["submission_profiles"][profile_name]["service_spec"] = saved_spec
+
 
     return STORAGE.user_settings.save(username, data)
