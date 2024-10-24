@@ -1,8 +1,11 @@
+import requests
+import yaml
+
+from azure.identity import DefaultAzureCredential
+
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.config import AIFunctionParameters, AIConnection
 from assemblyline_ui.helper.ai.base import AIAgent, APIException, EmptyAIResponse
-import requests
-import yaml
 
 ALLOWED_OPTIONS = ["temperature", "frequency_penalty", "presence_penalty", "top_p", "seed"]
 
@@ -12,6 +15,13 @@ class OpenAIAgent(AIAgent):
         super(OpenAIAgent, self).__init__(config, function_params, logger)
         self.session = requests.Session()
         self.session.headers = self.config.headers
+        if config.use_fic and "openai.azure.com" in config.chat_url:
+            try:
+                credentials = DefaultAzureCredential()
+                aad_token = credentials.get_token('https://cognitiveservices.azure.com/.default').token
+                self.config.headers['Authorization'] = f"Bearer {aad_token}"
+            except Exception as e:
+                logger.error(f"Could not properly initialize OpenAI Agent using Federated Identity token: {e}")
         self.session.proxies = self.config.proxies
         self.params.assistant.options = {k: v for k, v in self.params.assistant.options.items() if k in ALLOWED_OPTIONS}
         self.params.code.options = {k: v for k, v in self.params.code.options.items() if k in ALLOWED_OPTIONS}

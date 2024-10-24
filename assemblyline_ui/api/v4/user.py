@@ -904,17 +904,19 @@ def get_user_settings(username, **kwargs):
 
     Result example:
     {
-     "classification": "",          # Default classification for this user sumbissions
-     "description": "",             # Default description for this user's submissions
-     "download_encoding": "blah",   # Default encoding for downloaded files
-     "expand_min_score": 100,       # Default minimum score to auto-expand sections
-     "priority": 1000,              # Default submission priority
-     "service_spec": [],            # Default Service specific parameters
-     "ignore_cache": true,          # Should file be reprocessed even if there are cached results
-     "groups": [ ... ],             # Default groups selection for the user scans
-     "ttl": 30,                     # Default time to live in days of the users submissions
-     "services": [ ... ],           # Default list of selected services
-     "ignore_filtering": false      # Should filtering services by ignored?
+     "profile": true,                 # Should submissions be profiled
+     "classification": "",            # Default classification for this user sumbissions
+     "description": "",               # Default description for this user's submissions
+     "download_encoding": "blah",     # Default encoding for downloaded files
+     "default_zip_password": "pass",  # Default password for password protected ZIP
+     "expand_min_score": 100,         # Default minimum score to auto-expand sections
+     "priority": 1000,                # Default submission priority
+     "service_spec": [],              # Default Service specific parameters
+     "ignore_cache": true,            # Should file be reprocessed even if there are cached results
+     "groups": [ ... ],               # Default groups selection for the user scans
+     "ttl": 30,                       # Default time to live in days of the users submissions
+     "services": [ ... ],             # Default list of selected services
+     "ignore_filtering": false        # Should filtering services by ignored?
     }
     """
     user = kwargs['user']
