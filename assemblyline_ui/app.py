@@ -172,6 +172,11 @@ if config.config.core.metrics.apm_server.server_url is not None:
     app.logger.info(f"Exporting application metrics to: {config.config.core.metrics.apm_server.server_url}")
     ElasticAPM(app, client=config.forge.get_apm_client('al_ui'))
 
+# Check download encoding config setting
+if config.DOWNLOAD_ENCODING == "raw" and not config.ALLOW_RAW_DOWNLOADS:
+    raise ValueError("Incompatible download_encoding selected: \"raw\" cannot be selected with allow_raw_downloads set to False.")
+if config.DOWNLOAD_ENCODING == "zip" and not config.ALLOW_ZIP_DOWNLOADS:
+    raise ValueError("Incompatible download_encoding selected: \"zip\" cannot be selected with allow_zip_downloads set to False.")
 
 def main():
     wlog = logging.getLogger('werkzeug')
