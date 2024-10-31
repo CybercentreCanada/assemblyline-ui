@@ -69,13 +69,13 @@ For more information about this Assemblyline component, follow this [overview](h
 
 Ce composant fournit l'interface utilisateur ainsi que les différentes API et les points de terminaison Socket IO pour le framework Assemblyline 4.
 
-## Variantes d'images et balises
+## Variantes et étiquettes d'image
 
 | **Type d'étiquette** | **Description**                                                                                                                    |  **Exemple d'étiquette**   |
 | :------------------: | :--------------------------------------------------------------------------------------------------------------------------------- | :------------------------: |
 |       dernière       | La version la plus récente (peut être instable).                                                                                   |          `latest`          |
 |      build_type      | Le type de compilation utilisé. `dev` est la dernière version instable. `stable` est la dernière version stable. `stable` ou `dev` |     `stable` ou `dev`      |
-|        series        | Le type de build utilisé. `dev` est le dernier build unstable : `version.buildType`.                                               | `4.5.stable`, `4.5.1.dev3` |
+|        séries        | Le détail de compilation utilisé, incluant la version et le type de compilation : `version.buildType`.                                               | `4.5.stable`, `4.5.1.dev3` |
 
 ## Composants
 
