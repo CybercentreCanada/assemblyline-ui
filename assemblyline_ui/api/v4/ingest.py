@@ -21,7 +21,7 @@ from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classificatio
     STORAGE, config, FILESTORE, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS
+    FETCH_METHODS, URL_GENERATORS
 from assemblyline_ui.helper.user import check_async_submission_quota, decrement_submission_ingest_quota, \
     load_user_settings
 
@@ -214,7 +214,7 @@ def ingest_single_file(**kwargs):
                     break
 
             hash = string_value
-            if string_type == "url":
+            if string_type in URL_GENERATORS:
                 string_value = refang_url(string_value)
                 name = string_value
             else:
@@ -227,7 +227,7 @@ def ingest_single_file(**kwargs):
             return make_api_response({}, "Invalid content type", 400)
 
         # Get default description
-        default_description = f"Inspection of {'URL' if string_type == 'url' else 'file'}: {name}"
+        default_description = f"Inspection of {'URL' if string_type in URL_GENERATORS else 'file'}: {name}"
 
         # Get file name
         if not name:
