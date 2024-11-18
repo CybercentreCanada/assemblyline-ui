@@ -24,6 +24,13 @@ FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
 # Update our fetch methods based on what's in our configuration
 [FETCH_METHODS.update(set(x.hash_types)) for x in config.submission.file_sources]
 
+# Baseline URL Generators
+URL_GENERATORS = {'url'}
+
+# Update our URL Generators based on what's in our configuration
+[URL_GENERATORS.update(set(x.hash_types)) for x in config.submission.file_sources if not x.download_from_url]
+
+
 try:
     MYIP = socket.gethostbyname(config.ui.fqdn)
 except socket.gaierror:
@@ -131,19 +138,34 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                 src_url = source.url.replace(source.replace_pattern, input)
                 src_data = source.data.replace(source.replace_pattern, input) if source.data else None
                 failure_pattern = source.failure_pattern.encode('utf-8') if source.failure_pattern else None
-                dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
-                                            headers=source.headers, proxies=source.proxies,
-                                            verify=source.verify, validate=False,
-                                            failure_pattern=failure_pattern,
-                                            ignore_size=s_params.get('ignore_size', False))
-                if dl_from is not None:
+                if source.download_from_url:
+                    dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
+                                                headers=source.headers, proxies=source.proxies,
+                                                verify=source.verify, validate=False,
+                                                failure_pattern=failure_pattern,
+                                                ignore_size=s_params.get('ignore_size', False))
+                    if dl_from is not None:
+                        found = True
+                else:
+                    if not config.ui.allow_url_submissions:
+                        raise PermissionError("URL submissions are disabled in this system")
+
+                    # Create an AL-URI file to be tasked by a downloader service (ie. URLDownloader)
+                    with tempfile.TemporaryDirectory() as dir_path:
+                        shutil.move(make_uri_file(dir_path, src_url), out_file)
+
+                    found = True
+
+                if found:
                     # Apply minimum classification for the source
                     s_params['classification'] = \
                         CLASSIFICATION.max_classification(s_params['classification'],
                                                             source.classification)
                     metadata['original_source'] = source.name
-                    found = True
+                    if source.select_as_service:
+                        s_params['services']['selected'] += [source.name]
                     break
+
 
     return found, fileinfo
 
