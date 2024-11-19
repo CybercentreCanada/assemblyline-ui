@@ -135,10 +135,14 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                     and x.name in default_external_sources]
 
             for source in available_sources:
+                # Building final URL and data block
                 src_url = source.url.replace(source.replace_pattern, input)
                 src_data = source.data.replace(source.replace_pattern, input) if source.data else None
                 failure_pattern = source.failure_pattern.encode('utf-8') if source.failure_pattern else None
+
+                # If we should download from the source
                 if source.download_from_url:
+                    # Get the file from the source URL
                     dl_from = download_from_url(src_url, out_file, data=src_data, method=source.method,
                                                 headers=source.headers, proxies=source.proxies,
                                                 verify=source.verify, validate=False,
@@ -147,6 +151,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     if dl_from is not None:
                         found = True
                 else:
+                    # Check if we are allowed to task this system with URLs
                     if not config.ui.allow_url_submissions:
                         raise PermissionError("URL submissions are disabled in this system")
 
@@ -161,9 +166,16 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     s_params['classification'] = \
                         CLASSIFICATION.max_classification(s_params['classification'],
                                                             source.classification)
+
+                    # Applying the source used to the metadata
                     metadata['original_source'] = source.name
-                    if source.select_as_service:
-                        s_params['services']['selected'] += [source.name]
+
+                    # Forcing service selection
+                    for service in source.select_services:
+                        if service not in s_params['services']['selected']:
+                            s_params['services']['selected'].append(service)
+
+                    # A source suited for the task was found, skip the rest
                     break
 
 
