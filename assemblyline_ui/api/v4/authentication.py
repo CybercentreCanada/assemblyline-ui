@@ -32,6 +32,8 @@ from assemblyline_ui.config import (
     get_reset_queue,
     get_signup_queue,
     get_token_store,
+    AUDIT_LOG,
+    AUDIT_LOGIN
 )
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import API_PRIV_MAP, get_default_user_quotas, get_dynamic_classification
@@ -443,11 +445,13 @@ def login(**_):
             }, cookies={'XSRF-TOKEN': xsrf_token})
         except AuthenticationException as wpe:
             uname = auth.get('username', '(None)')
-            LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{wpe}]")
+            login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
+            login_logger.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{wpe}]")
             return make_api_response("", err=str(wpe), status_code=401)
         finally:
             if logged_in_uname:
-                LOGGER.info(f"Login successful. (U:{logged_in_uname} - IP:{ip})")
+                login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
+                login_logger.info(f"Login successful. (U:{logged_in_uname} - IP:{ip})")
 
     return make_api_response("", "Not enough information to proceed with authentication", 401)
 

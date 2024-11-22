@@ -34,6 +34,7 @@ ALLOW_RAW_DOWNLOADS = config.ui.allow_raw_downloads
 APP_ID = "https://%s" % config.ui.fqdn
 APP_NAME = "Assemblyline"
 AUDIT = config.ui.audit
+AUDIT_LOGIN = config.ui.audit_login
 
 SECRET_KEY = config.ui.secret_key
 DEBUG = config.ui.debug

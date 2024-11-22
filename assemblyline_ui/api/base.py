@@ -13,7 +13,7 @@ from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline_ui.security.oauth_auth import validate_oauth_token
 from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION, CLASSIFICATION, \
-    DAILY_QUOTA_TRACKER
+    DAILY_QUOTA_TRACKER, AUDIT_LOG, AUDIT_LOGIN
 from assemblyline_ui.helper.user import login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.config import config
@@ -58,12 +58,14 @@ class api_login(BaseSecurityRenderer):
                     #       sub-sequent calls...
                     validated_user, roles_limit = validate_apikey(uname, apikey, STORAGE)
                 except AuthenticationException as ae:
-                    LOGGER.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{str(ae)}]")
+                    login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
+                    login_logger.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{str(ae)}]")
                     abort(401, str(ae))
                     return
 
                 if validated_user:
-                    LOGGER.info(f"Login successful. (U:{uname} - IP:{ip})")
+                    login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
+                    login_logger.info(f"Login successful. (U:{uname} - IP:{ip})")
 
                     return validated_user, roles_limit
 
