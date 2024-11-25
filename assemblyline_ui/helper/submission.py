@@ -260,7 +260,8 @@ def download_from_url(download_url, target, data=None, method="GET",
 
     if r.ok:
         if int(r.headers.get('content-length', 0)) > config.submission.max_file_size and not ignore_size:
-            raise FileTooBigException("File too big to be scanned.")
+            raise FileTooBigException("File too big to be scanned "
+                                      f"({r.headers['content-length']} > {config.submission.max_file_size}).")
 
         written = 0
 

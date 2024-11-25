@@ -16,7 +16,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
-    CLASSIFICATION as Classification, IDENTIFY, metadata_validator
+    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS, URL_GENERATORS
@@ -369,8 +369,9 @@ def submit(**kwargs):
                         raise FileNotFoundError(
                             f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
 
-                except FileTooBigException:
-                    return make_api_response({}, "File too big to be scanned.", 400)
+                except FileTooBigException as e:
+                    LOGGER.warning(f"[{user['uname']}] {e}")
+                    return make_api_response({}, str(e), 400)
                 except FileNotFoundError as e:
                     return make_api_response({}, str(e), 404)
                 except PermissionError as e:
