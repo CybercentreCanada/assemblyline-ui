@@ -45,6 +45,7 @@ from assemblyline_ui.healthz import healthz
 from assemblyline_ui import config
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
+THREADED = os.environ.get('THREADED', 'true').lower() == 'true'
 AL_SESSION_COOKIE_SAMESITE = os.environ.get("AL_SESSION_COOKIE_SAMESITE", None)
 AL_HSTS_MAX_AGE = os.environ.get('AL_HSTS_MAX_AGE', None)
 CERT_BUNDLE = (
@@ -185,7 +186,7 @@ def main():
         wlog.addHandler(h)
 
     app.jinja_env.cache = {}
-    app.run(host="0.0.0.0", debug=False, ssl_context=ssl_context)
+    app.run(host="0.0.0.0", debug=False, ssl_context=ssl_context, threaded=THREADED)
 
 
 if __name__ == '__main__':
