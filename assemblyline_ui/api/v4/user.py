@@ -420,6 +420,8 @@ def get_user_account(username, **kwargs):
         user['avatar'] = STORAGE.user_avatar.get(username)
 
     user['roles'] = load_roles(user['type'], user.get('roles', None))
+    if ROLES.administration not in kwargs['user']['roles']:
+        user.pop('identity_id')
 
     return make_api_response(user)
 
