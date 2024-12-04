@@ -8,7 +8,7 @@ import tempfile
 
 from flask import request
 
-from assemblyline.common.constants import MAX_PRIORITY
+from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
@@ -125,8 +125,8 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         if "Dynamic Analysis" not in submission_params['services']['selected']:
             submission_params['services']['selected'].append("Dynamic Analysis")
 
-        # Ensure submission priority doesn't surpass the MAX_PRIORITY constant
-        submission_params['priority'] = max(submission_params['priority'], MAX_PRIORITY)
+        # Ensure submission priority stays within the range of user priorities
+        submission_params['priority'] = max(min(submission_params['priority'], MAX_PRIORITY), PRIORITIES['user-low'])
 
         try:
             submission_obj = Submission({
