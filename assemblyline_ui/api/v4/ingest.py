@@ -16,6 +16,7 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
     STORAGE, config, FILESTORE, metadata_validator, LOGGER
@@ -31,7 +32,7 @@ ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
 ingest_api._doc = "Ingest files for large volume processing"
 
 ingest = NamedQueue(
-    "m-ingest",
+    INGEST_QUEUE_NAME,
     host=config.core.redis.persistent.host,
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
