@@ -281,6 +281,7 @@ def facet(index, field, **kwargs):
     timeout        =>   Maximum execution time (ms)
     use_archive    =>   Allow access to the malware archive (Default: False)
     archive_only   =>   Only access the Malware archive (Default: False)
+    size           =>   How many facets are returned? (Default: 10)
 
     Data Block (POST ONLY):
     {"query": "id:*",
@@ -304,7 +305,7 @@ def facet(index, field, **kwargs):
     if field_info is None:
         return make_api_response("", f"Field '{field}' is not a valid field in index: {index}", 400)
 
-    fields = ["query", "mincount", "timeout"]
+    fields = ["query", "mincount", "timeout", "size"]
     multi_fields = ['filters']
     boolean_fields = ['use_archive', 'archive_only']
 

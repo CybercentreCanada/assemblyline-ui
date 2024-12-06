@@ -15,13 +15,14 @@ from assemblyline.odm.models.file import File
 from assemblyline.odm.randomizer import random_model_obj, get_random_phrase
 from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
 from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 
 NUM_FILES = 4
 TEST_QUEUE = "my_queue"
 config = forge.get_config()
 nq = NamedQueue(f"nq-{TEST_QUEUE}", host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
-iq = NamedQueue("m-ingest", host=config.core.redis.persistent.host,
+iq = NamedQueue(INGEST_QUEUE_NAME, host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
 file_hashes = []
 

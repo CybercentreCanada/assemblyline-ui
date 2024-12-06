@@ -192,7 +192,7 @@ def get_systems_constants(**_):
 
     out = {
         "max_priority": constants.MAX_PRIORITY,
-        "priorities": constants.PRIORITIES,
+        "priorities": constants.PRIORITY_RANGES,
         "file_types": [[t,
                         sorted([x for x in accepts_map.keys()
                                 if re.match(accepts_map[x], t) and not re.match(rejects_map[x], t)])]
