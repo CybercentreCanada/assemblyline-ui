@@ -253,7 +253,7 @@ def test_delete_signature_source(datastore, login_session):
 def test_set_signature_source_status(datastore, login_session):
     _, session, host = login_session
     ds = datastore
-    service = random.choice(ds.service.search("update_config.generates_signatures:true",
+    service = random.choice(ds.service.search("update_config.generates_signatures:true AND update_config.sources:*",
                                               rows=100, as_obj=False)['items'])
     service_data = ds.get_service_with_delta(service['name'], as_obj=False)
     source_name = service_data['update_config']['sources'][0]['name']
