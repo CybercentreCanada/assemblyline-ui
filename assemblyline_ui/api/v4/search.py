@@ -305,9 +305,10 @@ def facet(index, field, **kwargs):
     if field_info is None:
         return make_api_response("", f"Field '{field}' is not a valid field in index: {index}", 400)
 
-    fields = ["query", "mincount", "timeout", "size"]
+    fields = ["query", "mincount", "timeout"]
     multi_fields = ['filters']
     boolean_fields = ['use_archive', 'archive_only']
+    integer_fields = ["size"]
 
     if request.method == "POST":
         req_data = request.json
@@ -322,6 +323,10 @@ def facet(index, field, **kwargs):
     params.update({k: str(req_data.get(k, 'false')).lower() in ['true', '']
                    for k in boolean_fields
                    if req_data.get(k, None) is not None})
+
+    params.update({k: int(req_data.get(k, '0'))
+                for k in integer_fields
+                if req_data.get(k, None) is not None})
 
     use_archive = params.pop('use_archive', False)
     archive_only = params.pop('archive_only', False)
