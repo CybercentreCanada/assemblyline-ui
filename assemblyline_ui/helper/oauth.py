@@ -3,6 +3,8 @@ import hashlib
 import re
 import requests
 
+from authlib.integrations.flask_client import FlaskRemoteApp
+from assemblyline.odm.models.config import OAuthProvider
 from assemblyline.odm.models.user import load_roles, USER_TYPE_DEP
 from assemblyline.common.random_user import random_user
 from assemblyline_ui.config import config, CLASSIFICATION as cl_engine
@@ -16,8 +18,7 @@ def reorder_name(name):
 
     return " ".join(name.split(", ", 1)[::-1])
 
-
-def parse_profile(profile, provider):
+def get_profile_identifiers(profile: dict, provider: OAuthProvider):
     # Find email address and normalize it for further processing
     email_adr = None
     for email_key in provider.email_fields:
@@ -32,6 +33,18 @@ def parse_profile(profile, provider):
         email_adr = email_adr.lower()
         if "@" not in email_adr:
             email_adr = None
+
+    # Find identity ID
+    identity_id = profile.get(provider.identity_id_field, None)
+
+    return dict(
+        email=email_adr,
+        identity_id=identity_id
+    )
+
+def parse_profile(profile: dict, provider: OAuthProvider):
+    profile_identifiers = get_profile_identifiers(profile, provider)
+    email_adr = profile_identifiers['email']
 
     # Find the name of the user
     name = reorder_name(profile.get('name', profile.get('displayName', None)))
@@ -191,13 +204,14 @@ def parse_profile(profile, provider):
         uname=uname,
         name=name,
         email=email_adr,
+        identity_id=profile_identifiers['identity_id'],
         password="__NO_PASSWORD__",
         avatar=profile.get('picture', alternate),
         **quotas
     )
 
 
-def fetch_avatar(url, provider, provider_config):
+def fetch_avatar(url: str, provider: FlaskRemoteApp, provider_config:OAuthProvider):
     if url.startswith(provider_config.api_base_url):
         resp = provider.get(url[len(provider_config.api_base_url):])
         if resp.ok and resp.headers.get("content-type") is not None:

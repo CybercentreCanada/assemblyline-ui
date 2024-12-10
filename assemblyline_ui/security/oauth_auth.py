@@ -5,8 +5,8 @@ import requests
 from copy import copy
 
 from assemblyline.odm.models.user import load_roles_form_acls
-from assemblyline_ui.config import config, get_token_store, STORAGE, CACHE
-from assemblyline_ui.helper.oauth import parse_profile
+from assemblyline_ui.config import config, get_token_store, STORAGE, CACHE, LOGGER
+from assemblyline_ui.helper.oauth import get_profile_identifiers
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
@@ -82,19 +82,24 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
             except jwt.PyJWTError as e:
                 raise AuthenticationException(f"Invalid token - {str(e)}")
 
-            # Get user's email from profile
-            email = parse_profile(jwt_data, oauth_provider_config).get('email', None)
-            if email is not None:
-                # Get user from it's email
-                users = STORAGE.user.search(f"email:{email}", fl="*", as_obj=False, rows=1)['items']
-                if users:
-                    # Limit user logging in from external token to only user READ/WRITE APIs
-                    roles = load_roles_form_acls(["R", "W"], [])
+            profile_identifiers = get_profile_identifiers(jwt_data, oauth_provider_config)
 
-                    if return_user:
-                        return users[0], roles
-                    return users[0]['uname'], roles
+            # Lookup user via its profile identifiers (email or identity_id)
+            for k, v in profile_identifiers.items():
+                if v is not None:
+                    # Get user from it's email
+                    users = STORAGE.user.search(f"{k}:{v}", fl="*", as_obj=False, rows=1)['items']
+                    if users:
+                        # Limit user logging in from external token to only user READ/WRITE APIs
+                        roles = load_roles_form_acls(["R", "W"], [])
 
-        raise AuthenticationException("Invalid token")
+                        if return_user:
+                            return users[0], roles
+                        return users[0]['uname'], roles
+            msg = ", ".join([f"{k}={v}" for k, v in profile_identifiers.items() if v is not None])
+            raise AuthenticationException(f"User not found - No matching user for the following identifiers ({msg})")
+
+
+        raise AuthenticationException("Invalid token - No matching signing key found")
 
     return None, None
