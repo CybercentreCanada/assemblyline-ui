@@ -661,7 +661,7 @@ def update_signature_source(service, name, **_):
         service_delta['update_config']['sources'] = new_sources
 
     # Has the classification changed?
-    if classification_changed:
+    if classification_changed or data['override_classification']:
         class_norm = Classification.normalize_classification(data['default_classification'])
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm),
@@ -693,6 +693,66 @@ def update_signature_source(service, name, **_):
             'name': service
         })
     return make_api_response({"success": success})
+
+@signature_api.route("/sources/enable/<service>/<name>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
+def set_signature_source_status(service, name, **_):
+    """
+    Set the enabled status of a signature source
+
+    Variables:
+    service         => Name of service that signature source belongs to
+    name            => Name of signature source
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+     "enabled": "true"              # Enable or disable the signature source
+    }
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json
+    enabled = data.get('enabled', None)
+
+    if enabled is None:
+        return make_api_response({"success": False}, err="Enabled field is required", status_code=400)
+    else:
+        service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+        current_sources = service_data.get('update_config', {}).get('sources', [])
+
+        new_sources = []
+        found = False
+        for source in current_sources:
+            if name == source['name']:
+                source['enabled'] = enabled
+                new_sources.append(source)
+                found = True
+            else:
+                new_sources.append(source)
+
+        if not found:
+            return make_api_response({"success": False},
+                                    err=f"Could not found source '{data['name']}' in service {service}.",
+                                    status_code=404)
+
+        service_delta = STORAGE.service_delta.get(service, as_obj=False)
+        if service_delta.get('update_config') is None:
+            service_delta['update_config'] = {"sources": new_sources}
+        else:
+            service_delta['update_config']['sources'] = new_sources
+
+        success = STORAGE.service_delta.save(service, service_delta)
+        # Notify that a source configuration has changes (trigger source_update)
+        service_event_sender.send(service, {
+            'operation': Operation.Modified,
+            'name': service
+        })
+
+        return make_api_response({"success": success})
 
 
 @signature_api.route("/stats/", methods=["GET"])

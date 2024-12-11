@@ -249,6 +249,27 @@ def test_delete_signature_source(datastore, login_session):
 
     assert not found
 
+# noinspection PyUnusedLocal
+def test_set_signature_source_status(datastore, login_session):
+    _, session, host = login_session
+    ds = datastore
+    for service in datastore.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']:
+        service_data = datastore.get_service_with_delta(service['name'], as_obj=False)
+        if len(service_data['update_config']['sources']) != 0:
+            break
+    source_name = service_data['update_config']['sources'][0]['name']
+    resp = get_api_data(session, f"{host}/api/v4/signature/sources/enable/{service['name']}/{source_name}/", method="PUT", data=json.dumps({"enabled": False}))
+    assert resp['success']
+
+    ds.service.commit()
+    new_service_data = ds.get_service_with_delta(service['name'], as_obj=False)
+    found = False
+    for source in new_service_data['update_config']['sources']:
+        if source['name'] == source_name:
+            found = True
+            break
+
+    assert found and source['enabled'] == False
 
 # noinspection PyUnusedLocal
 def test_download_signatures(datastore, login_session):
@@ -321,6 +342,41 @@ def test_set_signature_source(datastore, login_session):
 
     assert found
 
+# noinspection PyUnusedLocal
+def test_set_signature_source_classification(datastore, login_session):
+    _, session, host = login_session
+    original_source = service_data = None
+
+    for service in datastore.service.search("update_config.generates_signatures:true", rows=100, as_obj=False)['items']:
+        service_data = datastore.get_service_with_delta(service['name'], as_obj=False)
+        if len(service_data['update_config']['sources']) != 0:
+            original_source = service_data['update_config']['sources'][0]
+            break
+
+    assert original_source
+    assert service_data
+
+    new_source = random_model_obj(UpdateSource).as_primitives()
+    new_source['name'] = original_source['name']
+    # Change the classification
+    new_source['default_classification'] = "TLP:A"
+
+    # Associate existing signatures in the system to the source and service
+    assert datastore.signature.update_by_query("*",
+                                               [(datastore.signature.UPDATE_SET, 'type', service_data['name'].lower()),
+                                                (datastore.signature.UPDATE_SET, 'source', new_source['name'])])
+
+    datastore.signature.commit()
+    resp = get_api_data(session, f"{host}/api/v4/signature/sources/{service_data['name']}/{original_source['name']}/",
+                        data=json.dumps(new_source), method="POST")
+    assert resp['success']
+
+    datastore.service.commit()
+    datastore.signature.commit()
+
+    # All signatures under this source should have the classification updated to the new value
+    assert datastore.signature.search(f"source:{new_source['name']}", track_total_hits=True, rows=0)['total'] and \
+        datastore.signature.search(f"source:{new_source['name']}", track_total_hits=True, rows=0)['total'] == datastore.signature.search(f"source:{new_source['name']} AND classification:TLP\:AMBER", track_total_hits=True, rows=0)['total']
 
 # noinspection PyUnusedLocal
 def test_signature_stats(datastore, login_session):
