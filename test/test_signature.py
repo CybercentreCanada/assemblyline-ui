@@ -362,9 +362,11 @@ def test_set_signature_source_classification(datastore, login_session):
     new_source['default_classification'] = "TLP:A"
 
     # Associate existing signatures in the system to the source and service
-    assert datastore.signature.update_by_query("*", [(datastore.signature.UPDATE_SET, 'type', service_data['name'].lower()),
-                                              (datastore.signature.UPDATE_SET, 'source', new_source['name'])])
+    assert datastore.signature.update_by_query("*",
+                                               [(datastore.signature.UPDATE_SET, 'type', service_data['name'].lower()),
+                                                (datastore.signature.UPDATE_SET, 'source', new_source['name'])])
 
+    datastore.signature.commit()
     resp = get_api_data(session, f"{host}/api/v4/signature/sources/{service_data['name']}/{original_source['name']}/",
                         data=json.dumps(new_source), method="POST")
     assert resp['success']
