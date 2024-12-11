@@ -520,6 +520,10 @@ def get_signature_sources(**_):
 
     out = {}
     for service in [s for s in services if s.get("update_config", {})]:
+        for s in service['update_config']['sources']:
+            # Update update_interval to default to globally configured value by updater
+            if 'update_interval' not in s:
+                s['update_interval'] = service['update_config']['update_interval_seconds']
         append_source_status(service)
         out[service['name']] = dict(sources=service['update_config']['sources'],
                                     generates_signatures=service['update_config']['generates_signatures'])
