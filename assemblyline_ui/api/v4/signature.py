@@ -611,6 +611,7 @@ def update_signature_source(service, name, **_):
       },
       "private_key": null,                    # Private key used to get to the URI
       "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
+      "override_classification": false        # Should the classification of the source override to signature classification?
     }
 
     Result example:
@@ -664,14 +665,9 @@ def update_signature_source(service, name, **_):
     else:
         service_delta['update_config']['sources'] = new_sources
 
-    # Has the classification changed?
-    classification_changed = classification_changed or data['override_classification']
-    if classification_changed:
-        class_norm = Classification.normalize_classification(data['default_classification'])
-        STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
-                                          operations=[("SET", "classification", class_norm),
-                                                      ("SET", "last_modified", now_as_iso())])
-
+    # Save the service changes
+    success = STORAGE.service_delta.save(service, service_delta)
+  
     # Has the URI changed?
     if uri_changed:
         # If so, we need to clear the caching value and trigger an update
@@ -680,10 +676,18 @@ def update_signature_source(service, name, **_):
         service_updates.set(key=f'{data["name"]}.update_time', value=0)
         service_updates.set(key=f'{data["name"]}.status',
                             value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
-
-    # Save the signature
-    success = STORAGE.service_delta.save(service, service_delta)
-    if classification_changed:
+      
+        # Notify that a source configuration has changes (trigger source_update)
+        service_event_sender.send(service, {
+            'operation': Operation.Modified,
+            'name': service
+        })      
+    elif classification_changed or data['override_classification']:
+        class_norm = Classification.normalize_classification(data['default_classification'])
+        STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
+                                          operations=[("SET", "classification", class_norm),
+                                                      ("SET", "last_modified", now_as_iso())])
+      
         # Notify that signatures have changed (trigger local_update)
         signature_event_sender.send(service, {
             'signature_id': '*',
