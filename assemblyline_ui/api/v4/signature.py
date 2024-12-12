@@ -667,7 +667,7 @@ def update_signature_source(service, name, **_):
 
     # Save the service changes
     success = STORAGE.service_delta.save(service, service_delta)
-  
+
     # Has the URI changed?
     if uri_changed:
         # If so, we need to clear the caching value and trigger an update
@@ -676,18 +676,19 @@ def update_signature_source(service, name, **_):
         service_updates.set(key=f'{data["name"]}.update_time', value=0)
         service_updates.set(key=f'{data["name"]}.status',
                             value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
-      
+
         # Notify that a source configuration has changes (trigger source_update)
         service_event_sender.send(service, {
             'operation': Operation.Modified,
             'name': service
-        })      
-    elif classification_changed or data['override_classification']:
+        })
+
+    if classification_changed or data['override_classification']:
         class_norm = Classification.normalize_classification(data['default_classification'])
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm),
                                                       ("SET", "last_modified", now_as_iso())])
-      
+
         # Notify that signatures have changed (trigger local_update)
         signature_event_sender.send(service, {
             'signature_id': '*',
