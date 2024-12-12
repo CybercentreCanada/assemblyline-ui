@@ -728,7 +728,7 @@ def set_signature_source_status(service, name, **_):
         found = False
         for source in current_sources:
             if name == source['name']:
-                status_changed = source['enabled'] == enabled
+                status_changed = source['enabled'] != enabled
                 source['enabled'] = enabled
                 new_sources.append(source)
                 found = True
