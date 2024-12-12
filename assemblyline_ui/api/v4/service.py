@@ -614,6 +614,12 @@ def get_service(servicename, **_):
     version = request.args.get('version', None)
 
     service = STORAGE.get_service_with_delta(servicename, version=version, as_obj=False)
+    if 'update_config' in service:
+        # Fill in defaults for update sources based on update_config
+        for s in service['update_config']['sources']:
+            # Update update_interval to default to globally configured value by updater
+            if 'update_interval' not in s:
+                s['update_interval'] = service['update_config']['update_interval_seconds']
     if service:
         # Ensure service classification is set in response
         service['classification'] = service.get('classification', Classification.UNRESTRICTED)

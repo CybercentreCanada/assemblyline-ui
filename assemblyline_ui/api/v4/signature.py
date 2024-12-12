@@ -520,6 +520,10 @@ def get_signature_sources(**_):
 
     out = {}
     for service in [s for s in services if s.get("update_config", {})]:
+        for s in service['update_config']['sources']:
+            # Update update_interval to default to globally configured value by updater
+            if 'update_interval' not in s:
+                s['update_interval'] = service['update_config']['update_interval_seconds']
         append_source_status(service)
         out[service['name']] = dict(sources=service['update_config']['sources'],
                                     generates_signatures=service['update_config']['generates_signatures'])
@@ -606,7 +610,8 @@ def update_signature_source(service, name, **_):
         "X_TOKEN": "SOME RANDOM TOKEN"          # Exemple of header
       },
       "private_key": null,                    # Private key used to get to the URI
-      "pattern": "^*.yar$"                    # Regex pattern use to get appropriate files from the URI
+      "pattern": "^*.yar$",                   # Regex pattern use to get appropriate files from the URI
+      "override_classification": false        # Should the classification of the source override to signature classification?
     }
 
     Result example:
@@ -639,13 +644,11 @@ def update_signature_source(service, name, **_):
     new_sources = []
     found = False
     classification_changed = False
-    uri_changed = False
     for source in current_sources:
         if data['name'] == source['name']:
             new_sources.append(data)
             found = True
             classification_changed = data['default_classification'] != source['default_classification']
-            uri_changed = data['uri'] != source['uri']
         else:
             new_sources.append(source)
 
@@ -660,25 +663,15 @@ def update_signature_source(service, name, **_):
     else:
         service_delta['update_config']['sources'] = new_sources
 
-    # Has the classification changed?
-    if classification_changed:
+    # Save the service changes
+    success = STORAGE.service_delta.save(service, service_delta)
+
+    if classification_changed or data['override_classification']:
         class_norm = Classification.normalize_classification(data['default_classification'])
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm),
                                                       ("SET", "last_modified", now_as_iso())])
 
-    # Has the URI changed?
-    if uri_changed:
-        # If so, we need to clear the caching value and trigger an update
-        service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
-                               config.core.redis.persistent.port)
-        service_updates.set(key=f'{data["name"]}.update_time', value=0)
-        service_updates.set(key=f'{data["name"]}.status',
-                            value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
-
-    # Save the signature
-    success = STORAGE.service_delta.save(service, service_delta)
-    if classification_changed:
         # Notify that signatures have changed (trigger local_update)
         signature_event_sender.send(service, {
             'signature_id': '*',
@@ -686,13 +679,83 @@ def update_signature_source(service, name, **_):
             'source': data['name'],
             'operation': Operation.Modified
         })
-    else:
-        # Notify that a source configuration has changes (trigger source_update)
-        service_event_sender.send(service, {
-            'operation': Operation.Modified,
-            'name': service
-        })
+
+    # Clear the caching value and trigger an update in case there were any other changes made
+    service_updates = Hash(f'service-updates-{service}', config.core.redis.persistent.host,
+                            config.core.redis.persistent.port)
+    service_updates.set(key=f'{data["name"]}.update_time', value=0)
+    service_updates.set(key=f'{data["name"]}.status',
+                        value=dict(state='UPDATING', message='Queued for update..', ts=now_as_iso()))
+
+    # Notify that a source configuration has changes (trigger source_update)
+    service_event_sender.send(service, {
+        'operation': Operation.Modified,
+        'name': service
+    })
     return make_api_response({"success": success})
+
+@signature_api.route("/sources/enable/<service>/<name>/", methods=["PUT"])
+@api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
+def set_signature_source_status(service, name, **_):
+    """
+    Set the enabled status of a signature source
+
+    Variables:
+    service         => Name of service that signature source belongs to
+    name            => Name of signature source
+
+    Arguments:
+    None
+
+    Data Block:
+    {
+     "enabled": "true"              # Enable or disable the signature source
+    }
+
+    Result example:
+    {"success": True}
+    """
+    data = request.json
+    enabled = data.get('enabled', None)
+    status_changed = False
+    if enabled is None:
+        return make_api_response({"success": False}, err="Enabled field is required", status_code=400)
+    else:
+        service_data = STORAGE.get_service_with_delta(service, as_obj=False)
+        current_sources = service_data.get('update_config', {}).get('sources', [])
+
+        new_sources = []
+        found = False
+        for source in current_sources:
+            if name == source['name']:
+                status_changed = source['enabled'] != enabled
+                source['enabled'] = enabled
+                new_sources.append(source)
+                found = True
+            else:
+                new_sources.append(source)
+
+        if not found:
+            return make_api_response({"success": False},
+                                    err=f"Could not found source '{data['name']}' in service {service}.",
+                                    status_code=404)
+
+        service_delta = STORAGE.service_delta.get(service, as_obj=False)
+        if service_delta.get('update_config') is None:
+            service_delta['update_config'] = {"sources": new_sources}
+        else:
+            service_delta['update_config']['sources'] = new_sources
+
+        success = STORAGE.service_delta.save(service, service_delta)
+
+        if status_changed:
+            # Notify that a source configuration has changes (trigger source_update)
+            service_event_sender.send(service, {
+                'operation': Operation.Modified,
+                'name': service
+            })
+
+        return make_api_response({"success": success})
 
 
 @signature_api.route("/stats/", methods=["GET"])
