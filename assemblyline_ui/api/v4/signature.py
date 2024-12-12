@@ -665,7 +665,8 @@ def update_signature_source(service, name, **_):
         service_delta['update_config']['sources'] = new_sources
 
     # Has the classification changed?
-    if classification_changed or data['override_classification']:
+    classification_changed = classification_changed or data['override_classification']
+    if classification_changed:
         class_norm = Classification.normalize_classification(data['default_classification'])
         STORAGE.signature.update_by_query(query=f'source:"{data["name"]}"',
                                           operations=[("SET", "classification", class_norm),
