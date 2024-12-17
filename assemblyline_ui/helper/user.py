@@ -336,6 +336,11 @@ def save_user_settings(user, data):
     srv_list += [x['category'] for x in SERVICE_LIST if x['enabled']]
     srv_list = list(set(srv_list))
 
+    if data.get('preferred_submission_profile', None) not in SUBMISSION_PROFILES.keys():
+        out['preferred_submission_profile'] = SUBMISSION_PROFILES.keys()[0]
+    else:
+        out['preferred_submission_profile'] = data['preferred_submission_profile']
+
     submission_profiles = {}
     for name, profile in SUBMISSION_PROFILES.items():
         if Classification.is_accessible(classification, profile.classification):
