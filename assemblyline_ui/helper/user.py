@@ -308,12 +308,13 @@ def load_user_settings(user):
     settings['services'] = get_default_service_list(srv_list, def_srv_list, user_classfication)
     settings['submission_profiles'] = get_default_submission_profiles(settings['submission_profiles'],
                                                                       user_classfication)
-    settings['preferred_submission_profile'] = user.get('preferred_submission_profile') or \
-        list(settings['submission_profiles'].keys())[0]
     settings['default_zip_password'] = settings.get('default_zip_password', DEFAULT_ZIP_PASSWORD)
 
     # Normalize the user's classification
     settings['classification'] = Classification.normalize_classification(settings['classification'])
+
+    if settings.get('preferred_submission_profile', None) not in list(settings['submission_profiles'].keys()):
+        settings['preferred_submission_profile'] = list(settings['submission_profiles'].keys())[0]
 
     return settings
 
