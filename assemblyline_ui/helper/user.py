@@ -1,14 +1,30 @@
 from typing import Optional
 
-from flask import session as flsk_session
-
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import User, load_roles, ROLES
+from assemblyline.odm.models.config import SubmissionProfileParams
+from assemblyline.odm.models.user import ROLES, User, load_roles
 from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, \
-    config, CLASSIFICATION as Classification, SERVICE_LIST, DOWNLOAD_ENCODING, DEFAULT_ZIP_PASSWORD
-from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services, get_default_submission_profiles
-from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
+from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import (
+    DAILY_QUOTA_TRACKER,
+    DEFAULT_ZIP_PASSWORD,
+    DOWNLOAD_ENCODING,
+    LOGGER,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRACKER,
+    config,
+)
+from assemblyline_ui.helper.service import (
+    get_default_service_list,
+    get_default_service_spec,
+    get_default_submission_profiles,
+    simplify_services,
+)
+from assemblyline_ui.http_exceptions import AccessDeniedException, AuthenticationException, InvalidDataException
+from flask import session as flsk_session
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "password"]
 
@@ -302,15 +318,52 @@ def load_user_settings(user):
     return settings
 
 
-def save_user_settings(username, data):
-    data["services"] = {'selected': simplify_services(data["services"])}
+def save_user_settings(user, data):
+    username = user.get('uname', None)
+    if username == None:
+        raise Exception("Invalid username")
 
-    # Ensure submission profile changes are valid
-    for profile_name, profile_spec in data["submission_profiles"].items():
-        saved_spec = {}
-        for spec in profile_spec["service_spec"]:
-            saved_spec[spec["name"]] = {param['name']: param['value'] for param in spec["params"] if param['name'] in config.submission.profiles[profile_name].editable_params}
-        data["submission_profiles"][profile_name]["service_spec"] = saved_spec
+    out = STORAGE.user_settings.get(username).as_primitives()
+    for key in out.keys():
+        if key in data and key not in ["services", "service_spec", "submission_profiles"]:
+            out[key] = data.get(key, None)
 
+    out["services"] = {'selected': simplify_services(data["services"])}
 
-    return STORAGE.user_settings.save(username, data)
+    classification = user.get("classification", None)
+    submission_customize = ROLES.submission_customize in user['roles']
+    srv_list = [x['name'] for x in SERVICE_LIST if x['enabled']]
+    srv_list += [x['category'] for x in SERVICE_LIST if x['enabled']]
+    srv_list = list(set(srv_list))
+
+    submission_profiles = {}
+    for name, profile in SUBMISSION_PROFILES.items():
+        if Classification.is_accessible(classification, profile.classification):
+            user_params = data.get('submission_profiles', {}).get(profile.name, {}).get('params', {})
+
+            # Applying the submission params
+            profile_defaults = SubmissionProfileParams().as_primitives()
+            default_keys = profile["editable_params"].get("submit", [])
+            for key in profile_defaults.keys():
+                if key in user_params and key not in ["services", "service_spec"] and \
+                        (submission_customize or key in default_keys):
+                    profile["params"][key] = user_params.get(key, None)
+
+            # Applying the selected services
+            if submission_customize:
+                profile["params"]["services"]["selected"] = [x for x in user_params.get(
+                    'services', {}).get('selected', []) if x in srv_list]
+
+            # Applying the service specs
+            profile["params"]["service_spec"] = {}
+            for svr_name, spec in user_params.get("service_spec", {}).items():
+                for p_name, p_value in spec.items():
+                    if (p_name in profile["editable_params"].get(svr_name, []) or submission_customize) and \
+                            svr_name in srv_list:
+                        profile["params"]["service_spec"].setdefault(svr_name, {}).setdefault(p_name, p_value)
+
+            submission_profiles[name] = profile.params.as_primitives(strip_null=True)
+
+    out["submission_profiles"] = submission_profiles
+
+    return STORAGE.user_settings.save(username, out)
