@@ -1,29 +1,55 @@
 from copy import deepcopy
 from typing import List
-from assemblyline.odm.models.config import ExternalLinks
-from flask import request, session as flsk_session
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.security import (check_password_requirements, get_password_hash,
-                                          get_password_requirement_message)
+from assemblyline.common.security import (
+    check_password_requirements,
+    get_password_hash,
+    get_password_requirement_message,
+)
 from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
-from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
-                                          load_roles_form_acls)
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, ExternalLinks
+from assemblyline.odm.models.user import (
+    ACL_MAP,
+    ROLES,
+    USER_ROLES,
+    USER_TYPE_DEP,
+    USER_TYPES,
+    User,
+    load_roles,
+    load_roles_form_acls,
+)
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, UI_MESSAGING, \
-    VERSION, config, AI_AGENT, UI_METADATA_VALIDATION, SUBMISSION_PROFILES
+from assemblyline_ui.api.v4.federated_lookup import filtered_tag_names
+from assemblyline_ui.config import (
+    AI_AGENT,
+    APPS_LIST,
+    CLASSIFICATION,
+    CLASSIFICATION_ALIASES,
+    DAILY_QUOTA_TRACKER,
+    LOGGER,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    UI_MESSAGING,
+    UI_METADATA_VALIDATION,
+    VERSION,
+    config,
+)
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
-    get_default_user_quotas, get_dynamic_classification, load_user_settings, save_user_account, save_user_settings,
-    API_PRIV_MAP)
+    API_PRIV_MAP,
+    get_default_user_quotas,
+    get_dynamic_classification,
+    load_user_settings,
+    save_user_account,
+    save_user_settings,
+)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
-
-from assemblyline_ui.api.v4.federated_lookup import filtered_tag_names
-
+from flask import request
+from flask import session as flsk_session
 
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -211,7 +237,8 @@ def who_am_i(**kwargs):
             expanded_services = list()
             for srv in services:
                 if srv in service_categories:
-                    expanded_services.extend([i['name'] for i in STORAGE.service.search(f"category:{srv}", as_obj=False, fl="name")['items']])
+                    expanded_services.extend([i['name'] for i in STORAGE.service.search(
+                        f"category:{srv}", as_obj=False, fl="name")['items']])
             profile['services'][key] = list(set(services).union(set(expanded_services)))
 
     user_data['configuration'] = {
@@ -963,8 +990,6 @@ def set_user_settings(username, **kwargs):
     }
     """
     user = kwargs['user']
-    if username != user['uname'] and ROLES.administration not in user['roles']:
-        raise AccessDeniedException("You are not allowed to set settings for another user then yourself.")
 
     try:
         data = request.json
@@ -972,7 +997,19 @@ def set_user_settings(username, **kwargs):
         if not data.get('default_zip_password', ''):
             return make_api_response({"success": False}, "Encryption password can't be empty.", 403)
 
-        if save_user_settings(username, data):
+        # Changing your own settings
+        if username == user['uname']:
+            if ROLES.administration not in user['roles'] or ROLES.self_manage not in user['roles']:
+                raise AccessDeniedException("You are not allowed to modify your own settings.")
+            edit_user = user
+
+        # Changing someone else's settings
+        else:
+            if ROLES.administration not in user['roles']:
+                raise AccessDeniedException("You are not allowed to set settings for another user then yourself.")
+            edit_user = STORAGE.user.get(username, as_obj=False)
+
+        if save_user_settings(edit_user, data):
             return make_api_response({"success": True})
         else:
             return make_api_response({"success": False}, "Failed to save user's settings", 500)

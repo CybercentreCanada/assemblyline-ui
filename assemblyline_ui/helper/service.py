@@ -9,39 +9,19 @@ from assemblyline.odm.models.user_settings import UserSettings
 USER_SETTINGS_FIELDS = list(UserSettings.fields().keys())
 SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
 
+
 def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     out = {}
     for profile in SUBMISSION_PROFILES.values():
         if CLASSIFICATION.is_accessible(classification, profile.classification):
-            user_default_profile = user_default_values.get(profile.name, {})
+            profile_values = copy(profile.as_primitives(strip_null=True))
+            out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
 
-            params = copy(profile.params.as_primitives(strip_null=True))
-            out[profile.name] = recursive_update(params, user_default_values.get(profile.name, {}))
+            out[profile.name].pop("name")
+            out[profile.name].pop("classification")
 
-            service_spec = []
-            # If there are any editable service parameters that haven't been set, then assign their default values
-            for service, editable_params in profile.editable_params.items():
-                service_obj = STORAGE.get_service_with_delta(service, as_obj=False)
-                if not service_obj:
-                    continue
-                param_object = {'name': service, "params": []}
-                profile_service_spec =  user_default_profile.get('service_spec', {}).get(service, {})
-                for param in service_obj['submission_params']:
-                    if param['name'] not in editable_params:
-                        # Service parameter isn't allowed to be overridden in this profile
-                        continue
-
-                    new_param = copy(param)
-                    if profile_service_spec.get(param['name']):
-                        # Overwrite with user-specific value for profile
-                        new_param['value'] = profile_service_spec[param['name']]
-                    new_param["hide"] = False
-                    param_object["params"].append(new_param)
-                service_spec.append(param_object)
-
-            # Overwrite 'service_spec' value to be compliant with frontend rendering
-            out[profile.name]['service_spec'] = service_spec
     return out
+
 
 def get_default_service_spec(srv_list=None, user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     if not srv_list:
