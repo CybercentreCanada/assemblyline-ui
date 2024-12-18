@@ -104,7 +104,7 @@ docker run --name ui cccs/assemblyline-service-ui
 
 ### Points d'extrémité SocketIO
 
-Assemblyline 4 fournit également une liste de points d'extrémité SocketIO pour obtenir des informations sur le système en direct. Les points de terminaison fourniront un accès authentifié à de nombreuses files d'attente de diffusion Redis. C'est un moyen pour le système d'informer les utilisateurs des changements et de l'état du système sans qu'ils aient à demander ces informations.
+Assemblyline 4 fournit également une liste de points de contact SocketIO pour obtenir des informations sur le système en direct. Ces points de contact fournissent un accès authentifié à de nombreuses files d'attente de diffusion Redis. C'est un moyen utilisé par le système pour informer les utilisateurs des changements et de l'état du système sans qu'ils aient à faire des requêtes d'informations.
 
 Les files d'attente suivantes peuvent être écoutées :
 
