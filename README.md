@@ -3,7 +3,7 @@
 [![Static Badge](https://img.shields.io/badge/github-assemblyline-blue?logo=github)](https://github.com/CybercentreCanada/assemblyline)
 [![Static Badge](https://img.shields.io/badge/github-assemblyline--ui-blue?logo=github)](https://github.com/CybercentreCanada/assemblyline-ui)
 [![GitHub Issues or Pull Requests by label](https://img.shields.io/github/issues/CybercentreCanada/assemblyline/ui)](https://github.com/CybercentreCanada/assemblyline/issues?q=is:issue+is:open+label:ui)
-[![License](https://img.shields.io/github/license/CybercentreCanada/assemblyline-ui)](./LICENSE.md)
+[![License](https://img.shields.io/github/license/CybercentreCanada/assemblyline-ui)](./LICENCE.md)
 
 # Assemblyline 4 - API and Socket IO server
 
