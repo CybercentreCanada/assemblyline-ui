@@ -244,44 +244,44 @@ def download_from_url(download_url, target, data=None, method="GET",
         url = download_url
 
     # Create a requests sessions
-    session = requests.Session()
-    session.verify = verify
+    with requests.Session() as session:
+        session.verify = verify
 
-    try:
-        session_function = {
-            "GET": session.get,
-            "POST": session.post,
-        }[method]
-    except Exception:
-        raise InvalidUrlException(f"Unsupported method used: {method}")
+        try:
+            session_function = {
+                "GET": session.get,
+                "POST": session.post,
+            }[method]
+        except Exception:
+            raise InvalidUrlException(f"Unsupported method used: {method}")
 
-    r = session_function(url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True,
-                         timeout=timeout, allow_redirects=True)
+        r = session_function(url, data=data, hooks=hooks, headers=headers, proxies=proxies, stream=True,
+                            timeout=timeout, allow_redirects=True)
 
-    if r.ok:
-        if int(r.headers.get('content-length', 0)) > config.submission.max_file_size and not ignore_size:
-            raise FileTooBigException("File too big to be scanned "
-                                      f"({r.headers['content-length']} > {config.submission.max_file_size}).")
+        if r.ok:
+            if int(r.headers.get('content-length', 0)) > config.submission.max_file_size and not ignore_size:
+                raise FileTooBigException("File too big to be scanned "
+                                        f"({r.headers['content-length']} > {config.submission.max_file_size}).")
 
-        written = 0
+            written = 0
 
-        with open(target, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=64 * 1024):
-                if chunk:  # filter out keep-alive new chunks
-                    if failure_pattern and failure_pattern in chunk:
-                        f.close()
-                        os.unlink(target)
-                        return None
+            with open(target, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=64 * 1024):
+                    if chunk:  # filter out keep-alive new chunks
+                        if failure_pattern and failure_pattern in chunk:
+                            f.close()
+                            os.unlink(target)
+                            return None
 
-                    written += len(chunk)
-                    if written > config.submission.max_file_size and not ignore_size:
-                        f.close()
-                        os.unlink(target)
-                        raise FileTooBigException("File too big to be scanned.")
-                    f.write(chunk)
+                        written += len(chunk)
+                        if written > config.submission.max_file_size and not ignore_size:
+                            f.close()
+                            os.unlink(target)
+                            raise FileTooBigException("File too big to be scanned.")
+                        f.write(chunk)
 
-            if written > 0:
-                return [r.url for r in r.history if r.url != url]
+                if written > 0:
+                    return [r.url for r in r.history if r.url != url]
 
     return None
 
