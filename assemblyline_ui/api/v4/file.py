@@ -31,7 +31,7 @@ SUB_API = 'file'
 file_api = make_subapi_blueprint(SUB_API, api_version=4)
 file_api._doc = "Perform operations on files"
 
-API_MAX_SIZE = 10 * 1024 * 1024
+API_MAX_SIZE = 1 * 1024 * 1024
 
 
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
@@ -50,7 +50,10 @@ def get_file_ascii(sha256, **kwargs):
     None
 
     Result example:
-    <THE ASCII FILE>
+    {
+      "content": <THE ASCII FILE>,
+      "truncated": false
+    }
     """
 
     user = kwargs['user']
@@ -59,15 +62,12 @@ def get_file_ascii(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if file_obj['size'] > API_MAX_SIZE:
-        return make_api_response({}, "This file is too big to be seen through this API.", 403)
-
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)
+            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
@@ -84,7 +84,10 @@ def get_file_ascii(sha256, **kwargs):
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
-        return make_api_response(data.translate(FILTER_ASCII).decode())
+        return make_api_response({
+            "content": data.translate(FILTER_ASCII).decode(),
+            "truncated": file_obj['size'] > API_MAX_SIZE
+        })
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
@@ -428,7 +431,10 @@ def get_file_hex(sha256, **kwargs):
     /api/v4/file/hex/123456...654321/
 
     Result example:
-    <THE FILE HEX REPRESENTATION>
+    {
+      "content": <THE FILE HEX REPRESENTATION>,
+      "truncated": false
+    }
     """
     user = kwargs['user']
     file_obj = STORAGE.file.get(sha256, as_obj=False)
@@ -439,12 +445,9 @@ def get_file_hex(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if file_obj['size'] > API_MAX_SIZE:
-        return make_api_response({}, "This file is too big to be seen through this API.", 403)
-
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)
+            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
@@ -462,9 +465,15 @@ def get_file_hex(sha256, **kwargs):
             return make_api_response({}, "This file was not found in the system.", 404)
 
         if bytes_only:
-            return make_api_response(dump(data).decode())
+            return make_api_response({
+                "content": dump(data).decode(),
+                "truncated": file_obj['size'] > API_MAX_SIZE
+            })
         else:
-            return make_api_response(hexdump(data, length=length))
+            return make_api_response({
+                "content": hexdump(data, length=length),
+                "truncated": file_obj['size'] > API_MAX_SIZE
+            })
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
@@ -539,7 +548,10 @@ def get_file_strings(sha256, **kwargs):
     None
 
     Result example:
-    <THE LIST OF STRINGS>
+    {
+      "content": <THE LIST OF STRINGS>,
+      "truncated": false
+    }
     """
     user = kwargs['user']
     hlen = request.args.get('len', "6")
@@ -548,15 +560,12 @@ def get_file_strings(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if file_obj['size'] > API_MAX_SIZE:
-        return make_api_response({}, "This file is too big to be seen through this API.", 403)
-
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)
+            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
@@ -580,7 +589,10 @@ def get_file_strings(sha256, **kwargs):
         # UTF-16 strings
         string_list += re.findall(pattern, data.decode("utf-16", errors="replace"))
 
-        return make_api_response("\n".join(string_list))
+        return make_api_response({
+            "content": "\n".join(string_list),
+            "truncated": file_obj['size'] > API_MAX_SIZE
+        })
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
 
