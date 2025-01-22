@@ -83,7 +83,7 @@ def test_ascii(datastore, login_session):
 
     rand_hash = random.choice(file_res_list)[:64]
     resp = get_api_data(session, f"{host}/api/v4/file/ascii/{rand_hash}/")
-    assert resp == rand_hash
+    assert resp == {"content": rand_hash, "truncated": False}
 
 
 # noinspection PyUnusedLocal
@@ -103,7 +103,7 @@ def test_hex(datastore, login_session):
 
     rand_hash = random.choice(file_res_list)[:64]
     resp = get_api_data(session, f"{host}/api/v4/file/hex/{rand_hash}/")
-    assert resp.startswith("00000000:") and len(resp) == 311
+    assert resp["content"].startswith("00000000:") and len(resp["content"]) == 311
 
 
 # noinspection PyUnusedLocal
@@ -158,4 +158,4 @@ def test_strings(datastore, login_session):
 
     rand_hash = random.choice(file_res_list)[:64]
     resp = get_api_data(session, f"{host}/api/v4/file/strings/{rand_hash}/")
-    assert resp == rand_hash
+    assert resp == {"content": rand_hash, "truncated": False}
