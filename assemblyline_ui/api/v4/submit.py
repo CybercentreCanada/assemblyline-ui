@@ -121,12 +121,12 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
         submission_params['submitter'] = user['uname']
         submission_params['quota_item'] = True
         if 'priority' not in submission_params:
-            submission_params['priority'] = 500
+            submission_params['priority'] = PRIORITIES['user-low']
         if "Dynamic Analysis" not in submission_params['services']['selected']:
             submission_params['services']['selected'].append("Dynamic Analysis")
 
         # Ensure submission priority stays within the range of user priorities
-        submission_params['priority'] = max(min(submission_params['priority'], MAX_PRIORITY), PRIORITIES['user-low'])
+        submission_params['priority'] = min(submission_params['priority'], MAX_PRIORITY)
 
         try:
             submission_obj = Submission({
