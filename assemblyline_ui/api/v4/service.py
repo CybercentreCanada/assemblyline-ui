@@ -256,7 +256,7 @@ def add_service(**_):
             # Create a Service object
             tmp_service = Service(tmp_data)
 
-            _, tag_name, _ = get_latest_tag_for_service(tmp_service, config, LOGGER)
+            _, tag_name, _, _ = get_latest_tag_for_service(tmp_service, config, LOGGER)
             enable_allowed = bool(tag_name)
             tag_name = tag_name.encode() if tag_name else b'latest'
 
@@ -621,6 +621,7 @@ def get_service(servicename, **_):
             if 'update_interval' not in s:
                 s['update_interval'] = service['update_config']['update_interval_seconds']
     if service:
+        service['auto_update'] = service.get('auto_update', config.services.default_auto_update)
         # Ensure service classification is set in response
         service['classification'] = service.get('classification', Classification.UNRESTRICTED)
         return make_api_response(service)
@@ -670,6 +671,7 @@ def get_service_defaults(servicename, version, **_):
     service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
     append_source_status(service)
     if service:
+        service['auto_update'] = service.get('auto_update', config.services.default_auto_update)
         # Ensure service classification is set in response
         service['classification'] = service.get('classification', Classification.UNRESTRICTED)
         return make_api_response(service)
