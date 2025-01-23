@@ -285,12 +285,13 @@ def load_user_settings(user):
     default_settings = get_default_user_settings(user)
     user_classfication = user.get('classification', Classification.UNRESTRICTED)
 
-    settings = STORAGE.user_settings.get_if_exists(user['uname']).as_primitives(strip_null=True)
+    settings = STORAGE.user_settings.get_if_exists(user['uname'])
     srv_list = [x for x in SERVICE_LIST if x['enabled']]
     if not settings:
         def_srv_list = None
         settings = default_settings
     else:
+        settings = settings.as_primitives(strip_null=True)
         # Make sure all defaults are there
         for key, item in default_settings.items():
             if key not in settings:
