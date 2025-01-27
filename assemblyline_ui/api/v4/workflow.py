@@ -300,7 +300,7 @@ def remove_workflow(workflow_id, **_):
                                  status_code=404)
 
 
-@workflow_api.route("/<workflow_id>/run", methods=["GET"])
+@workflow_api.route("/<workflow_id>/run/", methods=["GET"])
 @api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_manage])
 def run_workflow(workflow_id, **_):
     """
