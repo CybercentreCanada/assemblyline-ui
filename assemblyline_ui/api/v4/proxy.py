@@ -15,7 +15,7 @@ proxy_api._doc = "Proxy API requests to another server adding some metadata"
 DO_NOT_PROXY = {"authorization", "x-user", "x-apikey", "cookie", "host", "scheme", "server-port", "x-xsrf-token"}
 
 
-@proxy_api.route("/<server>/<path:path>/", methods=["GET", "POST", "PUT", "DELETE", "HEAD"])
+@proxy_api.route("/<server>/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "HEAD"])
 @api_login(count_toward_quota=False)
 def proxy(server, path, **kwargs):
     """
