@@ -326,7 +326,7 @@ def add_user_account(username, **_):
     }
     """
 
-    data = request.json
+    data: dict = request.json
 
     if "{" in username or "}" in username:
         return make_api_response({"success": False}, "You can't use '{}' in the username", 412)
@@ -352,6 +352,10 @@ def add_user_account(username, **_):
 
         # Clear non user account data
         avatar = data.pop('avatar', None)
+
+        # Check identity_id value
+        if not data.get('identity_id'):
+            data.pop('identity_id')
 
         if avatar is not None:
             STORAGE.user_avatar.save(username, avatar)
@@ -492,7 +496,7 @@ def set_user_account(username, **kwargs):
     }
     """
     try:
-        data = request.json
+        data: dict = request.json
         new_pass = data.pop('new_pass', None)
 
         old_user = STORAGE.user.get(username, as_obj=False)
@@ -518,6 +522,10 @@ def set_user_account(username, **kwargs):
 
         # Apply dynamic classification
         data['classification'] = get_dynamic_classification(data['classification'], data)
+
+        # Check identity_id value
+        if not data.get('identity_id'):
+            data.pop('identity_id')
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
