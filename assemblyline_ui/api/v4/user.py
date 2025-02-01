@@ -228,8 +228,12 @@ def who_am_i(**kwargs):
     for name, profile in SUBMISSION_PROFILES.items():
         if CLASSIFICATION.is_accessible(kwargs['user']['classification'], profile.classification):
             # We want to pass forward the configurations that have been explicitly set as a configuration
-            submission_profiles[name] = profile.params.as_primitives(strip_null=True)
-            submission_profiles[name]["editable_params"] = profile.editable_params
+            submission_profiles[name] = profile.as_primitives(strip_null=True)
+
+            # Remove unwanted/redundant data from being shared
+            for field in ['name', 'classification']:
+                submission_profiles[name].pop(field, None)
+
 
     # Expand service categories if used in submission profiles (assists with the UI locking down service selection)
     service_categories = list(STORAGE.service.facet('category').keys())
@@ -933,19 +937,14 @@ def get_user_settings(username, **kwargs):
 
     Result example:
     {
-     "profile": true,                 # Should submissions be profiled
-     "classification": "",            # Default classification for this user sumbissions
-     "description": "",               # Default description for this user's submissions
-     "download_encoding": "blah",     # Default encoding for downloaded files
-     "default_zip_password": "pass",  # Default password for password protected ZIP
-     "expand_min_score": 100,         # Default minimum score to auto-expand sections
-     "priority": 1000,                # Default submission priority
-     "service_spec": [],              # Default Service specific parameters
-     "ignore_cache": true,            # Should file be reprocessed even if there are cached results
-     "groups": [ ... ],               # Default groups selection for the user scans
-     "ttl": 30,                       # Default time to live in days of the users submissions
-     "services": [ ... ],             # Default list of selected services
-     "ignore_filtering": false        # Should filtering services by ignored?
+     "default_external_sources": [],            # Default file sources for this user
+     "default_zip_password": "infected",        # Default password for password protected ZIP
+     "download_encoding": "blah",               # Default encoding for downloaded files,
+     "executive_summary": false,                # Should the executive summary be shown by default
+     "expand_min_score": 100,                   # Default minimum score to auto-expand sections
+     "preferred_submission_profile": "default", # Default submission profile
+     "submission_profiles": [],                 # List of submission profiles
+     "submission_view": "report",               # Default submission view
     }
     """
     user = kwargs['user']
@@ -1001,7 +1000,7 @@ def set_user_settings(username, **kwargs):
 
         # Changing your own settings
         if username == user['uname']:
-            if ROLES.administration not in user['roles'] or ROLES.self_manage not in user['roles']:
+            if ROLES.administration not in user['roles'] and ROLES.self_manage not in user['roles']:
                 raise AccessDeniedException("You are not allowed to modify your own settings.")
             edit_user = user
 
