@@ -10,16 +10,16 @@ USER_SETTINGS_FIELDS = list(UserSettings.fields().keys())
 SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
 
 
-def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
+def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED,
+                                    include_default=False):
     out = {}
+    if include_default:
+        out['default'] = user_default_values.get('default', {})
+
     for profile in SUBMISSION_PROFILES.values():
         if CLASSIFICATION.is_accessible(classification, profile.classification):
-            profile_values = copy(profile.as_primitives(strip_null=True))
+            profile_values = copy(profile.params.as_primitives(strip_null=True))
             out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
-
-            out[profile.name].pop("name")
-            out[profile.name].pop("classification")
-
     return out
 
 
