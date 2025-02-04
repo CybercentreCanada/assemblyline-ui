@@ -118,7 +118,13 @@ def test_get_service(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/")
     service_data = datastore.get_service_with_delta(service, as_obj=False)
     # Drop status information from signature sources
-    [s.pop('status', None)for s in resp.get('update_config', {}).get('sources', [])]
+    [s.pop('status', None) for s in resp.get('update_config', {}).get('sources', [])]
+
+    # Make sure we do not compare the auto_update field has this field is modified by the API
+    # to use the default system configuration if it is not set.
+    service_data.pop('auto_update', None)
+    resp.pop('auto_update', None)
+
     assert resp == service_data
 
 
