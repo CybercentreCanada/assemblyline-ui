@@ -18,7 +18,7 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
-    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER, SUBMISSION_PROFILES, USER_CONFIGURABLE_SUBMISSION_PARAMS
+    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS, URL_GENERATORS, update_submission_parameters
