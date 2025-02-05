@@ -362,8 +362,9 @@ def test_ingest_submission_profile(datastore, login_session, scheduler):
     iq.delete()
 
     # Make the user a simple user and try to submit
-    datastore.user.update('admin', [(datastore.user.UPDATE_REMOVE, 'type', 'admin'),
-                                    (datastore.user.UPDATE_APPEND, 'type', 'user')])
+    datastore.user.update('admin', [
+        (datastore.user.UPDATE_REMOVE, 'type', 'admin'),
+        (datastore.user.UPDATE_APPEND, 'roles', 'submission_create')])
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
     sha256 = hashlib.sha256(byte_str).hexdigest()
     data = {
@@ -387,5 +388,4 @@ def test_ingest_submission_profile(datastore, login_session, scheduler):
     get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
 
     # Restore original roles for later tests
-    datastore.user.update('admin', [(datastore.user.UPDATE_REMOVE, 'type', 'user'),
-                                    (datastore.user.UPDATE_APPEND, 'type', 'admin')])
+    datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])

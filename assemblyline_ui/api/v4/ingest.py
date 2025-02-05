@@ -275,7 +275,7 @@ def ingest_single_file(**kwargs):
 
         # Update submission parameters as specified by the user
         try:
-            update_submission_parameters(s_params, data, user)
+            s_params = update_submission_parameters(s_params, data, user)
         except Exception as e:
             return make_api_response({}, str(e), 400)
 

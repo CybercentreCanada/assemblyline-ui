@@ -252,20 +252,20 @@ def start_ui_submission(ui_sid, **kwargs):
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})
 
-            allow_description_overwrite = False
-            if not ui_params['description']:
-                allow_description_overwrite = True
-                ui_params['description'] = f"Inspection of file: {fname}"
-
             # Submit to dispatcher
             try:
                 params = ui_to_submission_params(ui_params)
 
                 # Update submission parameters as specified by the user
                 try:
-                    update_submission_parameters(params, ui_params, user)
+                    params = update_submission_parameters(params, ui_params, user)
                 except Exception as e:
                     return make_api_response({}, str(e), 400)
+
+                allow_description_overwrite = False
+                if not ui_params['description']:
+                    allow_description_overwrite = True
+                    ui_params['description'] = f"Inspection of file: {fname}"
 
                 metadata = params.pop("metadata", {})
 

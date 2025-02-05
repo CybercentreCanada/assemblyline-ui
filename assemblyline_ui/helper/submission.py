@@ -204,7 +204,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     return found, fileinfo
 
-def update_submission_parameters(s_params: dict, data: dict, user: dict):
+def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
     # Apply provided params (if the user is allowed to)
@@ -216,10 +216,14 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict):
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
         s_params = recursive_update(s_params, data.get("params", {}))
-        s_params = apply_changes_to_profile(s_params, s_profile, submission_customize)
+        s_params = apply_changes_to_profile(s_profile, s_params, submission_customize)
     else:
         # No profile specified, raise an exception back to the user
         raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
+
+    # Ensure the description key exists in the resulting submission params
+    s_params.setdefault("description", "")
+    return s_params
 
 
 def refang_url(url):

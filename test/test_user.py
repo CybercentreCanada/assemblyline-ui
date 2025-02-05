@@ -8,6 +8,7 @@ from assemblyline.common.forge import get_classification
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
+from assemblyline.odm.models.user_settings import UserSettings
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
@@ -48,6 +49,7 @@ def datastore(datastore_connection):
             ds.user.save(u.uname, u)
             ds.user_favorites.save(u.uname, data)
             ds.user_avatar.save(u.uname, AVATAR)
+            ds.user_settings.save(u.uname, random_model_obj(UserSettings))
             user_list.append(u.uname)
 
         yield ds
@@ -279,7 +281,8 @@ def test_set_user_settings(datastore, login_session):
     _, session, host = login_session
     username = random.choice(user_list)
 
-    uset = load_user_settings({'uname': username})
+    user = datastore.user.get(username, as_obj=False)
+    uset = load_user_settings(user)
     uset['expand_min_score'] = 111
     uset['priority'] = 111
 
@@ -287,4 +290,4 @@ def test_set_user_settings(datastore, login_session):
     assert resp['success']
 
     datastore.user_settings.commit()
-    assert uset == load_user_settings({'uname': username})
+    assert uset == load_user_settings(user)
