@@ -38,6 +38,16 @@ ingest = NamedQueue(
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
 
+DEFAULT_INGEST_PARAMS = {
+    'deep_scan': False,
+    "priority": 150,
+    "ignore_cache": False,
+    # the following one line can be removed after assemblyline 4.6+
+    "ignore_dynamic_recursion_prevention": False,
+    "ignore_recursion_prevention": False,
+    "ignore_filtering": False,
+    "type": "INGEST"
+}
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
@@ -259,25 +269,21 @@ def ingest_single_file(**kwargs):
         default_external_sources = user_settings.pop('default_external_sources', [])
 
         # Load default user params from user settings
-        s_params = ui_to_submission_params(user_settings)
-
-        # Reset dangerous user settings to safe values
-        s_params.update({
-            'deep_scan': False,
-            "priority": 150,
-            "ignore_cache": False,
-            # the following one line can be removed after assemblyline 4.6+
-            "ignore_dynamic_recursion_prevention": False,
-            "ignore_recursion_prevention": False,
-            "ignore_filtering": False,
-            "type": "INGEST"
-        })
+        if ROLES.submission_customize in user['roles']:
+            s_params = ui_to_submission_params(user_settings)
+        else:
+            s_params = {}
 
         # Update submission parameters as specified by the user
         try:
             s_params = update_submission_parameters(s_params, data, user)
         except Exception as e:
             return make_api_response({}, str(e), 400)
+
+        # Set any dangerous user settings to safe values (if wasn't set in request)
+        for k, v in DEFAULT_INGEST_PARAMS.items():
+            if k not in s_params:
+                s_params[k] = v
 
         # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
