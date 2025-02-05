@@ -56,6 +56,12 @@ class ForbiddenLocation(Exception):
 def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submission_customize=False) -> dict:
     validated_profile = profile.params.as_primitives(strip_null=True)
 
+    # Check to see if user is trying to modify the service params of a service not explicitly defined in the profile
+    unrecognized_services = set(updates.get('service_spec', {}).keys()) - set(list(profile.editable_params.keys()))
+    if unrecognized_services and not submission_customize:
+        # User isn't allowed to change/set parameters of services not explicitly defined in the profile
+        raise PermissionError(f"User isn't allowed to modify the following services: {list(unrecognized_services)}")
+
     for param_type, list_of_params in profile.editable_params.items():
         if param_type == "submission":
             # Submission-level parameters
@@ -63,14 +69,14 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submissi
                 if p not in ['services', 'service_spec'] and \
                     (p not in list_of_params and not submission_customize):
                     # Submission parameter isn't allowed to be modified based on profile configuration
-                    updates.pop(p)
+                    raise PermissionError(f"User isn't allowed to modify the \"{p}\" parameter of {profile.display_name} profile")
         else:
             # Service-level parameters
             service_spec = updates.get('service_spec', {}).get(param_type, {})
             for key in list(service_spec.keys()):
                 if key not in list_of_params and not submission_customize:
                     # Service parameter isn't allowed to be changed
-                    service_spec.pop(key)
+                    raise PermissionError(f"User isn't allowed to modify the \"{p}\" parameter of \"{param_type}\" service in \"{profile.display_name}\" profile")
 
     return recursive_update(validated_profile, updates)
 

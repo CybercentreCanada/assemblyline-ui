@@ -1024,6 +1024,8 @@ def set_user_settings(username, **kwargs):
             return make_api_response({"success": True})
         else:
             return make_api_response({"success": False}, "Failed to save user's settings", 500)
+    except PermissionError as e:
+        return make_api_response({"success": False}, str(e), 401)
     except ValueError as e:
         return make_api_response({"success": False}, str(e), 400)
 

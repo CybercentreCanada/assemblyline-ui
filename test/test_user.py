@@ -277,17 +277,44 @@ def test_set_user_favorites(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_set_user_settings(datastore, login_session):
+@pytest.mark.parametrize("allow_submission_customize", [True, False], ids=["submission_customize=true", "submission_customize=false"])
+def test_set_user_settings(datastore, login_session, allow_submission_customize):
     _, session, host = login_session
     username = random.choice(user_list)
-
     user = datastore.user.get(username, as_obj=False)
+
+    if allow_submission_customize:
+        # User is allowed to customize their submission profiles
+        datastore.user.update(username, [(datastore.user.UPDATE_APPEND, 'roles', 'submission_customize')])
+        if 'submission_customize' not in user['roles']:
+            user['roles'].append('submission_customize')
+    else:
+        # Users that aren't allow to customize submissions shouldn't be able to customize submission profiles parameters if the configuration doesn't allow it
+        datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'submission_customize')])
+        if 'submission_customize' in user['roles']:
+            user['roles'].remove('submission_customize')
+
     uset = load_user_settings(user)
     uset['expand_min_score'] = 111
     uset['priority'] = 111
+    uset['submission_profiles']['static']['service_spec'] = {
+        "test": {
+            "p": True
+        }
+    }
 
-    resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
-    assert resp['success']
+    if allow_submission_customize:
+        # User is allowed to customize their submission profiles as they see fit
+        resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
+        assert resp['success']
 
-    datastore.user_settings.commit()
-    assert uset == load_user_settings(user)
+        datastore.user_settings.commit()
+        new_user_settings = load_user_settings(user)
+
+        # Ensure the changes are applied in the right places
+        assert new_user_settings['submission_profiles']['default']['priority'] == uset['priority']
+        assert new_user_settings['submission_profiles']['static']['service_spec'] == uset['submission_profiles']['static']['service_spec']
+    else:
+        with pytest.raises(APIError):
+            # User isn't allowed to customize their submission profiles, API should return an exception
+            resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
