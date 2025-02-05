@@ -220,16 +220,17 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
     # Apply provided params (if the user is allowed to)
     if submission_customize:
         s_params.update(data.get("params", {}))
-    elif s_profile:
+    elif not s_profile:
+        # No profile specified, raise an exception back to the user
+        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
+
+    if s_profile:
         if not CLASSIFICATION.is_accessible(user['classification'], s_profile.classification):
             # User isn't allowed to use the submission profile specified
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
         s_params = recursive_update(s_params, data.get("params", {}))
         s_params = apply_changes_to_profile(s_profile, s_params, submission_customize)
-    else:
-        # No profile specified, raise an exception back to the user
-        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")

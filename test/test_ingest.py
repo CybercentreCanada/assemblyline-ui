@@ -293,7 +293,6 @@ def test_ingest_metadata_validation(datastore, login_session):
         'base64': base64.b64encode(byte_str).decode('ascii'),
         'metadata': {'test': 'ingest_base64_nameless'},
         "params": {'type': 'strict_ingest'}
-
     }
     resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
     assert isinstance(resp['ingest_id'], str)
@@ -308,6 +307,19 @@ def test_ingest_metadata_validation(datastore, login_session):
     data["params"] = {'type': 'blah'}
     resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
     assert isinstance(resp['ingest_id'], str)
+
+    # Test submitting with a submission profile that has the ingest type preset
+    # With currently set metadata, this should raise an API error
+    with pytest.raises(APIError, match="Extra metadata found from submission"):
+        data.pop('params')
+        data['submission_profile'] = "static"
+        get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+
+    # Fix metadata and resubmit (still using a submission profile)
+    data['metadata'].pop('blah')
+    resp = get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    assert isinstance(resp['ingest_id'], str)
+
 
 
 # noinspection PyUnusedLocal
