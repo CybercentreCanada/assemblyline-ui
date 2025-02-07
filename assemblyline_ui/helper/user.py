@@ -1,6 +1,7 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.dict_utils import recursive_update, get_recursive_delta
 from assemblyline.odm.models.config import SubmissionProfileParams, SubmissionProfile
 from assemblyline.odm.models.user import ROLES, User, load_roles
 from assemblyline.odm.models.user_settings import UserSettings, DEFAULT_USER_PROFILE_SETTINGS
@@ -340,12 +341,17 @@ def save_user_settings(user, data):
     if username == None:
         raise Exception("Invalid username")
 
-    out = STORAGE.user_settings.get(username).as_primitives()
-    for key in out.keys():
-        if key in data and key not in ["services", "service_spec", "submission_profiles"]:
-            out[key] = data.get(key, None)
+    user_settings = STORAGE.user_settings.get(username)
+    if user_settings:
+        user_settings = user_settings.as_primitives()
+    else:
+        user_settings = {}
 
-    out["services"] = {'selected': simplify_services(data.get("services", []))}
+    for key in user_settings.keys():
+        if key in data and key not in ["services", "service_spec", "submission_profiles"]:
+            user_settings[key] = data.get(key, None)
+
+    user_settings["services"] = {'selected': simplify_services(data.get("services", []))}
 
     classification = user.get("classification", None)
     submission_customize = ROLES.submission_customize in user['roles']
@@ -363,7 +369,7 @@ def save_user_settings(user, data):
         accessible_profiles += ['default']
 
     if preferred_submission_profile in accessible_profiles:
-        out['preferred_submission_profile'] = preferred_submission_profile
+        user_settings['preferred_submission_profile'] = preferred_submission_profile
 
     submission_profiles = {}
     for name in accessible_profiles:
@@ -374,14 +380,17 @@ def save_user_settings(user, data):
             if name == "default":
                 # There is no restriction on what you can set for your default submission profile
                 # Set profile based on preferences set at the root-level
-                data["services"] = out['services']
+                data["services"] = user_settings['services']
                 submission_profiles[name] = SubmissionProfileParams({key: value for key, value in data.items()
                                                                     if key in SubmissionProfileParams.fields()}).as_primitives()
 
         else:
+            # Calculate what the profiles updates are based on default profile settings and the user-submitted changes
+            profile_updates = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, user_params)
+
             # Apply changes to the profile relative to what's allowed to be changed based on configuration
-            submission_profiles[name] = apply_changes_to_profile(profile_config, user_params, submission_customize)
+            submission_profiles[name] = apply_changes_to_profile(profile_config, profile_updates, submission_customize)
 
-    out["submission_profiles"] = submission_profiles
+    user_settings["submission_profiles"] = submission_profiles
 
-    return STORAGE.user_settings.save(username, out)
+    return STORAGE.user_settings.save(username, user_settings)
