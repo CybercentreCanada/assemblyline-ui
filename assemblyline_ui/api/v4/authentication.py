@@ -42,7 +42,7 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.requests_client import OAuth2Session
-from authlib.integrations.flask_client import OAuth, FlaskRemoteApp
+from authlib.integrations.flask_client import OAuth, FlaskOAuth2App
 from flask import current_app, redirect, request
 from flask import session as flsk_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
@@ -671,7 +671,7 @@ def oauth_validate(**_):
 
     if config.auth.oauth.enabled:
         oauth: OAuth = current_app.extensions.get('authlib.integrations.flask_client')
-        provider: FlaskRemoteApp = oauth.create_client(oauth_provider)
+        provider: FlaskOAuth2App = oauth.create_client(oauth_provider)
 
         if provider:
             # noinspection PyBroadException
@@ -722,7 +722,7 @@ def oauth_validate(**_):
 
                 # Add user_data info from received token
                 if oauth_provider_config.jwks_uri:
-                    user_data = provider.parse_id_token(token)
+                    user_data = provider.parse_id_token(token, None)
 
                 # Add user data from app_provider endpoint
                 if app_provider and oauth_provider_config.app_provider.user_get:
