@@ -1,7 +1,7 @@
 from typing import Optional
 
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common.dict_utils import recursive_update, get_recursive_delta
+from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.odm.models.config import SubmissionProfileParams, SubmissionProfile
 from assemblyline.odm.models.user import ROLES, User, load_roles
 from assemblyline.odm.models.user_settings import UserSettings, DEFAULT_USER_PROFILE_SETTINGS

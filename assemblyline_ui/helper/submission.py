@@ -9,12 +9,13 @@ import tempfile
 from typing import List
 from urllib.parse import urlparse
 
-from assemblyline.common.dict_utils import recursive_update
+from assemblyline.common.dict_utils import recursive_update, get_recursive_delta
 from assemblyline.common.file import make_uri_file
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.iprange import is_ip_reserved
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile, SubmissionProfileParams
+from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
 from assemblyline.odm.messages.submission import SubmissionMessage
 
 from assemblyline.odm.models.user import ROLES
@@ -66,8 +67,13 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submissi
         if param_type == "submission":
             # Submission-level parameters
             for p in list(updates.keys()):
-                if p not in ['services', 'service_spec'] and \
-                    (p not in list_of_params and not submission_customize):
+                if not hasattr(SubmissionProfileParams, p):
+                    # Don't need to be concerned about a parameter that has no limitation ie. description
+                    continue
+                elif p in ['services', 'service_spec']:
+                    # These will be checked later
+                    continue
+                elif p not in list_of_params and not submission_customize:
                     # Submission parameter isn't allowed to be modified based on profile configuration
                     raise PermissionError(f"User isn't allowed to modify the \"{p}\" parameter of {profile.display_name} profile")
         else:
@@ -215,7 +221,7 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
     submission_customize = ROLES.submission_customize in user['roles']
 
     # Ensure classification is set based on the user before applying updates
-    s_params.setdefault("classification", user['classification'])
+    classification = s_params.get("classification", user['classification'])
 
     # Apply provided params (if the user is allowed to)
     if submission_customize:
@@ -230,10 +236,12 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
         s_params = recursive_update(s_params, data.get("params", {}))
+        s_params = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, s_params)
         s_params = apply_changes_to_profile(s_profile, s_params, submission_customize)
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")
+    s_params.setdefault("classification", classification)
     return s_params
 
 
