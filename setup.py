@@ -47,7 +47,7 @@ setup(
         'markdown',
         'python-ldap',
         'python3-saml',
-        'authlib>=1.3.1',
+        'Authlib>=1.3.1',
         'fido2<1.0.0',
         'PyJWT',
         'gunicorn',
