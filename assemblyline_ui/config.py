@@ -182,5 +182,7 @@ IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_ca
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
+SUBMISSION_PROFILES = {profile.name: profile for profile in config.submission.profiles}
+
 # End global
 #################################################################

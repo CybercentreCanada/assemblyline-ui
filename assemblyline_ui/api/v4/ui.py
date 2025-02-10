@@ -16,7 +16,7 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification, \
     IDENTIFY, metadata_validator
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import submission_received
+from assemblyline_ui.helper.submission import submission_received, update_submission_parameters
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 
@@ -252,14 +252,21 @@ def start_ui_submission(ui_sid, **kwargs):
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})
 
-            allow_description_overwrite = False
-            if not ui_params['description']:
-                allow_description_overwrite = True
-                ui_params['description'] = f"Inspection of file: {fname}"
-
             # Submit to dispatcher
             try:
                 params = ui_to_submission_params(ui_params)
+
+                # Update submission parameters as specified by the user
+                try:
+                    params = update_submission_parameters(params, ui_params, user)
+                except Exception as e:
+                    return make_api_response({}, str(e), 400)
+
+                allow_description_overwrite = False
+                if not ui_params['description']:
+                    allow_description_overwrite = True
+                    ui_params['description'] = f"Inspection of file: {fname}"
+
                 metadata = params.pop("metadata", {})
 
                 # Enforce maximum DTL

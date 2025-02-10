@@ -12,6 +12,7 @@ from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
+from assemblyline.odm.models.config import SubmissionProfile
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
@@ -20,7 +21,7 @@ from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILES
     CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS, URL_GENERATORS
+    FETCH_METHODS, URL_GENERATORS, update_submission_parameters
 from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
 
 SUB_API = 'submit'
@@ -255,15 +256,17 @@ def submit(**kwargs):
       "base64": "<BINARY DATA OF THE FILE TO SCAN... ENCODED AS BASE64 STRING>",
 
       // OPTIONAL VALUES
-      "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
+      "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
 
-      "metadata": {               # Submission metadata
-        "key": val,                 # Key/Value pair for metadata parameters
+      "submission_profile": "Static Analysis",    # Name of submission profile to use
+
+      "metadata": {                         # Submission metadata
+        "key": val,                             # Key/Value pair for metadata parameters
       },
 
-      "params": {                 # Submission parameters
-        "key": val,                 # Key/Value pair for params that differ from the user's defaults
-      },                            # Default params can be fetch at /api/v3/user/submission_params/<user>/
+      "params": {                           # Submission parameters
+        "key": val,                             # Key/Value pair for params that differ from the user's defaults
+      },                                        # Default params can be fetch at /api/v4/user/submission_params/<user>/
     }
 
     Data Block (Binary):
@@ -338,8 +341,18 @@ def submit(**kwargs):
         default_external_sources = user_settings.pop('default_external_sources', [])
 
         # Create task object
-        s_params = ui_to_submission_params(user_settings)
-        s_params.update(data.get("params", {}))
+        if (ROLES.submission_customize in user['roles']) or "ui_params" in data:
+            s_params = ui_to_submission_params(user_settings)
+        else:
+            s_params = {}
+
+        # Update submission parameters as specified by the user
+        try:
+            s_params = update_submission_parameters(s_params, data, user)
+        except Exception as e:
+            return make_api_response({}, str(e), 400)
+
+
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
         if 'groups' not in s_params:
             s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]

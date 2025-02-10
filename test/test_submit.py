@@ -6,11 +6,11 @@ import pytest
 import random
 import tempfile
 
-from conftest import get_api_data
+from conftest import get_api_data, APIError
 
 from assemblyline.common import forge
-from assemblyline.odm.models.config import HASH_PATTERN_MAP
-from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
+from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions, create_services, wipe_services
 from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_core.dispatching.dispatcher import SubmissionTask
@@ -27,10 +27,12 @@ def datastore(datastore_connection, filestore):
     try:
         create_users(datastore_connection)
         submission = create_submission(datastore_connection, filestore)
+        create_services(datastore_connection)
         yield datastore_connection
     finally:
         wipe_users(datastore_connection)
         wipe_submissions(datastore_connection, filestore)
+        wipe_services(datastore_connection)
         sq.delete()
 
 
@@ -282,3 +284,38 @@ def test_submit_base64_nameless(datastore, login_session, scheduler):
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
+
+def test_submit_submission_profile(datastore, login_session, scheduler):
+    _, session, host = login_session
+    sq.delete()
+
+    # Make the user a simple user and try to submit
+    datastore.user.update('admin', [
+        (datastore.user.UPDATE_REMOVE, 'type', 'admin'),
+        (datastore.user.UPDATE_APPEND, 'roles', 'submission_create')])
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    sha256 = hashlib.sha256(byte_str).hexdigest()
+    data = {
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'metadata': {'test': 'test_submit_base64_nameless'}
+    }
+    with pytest.raises(APIError, match="You must specify a submission profile"):
+        # A basic user must specify a submission profile name
+        get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Try using a submission profile with no parameters
+    profile = DEFAULT_SUBMISSION_PROFILES[0]
+    data['submission_profile'] = profile['name']
+    get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Try using a submission profile with a parameter you aren't allowed to set
+    # The system should silently ignore your parameter and still create a submission
+    data['params'] = {'services': {'selected': ['blah']}}
+    # But also try setting a parameter that you are allowed to set
+    data['params'] = {'deep_scan': True}
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    assert set(resp['params']['services']['selected']) == set(profile['params']['services']['selected'])
+    assert resp['params']['deep_scan'] == True
+
+    # Restore original roles for later tests
+    datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
