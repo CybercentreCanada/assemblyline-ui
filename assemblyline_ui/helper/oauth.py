@@ -3,7 +3,7 @@ import hashlib
 import re
 import requests
 
-from authlib.integrations.flask_client import FlaskRemoteApp
+from authlib.integrations.flask_client import FlaskOAuth2App
 from assemblyline.odm.models.config import OAuthProvider
 from assemblyline.odm.models.user import load_roles, USER_TYPE_DEP
 from assemblyline.common.random_user import random_user
@@ -211,7 +211,7 @@ def parse_profile(profile: dict, provider: OAuthProvider):
     )
 
 
-def fetch_avatar(url: str, provider: FlaskRemoteApp, provider_config:OAuthProvider):
+def fetch_avatar(url: str, provider: FlaskOAuth2App, provider_config:OAuthProvider):
     if url.startswith(provider_config.api_base_url):
         resp = provider.get(url[len(provider_config.api_base_url):])
         if resp.ok and resp.headers.get("content-type") is not None:
