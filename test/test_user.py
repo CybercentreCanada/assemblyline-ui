@@ -222,6 +222,9 @@ def test_set_user(datastore, login_session):
     u = random_model_obj(User).as_primitives()
     u['uname'] = username
 
+    # Omit setting identity_id for user (API shouldn't crash if identity_id is missing)
+    u.pop('identity_id')
+
     resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(u))
     assert resp['success']
 
