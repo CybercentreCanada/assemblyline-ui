@@ -7,18 +7,18 @@ import shutil
 import tempfile
 
 from flask import request
+from typing import Tuple, Union
 
 from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
-from assemblyline.odm.models.config import SubmissionProfile
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, Response
 from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
-    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER
+    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER, SUBMISSION_PROFILES
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
     FETCH_METHODS, URL_GENERATORS, update_submission_parameters
@@ -32,6 +32,144 @@ submit_api._doc = "Submit files to the system"
 # Since everything the submission client needs is already being initialized
 # at the global scope, we can create the submission client object at that scope as well
 submission_client = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY)
+
+
+def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name: str = None, profile: str = None, **kwargs) ->Union[Tuple[Submission, int] | Response]:
+    # Check if we've reached the quotas
+    quota_error = check_submission_quota(user)
+    if quota_error:
+        return make_api_response("", quota_error, 503)
+
+    file_info = STORAGE.file.get(sha256, as_obj=False)
+    if not file_info:
+        return make_api_response({}, f"File {sha256} cannot be found on the server therefore it cannot be resubmitted.",
+                                 status_code=404)
+
+    if not Classification.is_accessible(user['classification'], file_info['classification']):
+        return make_api_response("", "You are not allowed to re-submit a file that you don't have access to", 403)
+
+    metadata = {}
+    copy_sid = request.args.get('copy_sid', None)
+    if copy_sid:
+        submission = STORAGE.submission.get(copy_sid, as_obj=False)
+    else:
+        submission = None
+
+    if submission:
+        if not Classification.is_accessible(user['classification'], submission['classification']):
+            return make_api_response("",
+                                        "You are not allowed to re-submit a submission that you don't have access to",
+                                        403)
+
+        submission_params = submission['params']
+        submission_params['classification'] = submission['classification']
+        expiry = submission['expiry_ts']
+        metadata = submission['metadata']
+
+    else:
+        submission_params = ui_to_submission_params(load_user_settings(user))
+        submission_params['classification'] = file_info['classification']
+        expiry = file_info['expiry_ts']
+
+        # Ignore external sources
+        submission_params.pop('default_external_sources', None)
+
+    if not FILESTORE.exists(sha256):
+        if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
+                ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
+
+            # File exists in the archivestore, copying it to the filestore
+            with tempfile.NamedTemporaryFile() as buf:
+                ARCHIVESTORE.download(sha256, buf.name)
+                FILESTORE.upload(buf.name, sha256, location='far')
+
+        else:
+            return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
+                                        % sha256, status_code=404)
+
+
+    if (file_info["type"].startswith("uri/") and "uri_info" in file_info and "uri" in file_info["uri_info"]):
+        name = safe_str(file_info["uri_info"]["uri"])
+    else:
+        name = safe_str(request.args.get('name', sha256))
+    description_prefix = f"Resubmit {name}"
+
+    files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
+
+    if profile:
+        # Obtain any settings from the user and apply them to the submission
+        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+        if user_settings:
+            # Reuse existing settings for specified profile
+            profile_params = user_settings['submission_profiles'].get(profile, {})
+        else:
+            # Otherwise default to what's set for the profile at the configuration-level
+            profile_params = {}
+        profile_params['submission_profile'] = profile
+
+        submission_params = update_submission_parameters(submission_params, profile_params, user)
+        submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
+
+    else:
+        # Only append Dynamic Analysis as a selected service and set the priority
+        if 'priority' not in submission_params:
+            submission_params['priority'] = 500
+        if "Dynamic Analysis" not in submission_params['services']['selected']:
+            submission_params['services']['selected'].append("Dynamic Analysis")
+
+        # Ensure submission priority stays within the range of user priorities
+        submission_params['priority'] = max(min(submission_params['priority'], MAX_PRIORITY), PRIORITIES['user-low'])
+        submission_params['description'] = f"{description_prefix} for Dynamic Analysis"
+
+    submission_params['submitter'] = user['uname']
+    submission_params['quota_item'] = True
+
+    try:
+        return Submission({ "files": files, "params": submission_params, "metadata": metadata}), expiry
+    except (ValueError, KeyError) as e:
+        return make_api_response("", err=str(e), status_code=400)
+
+# noinspection PyUnusedLocal
+@submit_api.route("/<profile>/<sha256>/", methods=["GET"])
+@api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
+def resubmit_with_profile(profile, sha256, *args, **kwargs):
+    """
+    Resubmit a file using a submission profile
+
+    Variables:
+    profile        => Submission profile to be used in new submission
+    sha256         => Resource locator (SHA256)
+
+    Arguments (Optional):
+    copy_sid    => Mimic the attributes of this SID.
+    name        => Name of the file for the submission
+
+    Data Block:
+    None
+
+    Result example:
+    # Submission message object as a json dictionary
+    """
+    user = kwargs['user']
+
+    submit_result = None
+    try:
+        ret_value = create_resubmission_task(sha256=sha256, profile=profile, user=user, **request.args)
+        if isinstance(ret_value, Response):
+            # Forward error response back to user
+            return ret_value
+        else:
+            # Otherwise we got submission object with an expiry
+            submission_obj, expiry = ret_value
+            submit_result = submission_client.submit(submission_obj, expiry=expiry)
+            submission_received(submission_obj)
+            return make_api_response(submit_result.as_primitives())
+    except SubmissionException as e:
+        return make_api_response("", err=str(e), status_code=400)
+    finally:
+        if submit_result is None:
+            # We had an error during the submission, release the quotas for the user
+            decrement_submission_quota(user)
 
 
 # noinspection PyUnusedLocal
@@ -55,93 +193,18 @@ def resubmit_for_dynamic(sha256, *args, **kwargs):
     # Submission message object as a json dictionary
     """
     user = kwargs['user']
-
-    # Check if we've reached the quotas
-    quota_error = check_submission_quota(user)
-    if quota_error:
-        return make_api_response("", quota_error, 503)
-
-    file_info = STORAGE.file.get(sha256, as_obj=False)
-    if not file_info:
-        return make_api_response({}, f"File {sha256} cannot be found on the server therefore it cannot be resubmitted.",
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], file_info['classification']):
-        return make_api_response("", "You are not allowed to re-submit a file that you don't have access to", 403)
-
     submit_result = None
-    metadata = {}
     try:
-        copy_sid = request.args.get('copy_sid', None)
-        if copy_sid:
-            submission = STORAGE.submission.get(copy_sid, as_obj=False)
+        ret_value = create_resubmission_task(sha256=sha256, user=user, **request.args)
+        if isinstance(ret_value, Response):
+            # Forward error response back to user
+            return ret_value
         else:
-            submission = None
-
-        if submission:
-            if not Classification.is_accessible(user['classification'], submission['classification']):
-                return make_api_response("",
-                                         "You are not allowed to re-submit a submission that you don't have access to",
-                                         403)
-
-            submission_params = submission['params']
-            submission_params['classification'] = submission['classification']
-            expiry = submission['expiry_ts']
-            metadata = submission['metadata']
-
-        else:
-            submission_params = ui_to_submission_params(load_user_settings(user))
-            submission_params['classification'] = file_info['classification']
-            expiry = file_info['expiry_ts']
-
-            # Ignore external sources
-            submission_params.pop('default_external_sources', None)
-
-        if not FILESTORE.exists(sha256):
-            if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
-                    ROLES.archive_download in user['roles'] and ARCHIVESTORE.exists(sha256):
-
-                # File exists in the archivestore, copying it to the filestore
-                with tempfile.NamedTemporaryFile() as buf:
-                    ARCHIVESTORE.download(sha256, buf.name)
-                    FILESTORE.upload(buf.name, sha256, location='far')
-
-            else:
-                return make_api_response({}, "File %s cannot be found on the server therefore it cannot be resubmitted."
-                                         % sha256, status_code=404)
-
-        if (file_info["type"].startswith("uri/") and "uri_info" in file_info and "uri" in file_info["uri_info"]):
-            name = safe_str(file_info["uri_info"]["uri"])
-            submission_params['description'] = f"Resubmit {file_info['uri_info']['uri']} for Dynamic Analysis"
-        else:
-            name = safe_str(request.args.get('name', sha256))
-            submission_params['description'] = f"Resubmit {name} for Dynamic Analysis"
-
-        files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
-
-        submission_params['submitter'] = user['uname']
-        submission_params['quota_item'] = True
-        if 'priority' not in submission_params:
-            submission_params['priority'] = 500
-        if "Dynamic Analysis" not in submission_params['services']['selected']:
-            submission_params['services']['selected'].append("Dynamic Analysis")
-
-        # Ensure submission priority stays within the range of user priorities
-        submission_params['priority'] = max(min(submission_params['priority'], MAX_PRIORITY), PRIORITIES['user-low'])
-
-        try:
-            submission_obj = Submission({
-                "files": files,
-                "params": submission_params,
-                "metadata": metadata,
-            })
-        except (ValueError, KeyError) as e:
-            return make_api_response("", err=str(e), status_code=400)
-
-        submit_result = submission_client.submit(submission_obj, expiry=expiry)
-        submission_received(submission_obj)
-        return make_api_response(submit_result.as_primitives())
-
+            # Otherwise we got submission object with an expiry
+            submission_obj, expiry = ret_value
+            submit_result = submission_client.submit(submission_obj, expiry=expiry)
+            submission_received(submission_obj)
+            return make_api_response(submit_result.as_primitives())
     except SubmissionException as e:
         return make_api_response("", err=str(e), status_code=400)
     finally:

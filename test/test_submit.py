@@ -9,7 +9,7 @@ import tempfile
 from conftest import get_api_data, APIError
 
 from assemblyline.common import forge
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES, DEFAULT_SRV_SEL
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions, create_services, wipe_services
 from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -50,6 +50,26 @@ def test_resubmit(datastore, login_session, scheduler):
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
+
+# noinspection PyUnusedLocal
+def test_resubmit_profile(datastore, login_session, scheduler):
+    _, session, host = login_session
+
+    sq.delete()
+    sha256 = random.choice(submission.results)[:64]
+
+    # Submit file for resubmission with a profile selected
+    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/")
+    assert resp['params']['description'].startswith('Resubmit')
+    assert resp['params']['description'].endswith('Static Analysis')
+    assert resp['sid'] != submission.sid
+    for f in resp['files']:
+        assert f['sha256'] == sha256
+    assert set(resp['params']['services']['selected']) == set(DEFAULT_SRV_SEL)
+
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    assert msg.submission.sid == resp['sid']
+
 
 
 # noinspection PyUnusedLocal
