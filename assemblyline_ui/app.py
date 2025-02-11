@@ -1,7 +1,7 @@
 import logging
 import os
 
-from authlib.integrations.base_client.base_oauth import OAUTH_CLIENT_PARAMS
+from authlib.integrations.base_client.registry import OAUTH_CLIENT_PARAMS
 from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
