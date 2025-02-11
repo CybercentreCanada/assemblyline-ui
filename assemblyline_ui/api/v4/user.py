@@ -355,7 +355,7 @@ def add_user_account(username, **_):
 
         # Check identity_id value
         if not data.get('identity_id'):
-            data.pop('identity_id')
+            data.pop('identity_id', None)
 
         if avatar is not None:
             STORAGE.user_avatar.save(username, avatar)
@@ -425,7 +425,7 @@ def get_user_account(username, **kwargs):
 
     user['roles'] = load_roles(user['type'], user.get('roles', None))
     if ROLES.administration not in kwargs['user']['roles']:
-        user.pop('identity_id')
+        user.pop('identity_id', None)
 
     return make_api_response(user)
 
@@ -525,7 +525,7 @@ def set_user_account(username, **kwargs):
 
         # Check identity_id value
         if not data.get('identity_id'):
-            data.pop('identity_id')
+            data.pop('identity_id', None)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
