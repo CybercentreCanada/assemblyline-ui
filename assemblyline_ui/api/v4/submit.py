@@ -34,7 +34,7 @@ submit_api._doc = "Submit files to the system"
 submission_client = SubmissionClient(datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY)
 
 
-def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name: str = None, profile: str = None, **kwargs) ->Union[Tuple[Submission, int] | Response]:
+def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name: str = None, profile: str = None, **kwargs) ->Union[Tuple[Submission, int], Response]:
     # Check if we've reached the quotas
     quota_error = check_submission_quota(user)
     if quota_error:
