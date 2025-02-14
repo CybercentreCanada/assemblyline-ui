@@ -443,8 +443,8 @@ def submit(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, _ = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
-                                          default_external_sources)
+                    found, _, name = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                          default_external_sources, name)
                     if not found:
                         raise FileNotFoundError(
                             f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")

@@ -19,7 +19,7 @@ from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
 from assemblyline.odm.messages.submission import SubmissionMessage
 
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, IDENTIFY
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -87,7 +87,7 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submissi
     return recursive_update(validated_profile, updates)
 
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
-               default_external_sources: List[str]):
+               default_external_sources: List[str], name: str):
     sha256 = None
     fileinfo = None
     # If the method is by SHA256 hash, check to see if we already have that file
@@ -210,11 +210,18 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                         if service not in s_params['services']['selected']:
                             s_params['services']['selected'].append(service)
 
+                    # Check if the downloaded content has the same hash as the fetch method
+                    if method in HASH_PATTERN_MAP and name == input:
+                        hash = IDENTIFY.fileinfo(out_file)[method]
+                        if hash != input:
+                            # Rename the file to the hash of the downloaded content to avoid confusion
+                            name = hash
+
                     # A source suited for the task was found, skip the rest
                     break
 
 
-    return found, fileinfo
+    return found, fileinfo, name
 
 def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))

@@ -295,8 +295,8 @@ def ingest_single_file(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
-                                                 default_external_sources)
+                    found, fileinfo, name = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                                       default_external_sources, name)
                     if not found:
                         raise FileNotFoundError(
                             f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
