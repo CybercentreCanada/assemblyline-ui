@@ -1,14 +1,32 @@
 from typing import Optional
 
-from flask import session as flsk_session
-
 from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import User, load_roles, ROLES
-from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER, DAILY_QUOTA_TRACKER, LOGGER, STORAGE, SUBMISSION_TRACKER, \
-    config, CLASSIFICATION as Classification, SERVICE_LIST, DOWNLOAD_ENCODING, DEFAULT_ZIP_PASSWORD
-from assemblyline_ui.helper.service import get_default_service_spec, get_default_service_list, simplify_services
-from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException, AuthenticationException
+from assemblyline.common.dict_utils import get_recursive_delta
+from assemblyline.odm.models.config import SubmissionProfileParams, SubmissionProfile
+from assemblyline.odm.models.user import ROLES, User, load_roles
+from assemblyline.odm.models.user_settings import UserSettings, DEFAULT_USER_PROFILE_SETTINGS
+from assemblyline_ui.config import ASYNC_SUBMISSION_TRACKER
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import (
+    DAILY_QUOTA_TRACKER,
+    DEFAULT_ZIP_PASSWORD,
+    DOWNLOAD_ENCODING,
+    LOGGER,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRACKER,
+    config,
+)
+from assemblyline_ui.helper.service import (
+    get_default_service_list,
+    get_default_service_spec,
+    get_default_submission_profiles,
+    simplify_services,
+)
+from assemblyline_ui.helper.submission import apply_changes_to_profile
+from assemblyline_ui.http_exceptions import AccessDeniedException, AuthenticationException, InvalidDataException
+from flask import session as flsk_session
 
 ACCOUNT_USER_MODIFIABLE = ["name", "avatar", "password"]
 
@@ -258,23 +276,25 @@ def get_dynamic_classification(current_c12n, user_info):
     return new_c12n
 
 
-def get_default_user_settings(user):
-    return UserSettings({"classification": Classification.default_user_classification(user),
-                         "ttl": config.submission.dtl,
-                         "default_zip_password": DEFAULT_ZIP_PASSWORD,
-                         "download_encoding": DOWNLOAD_ENCODING}).as_primitives()
+def get_default_user_settings(user: dict) -> dict:
+    settings = DEFAULT_USER_PROFILE_SETTINGS
+    settings.update({"classification": Classification.default_user_classification(user),
+                     "ttl": config.submission.dtl,
+                     "default_zip_password": DEFAULT_ZIP_PASSWORD,
+                     "download_encoding": DOWNLOAD_ENCODING})
+    return UserSettings(settings).as_primitives()
 
 
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
     user_classfication = user.get('classification', Classification.UNRESTRICTED)
-
-    settings = STORAGE.user_settings.get_if_exists(user['uname'], as_obj=False)
-    srv_list = [x for x in SERVICE_LIST if x['enabled']]
+    submission_customize = ROLES.submission_customize in user['roles']
+    settings = STORAGE.user_settings.get_if_exists(user['uname'])
     if not settings:
         def_srv_list = None
         settings = default_settings
     else:
+        settings = settings.as_primitives(strip_null=True)
         # Make sure all defaults are there
         for key, item in default_settings.items():
             if key not in settings:
@@ -287,18 +307,90 @@ def load_user_settings(user):
 
         def_srv_list = settings.get('services', {}).get('selected', None)
 
+    srv_list = [x for x in SERVICE_LIST if x['enabled']]
+    settings['default_zip_password'] = settings.get('default_zip_password', DEFAULT_ZIP_PASSWORD)
+    # Normalize the user's classification
+    settings['classification'] = Classification.normalize_classification(settings['classification'])
+
+    # Check if the user has instantiated their default submission profile
+    if submission_customize and not settings['submission_profiles'].get('default'):
+        settings['submission_profiles']['default'] = SubmissionProfileParams({key: value for key, value in settings.items() if key in SubmissionProfileParams.fields()}).as_primitives()
+
     # Only display services that a user is allowed to see
     settings['service_spec'] = get_default_service_spec(srv_list, settings.get('service_spec', {}), user_classfication)
     settings['services'] = get_default_service_list(srv_list, def_srv_list, user_classfication)
-    settings['default_zip_password'] = settings.get('default_zip_password', DEFAULT_ZIP_PASSWORD)
+    settings['submission_profiles'] = get_default_submission_profiles(settings['submission_profiles'],
+                                                                      user_classfication, include_default=submission_customize)
 
-    # Normalize the user's classification
-    settings['classification'] = Classification.normalize_classification(settings['classification'])
+
+    # Check if the user has a preferred submission profile
+    if not settings.get('preferred_submission_profile'):
+        # No preferred submission profile, set one based on the user's roles
+        if submission_customize:
+            # User can customize their submission, set the preferred profile to the legacy default
+            settings['preferred_submission_profile'] = 'default'
+        else:
+            # User cannot customize their submission, set the preferred profile to first one on the list
+            settings['preferred_submission_profile'] = list(settings['submission_profiles'].keys())[0]
 
     return settings
 
 
-def save_user_settings(username, data):
-    data["services"] = {'selected': simplify_services(data["services"])}
+def save_user_settings(user, data):
+    username = user.get('uname', None)
+    if username == None:
+        raise Exception("Invalid username")
 
-    return STORAGE.user_settings.save(username, data)
+    user_settings = STORAGE.user_settings.get(username)
+    if user_settings:
+        user_settings = user_settings.as_primitives()
+    else:
+        user_settings = {}
+
+    for key in user_settings.keys():
+        if key in data and key not in ["services", "service_spec", "submission_profiles"]:
+            user_settings[key] = data.get(key, None)
+
+    user_settings["services"] = {'selected': simplify_services(data.get("services", []))}
+
+    classification = user.get("classification", None)
+    submission_customize = ROLES.submission_customize in user['roles']
+    srv_list = [x['name'] for x in SERVICE_LIST if x['enabled']]
+    srv_list += [x['category'] for x in SERVICE_LIST if x['enabled']]
+    srv_list = list(set(srv_list))
+
+    accessible_profiles = [name for name, profile in SUBMISSION_PROFILES.items() \
+                           if Classification.is_accessible(classification, profile.classification)]
+
+    # Check submission profile preference selection
+    preferred_submission_profile = data.get('preferred_submission_profile', None)
+    if submission_customize:
+        # User is allowed to customize their own default profile
+        accessible_profiles += ['default']
+
+    if preferred_submission_profile in accessible_profiles:
+        user_settings['preferred_submission_profile'] = preferred_submission_profile
+
+    submission_profiles = {}
+    for name in accessible_profiles:
+        user_params = data.get('submission_profiles', {}).get(name, {})
+        profile_config: Optional[SubmissionProfile] = SUBMISSION_PROFILES.get(name)
+
+        if profile_config == None:
+            if name == "default":
+                # There is no restriction on what you can set for your default submission profile
+                # Set profile based on preferences set at the root-level
+                data["services"] = user_settings['services']
+                submission_profiles[name] = SubmissionProfileParams({key: value for key, value in data.items()
+                                                                    if key in SubmissionProfileParams.fields()}).as_primitives()
+
+        else:
+            # Calculate what the profiles updates are based on default profile settings and the user-submitted changes
+            profile_updates = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, user_params)
+
+            # Apply changes to the profile relative to what's allowed to be changed based on configuration
+            submission_profiles[name] = apply_changes_to_profile(profile_config, profile_updates, submission_customize)
+
+    user_settings["submission_profiles"] = submission_profiles
+
+    return STORAGE.user_settings.save(username, user_settings)

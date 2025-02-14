@@ -41,6 +41,12 @@ submission:
           validator_type: keyword
     strict_schemes:
       - strict_ingest
+  profiles:
+    # Profile that will enforce metadata validation
+    - name: "static"
+      display_name: "Static Analysis"
+      params:
+        type: strict_ingest
 
 logging:
   log_level: DISABLED
