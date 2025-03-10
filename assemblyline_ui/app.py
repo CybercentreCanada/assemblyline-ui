@@ -10,6 +10,7 @@ from flask.logging import default_handler
 from assemblyline_ui.api.base import api
 from assemblyline_ui.api.v4 import apiv4
 from assemblyline_ui.api.v4.alert import alert_api
+from assemblyline_ui.api.v4.apikey import apikey_api
 from assemblyline_ui.api.v4.archive import archive_api
 from assemblyline_ui.api.v4.assistant import assistant_api
 from assemblyline_ui.api.v4.authentication import auth_api
@@ -101,6 +102,7 @@ if config.config.datastore.archive.enabled:
     app.register_blueprint(archive_api)
 if config.AI_AGENT.has_backends():
     app.register_blueprint(assistant_api)
+app.register_blueprint(apikey_api)
 app.register_blueprint(auth_api)
 app.register_blueprint(badlist_api)
 app.register_blueprint(bundle_api)
