@@ -52,6 +52,7 @@ setup(
         'PyJWT',
         'gunicorn',
         'gevent',
+        'xmlsec==1.3.14'
     ],
     extras_require={
         'test': [
