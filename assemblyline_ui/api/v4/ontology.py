@@ -1,13 +1,19 @@
 import json
+from io import StringIO
 
 from flask import request
-from io import StringIO
 
 from assemblyline.common.dict_utils import recursive_update
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVESTORE, STORAGE, LOGGER, FILESTORE, CLASSIFICATION as Classification, config
+from assemblyline_ui.api.base import (
+    api_login,
+    make_api_response,
+    make_file_response,
+    make_subapi_blueprint,
+)
+from assemblyline_ui.config import ARCHIVESTORE, FILESTORE, LOGGER, STORAGE, config
+from assemblyline_ui.config import CLASSIFICATION as Classification
 
 SUB_API = 'ontology'
 ontology_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -144,12 +150,13 @@ def get_ontology_for_alert(alert_id, **kwargs):
         results = e.partial_output
 
     # Compile information to be added to the ontology
+    metadata = alert.get('metadata', {})
     updates = {
         'file': {
             'parent': alert['file']['sha256']
         },
         'submission': {
-            'metadata': alert.get('metadata', {}),
+            'metadata': metadata,
             'date': alert['ts'],
             'source_system': config.ui.fqdn,
             'sid': submission['sid'],
@@ -160,6 +167,9 @@ def get_ontology_for_alert(alert_id, **kwargs):
         }
 
     }
+
+    if 'original_source' in metadata:
+        updates['submission']['original_source'] = metadata['original_source']
 
     # Set the list of file names
     fnames = {x['sha256']: [x['name']] for x in submission['files']}
@@ -230,12 +240,13 @@ def get_ontology_for_submission(sid, **kwargs):
         results = e.partial_output
 
     # Compile information to be added to the ontology
+    metadata = submission.get('metadata', {})
     updates = {
         'file': {
             'parent': submission['files'][0]['sha256'],
         },
         'submission': {
-            'metadata': submission.get('metadata', {}),
+            'metadata': metadata,
             'date': submission['times']['submitted'],
             'source_system': config.ui.fqdn,
             'sid': sid,
@@ -246,6 +257,9 @@ def get_ontology_for_submission(sid, **kwargs):
         }
 
     }
+
+    if 'original_source' in metadata:
+        updates['submission']['original_source'] = metadata['original_source']
 
     # Set the list of file names
     fnames = {x['sha256']: [x['name']] for x in submission['files']}
