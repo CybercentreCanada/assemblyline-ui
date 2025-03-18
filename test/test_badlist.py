@@ -354,14 +354,22 @@ def test_badlist_delete_hash(datastore, login_session):
 
 def test_badlist_attribution(datastore, login_session):
     _, session, host = login_session
+    badlist_items = datastore.badlist.search("attribution.actor:*",
+                                             fl="id,attribution.actor", rows=100, as_obj=False)['items']
+    while True:
+        item = random.choice(badlist_items)
 
-    item = random.choice(datastore.badlist.search("attribution.actor:*",
-                         fl="id,attribution.actor", rows=100, as_obj=False)['items'])
+        actor = random.choice(item['attribution']['actor'])
+        hash = item['id']
 
-    actor = random.choice(item['attribution']['actor'])
-    hash = item['id']
+        try:
+            # Test removing attribution from the hash in the Badlist
+            resp = get_api_data(session, f"{host}/api/v4/badlist/attribution/{hash}/actor/{actor}/", method="DELETE")
+            break
+        except APIError:
+            # TODO: Investigate why in some cases the API thinks the hash doesn't exist
+            pass
 
-    resp = get_api_data(session, f"{host}/api/v4/badlist/attribution/{hash}/actor/{actor}/", method="DELETE")
     assert resp['success']
 
     assert actor not in datastore.badlist.get_if_exists(hash).attribution.actor

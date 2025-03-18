@@ -1,12 +1,27 @@
 from copy import copy
 from typing import Any, Optional
-from assemblyline_ui.config import CLASSIFICATION, config, SERVICE_LIST
+from assemblyline.common.dict_utils import recursive_update
+from assemblyline_ui.config import CLASSIFICATION, config, SERVICE_LIST, SUBMISSION_PROFILES, STORAGE
 from assemblyline.odm.models.submission import DEFAULT_SRV_SEL, SubmissionParams
 from assemblyline.odm.models.user_settings import UserSettings
 
 # Get the list of fields relating to the models
 USER_SETTINGS_FIELDS = list(UserSettings.fields().keys())
 SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
+
+
+def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED,
+                                    include_default=False):
+    out = {}
+    if include_default:
+        out['default'] = user_default_values.get('default', {})
+
+    for profile in SUBMISSION_PROFILES.values():
+        if CLASSIFICATION.is_accessible(classification, profile.classification):
+            profile_values = copy(profile.params.as_primitives(strip_null=True))
+            out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
+    return out
+
 
 def get_default_service_spec(srv_list=None, user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     if not srv_list:
