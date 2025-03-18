@@ -17,7 +17,7 @@ from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, CLASSIFICATION_ALI
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
-    get_default_user_quotas, get_dynamic_classification, load_user_settings, save_user_account, save_user_settings,
+    get_default_user_quotas, get_dynamic_classification, get_user_api_keys, get_user_api_keys_dict, load_user_settings, save_user_account, save_user_settings,
     API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
@@ -195,6 +195,7 @@ def who_am_i(**kwargs):
 
     user_data['configuration'] = {
         "auth": {
+            "apikey_max_dtl": config.auth.apikey_max_dtl,
             "allow_2fa": config.auth.allow_2fa,
             "allow_apikeys": config.auth.allow_apikeys,
             "allow_extended_apikeys": config.auth.allow_extended_apikeys,
@@ -408,13 +409,6 @@ def get_user_account(username, **kwargs):
     user_roles = load_roles(user['type'], user.get('roles', None))
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['apikeys'] = {
-        name: {
-            'acl': detail['acl'],
-            'roles': [r for r in load_roles_form_acls(detail['acl'], detail.get('roles', None)) if r in user_roles]
-        }
-        for name, detail in user.get('apikeys', {}).items()
-    }
     user['has_password'] = user.pop('password', "") != ""
     security_tokens = user.get('security_tokens', {}) or {}
     user['security_tokens'] = list(security_tokens.keys())
@@ -424,8 +418,22 @@ def get_user_account(username, **kwargs):
         user['avatar'] = STORAGE.user_avatar.get(username)
 
     user['roles'] = load_roles(user['type'], user.get('roles', None))
+
     if ROLES.administration not in kwargs['user']['roles']:
         user.pop('identity_id', None)
+
+    apikeys = get_user_api_keys(user['uname'])
+
+    user['apikeys'] = {apikey_detail['key_name']: {
+        'acl': apikey_detail['acl'],
+        'roles': [r for r in load_roles_form_acls(apikey_detail['acl'], apikey_detail.get('roles', None)) if r in user_roles],
+        'uname': apikey_detail['uname'],
+        'key_name': apikey_detail['key_name'],
+        'creation_date': apikey_detail['creation_date'],
+        'expiry_ts': apikey_detail['expiry_ts'],
+        'last_used': apikey_detail['last_used'],
+        'id': apikey_detail['id']
+        } for apikey_detail in apikeys}
 
     return make_api_response(user)
 
@@ -457,7 +465,9 @@ def remove_user_account(username, **_):
         favorites_deleted = STORAGE.user_favorites.delete(username)
         settings_deleted = STORAGE.user_settings.delete(username)
 
-        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted:
+        apikey_deleted = STORAGE.apikey.delete_by_query(f"uname: {username}")
+
+        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted or not apikey_deleted:
             return make_api_response({"success": False})
 
         return make_api_response({"success": True})
@@ -500,13 +510,13 @@ def set_user_account(username, **kwargs):
         new_pass = data.pop('new_pass', None)
 
         old_user = STORAGE.user.get(username, as_obj=False)
+
         if not old_user:
             return make_api_response({"success": False}, "User %s does not exists" % username, 404)
 
         if not data['name']:
             return make_api_response({"success": False}, "Full name of the user cannot be empty", 400)
 
-        data['apikeys'] = old_user.get('apikeys', [])
         data['otp_sk'] = old_user.get('otp_sk', None)
         data['security_tokens'] = old_user.get('security_tokens', {}) or {}
 
@@ -913,6 +923,7 @@ def get_user_settings(username, **kwargs):
         if ROLES.administration not in user['roles']:
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
         user = STORAGE.user.get(username, as_obj=False)
+
 
     return make_api_response(load_user_settings(user))
 
