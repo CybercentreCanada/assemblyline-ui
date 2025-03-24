@@ -19,7 +19,7 @@ from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
 from assemblyline.odm.messages.submission import SubmissionMessage
 
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, IDENTIFY
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, IDENTIFY, SERVICE_LIST
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -57,33 +57,36 @@ class ForbiddenLocation(Exception):
 def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submission_customize=False) -> dict:
     validated_profile = profile.params.as_primitives(strip_null=True)
 
-    # Check to see if user is trying to modify the service params of a service not explicitly defined in the profile
-    unrecognized_services = set(updates.get('service_spec', {}).keys()) - set(list(profile.editable_params.keys()))
-    if unrecognized_services and not submission_customize:
-        # User isn't allowed to change/set parameters of services not explicitly defined in the profile
-        raise PermissionError(f"User isn't allowed to modify the following services: {list(unrecognized_services)}")
+    if not submission_customize:
+        # Check the services parameters
+        for param_type, list_of_params in profile.restricted_params.items():
 
-    for param_type, list_of_params in profile.editable_params.items():
-        if param_type == "submission":
-            # Submission-level parameters
-            for p in list(updates.keys()):
-                if not hasattr(SubmissionProfileParams, p):
-                    # Don't need to be concerned about a parameter that has no limitation ie. description
-                    continue
-                elif p in ['services', 'service_spec']:
-                    # These will be checked later
-                    continue
-                elif p not in list_of_params and not submission_customize:
-                    # Submission parameter isn't allowed to be modified based on profile configuration
-                    raise PermissionError(f"User isn't allowed to modify the \"{p}\" parameter of {profile.display_name} profile")
-        else:
-            # Service-level parameters
-            service_spec = updates.get('service_spec', {}).get(param_type, {})
-            for key in list(service_spec.keys()):
-                if key not in list_of_params and not submission_customize:
-                    # Service parameter isn't allowed to be changed
-                    raise PermissionError(f"User isn't allowed to modify the \"{p}\" parameter of \"{param_type}\" service in \"{profile.display_name}\" profile")
+            # Check if there are restricted submission parameters
+            if param_type == "submission":
+                requested_params = (set(list_of_params) & set(updates.keys())) - set({'services', 'service_spec'})
+                if requested_params:
+                    params = ', '.join(f"\"{p}\"" for p in requested_params)
+                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of {profile.display_name} profile")
 
+            # Check if there are restricted service parameters
+            else:
+                service_spec = updates.get('service_spec', {}).get(param_type, {})
+                requested_params = set(list_of_params) & set(service_spec)
+                if requested_params:
+                    params = ', '.join(f"\"{p}\"" for p in requested_params)
+                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of \"{param_type}\" service in \"{profile.display_name}\" profile")
+
+        for svr in SERVICE_LIST:
+            selected_svrs = updates['services']['selected']
+            excluded_svrs = profile.params.services.excluded
+
+            if svr['enabled'] and \
+                (svr['name'] in selected_svrs or svr['category'] in selected_svrs) and \
+                (svr['name'] in excluded_svrs or svr['category'] in excluded_svrs):
+
+                raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
+
+    updates['services']['excluded'] = profile.params['services']['excluded']
     return recursive_update(validated_profile, updates)
 
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
