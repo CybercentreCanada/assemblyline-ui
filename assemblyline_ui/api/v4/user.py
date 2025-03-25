@@ -332,6 +332,10 @@ def add_user_account(username, **_):
     if "{" in username or "}" in username:
         return make_api_response({"success": False}, "You can't use '{}' in the username", 412)
 
+
+    if len(data.get("apikey", {})) != 0:
+        return make_api_response({"success": False}, "You cannot create apikeys with this endpoint.", 412)
+
     if not STORAGE.user.exists(username):
         new_pass = data.pop('new_pass', None)
         if new_pass:
@@ -467,7 +471,7 @@ def remove_user_account(username, **_):
 
         apikey_deleted = STORAGE.apikey.delete_by_query(f"uname: {username}")
 
-        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted or not apikey_deleted:
+        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted or not (apikey_deleted or apikey_deleted == 0):
             return make_api_response({"success": False})
 
         return make_api_response({"success": True})

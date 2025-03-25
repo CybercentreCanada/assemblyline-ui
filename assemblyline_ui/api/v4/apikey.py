@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import Any, Dict
 from urllib.parse import urlparse
 
-from assemblyline.odm.models.apikey import get_apikey_id
+from assemblyline.odm.models.apikey import APIKEY_ID_DELIMETER, FORBIDDEN_APIKEY_CHARACTERS, get_apikey_id, split_apikey_id
 from assemblyline_ui.api.base import make_subapi_blueprint
 from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
                                           load_roles_form_acls)
@@ -53,7 +53,7 @@ apikey_api = make_subapi_blueprint(SUB_API, api_version=4)
 
 
 @apikey_api.route("/list/", methods=["GET"])
-@api_login(require_role=[ROLES.administration, ROLES.apikey_access], count_toward_quota=False)
+@api_login(require_role=[ROLES.administration], count_toward_quota=False)
 def list_apikeys(**_):
     """
     List all apikeys of the system.
@@ -72,11 +72,18 @@ def list_apikeys(**_):
 
     Result example:
     {
-     "count": 100,               # Max number of users
-     "items": [{                 # List of user blocks
-        //TODO
+     "count": 100,               # Max number of apikeys
+     "items": [{                 # List of apikey blocks
+        "acl": ["R"],
+        "roles": ['submission_view', ...],
+        "creation_date" : "2025-03-24T17:52:57.132282Z",
+        'expiry_ts': '2025-03-29T17:52:57.132013Z',
+        'last_used': '2025-03-25T17:52:57.132013Z',
+        'id': 'devkey+admin',
+        'uname': 'admin',
+        'key_name': 'devkey'
        }, ...],
-     "total": 10,                # Total number of users
+     "total": 10,                # Total number of apikeys
      "offset": 0                 # Offset in the user index
     }
     """
@@ -96,13 +103,15 @@ def list_apikeys(**_):
             result_filtered.append(item)
 
         result["items"] = result_filtered
+
+        print(result["items"])
         return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
 
 
 @apikey_api.route("/<key_id>/", methods=["GET"])
-@api_login( count_toward_quota=False)
+@api_login(require_role=[ROLES.apikey_access], count_toward_quota=False)
 def check_apikey_exists(key_id, **kwargs):
     """
     Check if a key_id exists in the database.
@@ -117,17 +126,26 @@ def check_apikey_exists(key_id, **kwargs):
     None
 
     API call example:
-    GET /api/v1/apikey/amdmin_reading/
+    GET /api/v1/apikey/devkey+admin/
 
     Result example:
-
+        {
+        "acl": ["R"],
+        "roles": ['submission_view', ...],
+        "creation_date" : "2025-03-24T17:52:57.132282Z",
+        'expiry_ts': '2025-03-29T17:52:57.132013Z',
+        'last_used': '2025-03-25T17:52:57.132013Z',
+        'id': 'devkey+admin',
+        'uname': 'admin',
+        'key_name': 'devkey'
+       }
     """
 
     apikey = STORAGE.apikey.get_if_exists(key_id, as_obj=False)
 
     if apikey:
         if apikey['uname'] != kwargs['user']['uname'] and ROLES.administration not in kwargs['user']['roles']:
-            raise AccessDeniedException("You are not allowed to view API keys that does not belong to you.")
+            raise AccessDeniedException(f"You do not have access to the apikey ({key_id}).")
         else:
             apikey['id'] = key_id
             apikey.pop("password", None)
@@ -145,17 +163,28 @@ def add_apikey(  **kwargs):
     Add an API Key for the currently logged in user with given privileges
 
     Variables:
-    name    => Name of the API key
-    priv    => Requested privileges
-
-    Arguments:
     None
 
+    Arguments:
+    keyid (Optional): The keyid to be updated
+
     Data Block:
-    ['submission_view', 'file_detail']  # List of roles if priv is CUSTOM
+    {
+        "priv": [acl permissions "C"/"W"/"R"/"E"],
+        "uname": "<username of key owner>",
+        "key_name": "<key name>",
+        "expiry_ts": "<expiry timestampe>",
+        "roles": ["<key role>", ...]
+    }
 
     Result example:
-    {"apikey": <ramdomly_generated_password>}
+    {
+        "keypassword": <key_name>:<ramdomly_generated_password>,
+        "uname": "<username of key owner>",
+        "key_name": "<key name>",
+        "expiry_ts": "<expiry timestampe>",
+        "roles": ["<key role>", ...]
+    }
     """
 
     user = kwargs['user'] # the user that requested apikey modification
@@ -164,14 +193,38 @@ def add_apikey(  **kwargs):
     key_name = request.json['key_name']
     create_key = "keyid" not in request.args
 
+
     # could be admin or the user themselves modifying the apikey
     key_uname = request.json['uname'] if "uname" in request.json else user['uname']
     key_user_data = STORAGE.user.get(key_uname, as_obj=False)
-
     new_key_id = get_apikey_id(key_name, key_uname)
 
-    priv = request.json['priv']
+    # check new key name and key id doesn't have forbidden characters
+    regex = re.compile(FORBIDDEN_APIKEY_CHARACTERS)
 
+    # check formatting of key_id is valid
+    if key_id:
+        if APIKEY_ID_DELIMETER not in key_id:
+            return make_api_response("", err=f"APIKey id '{key_id}' is invalid", status_code=400)
+
+        id_name, id_uname = split_apikey_id(key_id)
+
+        if (regex.search(id_name) != None):
+            return make_api_response("", err=f"APIKey '{key_id}' contains forbidden characters.", status_code=400)
+
+        if ROLES.administration not in user['roles'] and user['uname'] != id_uname:
+            return make_api_response("", err=f"You do not have the permission to modify API Key with id {key_id}", status_code=400)
+
+    if (regex.search(key_name) != None):
+        return make_api_response("", err=f"APIKey '{key_name}' contains forbidden characters.", status_code=400)
+
+
+    # make sure user is not modifying key of another user if they are not admin
+    if ROLES.administration not in user['roles'] and ("uname" in request.json and user["uname"] != request.json['uname']):
+        return make_api_response("", err=f"You do not have the permission to modify API Key with id {key_id}", status_code=400)
+
+
+    priv = sorted(set(request.json['priv']))
     old_apikey =  STORAGE.apikey.get_if_exists(key_id) if key_id else STORAGE.apikey.get_if_exists(new_key_id)
 
     if create_key and old_apikey:
@@ -232,9 +285,9 @@ def add_apikey(  **kwargs):
     new_apikey.pop("password", None)
 
 
-    return make_api_response({"acl": priv,
-                              "keypassword":  f"{key_name}:{random_pass}" if create_key else None,
-                              "roles": roles,
+    return make_api_response({  "acl": priv,
+                                "keypassword":  f"{key_name}:{random_pass}" if create_key else None,
+                                "roles": roles,
                                 "uname": key_uname,
                                 "key_name":key_name,
                                 "expiry_ts": expiry_ts
@@ -245,10 +298,10 @@ def add_apikey(  **kwargs):
 @api_login(require_role=[ROLES.apikey_access])
 def delete_apikey(key_id, **kwargs):
     """
-    Delete a hash from the safelist
+    Delete a hash from the apikey
 
     Variables:
-    key_id       => Hash to check
+    key_id       => key id to check
 
     Arguments:
     None
@@ -257,18 +310,21 @@ def delete_apikey(key_id, **kwargs):
     None
 
     API call example:
-    DELETE /api/v1/safelist/123456...654321/
+    DELETE /api/v1/apikey/devkey+user/
 
     Result example:
     {"success": True}
     """
     user = kwargs['user']
 
+    apikey = STORAGE.apikey.get_if_exists(key_id)
+
     if ROLES.administration in user['roles'] :
-        return make_api_response({'success': STORAGE.apikey.delete(key_id)})
+        return make_api_response({'success': (apikey is not None) and STORAGE.apikey.delete(key_id)})
     else:
+
         apikey = STORAGE.apikey.get_if_exists(key_id, as_obj=False)
         if apikey and apikey['uname'] == user['uname']:
-            return make_api_response({'success': STORAGE.apikey.delete(key_id)})
+            return make_api_response({'success': (apikey is not None) and STORAGE.apikey.delete(key_id)})
 
     return make_api_response({'success': False})

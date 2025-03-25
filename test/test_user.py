@@ -1,4 +1,5 @@
 import json
+from assemblyline.odm.models.apikey import Apikey, get_apikey_id
 import pytest
 import random
 
@@ -8,13 +9,14 @@ from assemblyline.common.forge import get_classification
 from assemblyline_ui.helper.user import load_user_settings
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
-from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.randomizer import  random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
 
 CLASSIFICATION = get_classification()
 AVATAR = "AVATAR!"
 NUM_FAVS = 10
 NUM_USERS = 5
+NUM_KEYS = 2
 FAV_TYPES = ['alert', 'error', 'search', 'signature', 'submission']
 user_list = []
 
@@ -39,6 +41,7 @@ def datastore(datastore_connection):
             for key in data:
                 data[key].append(f)
 
+
         ds.user_favorites.save('admin', data)
         ds.user_favorites.save('user', data)
 
@@ -49,6 +52,16 @@ def datastore(datastore_connection):
             ds.user_favorites.save(u.uname, data)
             ds.user_avatar.save(u.uname, AVATAR)
             user_list.append(u.uname)
+
+            for y in range(NUM_KEYS):
+                key_name = f"testkey_{y+1}"
+                key_data = random_model_obj(Apikey)
+                key_id = get_apikey_id(key_name, u.uname)
+                key_data.uname = u.name
+                key_data.key_name = key_name
+
+                ds.apikey.save(key_id, key_data)
+
 
         yield ds
     finally:
@@ -86,12 +99,18 @@ def test_add_user(datastore, login_session):
     _, session, host = login_session
 
     u = random_model_obj(User)
+
     u.uname = "TEST_ADD"
+
+    # do not add apikeys from this endpoint.
+    u.apikeys = {}
 
     resp = get_api_data(session, f"{host}/api/v4/user/{u.uname}/", method="PUT", data=json.dumps(u.as_primitives()))
     assert resp['success']
 
     datastore.user.commit()
+    datastore.apikey.commit()
+
     new_user = datastore.user.get(u.uname)
     assert new_user == u
 
@@ -188,11 +207,16 @@ def test_remove_user(datastore, login_session):
     datastore.user_avatar.commit()
     datastore.user_favorites.commit()
     datastore.user_settings.commit()
+    datastore.apikey.commit()
+
+
+    result = datastore.apikey.search(f"uname:{username}")
 
     assert datastore.user.get(username) is None
     assert datastore.user_avatar.get(username) is None
     assert datastore.user_favorites.get(username) is None
     assert datastore.user_settings.get(username) is None
+    assert result["total"] == 0
 
 
 # noinspection PyUnusedLocal
