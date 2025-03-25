@@ -60,7 +60,7 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
     updates.setdefault("services", {})
     updates["services"].setdefault("selected", [])
     updates["services"].setdefault("excluded", [])
-    updates['services']['excluded'] = list(profile.params.get("services", {}).get("excluded", []))
+    updates['services']['excluded'] = list(dict(profile.params).get("services", dict()).get("excluded", []))
 
     if ROLES.submission_customize not in user['roles'] and "administration" not in user['roles']:
         # Check the services parameters
