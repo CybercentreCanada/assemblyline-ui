@@ -526,7 +526,7 @@ def get_signature_sources(**_):
                 s['update_interval'] = service['update_config']['update_interval_seconds']
         append_source_status(service)
         out[service['name']] = {key: service['update_config'][key]
-                                for key in ['sources', 'generates_signatures', 'update_interval_seconds', 'default_pattern']}
+                                for key in ['sources', 'generates_signatures', 'update_interval_seconds', 'default_pattern'] if key in service['update_config']}
 
     # Save the signature
     return make_api_response(out)
