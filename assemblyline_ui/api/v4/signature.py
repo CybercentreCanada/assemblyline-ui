@@ -1,9 +1,6 @@
 import re
 from hashlib import sha256
 
-from assemblyline_core.signature_client import SignatureClient
-from flask import request
-
 from assemblyline.common import forge
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import VersionConflictException
@@ -12,15 +9,12 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
-from assemblyline_ui.api.base import (
-    api_login,
-    make_api_response,
-    make_file_response,
-    make_subapi_blueprint,
-)
+from assemblyline_core.signature_client import SignatureClient
+from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.config import LOGGER, STORAGE, config
 from assemblyline_ui.helper.signature import append_source_status
+from flask import request
 
 SUB_API = 'signature'
 signature_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -531,10 +525,8 @@ def get_signature_sources(**_):
             if 'update_interval' not in s:
                 s['update_interval'] = service['update_config']['update_interval_seconds']
         append_source_status(service)
-        out[service['name']] = {
-            key: service['update_config'][key]
-            for key in ['sources', 'generates_signatures', 'update_interval_seconds', 'default_pattern']
-        }
+        out[service['name']] = {key: service['update_config'][key]
+                                for key in ['sources', 'generates_signatures', 'update_interval_seconds', 'default_pattern']}
 
     # Save the signature
     return make_api_response(out)
