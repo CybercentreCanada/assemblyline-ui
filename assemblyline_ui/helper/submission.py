@@ -83,7 +83,7 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
 
         for svr in SERVICE_LIST:
             selected_svrs = updates['services']['selected']
-            excluded_svrs = profile.params.services.excluded
+            excluded_svrs = updates['services']['excluded']
 
             if svr['enabled'] and \
                 (svr['name'] in selected_svrs or svr['category'] in selected_svrs) and \
