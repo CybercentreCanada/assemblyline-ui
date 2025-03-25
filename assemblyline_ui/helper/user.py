@@ -389,7 +389,7 @@ def save_user_settings(user, data):
             profile_updates = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, user_params)
 
             # Apply changes to the profile relative to what's allowed to be changed based on configuration
-            submission_profiles[name] = apply_changes_to_profile(profile_config, profile_updates, submission_customize)
+            submission_profiles[name] = apply_changes_to_profile(profile_config, profile_updates, user)
 
     user_settings["submission_profiles"] = submission_profiles
 

@@ -54,10 +54,15 @@ class InvalidUrlException(Exception):
 class ForbiddenLocation(Exception):
     pass
 
-def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submission_customize=False) -> dict:
+def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: dict) -> dict:
     validated_profile = profile.params.as_primitives(strip_null=True)
 
-    if not submission_customize:
+    updates.setdefault("services", {})
+    updates["services"].setdefault("selected", [])
+    updates["services"].setdefault("excluded", [])
+    updates['services']['excluded'] = list(profile.params.services.excluded)
+
+    if ROLES.submission_customize not in user['roles'] and "administration" not in user['roles']:
         # Check the services parameters
         for param_type, list_of_params in profile.restricted_params.items():
 
@@ -86,7 +91,6 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, submissi
 
                 raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
 
-    updates['services']['excluded'] = profile.params['services']['excluded']
     return recursive_update(validated_profile, updates)
 
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
@@ -247,7 +251,7 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
         # Apply the profile (but allow the user to change some properties)
         s_params = recursive_update(s_params, data.get("params", {}))
         s_params = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, s_params)
-        s_params = apply_changes_to_profile(s_profile, s_params, submission_customize)
+        s_params = apply_changes_to_profile(s_profile, s_params, user)
         s_params = recursive_update(DEFAULT_USER_PROFILE_SETTINGS, s_params)
 
     # Ensure the description key exists in the resulting submission params
