@@ -302,8 +302,8 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
     uset['priority'] = 111
     uset['submission_profiles']['static']["ignore_recursion_prevention"] = True
     uset['submission_profiles']['static']['service_spec'] = {
-        "test": {
-            "p": True
+        "APKaye": {
+            "resubmit_apk_as_jar": True
         }
     }
 
