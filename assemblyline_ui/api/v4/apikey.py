@@ -104,7 +104,7 @@ def list_apikeys(**_):
 
         result["items"] = result_filtered
 
-        print(result["items"])
+        LOGGER.info(result["items"])
         return make_api_response(result)
     except SearchException as e:
         return make_api_response("", f"SearchException: {e}", 400)
