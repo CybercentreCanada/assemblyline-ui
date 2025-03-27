@@ -7,9 +7,7 @@ import urllib.parse
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
-from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.odm.models.user import ROLES, USER_ROLES_BASIC, User, load_roles_form_acls
-from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
+from assemblyline.odm.models.user import ROLES, load_roles_form_acls
 from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import DEV_APIKEY_NAME, create_users, wipe_users
 
