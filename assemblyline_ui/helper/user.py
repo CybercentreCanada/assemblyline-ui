@@ -37,8 +37,16 @@ API_PRIV_MAP = {
     "CUSTOM": ["C"]
 }
 
+PRIV_API_MAP = {
+    "R": "READ",
+    "RW": "READ_WRITE",
+    "W": "WRITE",
+    "C": "CUSTOM",
+}
+
 if config.auth.allow_extended_apikeys:
     API_PRIV_MAP["EXTENDED"] = ["R", "W", "E"]
+    PRIV_API_MAP['E'] = "EXTENDED"
 
 
 ###########################
@@ -166,8 +174,10 @@ def decrement_submission_quota(user):
 
 
 def login(uname, roles_limit, user=None):
+    apikeys = {}
     if user is None:
         user = STORAGE.user.get(uname, as_obj=False)
+        apikeys = get_user_api_keys_dict(uname)
 
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
@@ -179,10 +189,11 @@ def login(uname, roles_limit, user=None):
     get_default_user_quotas(user)
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
+    user['apikey_max_dtl'] = config.auth.apikey_max_dtl
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_security_tokens'] = config.auth.allow_security_tokens
-    user['apikeys'] = list(user.get('apikeys', {}).keys())
+    user['apikeys'] = list(apikeys.keys())
     user['c12n_enforcing'] = Classification.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
@@ -284,6 +295,14 @@ def get_default_user_settings(user: dict) -> dict:
                      "download_encoding": DOWNLOAD_ENCODING})
     return UserSettings(settings).as_primitives()
 
+def get_user_api_keys_dict(uname):
+    apikeys = get_user_api_keys(uname)
+    apikeys_dict = dict((apikey['key_name'], apikey) for apikey in apikeys)
+    return apikeys_dict
+
+def get_user_api_keys(uname):
+    apikeys = STORAGE.apikey.stream_search(f"uname:{uname}", as_obj=False)
+    return apikeys
 
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
