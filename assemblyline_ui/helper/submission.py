@@ -80,35 +80,28 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
 
             # Check if there are restricted submission parameters
             if param_type == "submission":
-                # Update submission-level parameters with only those that are allowed by the profile
-                updates.update({k: v for k, v in updates.items()
-                                if k not in list_of_params + ['services', 'service_spec']})
+                requested_params = (set(list_of_params) & set(updates.keys())) - set({'services', 'service_spec'})
+                if requested_params:
+                    params = ', '.join(f"\"{p}\"" for p in requested_params)
+                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of {profile.display_name} profile")
 
             # Check if there are restricted service parameters
             else:
                 service_spec = updates.get('service_spec', {}).get(param_type, {})
-                if not service_spec:
-                    # Ignore if the service spec for a given service doesn't exist
-                    continue
+                requested_params = set(list_of_params) & set(service_spec)
+                if requested_params:
+                    params = ', '.join(f"\"{p}\"" for p in requested_params)
+                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of \"{param_type}\" service in \"{profile.display_name}\" profile")
 
-                # Ensure the service parameters are only those that are allowed by the profile
-                updates['service_spec'][param_type] = {k: v for k, v in service_spec.items() if k not in list_of_params}
-
-        selected_svrs = updates['services']['selected']
-        excluded_svrs = updates['services']['excluded']
         for svr in SERVICE_LIST:
+            selected_svrs = updates['services']['selected']
+            excluded_svrs = updates['services']['excluded']
+
             if svr['enabled'] and \
                 (svr['name'] in selected_svrs or svr['category'] in selected_svrs) and \
                 (svr['name'] in excluded_svrs or svr['category'] in excluded_svrs):
 
-                # Remove the service/category from the selected list since it's explicitly not allowed by the profile
-                if svr['name'] in selected_svrs:
-                    selected_svrs.remove(svr['name'])
-                if svr['category'] in selected_svrs:
-                    selected_svrs.remove(svr['category'])
-
-        # Update with revised selection list
-        updates['services']['selected'] = selected_svrs
+                raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
 
     return recursive_update(validated_profile, updates)
 

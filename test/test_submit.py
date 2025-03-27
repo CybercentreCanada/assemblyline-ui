@@ -334,13 +334,14 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
     get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
-    # The system should silently ignore your parameter and still create a submission
-    data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
-    # But also try setting a parameter that you are allowed to set
-    data['params']["deep_scan"] = True
+    with pytest.raises(APIError, match='User isn\'t allowed to select the \w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
+        data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
+        get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Try setting a parameter that you are allowed to set
+    data['params'] = {'deep_scan': True}
 
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
-    assert "Dynamic Analysis" not in resp['params']['services']['selected']
     assert resp['params']['deep_scan']
 
     # Restore original roles for later tests
