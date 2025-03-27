@@ -5,9 +5,10 @@ import json
 import os
 import shutil
 import tempfile
-
-from flask import request
 from typing import Tuple, Union
+
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from flask import request
 
 from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
 from assemblyline.common.dict_utils import flatten
@@ -15,14 +16,39 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, Response
-from assemblyline_ui.config import ARCHIVESTORE, STORAGE, TEMP_SUBMIT_DIR, FILESTORE, config, \
-    CLASSIFICATION as Classification, IDENTIFY, metadata_validator, LOGGER, SUBMISSION_PROFILES
+from assemblyline_ui.api.base import (
+    Response,
+    api_login,
+    make_api_response,
+    make_subapi_blueprint,
+)
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    FILESTORE,
+    IDENTIFY,
+    LOGGER,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    TEMP_SUBMIT_DIR,
+    config,
+    metadata_validator,
+)
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS, URL_GENERATORS, update_submission_parameters
-from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
+from assemblyline_ui.helper.submission import (
+    FETCH_METHODS,
+    URL_GENERATORS,
+    FileTooBigException,
+    fetch_file,
+    refang_url,
+    submission_received,
+    update_submission_parameters,
+)
+from assemblyline_ui.helper.user import (
+    check_submission_quota,
+    decrement_submission_quota,
+    load_user_settings,
+)
 
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -321,7 +347,7 @@ def submit(**kwargs):
       // OPTIONAL VALUES
       "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
 
-      "submission_profile": "Static Analysis",    # Name of submission profile to use
+      "submission_profile": "static",       # Name of submission profile to use
 
       "metadata": {                         # Submission metadata
         "key": val,                             # Key/Value pair for metadata parameters
@@ -407,7 +433,7 @@ def submit(**kwargs):
         if (ROLES.submission_customize in user['roles']) or "ui_params" in data:
             s_params = ui_to_submission_params(user_settings)
         else:
-            s_params = {}
+            s_params = {"submission_profile": user_settings.get("preferred_submission_profile")}
 
         # Update submission parameters as specified by the user
         try:

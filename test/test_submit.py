@@ -2,18 +2,25 @@ import base64
 import hashlib
 import json
 import os
-import pytest
 import random
 import tempfile
 
-from conftest import get_api_data, APIError
+import pytest
+from assemblyline_core.dispatching.dispatcher import SubmissionTask
+from conftest import APIError, get_api_data
 
 from assemblyline.common import forge
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES, DEFAULT_SRV_SEL
-from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions, create_services, wipe_services
+from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP
+from assemblyline.odm.random_data import (
+    create_services,
+    create_submission,
+    create_users,
+    wipe_services,
+    wipe_submissions,
+    wipe_users,
+)
 from assemblyline.odm.randomizer import get_random_phrase
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_core.dispatching.dispatcher import SubmissionTask
 
 config = forge.get_config()
 sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.host,
@@ -314,7 +321,6 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         (datastore.user.UPDATE_REMOVE, 'type', 'admin'),
         (datastore.user.UPDATE_APPEND, 'roles', 'submission_create')])
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
-    sha256 = hashlib.sha256(byte_str).hexdigest()
     data = {
         'base64': base64.b64encode(byte_str).decode('ascii'),
         'metadata': {'test': 'test_submit_base64_nameless'}
@@ -324,18 +330,18 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with no parameters
-    profile = DEFAULT_SUBMISSION_PROFILES[0]
-    data['submission_profile'] = profile['name']
+    data['submission_profile'] = "static"
     get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
     # The system should silently ignore your parameter and still create a submission
-    data['params'] = {'services': {'selected': ['blah']}}
+    data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
     # But also try setting a parameter that you are allowed to set
-    data['params'] = {'deep_scan': True}
+    data['params']["deep_scan"] = True
+
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
-    # assert set(resp['params']['services']['selected']) == set(profile['params']['services']['selected'])
-    assert resp['params']['deep_scan'] == True
+    assert "Dynamic Analysis" not in resp['params']['services']['selected']
+    assert resp['params']['deep_scan']
 
     # Restore original roles for later tests
     datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])

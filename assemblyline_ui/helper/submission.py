@@ -1,25 +1,34 @@
 import json
-import re
-import requests
 import os
+import re
 import shutil
 import socket
 import tempfile
-
 from typing import List
 from urllib.parse import urlparse
 
-from assemblyline.common.dict_utils import recursive_update, get_recursive_delta
+import requests
+
+from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.file import make_uri_file
+from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common.iprange import is_ip_reserved
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile, SubmissionProfileParams
-from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
 from assemblyline.odm.messages.submission import SubmissionMessage
-
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, IDENTIFY, SERVICE_LIST
+from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    CLASSIFICATION,
+    FILESTORE,
+    IDENTIFY,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRAFFIC,
+    config,
+)
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -60,7 +69,10 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
     updates.setdefault("services", {})
     updates["services"].setdefault("selected", [])
     updates["services"].setdefault("excluded", [])
-    updates['services']['excluded'] = list(validated_profile.get("services", {}).get("excluded", []))
+
+    # Append the exclusion list set by the profile
+    updates['services']['excluded'] = updates['services']['excluded'] + \
+        list(validated_profile.get("services", {}).get("excluded", []))
 
     if ROLES.submission_customize not in user['roles'] and "administration" not in user['roles']:
         # Check the services parameters
@@ -68,28 +80,35 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
 
             # Check if there are restricted submission parameters
             if param_type == "submission":
-                requested_params = (set(list_of_params) & set(updates.keys())) - set({'services', 'service_spec'})
-                if requested_params:
-                    params = ', '.join(f"\"{p}\"" for p in requested_params)
-                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of {profile.display_name} profile")
+                # Update submission-level parameters with only those that are allowed by the profile
+                updates.update({k: v for k, v in updates.items()
+                                if k not in list_of_params + ['services', 'service_spec']})
 
             # Check if there are restricted service parameters
             else:
                 service_spec = updates.get('service_spec', {}).get(param_type, {})
-                requested_params = set(list_of_params) & set(service_spec)
-                if requested_params:
-                    params = ', '.join(f"\"{p}\"" for p in requested_params)
-                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of \"{param_type}\" service in \"{profile.display_name}\" profile")
+                if not service_spec:
+                    # Ignore if the service spec for a given service doesn't exist
+                    continue
 
+                # Ensure the service parameters are only those that are allowed by the profile
+                updates['service_spec'][param_type] = {k: v for k, v in service_spec.items() if k not in list_of_params}
+
+        selected_svrs = updates['services']['selected']
+        excluded_svrs = updates['services']['excluded']
         for svr in SERVICE_LIST:
-            selected_svrs = updates['services']['selected']
-            excluded_svrs = updates['services']['excluded']
-
             if svr['enabled'] and \
                 (svr['name'] in selected_svrs or svr['category'] in selected_svrs) and \
                 (svr['name'] in excluded_svrs or svr['category'] in excluded_svrs):
 
-                raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
+                # Remove the service/category from the selected list since it's explicitly not allowed by the profile
+                if svr['name'] in selected_svrs:
+                    selected_svrs.remove(svr['name'])
+                if svr['category'] in selected_svrs:
+                    selected_svrs.remove(svr['category'])
+
+        # Update with revised selection list
+        updates['services']['selected'] = selected_svrs
 
     return recursive_update(validated_profile, updates)
 
