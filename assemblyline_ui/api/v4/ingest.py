@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 
+from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from flask import request
 
 from assemblyline.common.classification import InvalidClassification
@@ -16,17 +17,33 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
-    STORAGE, config, FILESTORE, metadata_validator, LOGGER
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    FILESTORE,
+    IDENTIFY,
+    LOGGER,
+    STORAGE,
+    TEMP_SUBMIT_DIR,
+    config,
+    metadata_validator,
+)
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS, URL_GENERATORS, update_submission_parameters
-
-from assemblyline_ui.helper.user import check_async_submission_quota, decrement_submission_ingest_quota, \
-    load_user_settings
-
+from assemblyline_ui.helper.submission import (
+    FETCH_METHODS,
+    URL_GENERATORS,
+    FileTooBigException,
+    fetch_file,
+    refang_url,
+    submission_received,
+    update_submission_parameters,
+)
+from assemblyline_ui.helper.user import (
+    check_async_submission_quota,
+    decrement_submission_ingest_quota,
+    load_user_settings,
+)
 
 SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -164,7 +181,7 @@ def ingest_single_file(**kwargs):
       // OPTIONAL VALUES
       "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
 
-      "submission_profile": "Static Analysis",    # Name of submission profile to use
+      "submission_profile": "static",    # Name of submission profile to use
 
       "metadata": {                         # Submission metadata
         "key": val,                             # Key/Value pair for metadata parameters
@@ -272,7 +289,7 @@ def ingest_single_file(**kwargs):
         if ROLES.submission_customize in user['roles']:
             s_params = ui_to_submission_params(user_settings)
         else:
-            s_params = {}
+            s_params = {"submission_profile": user_settings.get("preferred_submission_profile")}
 
         # Update submission parameters as specified by the user
         try:

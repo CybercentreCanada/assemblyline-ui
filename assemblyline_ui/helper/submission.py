@@ -1,25 +1,34 @@
 import json
-import re
-import requests
 import os
+import re
 import shutil
 import socket
 import tempfile
-
 from typing import List
 from urllib.parse import urlparse
 
-from assemblyline.common.dict_utils import recursive_update, get_recursive_delta
+import requests
+
+from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.file import make_uri_file
+from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common.iprange import is_ip_reserved
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile, SubmissionProfileParams
-from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
 from assemblyline.odm.messages.submission import SubmissionMessage
-
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE, SUBMISSION_PROFILES, IDENTIFY, SERVICE_LIST
+from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    CLASSIFICATION,
+    FILESTORE,
+    IDENTIFY,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRAFFIC,
+    config,
+)
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -60,7 +69,10 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
     updates.setdefault("services", {})
     updates["services"].setdefault("selected", [])
     updates["services"].setdefault("excluded", [])
-    updates['services']['excluded'] = list(validated_profile.get("services", {}).get("excluded", []))
+
+    # Append the exclusion list set by the profile
+    updates['services']['excluded'] = updates['services']['excluded'] + \
+        list(validated_profile.get("services", {}).get("excluded", []))
 
     if ROLES.submission_customize not in user['roles'] and "administration" not in user['roles']:
         # Check the services parameters
