@@ -254,6 +254,11 @@ def start_ui_submission(ui_sid, **kwargs):
 
             # Submit to dispatcher
             try:
+                allow_description_overwrite = False
+                if not ui_params['description']:
+                    allow_description_overwrite = True
+                    ui_params['description'] = f"Inspection of file: {fname}"
+
                 params = ui_to_submission_params(ui_params)
 
                 # Update submission parameters as specified by the user
@@ -261,11 +266,6 @@ def start_ui_submission(ui_sid, **kwargs):
                     params = update_submission_parameters(params, ui_params, user)
                 except Exception as e:
                     return make_api_response({}, str(e), 400)
-
-                allow_description_overwrite = False
-                if not ui_params['description']:
-                    allow_description_overwrite = True
-                    ui_params['description'] = f"Inspection of file: {fname}"
 
                 metadata = params.pop("metadata", {})
 
