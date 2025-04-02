@@ -1,19 +1,19 @@
 import time
 
+from assemblyline_core.dispatching.client import DispatchClient
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from assemblyline.datastore.exceptions import MultiKeyError, SearchException
 from assemblyline.datastore.collection import Index
+from assemblyline.datastore.exceptions import MultiKeyError, SearchException
 from assemblyline.odm.models.user import ROLES
-from assemblyline_core.dispatching.client import DispatchClient
+from assemblyline.remote.datatypes.events import EventSender
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import AI_AGENT, STORAGE, LOGGER, FILESTORE, config, \
-    CLASSIFICATION as Classification, CACHE
+from assemblyline_ui.config import AI_AGENT, CACHE, FILESTORE, LOGGER, STORAGE, config
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
-
 
 SUB_API = 'submission'
 submission_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -26,6 +26,10 @@ HEUR_RANK_MAP = {
     'suspicious': 2,
     'malicious': 3
 }
+
+event_sender = EventSender('delete',
+                           host=config.core.redis.nonpersistent.host,
+                           port=config.core.redis.nonpersistent.port)
 
 
 @submission_api.route("/<sid>/", methods=["DELETE"])
@@ -61,6 +65,7 @@ def delete_submission(sid, **kwargs):
             and (submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']):
         STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
         STORAGE.submission.commit()
+        event_sender.send("submission", sid)
         return make_api_response({"success": True})
     else:
         return make_api_response("", "Your are not allowed to delete this submission.", 403)
