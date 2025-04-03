@@ -253,7 +253,7 @@ def start_ui_submission(ui_sid, **kwargs):
                         return make_api_response({"started": True, "sid": submission['sid']})
 
             allow_description_overwrite = False
-            if not ui_params['description']:
+            if not ui_params.get("description", None):
                 allow_description_overwrite = True
                 ui_params['description'] = f"Inspection of file: {fname}"
 
