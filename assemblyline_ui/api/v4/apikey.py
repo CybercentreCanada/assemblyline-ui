@@ -268,7 +268,8 @@ def add_apikey(  **kwargs):
         "roles": roles,
         "uname": key_uname,
         "key_name":key_name,
-        "expiry_ts": expiry_ts
+        "expiry_ts": expiry_ts,
+
     }
 
 
@@ -290,7 +291,8 @@ def add_apikey(  **kwargs):
                                 "roles": roles,
                                 "uname": key_uname,
                                 "key_name":key_name,
-                                "expiry_ts": expiry_ts
+                                "expiry_ts": expiry_ts,
+                                "id": new_key_id
                               })
 
 
