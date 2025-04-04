@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
+from assemblyline.odm.models.user import ROLES, TYPES
 from assemblyline_ui.config import config, get_token_store
-from assemblyline.odm.models.user import TYPES, ROLES
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
@@ -32,12 +32,9 @@ def get_types(data: dict) -> list:
 
 
 def get_roles(data: dict) -> list:
+    # Return the intersection of the user's roles and the roles defined in the system
     user_roles = get_attribute(data, config.auth.saml.attributes.roles_attribute, False) or []
-    return [
-        ROLES.lookup(user_role)
-        for user_role in user_roles
-        if ROLES.lookup(user_role) is not None
-    ]
+    return list(set(ROLES.keys()).intersection(user_roles))
 
 
 def get_attribute(data: dict, key: str, normalize: bool = True) -> Any:
