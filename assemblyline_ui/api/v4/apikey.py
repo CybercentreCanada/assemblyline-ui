@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+from datetime import datetime
 from io import BytesIO
 from typing import Any, Dict
 from urllib.parse import urlparse
@@ -156,7 +157,7 @@ def check_apikey_exists(key_id, **kwargs):
 
 
 
-@apikey_api.route("add/", methods=["PUT"])
+@apikey_api.route("/add/", methods=["PUT"])
 @api_login(require_role=[ROLES.apikey_access], count_toward_quota=False)
 def add_apikey(  **kwargs):
     """
@@ -287,12 +288,14 @@ def add_apikey(  **kwargs):
 
 
     return make_api_response({  "acl": priv,
+                                "creation_date": new_apikey.get('creation_date', datetime.now().isoformat()),
+                                "expiry_ts": expiry_ts,
+                                "id": new_key_id,
+                                "key_name":key_name,
                                 "keypassword":  f"{key_name}:{random_pass}" if create_key else None,
+                                "last_used": new_apikey.get('last_used', None),
                                 "roles": roles,
                                 "uname": key_uname,
-                                "key_name":key_name,
-                                "expiry_ts": expiry_ts,
-                                "id": new_key_id
                               })
 
 
