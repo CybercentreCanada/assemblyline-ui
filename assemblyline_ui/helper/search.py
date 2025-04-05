@@ -16,6 +16,7 @@ def has_access_control(index):
 
 
 ADMIN_INDEX_MAP = {
+    "apikey": STORAGE.apikey,
     'emptyresult': STORAGE.emptyresult,
     'error': STORAGE.error,
     'user': STORAGE.user
