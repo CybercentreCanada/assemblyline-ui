@@ -155,6 +155,43 @@ def check_apikey_exists(key_id, **kwargs):
     return make_api_response(None, "Cannot find APIKey with the given ID.", 404)
 
 
+@apikey_api.route("/username/<uname>/", methods=["GET"])
+@api_login(require_role=[ROLES.apikey_access], count_toward_quota=False)
+def get_user_apikey(uname, **kwargs):
+    """
+    Get a list of Apikeys of a user
+
+    Variables:
+    uname       =>  User Id
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    API call example:
+    GET /api/v1/username/admin/
+
+    Result example:
+        [{
+        "acl": ["R"],
+        "roles": ['submission_view', ...],
+        "creation_date" : "2025-03-24T17:52:57.132282Z",
+        'expiry_ts': '2025-03-29T17:52:57.132013Z',
+        'last_used': '2025-03-25T17:52:57.132013Z',
+        'id': 'devkey+admin',
+        'uname': 'admin',
+        'key_name': 'devkey'
+       }, ...
+       ]
+    """
+    if kwargs['user']['uname'] != uname and ROLES.administration not in kwargs['user']['roles']:
+        make_api_response("", err=f"You do not have the permission to fetch API Keys for user {uname}", status_code=400)
+    else:
+        apikeys = STORAGE.apikey.stream_search(f"uname:{uname}", as_obj=False)
+        return make_api_response([key for key in apikeys])
+
 
 
 @apikey_api.route("/add/", methods=["PUT"])

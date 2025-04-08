@@ -426,18 +426,6 @@ def get_user_account(username, **kwargs):
     if ROLES.administration not in kwargs['user']['roles']:
         user.pop('identity_id', None)
 
-    apikeys = get_user_api_keys(user['uname'])
-
-    user['apikeys'] = {apikey_detail['key_name']: {
-        'acl': apikey_detail['acl'],
-        'roles': [r for r in load_roles_form_acls(apikey_detail['acl'], apikey_detail.get('roles', None)) if r in user_roles],
-        'uname': apikey_detail['uname'],
-        'key_name': apikey_detail['key_name'],
-        'creation_date': apikey_detail['creation_date'],
-        'expiry_ts': apikey_detail['expiry_ts'],
-        'last_used': apikey_detail['last_used'],
-        'id': apikey_detail['id']
-        } for apikey_detail in apikeys}
 
     return make_api_response(user)
 
@@ -540,6 +528,9 @@ def set_user_account(username, **kwargs):
         # Check identity_id value
         if not data.get('identity_id'):
             data.pop('identity_id', None)
+
+        # Reomove for Assemblyline v4.6 Adding API key should go through apikey endpoint
+        data.pop("apikeys", None)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
