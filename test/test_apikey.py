@@ -107,6 +107,25 @@ def test_get_apikey(datastore, login_user_session):
     assert resp["key_name"] == DEV_APIKEY_NAME
     assert resp["id"] == user_apikey_id
 
+
+# noinspection PyUnusedLocal
+def test_list_user_apikey(datastore, login_user_session):
+    user_info, session, host = login_user_session
+    username = "user"
+    assert user_info['username'] == username
+
+    # user cannot get list of apikeys of another user
+    with pytest.raises(APIError):
+        resp = get_api_data(session, f"{host}/api/v4/apikey/username/admin/")
+
+    resp = get_api_data(session, f"{host}/api/v4/apikey/username/{username}/")
+
+    assert len(resp) == NUM_KEYS+1
+    for key in resp:
+        assert key["uname"] == username
+
+
+
 # noinspection PyUnusedLocal
 def test_add_apikey(datastore, login_user_session):
     user_info, session, host = login_user_session

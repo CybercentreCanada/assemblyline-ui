@@ -1,4 +1,4 @@
-from assemblyline.common.isotime import format_time, now_as_utc_datetime, trunc_day
+from assemblyline.common.isotime import format_time, now_as_iso, now_as_utc_datetime, trunc_day
 import elasticapm
 
 from assemblyline.odm.models.user import load_roles_form_acls, ROLES, load_roles
@@ -32,12 +32,15 @@ def validate_apikey(username, apikey, storage):
                     if verify_password(apikey_password, key.password):
                         # Load user and API key roles
                         apikey_roles_limit = load_roles_form_acls(key.acl, key.roles)
-                        old_last_used = key.last_used
-                        current_date = format_time(trunc_day(now_as_utc_datetime()))
 
-                        if old_last_used != current_date:
-                            key.last_used = current_date
+                        old_last_used = format_time(trunc_day(key.last_used)) if key.last_used else None
+                        current_date = now_as_utc_datetime()
+
+                        if old_last_used != format_time(trunc_day(current_date)):
+                            key.last_used = now_as_iso()
                             storage.apikey.save(key_id, key)
+
+
                         return username, apikey_roles_limit
 
             except ValueError:
