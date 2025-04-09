@@ -1,10 +1,17 @@
 import json
+
 import pytest
+from conftest import get_api_data
 
 from assemblyline.odm.models.alert import Alert
+from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
+from assemblyline.odm.random_data import (
+    create_submission,
+    create_users,
+    wipe_submissions,
+    wipe_users,
+)
 from assemblyline.odm.randomizer import random_model_obj
-from assemblyline.odm.random_data import create_users, wipe_users, wipe_submissions, create_submission
-from conftest import get_api_data
 
 NUM_ALERTS = 10
 test_alert = None
@@ -50,7 +57,7 @@ def test_get_priorities(datastore, login_session):
     _, session, host = login_session
 
     resp = get_api_data(session, f"{host}/api/v4/alert/priorities/")
-    assert "CRITICAL" in resp or "HIGH" in resp or "LOW" in resp or "MEDIUM" in resp
+    assert set(resp.keys()).intersection(PRIORITIES)
 
 
 # noinspection PyUnusedLocal
@@ -66,7 +73,7 @@ def test_get_statuses(datastore, login_session):
     _, session, host = login_session
 
     resp = get_api_data(session, f"{host}/api/v4/alert/statuses/")
-    assert "ASSESS" in resp or "MALICIOUS" in resp or "NON_MALICIOUS" in resp or "TRIAGE" in resp
+    assert set(resp.keys()).intersection(STATUSES)
 
 
 # noinspection PyUnusedLocal
@@ -123,12 +130,19 @@ def test_labeling(datastore, login_session):
                         data=json.dumps(['TEST1', 'TEST2']), method='POST')
     assert resp.get('success', False)
 
+    # Check that the labels was set and audited
     datastore.alert.commit()
+    assert datastore.alert.search("events.labels:TEST1 AND events.labels:TEST2 AND events.entity_id:admin",
+                                  key_space=[test_alert.alert_id], track_total_hits=True)['total']
 
     resp = get_api_data(session, f"{host}/api/v4/alert/label/batch/", data=json.dumps(['BATCH1', 'BATCH2']),
                         params={'q': "id:*"}, method='POST')
-    assert resp.get('success', 0) > 0
 
+    assert resp.get('success', 0)
+
+    # Check that the labels of all the alerts were set and audited
+    datastore.alert.commit()
+    assert datastore.alert.search("events.labels:BATCH1 AND events.labels:BATCH2 AND events.entity_id:admin", track_total_hits=True)['total']
 
 # noinspection PyUnusedLocal
 def test_priorities(datastore, login_session):
@@ -138,11 +152,18 @@ def test_priorities(datastore, login_session):
                         data=json.dumps("HIGH"), method='POST')
     assert resp.get('success', False)
 
+    # Check that the labels was set and audited
     datastore.alert.commit()
+    assert datastore.alert.search("events.priority:HIGH AND events.entity_id:admin",
+                                  key_space=[test_alert.alert_id], track_total_hits=True)['total']
 
     resp = get_api_data(session, f"{host}/api/v4/alert/priority/batch/", data=json.dumps("LOW"),
                         params={'q': "id:*"}, method='POST')
     assert resp.get('success', 0) > 0
+
+    # Check that the statuses of all the alerts were set and audited
+    datastore.alert.commit()
+    assert datastore.alert.search("events.priority:LOW AND events.entity_id:admin", track_total_hits=True)['total']
 
 
 # noinspection PyUnusedLocal
@@ -153,11 +174,18 @@ def test_statuses(datastore, login_session):
                         data=json.dumps("ASSESS"), method='POST')
     assert resp.get('success', False)
 
+    # Check that the status was set and audited
     datastore.alert.commit()
+    assert datastore.alert.search("events.status:ASSESS AND events.entity_id:admin",
+                                  key_space=[test_alert.alert_id], track_total_hits=True)['total']
 
     resp = get_api_data(session, f"{host}/api/v4/alert/status/batch/", data=json.dumps("MALICIOUS"),
                         params={'q': "id:*"}, method='POST')
     assert resp.get('success', 0) > 0
+
+    # Check that the statuses of all the alerts were set and audited
+    datastore.alert.commit()
+    assert datastore.alert.search("events.status:MALICIOUS AND events.entity_id:admin", track_total_hits=True)['total']
 
 
 # noinspection PyUnusedLocal
