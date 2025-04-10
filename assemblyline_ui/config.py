@@ -40,6 +40,7 @@ SECRET_KEY = config.ui.secret_key
 DEBUG = config.ui.debug
 DOWNLOAD_ENCODING = config.ui.download_encoding
 DEFAULT_ZIP_PASSWORD = config.ui.default_zip_password
+APIKEY_MAX_DTL = config.auth.apikey_max_dtl
 MAX_CLASSIFICATION = CLASSIFICATION.UNRESTRICTED
 ORGANISATION = config.system.organisation
 SYSTEM_TYPE = config.system.type

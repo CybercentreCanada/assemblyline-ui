@@ -1,10 +1,11 @@
+from assemblyline.common.isotime import format_time, now_as_iso, now_as_utc_datetime, trunc_day
 import elasticapm
 
 from assemblyline.odm.models.user import load_roles_form_acls, ROLES, load_roles
 from assemblyline_ui.config import config
 from assemblyline.common.security import verify_password
 from assemblyline_ui.http_exceptions import AuthenticationException
-
+from assemblyline.odm.models.apikey import get_apikey_id
 
 @elasticapm.capture_span(span_type='authentication')
 def validate_apikey(username, apikey, storage):
@@ -15,20 +16,33 @@ def validate_apikey(username, apikey, storage):
 
     if config.auth.allow_apikeys and apikey:
         user_data = storage.user.get(username)
+
         if user_data:
             if ROLES.apikey_access not in load_roles(user_data.type, user_data.roles):
-                raise AuthenticationException("This user is not allow to user API Keys")
+                raise AuthenticationException("This user is not allow to use API Keys")
+            if not user_data.is_active:
+                raise AuthenticationException("This owner of this API Key is not active.")
 
             try:
                 name, apikey_password = apikey.split(":", 1)
-                key = user_data.apikeys.get(name, None)
+                key_id = get_apikey_id(name, username)
+                key = storage.apikey.get(key_id)
 
-                if key is not None:
+                if key:
                     if verify_password(apikey_password, key.password):
                         # Load user and API key roles
                         apikey_roles_limit = load_roles_form_acls(key.acl, key.roles)
 
+                        old_last_used = format_time(trunc_day(key.last_used)) if key.last_used else None
+                        current_date = now_as_utc_datetime()
+
+                        if old_last_used != format_time(trunc_day(current_date)):
+                            key.last_used = now_as_iso()
+                            storage.apikey.save(key_id, key)
+
+
                         return username, apikey_roles_limit
+
             except ValueError:
                 pass
 

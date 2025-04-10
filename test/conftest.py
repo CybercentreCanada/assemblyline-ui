@@ -139,6 +139,15 @@ def login_session(host):
         pytest.skip(str(err))
 
 
+@pytest.fixture(scope='function')
+def login_user_session(host):
+    try:
+        session = requests.Session()
+        data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'user', 'password': 'user'})
+        return data, session, host
+    except requests.ConnectionError as err:
+        pytest.skip(str(err))
+
 def get_api_data(session, url, params=None, data=None, method="GET", raw=False, headers=None, files=None):
 
     if headers is None:
