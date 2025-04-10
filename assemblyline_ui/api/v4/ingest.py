@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 
+from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from flask import request
 
 from assemblyline.common.classification import InvalidClassification
@@ -16,16 +17,33 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVESTORE, CLASSIFICATION as Classification, IDENTIFY, TEMP_SUBMIT_DIR, \
-    STORAGE, config, FILESTORE, metadata_validator, LOGGER
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    FILESTORE,
+    IDENTIFY,
+    LOGGER,
+    STORAGE,
+    TEMP_SUBMIT_DIR,
+    config,
+    metadata_validator,
+)
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import FileTooBigException, submission_received, refang_url, fetch_file, \
-    FETCH_METHODS, URL_GENERATORS
-from assemblyline_ui.helper.user import check_async_submission_quota, decrement_submission_ingest_quota, \
-    load_user_settings
-
+from assemblyline_ui.helper.submission import (
+    FETCH_METHODS,
+    URL_GENERATORS,
+    FileTooBigException,
+    fetch_file,
+    refang_url,
+    submission_received,
+    update_submission_parameters,
+)
+from assemblyline_ui.helper.user import (
+    check_async_submission_quota,
+    decrement_submission_ingest_quota,
+    load_user_settings,
+)
 
 SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -37,6 +55,16 @@ ingest = NamedQueue(
     port=config.core.redis.persistent.port)
 MAX_SIZE = config.submission.max_file_size
 
+DEFAULT_INGEST_PARAMS = {
+    'deep_scan': False,
+    "priority": 150,
+    "ignore_cache": False,
+    # the following one line can be removed after assemblyline 4.6+
+    "ignore_dynamic_recursion_prevention": False,
+    "ignore_recursion_prevention": False,
+    "ignore_filtering": False,
+    "type": "INGEST"
+}
 
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
@@ -151,15 +179,17 @@ def ingest_single_file(**kwargs):
       "base64": "<BINARY DATA OF THE FILE TO SCAN... ENCODED AS BASE64 STRING>",
 
       // OPTIONAL VALUES
-      "name": "file.exe",         # Name of the file to scan otherwise the sha256 or base file of the url
+      "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
 
-      "metadata": {               # Submission metadata
-        "key": val,                 # Key/Value pair for metadata parameters
+      "submission_profile": "static",    # Name of submission profile to use
+
+      "metadata": {                         # Submission metadata
+        "key": val,                             # Key/Value pair for metadata parameters
       },
 
-      "params": {                 # Submission parameters
-        "key": val,                 # Key/Value pair for params that differ from the user's defaults
-      },                            # Default params can be fetch at /api/v3/user/submission_params/<user>/
+      "params": {                           # Submission parameters
+        "key": val,                             # Key/Value pair for params that differ from the user's defaults
+      },                                        # Default params can be fetch at /api/v3/user/submission_params/<user>/
 
       "generate_alert": False,        # Generate an alert in our alerting system or not
       "notification_queue": None,     # Name of the notification queue
@@ -256,22 +286,21 @@ def ingest_single_file(**kwargs):
         default_external_sources = user_settings.pop('default_external_sources', [])
 
         # Load default user params from user settings
-        s_params = ui_to_submission_params(user_settings)
+        if ROLES.submission_customize in user['roles']:
+            s_params = ui_to_submission_params(user_settings)
+        else:
+            s_params = {"submission_profile": user_settings.get("preferred_submission_profile")}
 
-        # Reset dangerous user settings to safe values
-        s_params.update({
-            'deep_scan': False,
-            "priority": 150,
-            "ignore_cache": False,
-            # the following one line can be removed after assemblyline 4.6+
-            "ignore_dynamic_recursion_prevention": False,
-            "ignore_recursion_prevention": False,
-            "ignore_filtering": False,
-            "type": "INGEST"
-        })
+        # Update submission parameters as specified by the user
+        try:
+            s_params = update_submission_parameters(s_params, data, user)
+        except Exception as e:
+            return make_api_response({}, str(e), 400)
 
-        # Apply provided params
-        s_params.update(data.get("params", {}))
+        # Set any dangerous user settings to safe values (if wasn't set in request)
+        for k, v in DEFAULT_INGEST_PARAMS.items():
+            if k not in s_params:
+                s_params[k] = v
 
         # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
         default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
@@ -283,8 +312,8 @@ def ingest_single_file(**kwargs):
         if not binary:
             if string_type:
                 try:
-                    found, fileinfo = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
-                                                 default_external_sources)
+                    found, fileinfo, name = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                                       default_external_sources, name)
                     if not found:
                         raise FileNotFoundError(
                             f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")

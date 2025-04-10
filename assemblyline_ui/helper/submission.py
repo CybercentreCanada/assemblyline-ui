@@ -1,22 +1,34 @@
 import json
-import re
-import requests
 import os
+import re
 import shutil
 import socket
 import tempfile
-
 from typing import List
 from urllib.parse import urlparse
 
+import requests
+
+from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.file import make_uri_file
+from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common.iprange import is_ip_reserved
-from assemblyline.odm.models.config import HASH_PATTERN_MAP
 from assemblyline.odm.messages.submission import SubmissionMessage
+from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, SUBMISSION_TRAFFIC, config, FILESTORE, ARCHIVESTORE
+from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    CLASSIFICATION,
+    FILESTORE,
+    IDENTIFY,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRAFFIC,
+    config,
+)
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -37,6 +49,7 @@ except socket.gaierror:
     MYIP = '127.0.0.1'
 
 
+
 #############################
 # download functions
 class FileTooBigException(Exception):
@@ -50,9 +63,50 @@ class InvalidUrlException(Exception):
 class ForbiddenLocation(Exception):
     pass
 
+def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: dict) -> dict:
+    validated_profile = profile.params.as_primitives(strip_null=True)
+
+    updates.setdefault("services", {})
+    updates["services"].setdefault("selected", [])
+    updates["services"].setdefault("excluded", [])
+
+    # Append the exclusion list set by the profile
+    updates['services']['excluded'] = updates['services']['excluded'] + \
+        list(validated_profile.get("services", {}).get("excluded", []))
+
+    if ROLES.submission_customize not in user['roles'] and "administration" not in user['roles']:
+        # Check the services parameters
+        for param_type, list_of_params in profile.restricted_params.items():
+
+            # Check if there are restricted submission parameters
+            if param_type == "submission":
+                requested_params = (set(list_of_params) & set(updates.keys())) - set({'services', 'service_spec'})
+                if requested_params:
+                    params = ', '.join(f"\"{p}\"" for p in requested_params)
+                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of {profile.display_name} profile")
+
+            # Check if there are restricted service parameters
+            else:
+                service_spec = updates.get('service_spec', {}).get(param_type, {})
+                requested_params = set(list_of_params) & set(service_spec)
+                if requested_params:
+                    params = ', '.join(f"\"{p}\"" for p in requested_params)
+                    raise PermissionError(f"User isn't allowed to modify the {params} parameters of \"{param_type}\" service in \"{profile.display_name}\" profile")
+
+        for svr in SERVICE_LIST:
+            selected_svrs = updates['services']['selected']
+            excluded_svrs = updates['services']['excluded']
+
+            if svr['enabled'] and \
+                (svr['name'] in selected_svrs or svr['category'] in selected_svrs) and \
+                (svr['name'] in excluded_svrs or svr['category'] in excluded_svrs):
+
+                raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
+
+    return recursive_update(validated_profile, updates)
 
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
-               default_external_sources: List[str]):
+               default_external_sources: List[str], name: str):
     sha256 = None
     fileinfo = None
     # If the method is by SHA256 hash, check to see if we already have that file
@@ -175,15 +229,47 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                         if service not in s_params['services']['selected']:
                             s_params['services']['selected'].append(service)
 
+                    # Check if the downloaded content has the same hash as the fetch method
+                    if method in HASH_PATTERN_MAP and name == input:
+                        hash = IDENTIFY.fileinfo(out_file)[method]
+                        if hash != input:
+                            # Rename the file to the hash of the downloaded content to avoid confusion
+                            name = hash
+
                     # A source suited for the task was found, skip the rest
                     break
 
 
-    return found, fileinfo
+    return found, fileinfo, name
 
+def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict:
+    s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
+    submission_customize = ROLES.submission_customize in user['roles']
 
+    # Ensure classification is set based on the user before applying updates
+    classification = s_params.get("classification", user['classification'])
 
+    # Apply provided params (if the user is allowed to)
+    if submission_customize:
+        s_params.update(data.get("params", {}))
+    elif not s_profile:
+        # No profile specified, raise an exception back to the user
+        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
 
+    if s_profile:
+        if not CLASSIFICATION.is_accessible(user['classification'], s_profile.classification):
+            # User isn't allowed to use the submission profile specified
+            raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
+        # Apply the profile (but allow the user to change some properties)
+        s_params = recursive_update(s_params, data.get("params", {}))
+        s_params = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, s_params)
+        s_params = apply_changes_to_profile(s_profile, s_params, user)
+        s_params = recursive_update(DEFAULT_USER_PROFILE_SETTINGS, s_params)
+
+    # Ensure the description key exists in the resulting submission params
+    s_params.setdefault("description", "")
+    s_params.setdefault("classification", classification)
+    return s_params
 
 
 def refang_url(url):

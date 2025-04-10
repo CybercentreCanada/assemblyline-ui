@@ -720,7 +720,7 @@ def remove_attribution(qhash, attrib_type, value, **_):
     while True:
         current_badlist, version = STORAGE.badlist.get_if_exists(qhash, as_obj=False, version=True)
         if not current_badlist:
-            return make_api_response({}, "The badlist ietm your are trying to modify does not exists", 404)
+            return make_api_response({}, "The badlist item you are trying to modify does not exists", 404)
 
         if 'attribution' not in current_badlist:
             return make_api_response({'success': False})
