@@ -17,7 +17,7 @@ from assemblyline_ui.config import APPS_LIST, CLASSIFICATION, CLASSIFICATION_ALI
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
-    get_default_user_quotas, get_dynamic_classification, load_user_settings, save_user_account, save_user_settings,
+    get_default_user_quotas, get_dynamic_classification, get_user_api_keys, get_user_api_keys_dict, load_user_settings, save_user_account, save_user_settings,
     API_PRIV_MAP)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 
@@ -195,6 +195,7 @@ def who_am_i(**kwargs):
 
     user_data['configuration'] = {
         "auth": {
+            "apikey_max_dtl": config.auth.apikey_max_dtl,
             "allow_2fa": config.auth.allow_2fa,
             "allow_apikeys": config.auth.allow_apikeys,
             "allow_extended_apikeys": config.auth.allow_extended_apikeys,
@@ -331,6 +332,10 @@ def add_user_account(username, **_):
     if "{" in username or "}" in username:
         return make_api_response({"success": False}, "You can't use '{}' in the username", 412)
 
+
+    if len(data.get("apikey", {})) != 0:
+        return make_api_response({"success": False}, "You cannot create apikeys with this endpoint.", 412)
+
     if not STORAGE.user.exists(username):
         new_pass = data.pop('new_pass', None)
         if new_pass:
@@ -408,13 +413,6 @@ def get_user_account(username, **kwargs):
     user_roles = load_roles(user['type'], user.get('roles', None))
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['apikeys'] = {
-        name: {
-            'acl': detail['acl'],
-            'roles': [r for r in load_roles_form_acls(detail['acl'], detail.get('roles', None)) if r in user_roles]
-        }
-        for name, detail in user.get('apikeys', {}).items()
-    }
     user['has_password'] = user.pop('password', "") != ""
     security_tokens = user.get('security_tokens', {}) or {}
     user['security_tokens'] = list(security_tokens.keys())
@@ -424,8 +422,10 @@ def get_user_account(username, **kwargs):
         user['avatar'] = STORAGE.user_avatar.get(username)
 
     user['roles'] = load_roles(user['type'], user.get('roles', None))
+
     if ROLES.administration not in kwargs['user']['roles']:
         user.pop('identity_id', None)
+
 
     return make_api_response(user)
 
@@ -457,7 +457,9 @@ def remove_user_account(username, **_):
         favorites_deleted = STORAGE.user_favorites.delete(username)
         settings_deleted = STORAGE.user_settings.delete(username)
 
-        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted:
+        apikey_deleted = STORAGE.apikey.delete_by_query(f"uname: {username}")
+
+        if not user_deleted or not avatar_deleted or not favorites_deleted or not settings_deleted or not (apikey_deleted or apikey_deleted == 0):
             return make_api_response({"success": False})
 
         return make_api_response({"success": True})
@@ -500,13 +502,13 @@ def set_user_account(username, **kwargs):
         new_pass = data.pop('new_pass', None)
 
         old_user = STORAGE.user.get(username, as_obj=False)
+
         if not old_user:
             return make_api_response({"success": False}, "User %s does not exists" % username, 404)
 
         if not data['name']:
             return make_api_response({"success": False}, "Full name of the user cannot be empty", 400)
 
-        data['apikeys'] = old_user.get('apikeys', [])
         data['otp_sk'] = old_user.get('otp_sk', None)
         data['security_tokens'] = old_user.get('security_tokens', {}) or {}
 
@@ -526,6 +528,9 @@ def set_user_account(username, **kwargs):
         # Check identity_id value
         if not data.get('identity_id'):
             data.pop('identity_id', None)
+
+        # Reomove for Assemblyline v4.6 Adding API key should go through apikey endpoint
+        data.pop("apikeys", None)
 
         ret_val = save_user_account(username, data, kwargs['user'])
 
@@ -913,6 +918,7 @@ def get_user_settings(username, **kwargs):
         if ROLES.administration not in user['roles']:
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
         user = STORAGE.user.get(username, as_obj=False)
+
 
     return make_api_response(load_user_settings(user))
 

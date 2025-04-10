@@ -6,11 +6,13 @@ import re
 from io import BytesIO
 from typing import Any, Dict
 from urllib.parse import urlparse
+import re
 
+from assemblyline.odm.models.apikey import FORBIDDEN_APIKEY_CHARACTERS, get_apikey_id
 import jwt
 import pyqrcode
 from assemblyline.common.comms import send_reset_email, send_signup_email
-from assemblyline.common.isotime import now
+from assemblyline.common.isotime import DAY_IN_SECONDS, iso_to_epoch, now
 from assemblyline.common.security import (
     check_password_requirements,
     generate_random_secret,
@@ -22,7 +24,7 @@ from assemblyline.common.security import (
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import ROLES, User, load_roles, load_roles_form_acls
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import APIKEY_MAX_DTL, CLASSIFICATION as Classification
 from assemblyline_ui.config import (
     KV_SESSION,
     LOGGER,
@@ -55,11 +57,15 @@ SCOPES = {
     'c': ["C"]
 }
 
+
+
 SUB_API = 'auth'
 auth_api = make_subapi_blueprint(SUB_API, api_version=4)
 auth_api._doc = "Allow user to authenticate to the web server"
 
 
+
+# this function should be removed for assemblyline v4.6
 @auth_api.route("/apikey/<name>/<priv>/", methods=["PUT"])
 @api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
 def add_apikey(name, priv, **kwargs):
@@ -82,7 +88,17 @@ def add_apikey(name, priv, **kwargs):
     user = kwargs['user']
     user_data = STORAGE.user.get(user['uname'], as_obj=False)
 
+    new_key_name = get_apikey_id(name, user['uname'])
+
+    # check for forbidden characters for apikey
+    regex = re.compile(FORBIDDEN_APIKEY_CHARACTERS)
+    if (regex.search(name) != None):
+        return make_api_response("", err=f"APIKey '{name}' contains forbidden characters.", status_code=400)
+
     if name in user_data['apikeys']:
+        return make_api_response("", err=f"APIKey '{name}' already exist", status_code=400)
+
+    if STORAGE.apikey.get_if_exists(new_key_name):
         return make_api_response("", err=f"APIKey '{name}' already exist", status_code=400)
 
     if priv not in API_PRIV_MAP:
@@ -91,7 +107,7 @@ def add_apikey(name, priv, **kwargs):
 
     if priv == "CUSTOM":
         try:
-            roles = request.json
+            roles = request.json['roles']
         except BadRequest:
             return make_api_response("", err="Invalid data block provided. Provide a list of roles as JSON.",
                                      status_code=400)
@@ -103,20 +119,41 @@ def add_apikey(name, priv, **kwargs):
     roles = [r for r in load_roles_form_acls(priv_map, roles)
              if r in load_roles(user_data['type'], user_data.get('roles', None))]
 
+
     if not roles:
         return make_api_response(
             "", err="None of the roles you've requested for this key are allowed for this user.", status_code=400)
 
-    user_data['apikeys'][name] = {
+    try:
+        expiry_ts = request.json.get("expiry_ts", None)
+    except Exception:
+        expiry_ts = None
+
+    if (APIKEY_MAX_DTL and  expiry_ts is None) or (APIKEY_MAX_DTL and (iso_to_epoch(expiry_ts) >= now(APIKEY_MAX_DTL*DAY_IN_SECONDS))):
+
+        return make_api_response(
+            "", err=f"The expiry_ts is more than the max apikey dtl of {APIKEY_MAX_DTL} days.", status_code=400)
+
+
+    new_apikey = {
         "password": get_password_hash(random_pass),
         "acl": priv_map,
-        "roles": roles
+        "roles": roles,
+        "uname": user['uname'],
+        "key_name":name,
+        "expiry_ts":expiry_ts
     }
-    STORAGE.user.save(user['uname'], user_data)
-
-    return make_api_response({"acl": priv_map, "apikey": f"{name}:{random_pass}", "name": name,  "roles": roles})
 
 
+
+    STORAGE.apikey.save(new_key_name, new_apikey)
+
+
+
+    return make_api_response({"acl": priv_map, "apikey": f"{name}:{random_pass}", "name": name,  "roles": roles, "expiry_ts": expiry_ts})
+
+
+# this function should be removed for assemblyline v4.6
 @auth_api.route("/apikey/<name>/", methods=["DELETE"])
 @api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
 def delete_apikey(name, **kwargs):
@@ -138,10 +175,8 @@ def delete_apikey(name, **kwargs):
     }
     """
     user = kwargs['user']
-    user_data = STORAGE.user.get(user['uname'], as_obj=False)
-    user_data['apikeys'].pop(name)
-    STORAGE.user.save(user['uname'], user_data)
 
+    STORAGE.apikey.delete(get_apikey_id(name, user['uname']))
     return make_api_response({"success": True})
 
 
