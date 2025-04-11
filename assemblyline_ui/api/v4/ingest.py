@@ -59,8 +59,6 @@ DEFAULT_INGEST_PARAMS = {
     'deep_scan': False,
     "priority": 150,
     "ignore_cache": False,
-    # the following one line can be removed after assemblyline 4.6+
-    "ignore_dynamic_recursion_prevention": False,
     "ignore_recursion_prevention": False,
     "ignore_filtering": False,
     "type": "INGEST"
