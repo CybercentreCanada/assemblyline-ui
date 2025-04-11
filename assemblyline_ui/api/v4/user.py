@@ -49,7 +49,6 @@ from assemblyline_ui.helper.user import (
     save_user_account,
     save_user_settings,
 )
-
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 from flask import request
 from flask import session as flsk_session
