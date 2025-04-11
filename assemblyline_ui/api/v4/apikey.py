@@ -1,44 +1,23 @@
-import base64
-import hashlib
-import json
-import os
 import re
 from datetime import datetime
-from io import BytesIO
-from typing import Any, Dict
-from urllib.parse import urlparse
 
-from assemblyline.odm.models.apikey import APIKEY_ID_DELIMETER, FORBIDDEN_APIKEY_CHARACTERS, get_apikey_id, split_apikey_id
-from assemblyline_ui.api.base import make_subapi_blueprint
-from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
-                                          load_roles_form_acls)
-
-from assemblyline_ui.helper.user import API_PRIV_MAP, PRIV_API_MAP
-from flask import current_app, redirect, request
-from typing import List
-from assemblyline.odm.models.config import ExternalLinks
-from flask import request, session as flsk_session
-
-from assemblyline.common.comms import send_activated_email, send_authorize_email
-from assemblyline.common.isotime import DAY_IN_SECONDS, iso_to_epoch, now, now_as_iso
-from assemblyline.common.security import (check_password_requirements, get_password_hash,
-                                          get_password_requirement_message)
-from assemblyline.datastore.exceptions import SearchException
-from assemblyline.odm.models.config import HASH_PATTERN_MAP
-from assemblyline.odm.models.user import (ACL_MAP, ROLES, USER_ROLES, USER_TYPE_DEP, USER_TYPES, User, load_roles,
-                                          load_roles_form_acls)
-from assemblyline.odm.models.user_favorites import Favorite
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APIKEY_MAX_DTL, APPS_LIST, CLASSIFICATION, CLASSIFICATION_ALIASES, DAILY_QUOTA_TRACKER, LOGGER, \
-    STORAGE, UI_MESSAGING, VERSION, config, AI_AGENT, UI_METADATA_VALIDATION
-
-from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
-
-from assemblyline.common.security import (
-    get_password_hash,
-    get_random_password,
-)
+from flask import request
 from werkzeug.exceptions import BadRequest
+
+from assemblyline.common.isotime import DAY_IN_SECONDS, iso_to_epoch, now
+from assemblyline.common.security import get_password_hash, get_random_password
+from assemblyline.datastore.exceptions import SearchException
+from assemblyline.odm.models.apikey import (
+    APIKEY_ID_DELIMETER,
+    FORBIDDEN_APIKEY_CHARACTERS,
+    get_apikey_id,
+    split_apikey_id,
+)
+from assemblyline.odm.models.user import ROLES, load_roles, load_roles_form_acls
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.config import APIKEY_MAX_DTL, LOGGER, STORAGE
+from assemblyline_ui.helper.user import API_PRIV_MAP, PRIV_API_MAP
+from assemblyline_ui.http_exceptions import AccessDeniedException
 
 SCOPES = {
     'r': ["R"],

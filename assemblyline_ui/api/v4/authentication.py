@@ -6,13 +6,19 @@ import re
 from io import BytesIO
 from typing import Any, Dict
 from urllib.parse import urlparse
-import re
 
-from assemblyline.odm.models.apikey import FORBIDDEN_APIKEY_CHARACTERS, get_apikey_id
 import jwt
 import pyqrcode
+from authlib.integrations.base_client import OAuthError
+from authlib.integrations.flask_client import FlaskOAuth2App, OAuth
+from authlib.integrations.requests_client import OAuth2Session
+from flask import current_app, redirect, request
+from flask import session as flsk_session
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
+
 from assemblyline.common.comms import send_reset_email, send_signup_email
-from assemblyline.common.isotime import DAY_IN_SECONDS, iso_to_epoch, now
+from assemblyline.common.isotime import now
 from assemblyline.common.security import (
     check_password_requirements,
     generate_random_secret,
@@ -24,8 +30,9 @@ from assemblyline.common.security import (
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import ROLES, User, load_roles, load_roles_form_acls
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import APIKEY_MAX_DTL, CLASSIFICATION as Classification
 from assemblyline_ui.config import (
+    AUDIT_LOG,
+    AUDIT_LOGIN,
     KV_SESSION,
     LOGGER,
     SECRET_KEY,
@@ -34,21 +41,16 @@ from assemblyline_ui.config import (
     get_reset_queue,
     get_signup_queue,
     get_token_store,
-    AUDIT_LOG,
-    AUDIT_LOGIN
 )
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
-from assemblyline_ui.helper.user import API_PRIV_MAP, get_default_user_quotas, get_dynamic_classification
+from assemblyline_ui.helper.user import (
+    get_default_user_quotas,
+    get_dynamic_classification,
+)
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
-from authlib.integrations.base_client import OAuthError
-from authlib.integrations.requests_client import OAuth2Session
-from authlib.integrations.flask_client import OAuth, FlaskOAuth2App
-from flask import current_app, redirect, request
-from flask import session as flsk_session
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 SCOPES = {
     'r': ["R"],
@@ -62,122 +64,6 @@ SCOPES = {
 SUB_API = 'auth'
 auth_api = make_subapi_blueprint(SUB_API, api_version=4)
 auth_api._doc = "Allow user to authenticate to the web server"
-
-
-
-# this function should be removed for assemblyline v4.6
-@auth_api.route("/apikey/<name>/<priv>/", methods=["PUT"])
-@api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
-def add_apikey(name, priv, **kwargs):
-    """
-    Add an API Key for the currently logged in user with given privileges
-
-    Variables:
-    name    => Name of the API key
-    priv    => Requested privileges
-
-    Arguments:
-    None
-
-    Data Block:
-    ['submission_view', 'file_detail']  # List of roles if priv is CUSTOM
-
-    Result example:
-    {"apikey": <ramdomly_generated_password>}
-    """
-    user = kwargs['user']
-    user_data = STORAGE.user.get(user['uname'], as_obj=False)
-
-    new_key_name = get_apikey_id(name, user['uname'])
-
-    # check for forbidden characters for apikey
-    regex = re.compile(FORBIDDEN_APIKEY_CHARACTERS)
-    if (regex.search(name) != None):
-        return make_api_response("", err=f"APIKey '{name}' contains forbidden characters.", status_code=400)
-
-    if name in user_data['apikeys']:
-        return make_api_response("", err=f"APIKey '{name}' already exist", status_code=400)
-
-    if STORAGE.apikey.get_if_exists(new_key_name):
-        return make_api_response("", err=f"APIKey '{name}' already exist", status_code=400)
-
-    if priv not in API_PRIV_MAP:
-        return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()}",
-                                 status_code=400)
-
-    if priv == "CUSTOM":
-        try:
-            roles = request.json['roles']
-        except BadRequest:
-            return make_api_response("", err="Invalid data block provided. Provide a list of roles as JSON.",
-                                     status_code=400)
-    else:
-        roles = None
-
-    random_pass = get_random_password(length=48)
-    priv_map = API_PRIV_MAP[priv]
-    roles = [r for r in load_roles_form_acls(priv_map, roles)
-             if r in load_roles(user_data['type'], user_data.get('roles', None))]
-
-
-    if not roles:
-        return make_api_response(
-            "", err="None of the roles you've requested for this key are allowed for this user.", status_code=400)
-
-    try:
-        expiry_ts = request.json.get("expiry_ts", None)
-    except Exception:
-        expiry_ts = None
-
-    if (APIKEY_MAX_DTL and  expiry_ts is None) or (APIKEY_MAX_DTL and (iso_to_epoch(expiry_ts) >= now(APIKEY_MAX_DTL*DAY_IN_SECONDS))):
-
-        return make_api_response(
-            "", err=f"The expiry_ts is more than the max apikey dtl of {APIKEY_MAX_DTL} days.", status_code=400)
-
-
-    new_apikey = {
-        "password": get_password_hash(random_pass),
-        "acl": priv_map,
-        "roles": roles,
-        "uname": user['uname'],
-        "key_name":name,
-        "expiry_ts":expiry_ts
-    }
-
-
-
-    STORAGE.apikey.save(new_key_name, new_apikey)
-
-
-
-    return make_api_response({"acl": priv_map, "apikey": f"{name}:{random_pass}", "name": name,  "roles": roles, "expiry_ts": expiry_ts})
-
-
-# this function should be removed for assemblyline v4.6
-@auth_api.route("/apikey/<name>/", methods=["DELETE"])
-@api_login(audit=False, require_role=[ROLES.apikey_access], count_toward_quota=False)
-def delete_apikey(name, **kwargs):
-    """
-    Delete an API Key matching specified name for the currently logged in user
-
-    Variables:
-    name    => Name of the API key
-
-    Arguments:
-    None
-
-    Data Block:
-    None
-
-    Result example:
-    {
-     "success": True
-    }
-    """
-    user = kwargs['user']
-
-    STORAGE.apikey.delete(get_apikey_id(name, user['uname']))
-    return make_api_response({"success": True})
 
 
 @auth_api.route("/obo_token/<token_id>/", methods=["DELETE"])
