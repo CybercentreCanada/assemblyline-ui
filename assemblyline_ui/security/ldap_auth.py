@@ -2,6 +2,7 @@ import base64
 import hashlib
 import elasticapm
 import ldap
+import ldap.filter
 import logging
 import re
 import time
@@ -265,7 +266,8 @@ class BasicLDAPWrapper(object):
 
     # noinspection PyBroadException
     def get_details_from_uid(self, uid, ldap_server=None):
-        res = self.get_object(self.uid_lookup % uid, ldap_server)
+        safe_uid = ldap.filter.escape_filter_chars(uid)
+        res = self.get_object(self.uid_lookup % safe_uid, ldap_server)
         if res['error']:
             log.error(res['error'])
             return None

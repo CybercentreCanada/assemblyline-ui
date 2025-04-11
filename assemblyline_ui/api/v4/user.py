@@ -1,5 +1,7 @@
-from copy import deepcopy
 from typing import List
+
+from flask import request
+from flask import session as flsk_session
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
@@ -18,7 +20,6 @@ from assemblyline.odm.models.user import (
     USER_TYPES,
     User,
     load_roles,
-    load_roles_form_acls,
 )
 from assemblyline.odm.models.user_favorites import Favorite
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
@@ -38,20 +39,19 @@ from assemblyline_ui.config import (
     config,
 )
 from assemblyline_ui.helper.search import list_all_fields
-from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
+from assemblyline_ui.helper.service import (
+    simplify_service_spec,
+    ui_to_submission_params,
+)
 from assemblyline_ui.helper.user import (
     API_PRIV_MAP,
     get_default_user_quotas,
     get_dynamic_classification,
-    get_user_api_keys, 
-    get_user_api_keys_dict,
     load_user_settings,
     save_user_account,
     save_user_settings,
 )
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
-from flask import request
-from flask import session as flsk_session
 
 SUB_API = 'user'
 user_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -467,8 +467,6 @@ def get_user_account(username, **kwargs):
     # Load default user quotas if they are missing
     get_default_user_quotas(user)
 
-    user_roles = load_roles(user['type'], user.get('roles', None))
-
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
     user['has_password'] = user.pop('password', "") != ""
     security_tokens = user.get('security_tokens', {}) or {}
@@ -586,7 +584,7 @@ def set_user_account(username, **kwargs):
         if not data.get('identity_id'):
             data.pop('identity_id', None)
 
-        # Reomove for Assemblyline v4.6 Adding API key should go through apikey endpoint
+        # Adding API key should go through apikey endpoint
         data.pop("apikeys", None)
 
         ret_val = save_user_account(username, data, kwargs['user'])
