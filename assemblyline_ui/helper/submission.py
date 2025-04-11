@@ -276,7 +276,11 @@ def refang_url(url):
     '''
     Refangs a url of text. Based on source of: https://pypi.org/project/defang/
     '''
-    new_url = re.sub(r'[\(\[](\.|dot)[\)\]]', '.', url, flags=re.IGNORECASE)
+    new_url = re.sub(r'[\(\[\{](\.|dot)[\)\]\}]', '.', url, flags=re.IGNORECASE)
+    new_url = re.sub(r'\\.', '.', new_url, flags=re.IGNORECASE)
+    new_url = re.sub(r'[\(\[\{]/[\)\]\}]', '/', new_url, flags=re.IGNORECASE)
+    new_url = re.sub(r'[\(\[\{]:[\)\]\}]', ':', new_url, flags=re.IGNORECASE)
+    new_url = re.sub(r'[\(\[\{]://[\)\]\}]', '://', new_url, flags=re.IGNORECASE)
     new_url = re.sub(r'^h[x]{1,2}p([s]?)\[?:\]?//', r'http\1://', new_url, flags=re.IGNORECASE)
     new_url = re.sub(r'^fxp(s?)\[?:\]?//', r'ftp\1://', new_url, flags=re.IGNORECASE)
     return new_url

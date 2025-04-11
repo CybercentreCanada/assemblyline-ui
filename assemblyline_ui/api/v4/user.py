@@ -40,8 +40,15 @@ from assemblyline_ui.config import (
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import simplify_service_spec, ui_to_submission_params
 from assemblyline_ui.helper.user import (
-    get_default_user_quotas, get_dynamic_classification, get_user_api_keys, get_user_api_keys_dict, load_user_settings, save_user_account, save_user_settings,
-    API_PRIV_MAP)
+    API_PRIV_MAP,
+    get_default_user_quotas,
+    get_dynamic_classification,
+    get_user_api_keys, 
+    get_user_api_keys_dict,
+    load_user_settings,
+    save_user_account,
+    save_user_settings,
+)
 from assemblyline_ui.http_exceptions import AccessDeniedException, InvalidDataException
 from flask import request
 from flask import session as flsk_session
