@@ -1,12 +1,17 @@
 
-from assemblyline.datastore.collection import Index
 from flask import abort, request
 
+from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE
-from assemblyline_ui.helper.search import get_collection, get_default_sort, has_access_control, list_all_fields
+from assemblyline_ui.helper.search import (
+    get_collection,
+    get_default_sort,
+    has_access_control,
+    list_all_fields,
+)
 
 SUB_API = 'search'
 search_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -496,7 +501,7 @@ def stats(index, int_field, **kwargs):
     if field_info is None:
         return make_api_response("", f"Field '{int_field}' is not a valid field in index: {index}", 400)
 
-    if field_info['type'] not in ["integer", "float"]:
+    if field_info['type'] not in ["integer", "float", "long"]:
         return make_api_response("", f"Field '{int_field}' is not a numeric field.", 400)
 
     fields = ["query", "timeout"]
