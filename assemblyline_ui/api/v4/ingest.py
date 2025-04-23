@@ -287,7 +287,7 @@ def ingest_single_file(**kwargs):
         if ROLES.submission_customize in user['roles']:
             s_params = ui_to_submission_params(user_settings)
         else:
-            s_params = {"submission_profile": user_settings.get("preferred_submission_profile")}
+            s_params = {}
 
         # Update submission parameters as specified by the user
         try:
