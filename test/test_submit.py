@@ -72,7 +72,10 @@ def test_resubmit_profile(datastore, login_session, scheduler):
     assert resp['sid'] != submission.sid
     for f in resp['files']:
         assert f['sha256'] == sha256
-    assert set(resp['params']['services']['selected']) == set(DEFAULT_SRV_SEL)
+
+    # Calculate the default selected services relative to the test deployment with mock data
+    default_selected_services = set(DEFAULT_SRV_SEL).intersection(set(datastore.service.facet("category").keys()))
+    assert set(resp['params']['services']['selected']) == default_selected_services
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
