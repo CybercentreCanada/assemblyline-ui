@@ -145,7 +145,7 @@ def test_labeling(datastore, login_session):
 def test_priorities(datastore, login_session):
     _, session, host = login_session
 
-    new_priority = random.choice(list(PRIORITIES - set(test_alert.priority)))
+    new_priority = random.choice(list(PRIORITIES - set([test_alert.priority, None])))
     resp = get_api_data(session, f"{host}/api/v4/alert/priority/{test_alert.alert_id}/",
                         data=json.dumps(new_priority), method='POST')
     assert resp.get('success', False)
@@ -170,7 +170,7 @@ def test_priorities(datastore, login_session):
 def test_statuses(datastore, login_session):
     _, session, host = login_session
 
-    new_status = random.choice(list(STATUSES - set(test_alert.status)))
+    new_status = random.choice(list(STATUSES - set([test_alert.status, None])))
     resp = get_api_data(session, f"{host}/api/v4/alert/status/{test_alert.alert_id}/",
                         data=json.dumps(new_status), method='POST')
     assert resp.get('success', False)
