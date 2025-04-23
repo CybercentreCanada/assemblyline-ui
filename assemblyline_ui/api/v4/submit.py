@@ -430,10 +430,9 @@ def submit(**kwargs):
         default_external_sources = user_settings.pop('default_external_sources', [])
 
         # Create task object
+        s_params = {}
         if (ROLES.submission_customize in user['roles']) or "ui_params" in data:
             s_params = ui_to_submission_params(user_settings)
-        else:
-            s_params = {}
 
         # Update submission parameters as specified by the user
         try:

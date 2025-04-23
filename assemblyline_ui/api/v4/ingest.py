@@ -284,10 +284,9 @@ def ingest_single_file(**kwargs):
         default_external_sources = user_settings.pop('default_external_sources', [])
 
         # Load default user params from user settings
+        s_params = {}
         if ROLES.submission_customize in user['roles']:
             s_params = ui_to_submission_params(user_settings)
-        else:
-            s_params = {}
 
         # Update submission parameters as specified by the user
         try:
