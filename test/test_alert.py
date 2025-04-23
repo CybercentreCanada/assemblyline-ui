@@ -1,4 +1,5 @@
 import json
+import random
 
 import pytest
 from assemblyline.odm.models.alert import Alert
@@ -144,16 +145,17 @@ def test_labeling(datastore, login_session):
 def test_priorities(datastore, login_session):
     _, session, host = login_session
 
+    new_priority = random.choice(list(PRIORITIES - set(test_alert.priority)))
     resp = get_api_data(session, f"{host}/api/v4/alert/priority/{test_alert.alert_id}/",
-                        data=json.dumps("HIGH"), method='POST')
+                        data=json.dumps(new_priority), method='POST')
     assert resp.get('success', False)
 
     # Check that the labels was set and audited
     datastore.alert.commit()
     alert_data = datastore.alert.get(test_alert.alert_id, as_obj=False)
     recent_event = alert_data['events'][-1]
-    assert alert_data['priority'] == "HIGH" and \
-        recent_event['priority'] == "HIGH" and recent_event['entity_id'] == 'admin'
+    assert alert_data['priority'] == new_priority and \
+        recent_event['priority'] == new_priority and recent_event['entity_id'] == 'admin'
 
     resp = get_api_data(session, f"{host}/api/v4/alert/priority/batch/", data=json.dumps("LOW"),
                         params={'q': "id:*"}, method='POST')
@@ -168,16 +170,17 @@ def test_priorities(datastore, login_session):
 def test_statuses(datastore, login_session):
     _, session, host = login_session
 
+    new_status = random.choice(list(STATUSES - set(test_alert.status)))
     resp = get_api_data(session, f"{host}/api/v4/alert/status/{test_alert.alert_id}/",
-                        data=json.dumps("ASSESS"), method='POST')
+                        data=json.dumps(new_status), method='POST')
     assert resp.get('success', False)
 
     # Check that the status was set and audited
     datastore.alert.commit()
     alert_data = datastore.alert.get(test_alert.alert_id, as_obj=False)
     recent_event = alert_data['events'][-1]
-    assert alert_data['status'] == "ASSESS" and \
-        recent_event['status'] == "ASSESS" and recent_event['entity_id'] == 'admin'
+    assert alert_data['status'] == new_status and \
+        recent_event['status'] == new_status and recent_event['entity_id'] == 'admin'
 
     resp = get_api_data(session, f"{host}/api/v4/alert/status/batch/", data=json.dumps("MALICIOUS"),
                         params={'q': "id:*"}, method='POST')
@@ -213,6 +216,12 @@ def test_set_verdict(datastore, login_session):
     datastore.alert.commit()
     alert_data = datastore.alert.get(test_alert.alert_id)
     assert 'admin' not in alert_data['verdict']['malicious']
+    assert 'admin' in alert_data['verdict']['non_malicious']
+
+    datastore.submission.commit()
+    submission_data = datastore.submission.get(test_alert.sid)
+    assert 'admin' not in submission_data['verdict']['malicious']
+    assert 'admin' in submission_data['verdict']['non_malicious']
     assert 'admin' in alert_data['verdict']['non_malicious']
 
     datastore.submission.commit()
