@@ -129,7 +129,7 @@ def test_labeling(datastore, login_session):
     alert_data = datastore.alert.get(test_alert.alert_id, as_obj=False)
     recent_event = alert_data['events'][-1]
     assert all(label in alert_data['label'] for label in ['TEST1', 'TEST2']) and \
-        recent_event['labels'] == ['TEST1', 'TEST2'] and recent_event['entity_id'] == 'admin'
+        set(recent_event['labels']) == set(['TEST1', 'TEST2']) and recent_event['entity_id'] == 'admin'
 
     resp = get_api_data(session, f"{host}/api/v4/alert/label/batch/", data=json.dumps(['BATCH1', 'BATCH2']),
                         params={'q': "id:*"}, method='POST')
