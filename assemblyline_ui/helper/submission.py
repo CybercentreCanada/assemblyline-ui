@@ -4,6 +4,7 @@ import re
 import shutil
 import socket
 import tempfile
+from copy import deepcopy
 from typing import List
 from urllib.parse import urlparse
 
@@ -264,7 +265,7 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
         s_params = recursive_update(s_params, data.get("params", {}))
         s_params = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, s_params)
         s_params = apply_changes_to_profile(s_profile, s_params, user)
-        s_params = recursive_update(DEFAULT_USER_PROFILE_SETTINGS, s_params)
+        s_params = recursive_update(deepcopy(DEFAULT_USER_PROFILE_SETTINGS), s_params)
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")
