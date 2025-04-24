@@ -1,17 +1,12 @@
 import json
+import random
 
 import pytest
-from conftest import get_api_data
-
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
-from assemblyline.odm.random_data import (
-    create_submission,
-    create_users,
-    wipe_submissions,
-    wipe_users,
-)
+from assemblyline.odm.random_data import create_submission, create_users, wipe_submissions, wipe_users
 from assemblyline.odm.randomizer import random_model_obj
+from conftest import get_api_data
 
 NUM_ALERTS = 10
 test_alert = None
@@ -132,8 +127,10 @@ def test_labeling(datastore, login_session):
 
     # Check that the labels was set and audited
     datastore.alert.commit()
-    assert datastore.alert.search("events.labels:TEST1 AND events.labels:TEST2 AND events.entity_id:admin",
-                                  key_space=[test_alert.alert_id], track_total_hits=True)['total']
+    alert_data = datastore.alert.get(test_alert.alert_id, as_obj=False)
+    recent_event = alert_data['events'][-1]
+    assert all(label in alert_data['label'] for label in ['TEST1', 'TEST2']) and \
+        set(recent_event['labels']) == set(['TEST1', 'TEST2']) and recent_event['entity_id'] == 'admin'
 
     resp = get_api_data(session, f"{host}/api/v4/alert/label/batch/", data=json.dumps(['BATCH1', 'BATCH2']),
                         params={'q': "id:*"}, method='POST')
@@ -148,14 +145,17 @@ def test_labeling(datastore, login_session):
 def test_priorities(datastore, login_session):
     _, session, host = login_session
 
+    new_priority = random.choice(list(PRIORITIES - set([test_alert.priority, None])))
     resp = get_api_data(session, f"{host}/api/v4/alert/priority/{test_alert.alert_id}/",
-                        data=json.dumps("HIGH"), method='POST')
+                        data=json.dumps(new_priority), method='POST')
     assert resp.get('success', False)
 
     # Check that the labels was set and audited
     datastore.alert.commit()
-    assert datastore.alert.search("events.priority:HIGH AND events.entity_id:admin",
-                                  key_space=[test_alert.alert_id], track_total_hits=True)['total']
+    alert_data = datastore.alert.get(test_alert.alert_id, as_obj=False)
+    recent_event = alert_data['events'][-1]
+    assert alert_data['priority'] == new_priority and \
+        recent_event['priority'] == new_priority and recent_event['entity_id'] == 'admin'
 
     resp = get_api_data(session, f"{host}/api/v4/alert/priority/batch/", data=json.dumps("LOW"),
                         params={'q': "id:*"}, method='POST')
@@ -170,14 +170,17 @@ def test_priorities(datastore, login_session):
 def test_statuses(datastore, login_session):
     _, session, host = login_session
 
+    new_status = random.choice(list(STATUSES - set([test_alert.status, None])))
     resp = get_api_data(session, f"{host}/api/v4/alert/status/{test_alert.alert_id}/",
-                        data=json.dumps("ASSESS"), method='POST')
+                        data=json.dumps(new_status), method='POST')
     assert resp.get('success', False)
 
     # Check that the status was set and audited
     datastore.alert.commit()
-    assert datastore.alert.search("events.status:ASSESS AND events.entity_id:admin",
-                                  key_space=[test_alert.alert_id], track_total_hits=True)['total']
+    alert_data = datastore.alert.get(test_alert.alert_id, as_obj=False)
+    recent_event = alert_data['events'][-1]
+    assert alert_data['status'] == new_status and \
+        recent_event['status'] == new_status and recent_event['entity_id'] == 'admin'
 
     resp = get_api_data(session, f"{host}/api/v4/alert/status/batch/", data=json.dumps("MALICIOUS"),
                         params={'q': "id:*"}, method='POST')
@@ -213,6 +216,12 @@ def test_set_verdict(datastore, login_session):
     datastore.alert.commit()
     alert_data = datastore.alert.get(test_alert.alert_id)
     assert 'admin' not in alert_data['verdict']['malicious']
+    assert 'admin' in alert_data['verdict']['non_malicious']
+
+    datastore.submission.commit()
+    submission_data = datastore.submission.get(test_alert.sid)
+    assert 'admin' not in submission_data['verdict']['malicious']
+    assert 'admin' in submission_data['verdict']['non_malicious']
     assert 'admin' in alert_data['verdict']['non_malicious']
 
     datastore.submission.commit()

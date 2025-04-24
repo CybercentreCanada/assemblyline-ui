@@ -53,6 +53,8 @@ submission:
         type: strict_ingest
         services:
           excluded: ["Dynamic Analysis"]
+      restricted_params:
+        submission: ["ignore_recursion_prevention"]
 
 
 ui:
