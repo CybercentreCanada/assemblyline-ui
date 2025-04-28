@@ -1,7 +1,7 @@
 
 import os
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 # Try to load the version from a datafile in the package
 package_version = "4.0.0.dev0"
@@ -52,7 +52,8 @@ setup(
         'PyJWT',
         'gunicorn',
         'gevent',
-        'xmlsec==1.3.14'
+        'xmlsec==1.3.14',
+        'lxml==5.3.2'
     ],
     extras_require={
         'test': [
