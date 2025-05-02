@@ -969,6 +969,8 @@ def get_user_settings(username, **kwargs):
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
         user = STORAGE.user.get(username, as_obj=False)
 
+    if not user:
+        return make_api_response({}, "User %s does not exists" % username, 404)
 
     return make_api_response(load_user_settings(user))
 
