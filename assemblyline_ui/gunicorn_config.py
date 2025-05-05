@@ -1,5 +1,5 @@
-from os import environ as env
 import multiprocessing
+from os import environ as env
 
 # Port to bind to
 bind = f":{int(env.get('PORT', 5000))}"
@@ -26,3 +26,6 @@ keyfile = env.get('KEYFILE')
 # Request header max size configuration
 #  NOTE: This allows to pass JWT tokens bigger then 8k to AL through the headers
 limit_request_field_size = int(env.get("LIMIT_REQUEST_FIELD_SIZE", "8190"))
+
+# Request line max size configuration
+limit_request_line = int(env.get("LIMIT_REQUEST_LINE", "4094"))
