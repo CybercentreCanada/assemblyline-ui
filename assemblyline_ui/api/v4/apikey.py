@@ -172,10 +172,9 @@ def get_user_apikey(uname, **kwargs):
         return make_api_response([key for key in apikeys])
 
 
-
 @apikey_api.route("/add/", methods=["PUT"])
 @api_login(require_role=[ROLES.apikey_access], count_toward_quota=False)
-def add_apikey(  **kwargs):
+def add_apikey(**kwargs):
     """
     Add an API Key for the currently logged in user with given privileges
 
@@ -204,12 +203,11 @@ def add_apikey(  **kwargs):
     }
     """
 
-    user = kwargs['user'] # the user that requested apikey modification
+    user = kwargs['user']  # the user that requested apikey modification
 
     key_id = request.args['keyid'] if "keyid" in request.args else None
     key_name = request.json['key_name']
     create_key = "keyid" not in request.args
-
 
     # could be admin or the user themselves modifying the apikey
     key_uname = request.json['uname'] if "uname" in request.json else user['uname']
@@ -284,11 +282,10 @@ def add_apikey(  **kwargs):
         "acl": priv,
         "roles": roles,
         "uname": key_uname,
-        "key_name":key_name,
+        "key_name": key_name,
         "expiry_ts": expiry_ts,
 
     }
-
 
     if create_key:
         new_apikey['password'] = get_password_hash(random_pass)
@@ -298,21 +295,20 @@ def add_apikey(  **kwargs):
         new_apikey['last_used'] = old_apikey['last_used']
         new_apikey['password'] = old_apikey['password']
 
-
     STORAGE.apikey.save(new_key_id, new_apikey)
     new_apikey.pop("password", None)
 
-
-    return make_api_response({  "acl": priv,
-                                "creation_date": new_apikey.get('creation_date', datetime.now().isoformat()),
-                                "expiry_ts": expiry_ts,
-                                "id": new_key_id,
-                                "key_name":key_name,
-                                "keypassword":  f"{key_name}:{random_pass}" if create_key else None,
-                                "last_used": new_apikey.get('last_used', None),
-                                "roles": roles,
-                                "uname": key_uname,
-                              })
+    return make_api_response({
+        "acl": priv,
+        "creation_date": new_apikey.get('creation_date', datetime.now().isoformat()),
+        "expiry_ts": expiry_ts,
+        "id": new_key_id,
+        "key_name": key_name,
+        "keypassword":  f"{key_name}:{random_pass}" if create_key else None,
+        "last_used": new_apikey.get('last_used', None),
+        "roles": roles,
+        "uname": key_uname,
+    })
 
 
 @apikey_api.route("/<key_id>/", methods=["DELETE"])
@@ -339,13 +335,12 @@ def delete_apikey(key_id, **kwargs):
     user = kwargs['user']
 
     apikey = STORAGE.apikey.get_if_exists(key_id)
+    if apikey is None:
+        return make_api_response({'success': False})
 
-    if ROLES.administration in user['roles'] :
-        return make_api_response({'success': (apikey is not None) and STORAGE.apikey.delete(key_id)})
-    else:
-
-        apikey = STORAGE.apikey.get_if_exists(key_id, as_obj=False)
-        if apikey and apikey['uname'] == user['uname']:
-            return make_api_response({'success': (apikey is not None) and STORAGE.apikey.delete(key_id)})
+    if ROLES.administration in user['roles'] or apikey.uname == user['uname']:
+        success = STORAGE.apikey.delete(key_id)
+        STORAGE.apikey.commit()
+        return make_api_response({'success': success})
 
     return make_api_response({'success': False})
