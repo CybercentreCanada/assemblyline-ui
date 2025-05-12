@@ -74,7 +74,8 @@ def test_resubmit_profile(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
 
     # Calculate the default selected services relative to the test deployment with mock data
-    default_selected_services = set(DEFAULT_SRV_SEL) | set(datastore.service.facet("category").keys()) - {"Dynamic Analysis"}
+    default_selected_services = set(DEFAULT_SRV_SEL) | set(datastore.service.facet("category").keys()) \
+        - {"Dynamic Analysis", "External"}
 
     assert set(resp['params']['services']['selected']) == default_selected_services
 
