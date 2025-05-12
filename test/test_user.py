@@ -1,17 +1,21 @@
 import json
-from assemblyline.odm.models.apikey import Apikey, get_apikey_id
-import pytest
 import random
 
+import pytest
+from assemblyline_ui.helper.user import load_user_settings
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
-from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.odm.models.apikey import Apikey, get_apikey_id
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
-from assemblyline.odm.models.user_settings import UserSettings
-from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.models.user_settings import (
+    DEFAULT_SUBMISSION_PROFILE_SETTINGS,
+    DEFAULT_USER_PROFILE_SETTINGS,
+    UserSettings,
+)
 from assemblyline.odm.random_data import create_users, wipe_users
+from assemblyline.odm.randomizer import random_model_obj
 
 CLASSIFICATION = get_classification()
 AVATAR = "AVATAR!"
@@ -171,7 +175,13 @@ def test_get_user_settings(datastore, login_session):
     username = random.choice(user_list)
 
     resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/")
-    assert {'deep_scan', 'download_encoding', 'default_zip_password', 'ignore_cache'}.issubset(set(resp.keys()))
+    # Ensure general settings are present
+    assert set(DEFAULT_USER_PROFILE_SETTINGS.keys()).issubset(set(resp.keys()))
+
+    # Ensure submission settings are present under "submission_profiles"
+    for submission_profile in resp['submission_profiles'].values():
+        assert set(DEFAULT_SUBMISSION_PROFILE_SETTINGS.keys()).issubset(set(submission_profile.keys()))
+
 
 
 # noinspection PyUnusedLocal
@@ -179,10 +189,15 @@ def test_get_user_submission_params(datastore, login_session):
     _, session, host = login_session
     username = random.choice(user_list)
 
-    resp = get_api_data(session, f"{host}/api/v4/user/submission_params/{username}/")
+    # Get submission parameter settings for user based on profile
+    resp = get_api_data(session, f"{host}/api/v4/user/submission_params/{username}/static/")
     assert not {'download_encoding'}.issubset(set(resp.keys()))
     assert {'deep_scan', 'groups', 'ignore_cache', 'submitter'}.issubset(set(resp.keys()))
     assert resp['submitter'] == username
+
+    # Ensure API handles missing profiles
+    with pytest.raises(APIError):
+        resp = get_api_data(session, f"{host}/api/v4/user/submission_params/{username}/random/")
 
 
 # noinspection PyUnusedLocal
@@ -323,7 +338,7 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
 
     uset = load_user_settings(user)
     uset['expand_min_score'] = 111
-    uset['priority'] = 111
+    uset['submission_profiles']['static']['priority'] = 111
     uset['submission_profiles']['static']["ignore_recursion_prevention"] = True
     uset['submission_profiles']['static']['service_spec'] = {
         "APKaye": {
@@ -340,8 +355,10 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         new_user_settings = load_user_settings(user)
 
         # Ensure the changes are applied in the right places
-        assert new_user_settings['submission_profiles']['default']['priority'] == uset['priority']
-        assert new_user_settings['submission_profiles']['static']['service_spec'] == uset['submission_profiles']['static']['service_spec']
+        requested_profile_settings = uset['submission_profiles']['static']
+        new_profile_setttings = new_user_settings['submission_profiles']['static']
+        assert new_profile_setttings['priority'] == requested_profile_settings['priority']
+        assert new_profile_setttings['service_spec'] == requested_profile_settings['service_spec']
     else:
         with pytest.raises(APIError):
             # User isn't allowed to customize their submission profiles, API should return an exception

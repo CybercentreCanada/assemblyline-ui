@@ -66,7 +66,7 @@ def test_resubmit_profile(datastore, login_session, scheduler):
     sha256 = random.choice(submission.results)[:64]
 
     # Submit file for resubmission with a profile selected
-    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/")
+    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/", method="PUT")
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['params']['description'].endswith('Static Analysis')
     assert resp['sid'] != submission.sid
@@ -74,7 +74,9 @@ def test_resubmit_profile(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
 
     # Calculate the default selected services relative to the test deployment with mock data
-    default_selected_services = set(DEFAULT_SRV_SEL).intersection(set(datastore.service.facet("category").keys()))
+    default_selected_services = set(DEFAULT_SRV_SEL) | set(datastore.service.facet("category").keys()) \
+        - {"Dynamic Analysis", "External"}
+
     assert set(resp['params']['services']['selected']) == default_selected_services
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))

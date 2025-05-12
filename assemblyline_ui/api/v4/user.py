@@ -40,7 +40,6 @@ from assemblyline_ui.config import (
 )
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import (
-    simplify_service_spec,
     ui_to_submission_params,
 )
 from assemblyline_ui.helper.user import (
@@ -120,13 +119,12 @@ def who_am_i(**kwargs):
          "max_dtl": 30,                             # Maximum number of days retrohunt job stay in the system
        },
        "submission": {                            # Submission Configuration
-         "configurable_params": [],                 # Submission parameters that are configurable when using profiles
          "dtl": 10,                                 # Default number of days submission stay in the system
          "max_dtl": 30,                             # Maximum number of days submission stay in the system
          "max_file_size": 104857600,                # Maximum size for files submitted in the system
          "file_sources": [],                        # List of file sources to perform remote submission into the system
          "metadata": {},                            # Metadata compliance policy to submit to the system
-         "profiles": {},                            # Submission profiles
+         "profiles": {},                            # Submission profiles that are configured for use
          "verdicts": {                              # Verdict scoring configuration
             "info": 0,                                # Default minimum score for info
             "suspicious": 300,                        # Default minimum score for suspicious
@@ -172,7 +170,7 @@ def who_am_i(**kwargs):
      "indexes": {},                             # Search indexes definitions
      "is_active": True,                         # Is the user active
      "name": "Basic user",                      # Name of the user
-     "type": ["admin"],                 # Roles the user is member of
+     "type": ["admin"],                         # Roles the user is member of
      "uname": "sgaron-cyber"                    # Username of the current user
     }
 
@@ -958,7 +956,7 @@ def get_user_settings(username, **kwargs):
      "executive_summary": false,                # Should the executive summary be shown by default
      "expand_min_score": 100,                   # Default minimum score to auto-expand sections
      "preferred_submission_profile": "default", # Default submission profile
-     "submission_profiles": [],                 # List of submission profiles
+     "submission_profiles": {},                 # List of submission profiles
      "submission_view": "report",               # Default submission view
     }
     """
@@ -989,18 +987,25 @@ def set_user_settings(username, **kwargs):
 
     Data Block:
     {
-     "classification": "",                  # Default classification for this user sumbissions
-     "default_zip_password": "zippy"        # Default password used for protected file downloads
-     "description": "",                     # Default description for this user's submissions
-     "download_encoding": "blah",           # Default encoding for downloaded files
-     "expand_min_score": 100,               # Default minimum score to auto-expand sections
-     "priority": 1000,                      # Default submission priority
-     "service_spec": [],                    # Default Service specific parameters
-     "ignore_cache": true,                  # Should file be reprocessed even if there are cached results
-     "groups": [ ... ],                     # Default groups selection for the user scans
-     "ttl": 30,                             # Default time to live in days of the users submissions
-     "services": [ ... ],                   # Default list of selected services
-     "ignore_filtering": false              # Should filtering services by ignored?
+     "default_zip_password": "infected"         # Default password used for protected file downloads
+     "download_encoding": "cart",               # Default encoding for downloaded files
+     "default_external_sources": [],            # Default file sources for this user
+     "expand_min_score": 100,                   # Default minimum score to auto-expand sections
+     "executive_summary": false,                # Should the executive summary be shown by default
+     "expand_min_score": 100,                   # Default minimum score to auto-expand sections
+     "preferred_submission_profile": "static",  # Default submission profile
+     "submission_profiles": {                   # Settings for your submission profiles
+        "static": {
+            "excluded": ["Dynamic Analysis"],
+            "selected": ["Static Analysis"],
+            "service_spec": {
+                "CAPE": {
+                    "analysis_timeout_in_seconds": 60,
+                }
+            }
+        }
+     },
+     "submission_view": "report",               # Default submission view
     }
 
     Result example:
@@ -1012,7 +1017,6 @@ def set_user_settings(username, **kwargs):
 
     try:
         data = request.json
-        data['service_spec'] = simplify_service_spec(data.get('service_spec', {}))
         if not data.get('default_zip_password', ''):
             return make_api_response({"success": False}, "Encryption password can't be empty.", 403)
 
@@ -1042,13 +1046,12 @@ def set_user_settings(username, **kwargs):
 # User's default submission parameters
 ######################################################
 
-@user_api.route("/submission_params/<username>/", methods=["GET"])
+@user_api.route("/submission_params/<username>/<profile>/", methods=["GET"])
 @api_login(audit=False, count_toward_quota=False)
-def get_user_submission_params(username, **kwargs):
+def get_user_submission_params(username, profile, **kwargs):
     """
-    Load the user's default submission params that should be passed to the submit API.
-    This is mainly use so you can alter a couple fields and preserve the user
-    default values.
+    Load the user's default submission params that should be passed to the submit API based on a submission profile.
+    This is mainly use so you can alter a couple fields and preserve the user default values.
 
     Variables:
     username    => Name of the user you want to get the settings for
@@ -1080,7 +1083,11 @@ def get_user_submission_params(username, **kwargs):
         user = STORAGE.user.get(username, as_obj=False)
 
     params = load_user_settings(user)
-    submission_params = ui_to_submission_params(params)
+
+    if profile not in params['submission_profiles']:
+        raise InvalidDataException(f"Submission profile '{profile}' does not exist for user {username}")
+
+    submission_params = ui_to_submission_params(params['submission_profiles'][profile])
     submission_params['submitter'] = username
     submission_params['groups'] = user['groups']
 
