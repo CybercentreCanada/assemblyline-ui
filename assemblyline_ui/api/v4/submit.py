@@ -146,6 +146,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
             submission_params['priority'] = 500
         if "Dynamic Analysis" not in submission_params['services']['selected']:
             submission_params['services']['selected'].append("Dynamic Analysis")
+        submission_params['services'].setdefault('excluded', [])
         if "Dynamic Analysis" in submission_params['services']['excluded']:
             submission_params['services']['excluded'].remove("Dynamic Analysis")
 
