@@ -40,7 +40,6 @@ from assemblyline_ui.config import (
 )
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import (
-    simplify_service_spec,
     ui_to_submission_params,
 )
 from assemblyline_ui.helper.user import (

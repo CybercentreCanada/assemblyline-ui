@@ -66,7 +66,7 @@ def test_resubmit_profile(datastore, login_session, scheduler):
     sha256 = random.choice(submission.results)[:64]
 
     # Submit file for resubmission with a profile selected
-    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/")
+    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/", method="PUT")
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['params']['description'].endswith('Static Analysis')
     assert resp['sid'] != submission.sid

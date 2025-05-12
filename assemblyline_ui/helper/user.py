@@ -333,6 +333,8 @@ def load_user_settings(user):
     # Omit the use of the default profile if the user is not allowed to customize their submission
     if not submission_customize:
         settings['submission_profiles'].pop("default", None)
+    else:
+        settings['submission_profiles'].setdefault("default", {})
 
     # Only display services that a user is allowed to see
     settings['service_spec'] = get_default_service_spec(srv_list, user_classfication)

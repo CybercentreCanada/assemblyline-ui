@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 from typing import Any, Optional
 
 from assemblyline.common.dict_utils import recursive_update
@@ -21,10 +21,17 @@ SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
 
 def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     out = {}
+
+    if 'default' in user_default_values:
+        out['default'] = recursive_update(
+            deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
+            user_default_values['default']
+        )
+
     for profile in SUBMISSION_PROFILES.values():
         if CLASSIFICATION.is_accessible(classification, profile.classification):
-            profile_values = recursive_update(copy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
-                                              copy(profile.params.as_primitives(strip_null=True)))
+            profile_values = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
+                                              profile.params.as_primitives(strip_null=True))
             out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
     return out
 

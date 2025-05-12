@@ -7,17 +7,23 @@ import shutil
 import tempfile
 from typing import Tuple, Union
 
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from flask import request
+
 from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-from assemblyline_ui.api.base import Response, api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import ARCHIVESTORE
-from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.api.base import (
+    Response,
+    api_login,
+    make_api_response,
+    make_subapi_blueprint,
+)
 from assemblyline_ui.config import (
+    ARCHIVESTORE,
     FILESTORE,
     IDENTIFY,
     LOGGER,
@@ -27,6 +33,7 @@ from assemblyline_ui.config import (
     config,
     metadata_validator,
 )
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import (
     FETCH_METHODS,
@@ -37,8 +44,11 @@ from assemblyline_ui.helper.submission import (
     submission_received,
     update_submission_parameters,
 )
-from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota, load_user_settings
-from flask import request
+from assemblyline_ui.helper.user import (
+    check_submission_quota,
+    decrement_submission_quota,
+    load_user_settings,
+)
 
 SUB_API = 'submit'
 submit_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -114,10 +124,10 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
 
     if profile:
         # Obtain any settings from the user and apply them to the submission
-        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
-        if user_settings:
+        user_settings = STORAGE.user_settings.get(user['uname'])
+        if user_settings and profile in user_settings['submission_profiles']:
             # Reuse existing settings for specified profile
-            profile_params = user_settings['submission_profiles'].get(profile, {})
+            profile_params = user_settings['submission_profiles'][profile].as_primitives(strip_null=True)
         else:
             # Otherwise default to what's set for the profile at the configuration-level
             profile_params = {}
@@ -127,7 +137,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         submission_params.pop("services", None)
         submission_params.pop("service_spec", None)
 
-        submission_params = update_submission_parameters(submission_params, profile_params, user)
+        submission_params = update_submission_parameters(submission_params, {"params": profile_params}, user)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
 
     else:
@@ -150,7 +160,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         return make_api_response("", err=str(e), status_code=400)
 
 # noinspection PyUnusedLocal
-@submit_api.route("/<profile>/<sha256>/", methods=["GET"])
+@submit_api.route("/<profile>/<sha256>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def resubmit_with_profile(profile, sha256, *args, **kwargs):
     """
