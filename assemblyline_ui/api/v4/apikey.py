@@ -209,9 +209,9 @@ def add_apikey(**kwargs):
     key_name = request.json['key_name']
     create_key = "keyid" not in request.args
 
-    # could be admin or the user themselves modifying the apikey
+    # could be admin or the user themselves modifying the apikey so use the name from the
+    # request. Wait to load the user data until we have checked permissions.
     key_uname = request.json['uname'] if "uname" in request.json else user['uname']
-    key_user_data = STORAGE.user.get(key_uname, as_obj=False)
     new_key_id = get_apikey_id(key_name, key_uname)
 
     # check new key name and key id doesn't have forbidden characters
@@ -251,6 +251,11 @@ def add_apikey(**kwargs):
         return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()}",
                                  status_code=400)
 
+    # Get the user we are creating the API key for rather than who is creating the key
+    key_user_data = STORAGE.user.get(key_uname, as_obj=False)
+    if not key_user_data:
+        return make_api_response("", err=f"Target user not found", status_code=400)
+
     roles = None
     if priv == ["C"]:
         try:
@@ -278,7 +283,7 @@ def add_apikey(**kwargs):
         "acl": priv,
         "roles": roles,
         "uname": key_uname,
-        "key_name":key_name,
+        "key_name": key_name,
         "expiry_ts": expiry_ts,
 
     }
