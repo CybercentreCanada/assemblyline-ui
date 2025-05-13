@@ -298,8 +298,7 @@ def add_apikey(  **kwargs):
         new_apikey['last_used'] = old_apikey['last_used']
         new_apikey['password'] = old_apikey['password']
 
-
-    STORAGE.apikey.save(new_key_id, new_apikey)
+    STORAGE.apikey.save(new_key_id, new_apikey, refresh=True)
     new_apikey.pop("password", None)
 
 
