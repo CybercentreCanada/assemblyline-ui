@@ -224,30 +224,28 @@ def add_apikey(**kwargs):
 
         id_name, id_uname = split_apikey_id(key_id)
 
-        if (regex.search(id_name) != None):
+        if regex.search(id_name) is not None:
             return make_api_response("", err=f"APIKey '{key_id}' contains forbidden characters.", status_code=400)
 
         if ROLES.administration not in user['roles'] and user['uname'] != id_uname:
             return make_api_response("", err=f"You do not have the permission to modify API Key with id {key_id}", status_code=400)
 
-    if (regex.search(key_name) != None):
+    if regex.search(key_name) is not None:
         return make_api_response("", err=f"APIKey '{key_name}' contains forbidden characters.", status_code=400)
-
 
     # make sure user is not modifying key of another user if they are not admin
     if ROLES.administration not in user['roles'] and ("uname" in request.json and user["uname"] != request.json['uname']):
         return make_api_response("", err=f"You do not have the permission to modify API Key with id {key_id}", status_code=400)
 
-
     priv = sorted(set(request.json['priv']))
-    old_apikey =  STORAGE.apikey.get_if_exists(key_id) if key_id else STORAGE.apikey.get_if_exists(new_key_id)
+    old_apikey = STORAGE.apikey.get_if_exists(key_id) if key_id else STORAGE.apikey.get_if_exists(new_key_id)
 
     if create_key and old_apikey:
         return make_api_response("", err=f"API Key '{key_name}' already exist.", status_code=400)
     elif not create_key and not old_apikey:
-        return make_api_response("", err=f"API Key '{key_name}' does not exist and cannot be updated.", status_code = 404)
+        return make_api_response("", err=f"API Key '{key_name}' does not exist and cannot be updated.", status_code=404)
     elif (old_apikey and old_apikey['uname'] != user['uname']) and ROLES.administration not in user['roles']:
-        return make_api_response("", err=f"You don't have the permission to update API Key '{key_name}'.", status_code = 400)
+        return make_api_response("", err=f"You don't have the permission to update API Key '{key_name}'.", status_code=400)
 
     if "".join(priv) not in PRIV_API_MAP:
         return make_api_response("", err=f"Invalid APIKey privilege '{priv}'. Choose between: {API_PRIV_MAP.keys()}",
@@ -263,17 +261,15 @@ def add_apikey(**kwargs):
                                      status_code=400)
     else:
         roles = [r for r in load_roles_form_acls(priv, roles)
-                if r in load_roles(key_user_data['type'], key_user_data.get('roles', None))]
+                 if r in load_roles(key_user_data['type'], key_user_data.get('roles', None))]
 
     if not roles:
         return make_api_response(
             "", err="None of the roles you've requested for this key are allowed for this user.", status_code=400)
 
-
     expiry_ts = request.json['expiry_ts']
 
-    if (APIKEY_MAX_DTL and  expiry_ts is None) or (APIKEY_MAX_DTL and (iso_to_epoch(expiry_ts) >= now(APIKEY_MAX_DTL*DAY_IN_SECONDS))):
-
+    if (APIKEY_MAX_DTL and expiry_ts is None) or (APIKEY_MAX_DTL and (iso_to_epoch(expiry_ts) >= now(APIKEY_MAX_DTL*DAY_IN_SECONDS))):
         return make_api_response(
             "", err=f"The expiry_ts is more than the max apikey dtl of {APIKEY_MAX_DTL} days.", status_code=400)
 
@@ -295,7 +291,7 @@ def add_apikey(**kwargs):
         new_apikey['last_used'] = old_apikey['last_used']
         new_apikey['password'] = old_apikey['password']
 
-    STORAGE.apikey.save(new_key_id, new_apikey)
+    STORAGE.apikey.save(new_key_id, new_apikey, refresh=True)
     new_apikey.pop("password", None)
 
     return make_api_response({
