@@ -10,14 +10,15 @@ import os
 from flask import Flask
 from flask_socketio import SocketIO
 
-from assemblyline.common import forge, log as al_log
+from assemblyline.common import forge
+from assemblyline.common import log as al_log
 from assemblyline_ui.healthz import healthz
 from assemblyline_ui.sio.alert import AlertMonitoringNamespace
 from assemblyline_ui.sio.file import FileCommentNamespace
 from assemblyline_ui.sio.live_submission import LiveSubmissionNamespace
+from assemblyline_ui.sio.retrohunt import RetrohuntNamespace
 from assemblyline_ui.sio.status import SystemStatusNamespace
 from assemblyline_ui.sio.submission import SubmissionMonitoringNamespace
-from assemblyline_ui.sio.retrohunt import RetrohuntNamespace
 
 CERT_BUNDLE = (
     os.environ.get('SIO_CLIENT_CERT_PATH', '/etc/assemblyline/ssl/sio/tls.crt'),
@@ -55,9 +56,12 @@ socketio.on_namespace(SystemStatusNamespace('/status'))
 
 
 if __name__ == '__main__':
-    app.logger.setLevel(config.logging.log_level if config.ui.debug else 60)
+    log_level = al_log.log_level_map.get(config.logging.log_level, 60) if config.ui.debug else 60
+
+    # Set the log level for the app and werkzeug
+    app.logger.setLevel(log_level)
     wlog = logging.getLogger('werkzeug')
-    wlog.setLevel(config.logging.log_level if config.ui.debug else 60)
+    wlog.setLevel(log_level)
     # Run debug mode
     if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
         # If all files required are present, start up encrypted comms
