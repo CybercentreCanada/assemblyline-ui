@@ -104,12 +104,14 @@ def test_resubmit_dynamic(datastore, login_session, scheduler):
 
 # noinspection PyUnusedLocal
 @pytest.mark.parametrize("hash", list(HASH_PATTERN_MAP.keys()))
-def test_submit_hash(datastore, login_session, scheduler, hash):
+def test_submit_hash(datastore, login_session, scheduler, hash, filestore):
     _, session, host = login_session
 
     sq.delete()
     # Look for any file where the hash of that file is set
     fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=f"sha256,{hash}", as_obj=False)['items'][0]
+    assert filestore.exists(fileinfo['sha256'])
+
     data = {
         hash: fileinfo[hash],
         'name': 'random_hash.txt',
