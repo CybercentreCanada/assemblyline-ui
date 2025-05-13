@@ -2,20 +2,24 @@ import base64
 import hashlib
 import json
 import os
-import pytest
-import random
 import tempfile
 
-from conftest import get_api_data, APIError
+import pytest
+from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
+from conftest import APIError, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
-from assemblyline.odm.models.config import HASH_PATTERN_MAP, DEFAULT_SUBMISSION_PROFILES
+from assemblyline.odm.models.config import DEFAULT_SUBMISSION_PROFILES, HASH_PATTERN_MAP
 from assemblyline.odm.models.file import File
-from assemblyline.odm.randomizer import random_model_obj, get_random_phrase
-from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
+from assemblyline.odm.random_data import (
+    create_services,
+    create_users,
+    wipe_services,
+    wipe_users,
+)
+from assemblyline.odm.randomizer import get_random_phrase, random_model_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 
 NUM_FILES = 4
 TEST_QUEUE = "my_queue"
@@ -64,7 +68,7 @@ def test_ingest_hash(datastore, login_session, hash):
 
     iq.delete()
     # Look for any file where the hash of that file is set
-    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=hash, as_obj=False)['items'][0]
+    fileinfo = get_api_data(session, f"{host}/api/v4/search/file/?query=*&fl={hash}&rows=1")['items'][0]
     data = {
         hash: fileinfo[hash],
         'name': 'random_hash.txt',

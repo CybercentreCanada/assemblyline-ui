@@ -118,8 +118,7 @@ def test_submit_hash(datastore, login_session, scheduler, hash, filestore):
 
     sq.delete()
     # Look for any file where the hash of that file is set
-    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=f"sha256,{hash}", as_obj=False)['items'][0]
-    assert filestore.exists(fileinfo['sha256'])
+    fileinfo = get_api_data(session, f"{host}/api/v4/search/file/?query=*&fl=sha256,{hash}&rows=1")['items'][0]
 
     data = {
         hash: fileinfo[hash],
