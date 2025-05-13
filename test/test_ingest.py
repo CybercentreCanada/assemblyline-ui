@@ -382,7 +382,6 @@ def test_ingest_submission_profile(datastore, login_session, scheduler):
         (datastore.user.UPDATE_REMOVE, 'type', 'admin'),
         (datastore.user.UPDATE_APPEND, 'roles', 'submission_create')])
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
-    sha256 = hashlib.sha256(byte_str).hexdigest()
     data = {
         'base64': base64.b64encode(byte_str).decode('ascii'),
         'metadata': {'test': 'test_submit_base64_nameless'}
@@ -396,8 +395,7 @@ def test_ingest_submission_profile(datastore, login_session, scheduler):
     data['submission_profile'] = profile["name"]
     get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
 
-    # Try using a submission profile with a parameter you aren't allowed to set
-    # The system should silently ignore your parameter and still create a submission
+    # Try using a submission profile with a change to the service selection
     data['params'] = {'services': {'selected': ['blah']}}
     # But also try setting a parameter that you are allowed to set
     data['params'] = {'deep_scan': True}

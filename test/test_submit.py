@@ -4,6 +4,7 @@ import json
 import os
 import random
 import tempfile
+import time
 
 import pytest
 from assemblyline_core.dispatching.dispatcher import SubmissionTask
@@ -11,6 +12,7 @@ from conftest import APIError, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP
+from assemblyline.odm.models.service import Service
 from assemblyline.odm.random_data import (
     create_services,
     create_submission,
@@ -19,7 +21,7 @@ from assemblyline.odm.random_data import (
     wipe_submissions,
     wipe_users,
 )
-from assemblyline.odm.randomizer import get_random_phrase
+from assemblyline.odm.randomizer import get_random_phrase, random_minimal_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
@@ -349,6 +351,16 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
     get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
+    if not datastore.service.search('category:"Dynamic Analysis"', rows=0, track_total_hits=True)['total']:
+        # If there are no dynamic analysis services, add one
+        service = random_minimal_obj(Service, as_json=True)
+        service['category'] = 'Dynamic Analysis'
+        datastore.service.save(f"{service['name']}_{service['version']}", service)
+        datastore.service.commit()
+
+        # Wait for the API to update it's service list cache
+        time.sleep(60)
+
     with pytest.raises(APIError, match='User isn\'t allowed to select the \w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
         data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
