@@ -59,14 +59,21 @@ def test_resubmit(datastore, login_session, scheduler):
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
-def test_resubmit_profile(datastore, login_session, scheduler):
+@pytest.mark.parametrize("copy_sid", [True, False])
+def test_resubmit_profile(datastore, login_session, scheduler, copy_sid):
     _, session, host = login_session
 
     sq.delete()
     sha256 = random.choice(submission.results)[:64]
 
     # Submit file for resubmission with a profile selected
-    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/", method="PUT")
+    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/{f'?copy_sid={submission.sid}' if copy_sid else ''}", method="PUT")
+    if copy_sid:
+        # Classification of original submission should be kept
+        assert resp['classification'] == submission.classification.value
+    else:
+        # Classification of file should be used for the submission
+        assert resp['classification'] == datastore.file.get(sha256, as_obj=False)['classification']
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['params']['description'].endswith('Static Analysis')
     assert resp['sid'] != submission.sid
@@ -81,6 +88,8 @@ def test_resubmit_profile(datastore, login_session, scheduler):
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
+
+    # Re-submit a submission with a profile selected (classification of submission should be kept)
 
 
 

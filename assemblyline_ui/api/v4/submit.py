@@ -137,8 +137,12 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         submission_params.pop("services", None)
         submission_params.pop("service_spec", None)
 
+        # Preserve the classification of the original submission
+        classification = submission_params['classification']
+
         submission_params = update_submission_parameters(submission_params, {"params": profile_params}, user)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
+        submission_params['classification'] = classification
 
     else:
         # Only append Dynamic Analysis as a selected service and set the priority
