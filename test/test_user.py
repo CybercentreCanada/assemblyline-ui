@@ -335,6 +335,7 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'submission_customize')])
         if 'submission_customize' in user['roles']:
             user['roles'].remove('submission_customize')
+    datastore.user.commit()
 
     uset = load_user_settings(user)
     uset['expand_min_score'] = 111
