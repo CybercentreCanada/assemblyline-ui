@@ -61,6 +61,7 @@ DEFAULT_INGEST_PARAMS = {
     "ignore_cache": False,
     "ignore_recursion_prevention": False,
     "ignore_filtering": False,
+    "ttl": config.submission.dtl,
     "type": "INGEST"
 }
 
@@ -365,9 +366,18 @@ def ingest_single_file(**kwargs):
 
         # Enforce maximum DTL
         if config.submission.max_dtl > 0:
-            s_params['ttl'] = min(
-                int(s_params['ttl']),
-                config.submission.max_dtl) if int(s_params['ttl']) else config.submission.max_dtl
+            # Read the submissions ttl, returning an error if it is not understood
+            try:
+                ttl = int(s_params['ttl'])
+            except ValueError:
+                return make_api_response({}, "time to live [ttl] parameter must be an integer (in days)", 400)
+
+            # Take the minimum of the requested and system max dtl, taking the maximum if the number is zero
+            # We retain forever or the maximum ammount for zero values on ttl
+            if ttl != 0:
+                s_params['ttl'] = min(ttl, config.submission.max_dtl)
+            else:
+                s_params['ttl'] = config.submission.max_dtl
 
         # No need to re-calculate fileinfo if we have it already
         if not fileinfo:
