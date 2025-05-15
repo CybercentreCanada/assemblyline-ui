@@ -27,7 +27,7 @@ def get_default_submission_profiles(user_default_values={}, classification=CLASS
             deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
             user_default_values['default']
         )
-        if not out['default']["services"]["selected"]:
+        if not out['default']["services"].get("selected"):
                 # Provide the default service selection
                 out['default']["services"]["selected"] = DEFAULT_SRV_SEL
 
@@ -36,7 +36,7 @@ def get_default_submission_profiles(user_default_values={}, classification=CLASS
             profile_values = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
                                               profile.params.as_primitives(strip_null=True))
             out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
-            if not out[profile.name]["services"]["selected"]:
+            if not out[profile.name]["services"].get("selected"):
                 # Provide the default service selection
                 out[profile.name]["services"]["selected"] = DEFAULT_SRV_SEL
 
