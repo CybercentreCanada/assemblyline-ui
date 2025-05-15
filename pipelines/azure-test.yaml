@@ -80,21 +80,21 @@ jobs:
           sudo chmod a+rw /var/lib/assemblyline/
           sudo apt-get update
           sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
-          sudo env "PATH=$PATH" python -m pip install -U pip setuptools wheel
+          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install -U pip setuptools wheel
         displayName: Setup Environment
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
-          sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install --no-cache-dir -e .
         displayName: Install assemblyline
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
       - script: |
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
-          sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .
+          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install --no-cache-dir -e .
         displayName: Install assemblyline-core
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-core
       - script: |
-          sudo env "PATH=$PATH" python -m pip install --no-cache-dir -e .[test,socketio]
+          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install --no-cache-dir -e .[test,socketio]
         displayName: Install assemblyline-ui
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
