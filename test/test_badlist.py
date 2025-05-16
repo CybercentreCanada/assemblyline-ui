@@ -4,13 +4,18 @@ import json
 import random
 
 import pytest
+from assemblyline_ui.config import CLASSIFICATION
+from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
 from assemblyline.common.isotime import iso_to_epoch, now_as_iso
-from assemblyline.odm.random_data import create_users, create_badlists, wipe_users, wipe_badlist
+from assemblyline.odm.random_data import (
+    create_badlists,
+    create_users,
+    wipe_badlist,
+    wipe_users,
+)
 from assemblyline.odm.randomizer import get_random_hash
-from assemblyline_ui.config import CLASSIFICATION
-from conftest import APIError, get_api_data
 
 add_hash_file = "10" + get_random_hash(62)
 add_error_hash = "11" + get_random_hash(62)
@@ -383,7 +388,7 @@ def test_badlist_attribution(datastore, login_session):
 def test_badlist_expiry(datastore, login_session):
     _, session, host = login_session
 
-    hash = random.choice(datastore.badlist.search("*", fl="id", rows=100, as_obj=False)['items'])['id']
+    hash = get_api_data(session, f"{host}/api/v4/search/badlist/?query=*&fl=id&rows=1")['items'][0]['id']
 
     new_expiry = now_as_iso()
 

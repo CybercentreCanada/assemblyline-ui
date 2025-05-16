@@ -4,6 +4,7 @@ import json
 import os
 import random
 import tempfile
+import time
 
 import pytest
 from assemblyline_core.dispatching.dispatcher import SubmissionTask
@@ -11,6 +12,7 @@ from conftest import APIError, get_api_data
 
 from assemblyline.common import forge
 from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP
+from assemblyline.odm.models.service import Service
 from assemblyline.odm.random_data import (
     create_services,
     create_submission,
@@ -19,7 +21,7 @@ from assemblyline.odm.random_data import (
     wipe_submissions,
     wipe_users,
 )
-from assemblyline.odm.randomizer import get_random_phrase
+from assemblyline.odm.randomizer import get_random_phrase, random_minimal_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
 config = forge.get_config()
@@ -59,14 +61,21 @@ def test_resubmit(datastore, login_session, scheduler):
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
-def test_resubmit_profile(datastore, login_session, scheduler):
+@pytest.mark.parametrize("copy_sid", [True, False])
+def test_resubmit_profile(datastore, login_session, scheduler, copy_sid):
     _, session, host = login_session
 
     sq.delete()
     sha256 = random.choice(submission.results)[:64]
 
     # Submit file for resubmission with a profile selected
-    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/")
+    resp = get_api_data(session, f"{host}/api/v4/submit/static/{sha256}/{f'?copy_sid={submission.sid}' if copy_sid else ''}", method="PUT")
+    if copy_sid:
+        # Classification of original submission should be kept
+        assert resp['classification'] == submission.classification.value
+    else:
+        # Classification of file should be used for the submission
+        assert resp['classification'] == datastore.file.get(sha256, as_obj=False)['classification']
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['params']['description'].endswith('Static Analysis')
     assert resp['sid'] != submission.sid
@@ -74,11 +83,15 @@ def test_resubmit_profile(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
 
     # Calculate the default selected services relative to the test deployment with mock data
-    default_selected_services = set(DEFAULT_SRV_SEL).intersection(set(datastore.service.facet("category").keys()))
+    default_selected_services = set(DEFAULT_SRV_SEL) | set(datastore.service.facet("category").keys()) \
+        - {"Dynamic Analysis", "External"}
+
     assert set(resp['params']['services']['selected']) == default_selected_services
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
+
+    # Re-submit a submission with a profile selected (classification of submission should be kept)
 
 
 
@@ -102,12 +115,13 @@ def test_resubmit_dynamic(datastore, login_session, scheduler):
 
 # noinspection PyUnusedLocal
 @pytest.mark.parametrize("hash", list(HASH_PATTERN_MAP.keys()))
-def test_submit_hash(datastore, login_session, scheduler, hash):
+def test_submit_hash(datastore, login_session, scheduler, hash, filestore):
     _, session, host = login_session
 
     sq.delete()
     # Look for any file where the hash of that file is set
-    fileinfo = datastore.file.search(f"{hash}:*", rows=1, fl=f"sha256,{hash}", as_obj=False)['items'][0]
+    fileinfo = get_api_data(session, f"{host}/api/v4/search/file/?query=*&fl=sha256,{hash}&rows=1")['items'][0]
+
     data = {
         hash: fileinfo[hash],
         'name': 'random_hash.txt',
@@ -337,6 +351,16 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
     get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with a parameter you aren't allowed to set
+    if not datastore.service.search('category:"Dynamic Analysis"', rows=0, track_total_hits=True)['total']:
+        # If there are no dynamic analysis services, add one
+        service = random_minimal_obj(Service, as_json=True)
+        service['category'] = 'Dynamic Analysis'
+        datastore.service.save(f"{service['name']}_{service['version']}", service)
+        datastore.service.commit()
+
+        # Wait for the API to update it's service list cache
+        time.sleep(60)
+
     with pytest.raises(APIError, match='User isn\'t allowed to select the \w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
         data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))

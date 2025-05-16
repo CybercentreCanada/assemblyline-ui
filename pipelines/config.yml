@@ -59,4 +59,5 @@ logging:
   log_to_syslog: false
 
 ui:
+  debug: true
   enforce_quota: false
