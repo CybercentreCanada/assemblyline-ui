@@ -1085,7 +1085,8 @@ def get_user_submission_params(username, profile, **kwargs):
     params = load_user_settings(user)
 
     if profile not in params['submission_profiles']:
-        raise InvalidDataException(f"Submission profile '{profile}' does not exist for user {username}")
+        raise InvalidDataException(f"Submission profile '{profile}' does not exist for user: {username}. "
+                                   f"Select one of {list(params['submission_profiles'].keys())}.")
 
     submission_params = ui_to_submission_params(params['submission_profiles'][profile])
     submission_params['submitter'] = username
