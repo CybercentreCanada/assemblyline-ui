@@ -364,17 +364,16 @@ def save_user_settings(user, data):
     user_settings = STORAGE.user_settings.get(username, as_obj=False) or {}
 
     classification = user.get("classification", None)
-    submission_customize = ROLES.submission_customize in user['roles']
-    srv_list = [x['name'] for x in SERVICE_LIST if x['enabled']]
-    srv_list += [x['category'] for x in SERVICE_LIST if x['enabled']]
-    srv_list = list(set(srv_list))
-
     accessible_profiles = [name for name, profile in SUBMISSION_PROFILES.items() \
                            if Classification.is_accessible(classification, profile.classification)]
 
+    # Check for any changes to settings that aren't submission-related
+    user_settings.update({k: data[k] for k in UserSettings.fields().keys()
+                          if k not in ['submission_profiles', 'preferred_submission_profile'] and k in data})
+
     # Check submission profile preference selection
     preferred_submission_profile = data.get('preferred_submission_profile', None)
-    if submission_customize:
+    if ROLES.submission_customize in user['roles']:
         # User is allowed to customize their own default profile
         accessible_profiles += ['default']
 
