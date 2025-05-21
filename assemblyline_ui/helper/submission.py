@@ -9,7 +9,6 @@ from typing import List
 from urllib.parse import urlparse
 
 import requests
-
 from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.file import make_uri_file
 from assemblyline.common.iprange import is_ip_reserved
@@ -103,6 +102,12 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
                 (svr['name'] in excluded_svrs or svr['category'] in excluded_svrs):
 
                 raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
+
+    if updates['services']['selected'] == []:
+        # Populate the selected services with the default ones that are not in the excluded list
+        for svr in SERVICE_LIST:
+            if svr['enabled'] and svr['category'] not in updates['services']['excluded'] and svr['category'] not in updates['services']['selected']:
+                updates['services']['selected'].append(svr['category'])
 
     return recursive_update(validated_profile, updates)
 

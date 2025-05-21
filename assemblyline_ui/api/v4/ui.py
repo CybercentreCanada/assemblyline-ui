@@ -3,7 +3,8 @@
 
 import os
 
-from cart import is_cart, get_metadata_only
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from cart import get_metadata_only, is_cart
 from flask import request
 
 from assemblyline.common import forge
@@ -13,12 +14,24 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import TEMP_DIR, STORAGE, FILESTORE, config, CLASSIFICATION as Classification, \
-    IDENTIFY, metadata_validator
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import (
+    FILESTORE,
+    IDENTIFY,
+    STORAGE,
+    TEMP_DIR,
+    config,
+    metadata_validator,
+)
 from assemblyline_ui.helper.service import ui_to_submission_params
-from assemblyline_ui.helper.submission import submission_received, update_submission_parameters
-from assemblyline_ui.helper.user import check_submission_quota, decrement_submission_quota
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from assemblyline_ui.helper.submission import (
+    submission_received,
+    update_submission_parameters,
+)
+from assemblyline_ui.helper.user import (
+    check_submission_quota,
+    decrement_submission_quota,
+)
 
 SUB_API = 'ui'
 ui_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -211,7 +224,8 @@ def start_ui_submission(ui_sid, **kwargs):
         return make_api_response("", quota_error, 503)
 
     ui_params = request.json
-    ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']]
+    submitted_classification = ui_params.get('classification', None)
+    ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']] if submitted_classification else []
     ui_params['quota_item'] = True
     ui_params['submitter'] = user['uname']
 
