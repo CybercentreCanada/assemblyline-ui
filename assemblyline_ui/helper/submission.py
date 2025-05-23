@@ -3,12 +3,14 @@ import os
 import re
 import shutil
 import socket
+import subprocess
 import tempfile
 from copy import deepcopy
 from typing import List
 from urllib.parse import urlparse
 
 import requests
+
 from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.file import make_uri_file
 from assemblyline.common.iprange import is_ip_reserved
@@ -210,6 +212,23 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                                 ignore_size=s_params.get('ignore_size', False))
                     if dl_from is not None:
                         found = True
+
+                        download_fileinfo = IDENTIFY.fileinfo(out_file, generate_hashes=False, calculate_entropy=False,
+                                                              skip_fuzzy_hashes=True)
+                        if source.password and download_fileinfo['type'] == "archive/zip":
+                            # If the file is a zip file, we need to extract it using the provided password
+                            with tempfile.TemporaryDirectory() as extract_dir:
+                                try:
+                                    # Extract the zip file to a temporary directory and replace the original file
+                                    subprocess.run(["7z", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file],
+                                                capture_output=True)
+                                    extracted_files = os.listdir(extract_dir)
+                                    if extracted_files and len(extracted_files) == 1:
+                                        # Extraction was successful, replace the original file with the extracted one
+                                        os.replace(os.path.join(extract_dir, extracted_files[0]), out_file)
+                                except Exception:
+                                    # If the extraction fails, we can ignore it and keep the original file and let the extraction service handle it
+                                    pass
                 else:
                     # Check if we are allowed to task this system with URLs
                     if not config.ui.allow_url_submissions:
@@ -237,7 +256,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
                     # Check if the downloaded content has the same hash as the fetch method
                     if method in HASH_PATTERN_MAP and name == input:
-                        hash = IDENTIFY.fileinfo(out_file)[method]
+                        hash = IDENTIFY.fileinfo(out_file, calculate_entropy=False)[method]
                         if hash != input:
                             # Rename the file to the hash of the downloaded content to avoid confusion
                             name = hash
