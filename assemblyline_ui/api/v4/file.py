@@ -76,10 +76,11 @@ def get_file_ascii(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
-        FILESTORE.exists(sha256):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
+            if FILESTORE.exists(sha256):
+                # Get the file data from the filestore
+                data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
@@ -392,10 +393,10 @@ def summarize_code_snippet(sha256, **kwargs):
         # if file_obj['size'] > API_MAX_SIZE:
         #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
-        if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
-            FILESTORE.exists(sha256):
+        if user and Classification.is_accessible(user['classification'], file_obj['classification']):
             try:
-                data = FILESTORE.get(sha256)
+                if FILESTORE.exists(sha256):
+                    data = FILESTORE.get(sha256)
             except FileStoreException:
                 data = None
 
@@ -460,10 +461,11 @@ def get_file_hex(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
-        FILESTORE.exists(sha256):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
+            if FILESTORE.exists(sha256):
+                # Get the file data from the filestore
+                data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
@@ -525,10 +527,10 @@ def get_file_image_datastream(sha256, **kwargs):
     if not file_obj.get('is_section_image', False) or not file_obj['type'].startswith("image/"):
         return make_api_response({}, "This file is not allowed to be downloaded as a datastream.", 403)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
-        FILESTORE.exists(sha256):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)
+            if FILESTORE.exists(sha256):
+                data = FILESTORE.get(sha256)
         except FileStoreException:
             data = None
 
@@ -582,10 +584,10 @@ def get_file_strings(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
-        FILESTORE.exists(sha256):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
-            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
+            if FILESTORE.exists(sha256):
+                data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
