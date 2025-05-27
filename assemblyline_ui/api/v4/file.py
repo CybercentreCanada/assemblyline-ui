@@ -6,21 +6,35 @@ import tempfile
 
 from flask import request
 
-from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
-from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.threading import APMAwareThreadPoolExecutor
+from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint, stream_file_response
-from assemblyline_ui.config import CACHE, ALLOW_ZIP_DOWNLOADS, ALLOW_RAW_DOWNLOADS, FILESTORE, STORAGE, config, \
-    CLASSIFICATION as Classification, ARCHIVESTORE, AI_AGENT
+from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
+from assemblyline_ui.api.base import (
+    api_login,
+    make_api_response,
+    make_subapi_blueprint,
+    stream_file_response,
+)
+from assemblyline_ui.config import (
+    AI_AGENT,
+    ALLOW_RAW_DOWNLOADS,
+    ALLOW_ZIP_DOWNLOADS,
+    ARCHIVESTORE,
+    CACHE,
+    FILESTORE,
+    STORAGE,
+    config,
+)
+from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.datastore.collection import Index
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 MAX_CONCURRENT_VECTORS = 5
@@ -62,10 +76,8 @@ def get_file_ascii(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if not file_obj:
-        return make_api_response({}, "The file was not found in the system.", 404)
-
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
+        FILESTORE.exists(sha256):
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
@@ -75,7 +87,8 @@ def get_file_ascii(sha256, **kwargs):
         if not data and \
                 ARCHIVESTORE is not None and \
                 ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles']:
+                ROLES.archive_download in user['roles'] and \
+                ARCHIVESTORE.exists(sha256):
             try:
                 data = ARCHIVESTORE.get(sha256)
             except FileStoreException:
@@ -379,7 +392,8 @@ def summarize_code_snippet(sha256, **kwargs):
         # if file_obj['size'] > API_MAX_SIZE:
         #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
-        if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+        if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
+            FILESTORE.exists(sha256):
             try:
                 data = FILESTORE.get(sha256)
             except FileStoreException:
@@ -389,7 +403,8 @@ def summarize_code_snippet(sha256, **kwargs):
             if not data and \
                     ARCHIVESTORE is not None and \
                     ARCHIVESTORE != FILESTORE and \
-                    ROLES.archive_download in user['roles']:
+                    ROLES.archive_download in user['roles'] and \
+                    ARCHIVESTORE.exists(sha256):
                 try:
                     data = ARCHIVESTORE.get(sha256)
                 except FileStoreException:
@@ -445,7 +460,8 @@ def get_file_hex(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
+        FILESTORE.exists(sha256):
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
@@ -455,7 +471,8 @@ def get_file_hex(sha256, **kwargs):
         if not data and \
                 ARCHIVESTORE is not None and \
                 ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles']:
+                ROLES.archive_download in user['roles'] and \
+                ARCHIVESTORE.exists(sha256):
             try:
                 data = ARCHIVESTORE.get(sha256)
             except FileStoreException:
@@ -508,7 +525,8 @@ def get_file_image_datastream(sha256, **kwargs):
     if not file_obj.get('is_section_image', False) or not file_obj['type'].startswith("image/"):
         return make_api_response({}, "This file is not allowed to be downloaded as a datastream.", 403)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
+        FILESTORE.exists(sha256):
         try:
             data = FILESTORE.get(sha256)
         except FileStoreException:
@@ -518,7 +536,8 @@ def get_file_image_datastream(sha256, **kwargs):
         if not data and \
                 ARCHIVESTORE is not None and \
                 ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles']:
+                ROLES.archive_download in user['roles'] and \
+                ARCHIVESTORE.exists(sha256):
             try:
                 data = ARCHIVESTORE.get(sha256)
             except FileStoreException:
@@ -563,7 +582,8 @@ def get_file_strings(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+    if user and Classification.is_accessible(user['classification'], file_obj['classification']) and \
+        FILESTORE.exists(sha256):
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
@@ -573,7 +593,8 @@ def get_file_strings(sha256, **kwargs):
         if not data and \
                 ARCHIVESTORE is not None and \
                 ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles']:
+                ROLES.archive_download in user['roles'] and \
+                ARCHIVESTORE.exists(sha256):
             try:
                 data = ARCHIVESTORE.get(sha256)
             except FileStoreException:
