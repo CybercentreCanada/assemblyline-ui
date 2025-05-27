@@ -216,19 +216,27 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                         download_fileinfo = IDENTIFY.fileinfo(out_file, generate_hashes=False, calculate_entropy=False,
                                                               skip_fuzzy_hashes=True)
                         if source.password and download_fileinfo['type'] == "archive/zip":
-                            # If the file is a zip file, we need to extract it using the provided password
-                            with tempfile.TemporaryDirectory() as extract_dir:
-                                try:
-                                    # Extract the zip file to a temporary directory and replace the original file
-                                    subprocess.run(["7z", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file],
-                                                capture_output=True)
-                                    extracted_files = os.listdir(extract_dir)
-                                    if extracted_files and len(extracted_files) == 1:
-                                        # Extraction was successful, replace the original file with the extracted one
-                                        os.replace(os.path.join(extract_dir, extracted_files[0]), out_file)
-                                except Exception:
-                                    # If the extraction fails, we can ignore it and keep the original file and let the extraction service handle it
-                                    pass
+                            # Determine the number of files contained and if it surpasses the maximum file size limit
+                            zip_namelist = subprocess.run(["7z", "l", "-ba", out_file], capture_output=True, text=True).stdout.splitlines()
+                            if len(zip_namelist) == 1:
+                                # Check the size of the file and if it surpasses the maximum file size limit
+                                file_size = int(zip_namelist[0].split()[3])
+                                if file_size >= config.submission.max_file_size:
+                                    raise FileTooBigException("File too big to be scanned "
+                                                            f"({file_size} > {config.submission.max_file_size}).")
+                                else:
+                                    # If the file is a zip file, we need to extract it using the provided password
+                                    with tempfile.TemporaryDirectory() as extract_dir:
+                                        try:
+                                            # Extract the zip file to a temporary directory and replace the original file
+                                            subprocess.run(["7z", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file], capture_output=True)
+                                            extracted_files = os.listdir(extract_dir)
+                                            if extracted_files:
+                                                # Extraction was successful, replace the original file with the extracted one
+                                                os.replace(os.path.join(extract_dir, extracted_files[0]), out_file)
+                                        except Exception:
+                                            # If the extraction fails, we can ignore it and keep the original file and let the extraction service handle it
+                                            pass
                 else:
                     # Check if we are allowed to task this system with URLs
                     if not config.ui.allow_url_submissions:
