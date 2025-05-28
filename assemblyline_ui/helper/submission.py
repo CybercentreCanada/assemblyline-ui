@@ -217,7 +217,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                                               skip_fuzzy_hashes=True)
                         if source.password and download_fileinfo['type'] == "archive/zip":
                             # Determine the number of files contained and if it surpasses the maximum file size limit
-                            zip_namelist = subprocess.run(["7z", "l", "-ba", out_file], capture_output=True, text=True).stdout.splitlines()
+                            zip_namelist = subprocess.run(["7zz", "l", "-ba", out_file], capture_output=True, text=True).stdout.splitlines()
                             if len(zip_namelist) == 1:
                                 # Check the size of the file and if it surpasses the maximum file size limit
                                 file_size = int(zip_namelist[0].split()[3])
@@ -229,7 +229,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                     with tempfile.TemporaryDirectory() as extract_dir:
                                         try:
                                             # Extract the zip file to a temporary directory and replace the original file
-                                            subprocess.run(["7z", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file], capture_output=True)
+                                            subprocess.run(["7zz", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file], capture_output=True)
                                             extracted_files = os.listdir(extract_dir)
                                             if extracted_files:
                                                 # Extraction was successful, replace the original file with the extracted one
