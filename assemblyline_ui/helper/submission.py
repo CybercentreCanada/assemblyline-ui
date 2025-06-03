@@ -19,7 +19,7 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
-from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
+from assemblyline.odm.models.user_settings import DEFAULT_SUBMISSION_PROFILE_SETTINGS
 from assemblyline_ui.config import (
     ARCHIVESTORE,
     CLASSIFICATION,
@@ -295,9 +295,9 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
         s_params = recursive_update(s_params, data.get("params", {}))
-        s_params = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, s_params)
+        s_params = get_recursive_delta(DEFAULT_SUBMISSION_PROFILE_SETTINGS, s_params)
         s_params = apply_changes_to_profile(s_profile, s_params, user)
-        s_params = recursive_update(deepcopy(DEFAULT_USER_PROFILE_SETTINGS), s_params)
+        s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")

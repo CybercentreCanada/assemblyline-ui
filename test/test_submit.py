@@ -348,7 +348,16 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
 
     # Try using a submission profile with no parameters
     data['submission_profile'] = "static"
-    get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    submission = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Ensure submission created has expected properties of using the submission profile
+    submission_profile_data = get_api_data(session, f"{host}/api/v4/user/submission_params/{_['username']}/static/")
+    for key, value in submission_profile_data.items():
+        if key == "services":
+            for kk, vv in value.items():
+                assert set(submission['params']['services'][kk]) - {'External'} == set(vv)
+        else:
+            assert submission['params'][key] == value
 
     # Try using a submission profile with a parameter you aren't allowed to set
     if not datastore.service.search('category:"Dynamic Analysis"', rows=0, track_total_hits=True)['total']:
