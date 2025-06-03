@@ -1,13 +1,19 @@
 import json
-import pytest
 import random
-import yaml
 
-from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION, BUILD_MINOR
-from assemblyline.odm.models.service import Service
-from assemblyline.odm.random_data import create_services, create_users, wipe_services, wipe_users
-from assemblyline.odm.randomizer import SERVICES
+import pytest
+import yaml
 from conftest import get_api_data
+
+from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
+from assemblyline.odm.models.service import Service
+from assemblyline.odm.random_data import (
+    create_services,
+    create_users,
+    wipe_services,
+    wipe_users,
+)
+from assemblyline.odm.randomizer import SERVICES
 
 TEMP_SERVICES = SERVICES
 
@@ -78,10 +84,11 @@ def clear_signature_source_statuses(service_config: dict):
 
 
 # noinspection PyUnusedLocal
-def test_backup_and_restore(datastore, login_session):
+@pytest.mark.parametrize("full", [True, False])
+def test_backup_and_restore(datastore, login_session, full):
     _, session, host = login_session
 
-    backup = get_api_data(session, f"{host}/api/v4/service/backup/", raw=True)
+    backup = get_api_data(session, f"{host}/api/v4/service/backup/?full={full}", raw=True)
     assert isinstance(backup, bytes)
     backup_data = yaml.safe_load(backup)
     assert isinstance(backup_data, dict)

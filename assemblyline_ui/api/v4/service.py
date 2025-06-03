@@ -1,25 +1,31 @@
 
 import json
 import re
-import yaml
-
-from flask import request
 from math import floor
+
+import yaml
+from assemblyline_core.updater.helper import get_latest_tag_for_service
+from flask import request
 from packaging.version import parse
 
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
+from assemblyline.odm.messages.changes import Operation
 from assemblyline.odm.models.error import ERROR_TYPES
 from assemblyline.odm.models.heuristic import Heuristic
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.models.user import ROLES
-from assemblyline.odm.messages.changes import Operation
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
-from assemblyline_core.updater.helper import get_latest_tag_for_service
-from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
-from assemblyline_ui.config import LOGGER, STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.api.base import (
+    api_login,
+    make_api_response,
+    make_file_response,
+    make_subapi_blueprint,
+)
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import LOGGER, STORAGE, config
 from assemblyline_ui.helper.signature import append_source_status
 
 SUB_API = 'service'
@@ -363,12 +369,12 @@ def add_service(**_):
 
 @service_api.route("/backup/", methods=["GET"])
 @api_login(audit=False, require_role=[ROLES.administration], allow_readonly=False, count_toward_quota=False)
-def backup(**_):
+def backup(full = False, **_):
     """
     Create a backup of the current system configuration
 
     Variables:
-    None
+    full             => If true, include all service versions in the backup (default: false)
 
     Arguments:
     None
@@ -381,15 +387,21 @@ def backup(**_):
     """
     services = {'type': 'backup', 'server': config.ui.fqdn, 'data': {}}
 
-    for service in STORAGE.service_delta.stream_search("*:*", fl="id", as_obj=False, item_buffer_size=1000):
+    for service in STORAGE.service_delta.stream_search("*:*", fl="id,version", as_obj=False, item_buffer_size=1000):
         name = service['id']
         service_output = {
             'config': STORAGE.service_delta.get(name, as_obj=False),
             'versions': {}
         }
-        for service_version in STORAGE.service.stream_search(
-                f"name:{name}", fl="id", as_obj=False, item_buffer_size=1000):
-            version_id = service_version['id']
+        if full:
+            # If full backup, include all service versions
+            for service_version in STORAGE.service.stream_search(
+                    f"name:{name}", fl="id", as_obj=False, item_buffer_size=1000):
+                version_id = service_version['id']
+                service_output['versions'][version_id] = STORAGE.service.get(version_id, as_obj=False)
+        else:
+            version_id = f"{name}_{service['version']}"
+            # Otherwise only include the active service versions (lightweight)
             service_output['versions'][version_id] = STORAGE.service.get(version_id, as_obj=False)
 
         services['data'][name] = service_output
