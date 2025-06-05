@@ -352,10 +352,14 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
 
     # Ensure submission created has expected properties of using the submission profile
     submission_profile_data = get_api_data(session, f"{host}/api/v4/user/submission_params/{_['username']}/static/")
+    selected_service_categories = set(datastore.service.facet("category").keys()) - {'Dynamic Analysis'}
     for key, value in submission_profile_data.items():
         if key == "services":
-            for kk, vv in value.items():
-                assert set(submission['params']['services'][kk]) - {'External'} == set(vv)
+            # Ensure selected services are confined to the set of service categories present in the test
+            assert set(submission['params']['services']['selected']) == selected_service_categories
+
+            # Ensure Dynamic Analysis services are not selected
+            assert submission_profile_data['services']['excluded'] == value['excluded'] == ['Dynamic Analysis']
         else:
             assert submission['params'][key] == value
 
