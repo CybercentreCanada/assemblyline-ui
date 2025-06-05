@@ -194,7 +194,7 @@ def test_edit_service(datastore, login_session):
 
     target_version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
 
-    service = random.choice(list(TEMP_SERVICES.keys()))
+    service = random.choice(list(set(TEMP_SERVICES.keys()).intersection(set([s['name'] for s in ds.list_all_services(as_obj=False)]))))
     service_data = Service({
         "name": service,
         "enabled": True,
