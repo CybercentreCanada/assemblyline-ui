@@ -340,7 +340,7 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
     uset = load_user_settings(user)
 
     # Initialize user profile settings with default values for comparison
-    datastore.user_settings.update(user, [(datastore.user_settings.UPDATE_SET, 'submission_profiles', uset['submission_profiles'])])
+    datastore.user_settings.update(username, [(datastore.user_settings.UPDATE_SET, 'submission_profiles', uset['submission_profiles'])])
 
     # Set some arbitrary values for the user settings to see if changes can be made
     uset['expand_min_score'] = 111
