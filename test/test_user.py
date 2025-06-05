@@ -49,6 +49,7 @@ def datastore(datastore_connection):
 
         ds.user_favorites.save('admin', data)
         ds.user_favorites.save('user', data)
+        ds.user_favorites.save('__global__', data)
 
         for x in range(NUM_USERS):
             u = random_model_obj(User)
@@ -75,9 +76,10 @@ def datastore(datastore_connection):
 
 
 # noinspection PyUnusedLocal
-def test_add_favorite(datastore, login_session):
+@pytest.mark.parametrize("public", [True, False], ids=["public=true", "public=false"])
+def test_add_favorite(datastore, login_session, login_user_session, public):
     _, session, host = login_session
-    username = random.choice(user_list)
+    username = random.choice(user_list) if not public else "__global__"
 
     data = random_model_obj(Favorite).as_primitives()
     data['created_by'] = 'admin'
@@ -98,6 +100,20 @@ def test_add_favorite(datastore, login_session):
             item['classification'] = CLASSIFICATION.normalize_classification(item['classification'])
 
     assert data in favs[fav_type]
+
+    if public:
+        # Attempt to change a global favourite set by the administrator
+        _, session, host = login_session = login_user_session
+        data['created_by'] = 'user'
+        resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
+                            method="PUT", data=json.dumps(data))
+        assert resp['success']
+
+        datastore.user_favorites.commit()
+        for fav in datastore.user_favorites.get(username, as_obj=False)[fav_type]:
+            if fav["name"] == data["name"]:
+                assert fav["created_by"] == "admin"
+                break
 
 
 # noinspection PyUnusedLocal
@@ -158,16 +174,15 @@ def test_get_user_avatar(datastore, login_session):
     assert resp == AVATAR
 
 
-# noinspection PyUnusedLocal
-def test_get_user_favorites(datastore, login_session):
+@pytest.mark.parametrize("public", [True, False], ids=["public=true", "public=false"])
+def test_get_user_favorites(datastore, login_session, public):
     _, session, host = login_session
-    username = random.choice(user_list)
+    username = random.choice(user_list) if not public else '__global__'
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/")
     assert sorted(list(resp.keys())) == FAV_TYPES
     for ft in FAV_TYPES:
         assert len(resp[ft]) >= NUM_FAVS - 1
-
 
 # noinspection PyUnusedLocal
 def test_get_user_settings(datastore, login_session):
@@ -237,11 +252,25 @@ def test_remove_user(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_remove_user_favorite(datastore, login_session):
+@pytest.mark.parametrize("public", [True, False], ids=["public=true", "public=false"])
+def test_remove_user_favorite(datastore, login_session, login_user_session, public):
     _, session, host = login_session
-    username = random.choice(user_list)
+    username = random.choice(user_list) if not public else "__global__"
     fav_type = random.choice(FAV_TYPES)
     to_be_removed = f"test_{random.randint(1, NUM_FAVS)}"
+
+    if public:
+        # Simulate a user trying to remove a global favourite that they don't own
+        for f in datastore.user_favorites.get("__global__", as_obj=False)[fav_type]:
+            if f['created_by'] != "user":
+                to_be_removed = f["name"]
+                break
+
+        __, user_session, host = login_user_session
+        with pytest.raises(APIError, match="You are not allowed to remove favorites for another user than yourself."):
+            resp = get_api_data(user_session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
+                                method="DELETE", data=json.dumps(to_be_removed))
+
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                         method="DELETE", data=json.dumps(to_be_removed))
