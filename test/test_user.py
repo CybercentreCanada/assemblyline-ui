@@ -338,10 +338,14 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
     datastore.user.commit()
 
     uset = load_user_settings(user)
+
+    # Initialize user profile settings with default values for comparison
+    datastore.user_settings.update(user, [(datastore.user_settings.UPDATE_SET, 'submission_profiles', uset['submission_profiles'])])
+
+    # Set some arbitrary values for the user settings to see if changes can be made
     uset['expand_min_score'] = 111
     uset['submission_profiles']['static']['priority'] = 111
-    uset['submission_profiles']['static']["ignore_recursion_prevention"] = \
-        not uset['submission_profiles']['static']["ignore_recursion_prevention"]
+    uset['submission_profiles']['static']["ignore_recursion_prevention"] = not uset['submission_profiles']['static']["ignore_recursion_prevention"]
     uset['submission_profiles']['static']['service_spec'] = {
         "APKaye": {
             "resubmit_apk_as_jar": True
