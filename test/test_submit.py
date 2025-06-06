@@ -369,7 +369,9 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         service = random_minimal_obj(Service, as_json=True)
         service['category'] = 'Dynamic Analysis'
         datastore.service.save(f"{service['name']}_{service['version']}", service)
+        datastore.service_delta.save(service['name'], {"version": service["version"]})
         datastore.service.commit()
+        datastore.service_delta.commit()
 
         # Wait for the API to update it's service list cache
         time.sleep(60)
