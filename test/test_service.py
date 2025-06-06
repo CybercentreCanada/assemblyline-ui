@@ -211,6 +211,9 @@ def test_edit_service(datastore, login_session):
         ds.service.save(f"{service}_{target_version}", service_data)
         ds.service.commit()
 
+        svc_data['items'].append(service_data)
+        svc_data['total'] += 1
+
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
     assert resp['success']
 
