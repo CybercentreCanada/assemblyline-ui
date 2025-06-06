@@ -199,8 +199,9 @@ def test_edit_service(datastore, login_session):
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
     target_version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
+    query = f"name:({ ' OR '.join(TEMP_SERVICES.keys())}) AND version:{target_version}"
+    service = ds.service.search(query, rows=1, as_obj=False)['items'][0]['name']
 
-    service = random.choice(list(TEMP_SERVICES.keys()))
     service_data = Service({
         "name": service,
         "enabled": True,
@@ -211,15 +212,6 @@ def test_edit_service(datastore, login_session):
             "image": f"cccs/alsvc_{service.lower()}:latest",
         },
     }).as_primitives()
-
-    if not ds.service.exists(f"{service}_{target_version}"):
-        # Add a version of the document for the API to be able to retrieve
-        ds.service.save(f"{service}_{target_version}", service_data)
-        ds.service.commit()
-
-        svc_data['items'].append(service_data)
-        svc_data['total'] += 1
-
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="POST", data=json.dumps(service_data))
     assert resp['success']
 
