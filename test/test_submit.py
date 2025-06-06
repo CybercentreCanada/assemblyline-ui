@@ -367,6 +367,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
     if not datastore.service.search('category:"Dynamic Analysis"', rows=0, track_total_hits=True)['total']:
         # If there are no dynamic analysis services, add one
         service = random_minimal_obj(Service, as_json=True)
+        service['name'] = "TestService"
         service['enabled'] = True
         service['category'] = 'Dynamic Analysis'
         datastore.service.save(f"{service['name']}_{service['version']}", service)
