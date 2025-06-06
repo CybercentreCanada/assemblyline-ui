@@ -368,18 +368,23 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
 
     uset = load_user_settings(user)
 
+    # Ensure ignore_recursion_prevention is set within the user's profile for Static Analysis
+    uset['submission_profiles']['static']['ignore_recursion_prevention'] = False
+
     # Initialize user profile settings with default values for comparison
     datastore.user_settings.update(username, [(datastore.user_settings.UPDATE_SET, 'submission_profiles', uset['submission_profiles'])])
 
     # Set some arbitrary values for the user settings to see if changes can be made
     uset['expand_min_score'] = 111
     uset['submission_profiles']['static']['priority'] = 111
-    uset['submission_profiles']['static']["ignore_recursion_prevention"] = not uset['submission_profiles']['static']["ignore_recursion_prevention"]
     uset['submission_profiles']['static']['service_spec'] = {
         "APKaye": {
             "resubmit_apk_as_jar": True
         }
     }
+
+    # Change a parameter that is defined restricted within the profile configuration
+    uset['submission_profiles']['static']["ignore_recursion_prevention"] = True
 
     if allow_submission_customize:
         # User is allowed to customize their submission profiles as they see fit
@@ -395,6 +400,7 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         assert new_profile_setttings['priority'] == requested_profile_settings['priority']
         assert new_profile_setttings['service_spec'] == requested_profile_settings['service_spec']
     else:
-        with pytest.raises(APIError):
+        with pytest.raises(APIError,
+                           match="User isn't allowed to modify the \"ignore_recursion_prevention\" parameters of Static Analysis profile"):
             # User isn't allowed to customize their submission profiles, API should return an exception
             resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
