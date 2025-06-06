@@ -348,15 +348,32 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
 
     # Try using a submission profile with no parameters
     data['submission_profile'] = "static"
-    get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    submission = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Ensure submission created has expected properties of using the submission profile
+    submission_profile_data = get_api_data(session, f"{host}/api/v4/user/submission_params/{_['username']}/static/")
+    selected_service_categories = set(datastore.service.facet("category").keys()) - {'Dynamic Analysis'}
+    for key, value in submission_profile_data.items():
+        if key == "services":
+            # Ensure selected services are confined to the set of service categories present in the test
+            assert set(submission['params']['services']['selected']) == selected_service_categories
+
+            # Ensure Dynamic Analysis services are not selected
+            assert submission_profile_data['services']['excluded'] == value['excluded'] == ['Dynamic Analysis']
+        else:
+            assert submission['params'][key] == value
 
     # Try using a submission profile with a parameter you aren't allowed to set
     if not datastore.service.search('category:"Dynamic Analysis"', rows=0, track_total_hits=True)['total']:
         # If there are no dynamic analysis services, add one
         service = random_minimal_obj(Service, as_json=True)
+        service['name'] = "TestService"
+        service['enabled'] = True
         service['category'] = 'Dynamic Analysis'
         datastore.service.save(f"{service['name']}_{service['version']}", service)
+        datastore.service_delta.save(service['name'], {"version": service["version"]})
         datastore.service.commit()
+        datastore.service_delta.commit()
 
         # Wait for the API to update it's service list cache
         time.sleep(60)

@@ -727,7 +727,19 @@ def save_to_user_favorite(username, favorite_type, **kwargs):
     if res_favorites:
         favorites.update(res_favorites)
 
-    favorites[favorite_type].append(data)
+    duplicate_favourite = False
+    if username == "__global__":
+        # Check to see if what's being added already exists if this is a global modification
+        for favourite in favorites[favorite_type]:
+            if favourite["name"] == data["name"]:
+                # Preserve the original author of the favourite
+                favourite.update({k: data[k] for k in data.keys() if k != "created_by"} )
+                duplicate_favourite = True
+                break
+
+    if not duplicate_favourite:
+        # If this is a unique favourite being added, then add it to the collection
+        favorites[favorite_type].append(data)
 
     favorites[favorite_type] = parse_favorites(favorites[favorite_type])
 
@@ -807,9 +819,6 @@ def remove_user_favorite(username, favorite_type, **kwargs):
     }
     """
     user = kwargs['user']
-    if username != user['uname'] and ROLES.administration not in user['roles']:
-        raise AccessDeniedException("You are not allowed to remove favorites for another user then yourself.")
-
     if favorite_type not in ALLOWED_FAVORITE_TYPE:
         return make_api_response({}, "%s is not a valid favorite type" % favorite_type, 500)
 
@@ -819,6 +828,11 @@ def remove_user_favorite(username, favorite_type, **kwargs):
     if favorites:
         for fav in favorites[favorite_type]:
             if fav['name'] == name:
+                if fav["created_by"] != user['uname'] and ROLES.administration not in user['roles']:
+                    # Favourites can only be removed by the original author
+                    raise AccessDeniedException(
+                        "You are not allowed to remove favorites for another user than yourself."
+                    )
                 favorites[favorite_type].remove(fav)
                 removed = True
                 break
