@@ -62,10 +62,6 @@ def suricata_init_config(datastore, login_session):
     }
 
     service_data = Service(service_conf).as_primitives()
-    if not datastore.service.exists(f"{name}_{version}"):
-        datastore.service.save(f"{name}_{version}", service_data)
-        datastore.service.commit()
-
     resp = get_api_data(session, f"{host}/api/v4/service/{name}/", method="POST", data=json.dumps(service_data))
     if resp['success']:
         datastore.service_delta.commit()
