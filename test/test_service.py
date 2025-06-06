@@ -32,12 +32,14 @@ def datastore(datastore_connection):
 @pytest.fixture
 def suricata_init_config(datastore, login_session):
     _, session, host = login_session
+    name = "Suricata"
+    version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
     service_conf = {
-        "name": "Suricata",
+        "name": name,
         "enabled": True,
         "category": "Networking",
         "stage": "CORE",
-        "version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1",
+        "version": version,
         "docker_config": {
             "image": f"cccs/assemblyline-service-suricata:{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.dev69",
         },
@@ -60,7 +62,11 @@ def suricata_init_config(datastore, login_session):
     }
 
     service_data = Service(service_conf).as_primitives()
-    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
+    if not datastore.service.exists(f"{name}_{version}"):
+        datastore.service.save(f"{name}_{version}", service_data)
+        datastore.service.commit()
+
+    resp = get_api_data(session, f"{host}/api/v4/service/{name}/", method="POST", data=json.dumps(service_data))
     if resp['success']:
         datastore.service_delta.commit()
         datastore.service.commit()
