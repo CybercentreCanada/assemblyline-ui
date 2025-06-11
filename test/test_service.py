@@ -33,7 +33,7 @@ def datastore(datastore_connection):
 def suricata_init_config(datastore, login_session):
     _, session, host = login_session
     name = "Suricata"
-    version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
+    version = datastore.service.search("name:Suricata", fl="version", rows=1, as_obj=False)['items'][0]['version']
     service_conf = {
         "name": name,
         "enabled": True,
