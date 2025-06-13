@@ -2,18 +2,30 @@ import base64
 import binascii
 import os
 
+from assemblyline_core.submission_client import SubmissionException
 from cart import is_cart
 from flask import request
 
-from assemblyline.common.bundling import create_bundle as bundle_create, import_bundle as bundle_import,\
-    SubmissionNotFound, BundlingException, SubmissionAlreadyExist, IncompleteBundle, BUNDLE_MAGIC
+from assemblyline.common.bundling import (
+    BUNDLE_MAGIC,
+    BundlingException,
+    IncompleteBundle,
+    SubmissionAlreadyExist,
+    SubmissionNotFound,
+)
+from assemblyline.common.bundling import create_bundle as bundle_create
+from assemblyline.common.bundling import import_bundle as bundle_import
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import ROLES
-from assemblyline_core.submission_client import SubmissionException
-from assemblyline_ui.api.base import api_login, make_api_response, stream_file_response, make_subapi_blueprint
-from assemblyline_ui.config import BUNDLING_DIR, CLASSIFICATION as Classification, STORAGE, IDENTIFY
-
+from assemblyline_ui.api.base import (
+    api_login,
+    make_api_response,
+    make_subapi_blueprint,
+    stream_file_response,
+)
+from assemblyline_ui.config import BUNDLING_DIR, IDENTIFY, STORAGE
+from assemblyline_ui.config import CLASSIFICATION as Classification
 
 SUB_API = 'bundle'
 
@@ -53,7 +65,8 @@ def create_bundle(sid, **kwargs):
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
         temp_target_file = None
         try:
-            temp_target_file = bundle_create(sid, working_dir=BUNDLING_DIR, use_alert=use_alert)
+            temp_target_file = bundle_create(sid, user_classfication=user['classification'],
+                                             working_dir=BUNDLING_DIR, use_alert=use_alert)
             f_size = os.path.getsize(temp_target_file)
             return stream_file_response(open(temp_target_file, 'rb'), "%s.al_bundle" % sid, f_size)
         except SubmissionNotFound as snf:
