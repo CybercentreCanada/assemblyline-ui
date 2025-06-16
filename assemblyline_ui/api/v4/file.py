@@ -68,7 +68,7 @@ def get_file_ascii(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
-        except FileStoreException:
+        except (TypeError, FileStoreException):
             data = None
 
         # Try to download from archive
@@ -77,8 +77,8 @@ def get_file_ascii(sha256, **kwargs):
                 ARCHIVESTORE != FILESTORE and \
                 ROLES.archive_download in user['roles']:
             try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
+                data = ARCHIVESTORE.get(sha256)[:API_MAX_SIZE]
+            except (TypeError, FileStoreException):
                 data = None
 
         if not data:
@@ -448,7 +448,7 @@ def get_file_hex(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
-        except FileStoreException:
+        except (TypeError, FileStoreException):
             data = None
 
         # Try to download from archive
@@ -457,8 +457,8 @@ def get_file_hex(sha256, **kwargs):
                 ARCHIVESTORE != FILESTORE and \
                 ROLES.archive_download in user['roles']:
             try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
+                data = ARCHIVESTORE.get(sha256)[:API_MAX_SIZE]
+            except (TypeError, FileStoreException):
                 data = None
 
         if not data:
@@ -566,7 +566,7 @@ def get_file_strings(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
-        except FileStoreException:
+        except (TypeError, FileStoreException):
             data = None
 
         # Try to download from archive
@@ -575,8 +575,8 @@ def get_file_strings(sha256, **kwargs):
                 ARCHIVESTORE != FILESTORE and \
                 ROLES.archive_download in user['roles']:
             try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
+                data = ARCHIVESTORE.get(sha256)[:API_MAX_SIZE]
+            except (TypeError, FileStoreException):
                 data = None
 
         if not data:
