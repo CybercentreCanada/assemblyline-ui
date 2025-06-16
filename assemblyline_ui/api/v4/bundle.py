@@ -65,7 +65,7 @@ def create_bundle(sid, **kwargs):
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
         temp_target_file = None
         try:
-            temp_target_file = bundle_create(sid, user_classfication=user['classification'],
+            temp_target_file = bundle_create(sid, user_classification=user['classification'],
                                              working_dir=BUNDLING_DIR, use_alert=use_alert)
             f_size = os.path.getsize(temp_target_file)
             return stream_file_response(open(temp_target_file, 'rb'), "%s.al_bundle" % sid, f_size)
