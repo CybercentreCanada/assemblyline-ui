@@ -383,7 +383,6 @@ def save_user_settings(user, data):
         user_settings['preferred_submission_profile'] = preferred_submission_profile
 
     submission_profiles = {}
-    old_profiles = user_settings.get('submission_profiles', {})
     for name in accessible_profiles:
         user_params = data.get('submission_profiles', {}).get(name, {})
         profile_config: Optional[SubmissionProfile] = SUBMISSION_PROFILES.get(name)
@@ -391,12 +390,10 @@ def save_user_settings(user, data):
         if not profile_config:
             if name == "default" and user_params:
                 # There is no restriction on what you can set for your default submission profile
-                submission_profiles[name] = recursive_update(old_profiles.get(name, {}),
-                                                             user_params)
+                submission_profiles[name] = user_params
         else:
             # Calculate what the profiles updates are based on default profile settings and the user-submitted changes
-            profile_updates = recursive_update(old_profiles.get(name, {}), user_params)
-            profile_updates = get_recursive_delta(DEFAULT_SUBMISSION_PROFILE_SETTINGS, profile_updates)
+            profile_updates = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, user_params)
 
             # Apply changes to the profile relative to what's allowed to be changed based on configuration
             submission_profiles[name] = apply_changes_to_profile(profile_config, profile_updates, user)
