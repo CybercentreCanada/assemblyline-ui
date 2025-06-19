@@ -336,13 +336,12 @@ def delete_apikey(key_id, **kwargs):
     user = kwargs['user']
 
     apikey = STORAGE.apikey.get_if_exists(key_id)
+    if apikey is None:
+        return make_api_response({'success': False})
 
-    if ROLES.administration in user['roles'] :
-        return make_api_response({'success': (apikey is not None) and STORAGE.apikey.delete(key_id)})
-    else:
-
-        apikey = STORAGE.apikey.get_if_exists(key_id, as_obj=False)
-        if apikey and apikey['uname'] == user['uname']:
-            return make_api_response({'success': (apikey is not None) and STORAGE.apikey.delete(key_id)})
+    if ROLES.administration in user['roles'] or apikey.uname == user['uname']:
+        success = STORAGE.apikey.delete(key_id)
+        STORAGE.apikey.commit()
+        return make_api_response({'success': success})
 
     return make_api_response({'success': False})
