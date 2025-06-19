@@ -52,16 +52,10 @@ from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 
-SCOPES = {
-    'r': ["R"],
-    'w': ["W"],
-    'rw': ["R", "W"],
-    'c': ["C"]
-}
+SCOPES = {"r": ["R"], "w": ["W"], "rw": ["R", "W"], "c": ["C"]}
 
 
-
-SUB_API = 'auth'
+SUB_API = "auth"
 auth_api = make_subapi_blueprint(SUB_API, api_version=4)
 auth_api._doc = "Allow user to authenticate to the web server"
 
@@ -85,12 +79,12 @@ def delete_obo_token(token_id, **kwargs):
     {'success': true}
     """
 
-    uname = kwargs['user']['uname']
+    uname = kwargs["user"]["uname"]
     user_data = STORAGE.user.get(uname, as_obj=False)
-    if token_id not in user_data.get('apps', {}):
+    if token_id not in user_data.get("apps", {}):
         return make_api_response({"success": False}, "Token ID does not exist", 404)
 
-    user_data['apps'].pop(token_id)
+    user_data["apps"].pop(token_id)
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
 
@@ -115,12 +109,44 @@ def disable_otp(**kwargs):
      "success": true
     }
     """
-    uname = kwargs['user']['uname']
+    uname = kwargs["user"]["uname"]
     user_data = STORAGE.user.get(uname, as_obj=False)
-    user_data['otp_sk'] = None
-    user_data['security_tokens'] = {}
+    user_data["otp_sk"] = None
+    user_data["security_tokens"] = {}
     STORAGE.user.save(uname, user_data)
     return make_api_response({"success": True})
+
+
+@auth_api.route("/unset_otp/<username>/", methods=["GET"])
+@api_login(audit=False, require_role=[ROLES.administration], count_toward_quota=False)
+def unset_otp(username, **kwargs):
+    """
+    Unset OTP of the user of the given username
+
+    Variables:
+    username     => Username of the user to unset OTP
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "success": true
+    }
+    """
+
+    user_data = STORAGE.user.get(username, as_obj=False) or {}
+
+    if user_data:
+        user_data["otp_sk"] = None
+        user_data["security_tokens"] = {}
+        STORAGE.user.save(username, user_data)
+        return make_api_response({"success": True})
+
+    return make_api_response({"success": False})
 
 
 @auth_api.route("/obo_token/", methods=["GET"])
@@ -149,28 +175,27 @@ def get_obo_token(**kwargs):
         return make_api_response({"success": False}, "Forbidden", 403)
 
     params = request.values
-    client_id = params.get('client_id', None)
-    redirect_url = params.get('redirect_url', None)
-    scope = params.get('scope', None)
-    roles = params.get('roles', None)
-    server = params.get('server', None)
+    client_id = params.get("client_id", None)
+    redirect_url = params.get("redirect_url", None)
+    scope = params.get("scope", None)
+    roles = params.get("roles", None)
+    server = params.get("server", None)
 
     if not redirect_url:
         return make_api_response({"success": False}, "Redirect_url missing", 400)
 
     if roles:
-        scope = 'c'
+        scope = "c"
         roles = roles.split(",")
     else:
         if scope not in SCOPES:
             return make_api_response({"success": False}, "Invalid Scope selected", 400)
 
     # Load roles from ACL if needed and validate them
-    roles = [r for r in load_roles_form_acls(SCOPES[scope], roles)
-             if ROLES.contains_value(r)]
+    roles = [r for r in load_roles_form_acls(SCOPES[scope], roles) if ROLES.contains_value(r)]
 
     parsed_url = urlparse(redirect_url)
-    if parsed_url.scheme != 'https':
+    if parsed_url.scheme != "https":
         return make_api_response({"success": False}, "Insecure redirect-url, ignored...", 400)
 
     if parsed_url.query:
@@ -180,33 +205,33 @@ def get_obo_token(**kwargs):
 
     if not client_id or not roles or not server:
         err_type = "missing_arguments"
-        err_description = \
+        err_description = (
             "client_id, roles and server are required arguments. You can also use scope to define a set of roles."
+        )
         return redirect(f"{redirect_url}error={err_type}&error_description={err_description}")
 
-    uname = kwargs['user']['uname']
+    uname = kwargs["user"]["uname"]
     user_data = STORAGE.user.get(uname, as_obj=False)
 
-    token_data = {
-        'client_id': client_id,
-        'scope': scope,
-        'netloc': parsed_url.netloc,
-        'server': server,
-        'roles': roles}
+    token_data = {"client_id": client_id, "scope": scope, "netloc": parsed_url.netloc, "server": server, "roles": roles}
     token_id = None
-    for k, v in user_data.get('apps', {}).items():
+    for k, v in user_data.get("apps", {}).items():
         if v == token_data:
             token_id = k
             break
 
     if not token_id:
-        user_data.setdefault('apps', {})
+        user_data.setdefault("apps", {})
         token_id = get_random_id()
-        user_data['apps'][token_id] = token_data
+        user_data["apps"][token_id] = token_data
         STORAGE.user.save(uname, user_data)
 
-    token = jwt.encode(token_data, hashlib.sha256(f"{SECRET_KEY}_{token_id}".encode()).hexdigest(),
-                       algorithm="HS256", headers={'token_id': token_id, 'user': uname})
+    token = jwt.encode(
+        token_data,
+        hashlib.sha256(f"{SECRET_KEY}_{token_id}".encode()).hexdigest(),
+        algorithm="HS256",
+        headers={"token_id": token_id, "user": uname},
+    )
     return redirect(f"{redirect_url}token={token}")
 
 
@@ -239,9 +264,9 @@ def get_reset_link(**_):
     except (BadRequest, UnsupportedMediaType):
         data = request.values
 
-    email = data.get('email', None)
-    if email and STORAGE.user.search(f"email:{email.lower()}").get('total', 0) == 1:
-        key = hashlib.sha256(get_random_password(length=512).encode('utf-8')).hexdigest()
+    email = data.get("email", None)
+    if email and STORAGE.user.search(f"email:{email.lower()}").get("total", 0) == 1:
+        key = hashlib.sha256(get_random_password(length=512).encode("utf-8")).hexdigest()
         # noinspection PyBroadException
         try:
             send_reset_email(email, key)
@@ -290,44 +315,40 @@ def login(**_):
     except (BadRequest, UnsupportedMediaType):
         data = request.values
 
-    user = data.get('user', None)
-    password = data.get('password', None)
-    apikey = data.get('apikey', None)
-    webauthn_auth_resp = data.get('webauthn_auth_resp', None)
-    oauth_provider = data.get('oauth_provider', None)
-    oauth_token_id = data.get('oauth_token_id', None)
-    oauth_token = data.get('oauth_token', None)
-    saml_token_id = data.get('saml_token_id', None)
+    user = data.get("user", None)
+    password = data.get("password", None)
+    apikey = data.get("apikey", None)
+    webauthn_auth_resp = data.get("webauthn_auth_resp", None)
+    oauth_provider = data.get("oauth_provider", None)
+    oauth_token_id = data.get("oauth_token_id", None)
+    oauth_token = data.get("oauth_token", None)
+    saml_token_id = data.get("saml_token_id", None)
 
     if config.auth.oauth.enabled and oauth_provider and oauth_token is None:
-        oauth = current_app.extensions.get('authlib.integrations.flask_client')
+        oauth = current_app.extensions.get("authlib.integrations.flask_client")
         provider = oauth.create_client(oauth_provider)
 
         redirect_uri = config.auth.oauth.providers.get(oauth_provider).redirect_uri
         if provider:
-            redirect_uri = redirect_uri or f'https://{request.host}/oauth/{oauth_provider}/'
+            redirect_uri = redirect_uri or f"https://{request.host}/oauth/{oauth_provider}/"
             return provider.authorize_redirect(redirect_uri=redirect_uri)
 
     try:
-        otp = int(data.get('otp', 0) or 0)
+        otp = int(data.get("otp", 0) or 0)
     except Exception:
-        raise AuthenticationException('Invalid OTP token')
+        raise AuthenticationException("Invalid OTP token")
 
-    if (user and password) or \
-       (user and apikey) or \
-       (user and oauth_token_id) or \
-        oauth_token or \
-       (user and saml_token_id):
+    if (user and password) or (user and apikey) or (user and oauth_token_id) or oauth_token or (user and saml_token_id):
         auth = {
-            'username': user,
-            'password': password,
-            'otp': otp,
-            'webauthn_auth_resp': webauthn_auth_resp,
-            'apikey': apikey,
-            'oauth_token_id': oauth_token_id,
-            'oauth_token': oauth_token,
-            'oauth_provider': oauth_provider,
-            'saml_token_id': saml_token_id
+            "username": user,
+            "password": password,
+            "otp": otp,
+            "webauthn_auth_resp": webauthn_auth_resp,
+            "apikey": apikey,
+            "oauth_token_id": oauth_token_id,
+            "oauth_token": oauth_token,
+            "oauth_provider": oauth_provider,
+            "saml_token_id": saml_token_id,
         }
 
         logged_in_uname = None
@@ -338,34 +359,35 @@ def login(**_):
             cur_time = now()
             xsrf_token = generate_random_secret()
             current_session = {
-                'duration': session_duration,
-                'ip': ip,
-                'roles_limit': roles_limit,
-                'time': int(cur_time) - (int(cur_time) % session_duration),
-                'user_agent': request.headers.get("User-Agent", None),
-                'username': logged_in_uname,
-                'xsrf_token': xsrf_token
+                "duration": session_duration,
+                "ip": ip,
+                "roles_limit": roles_limit,
+                "time": int(cur_time) - (int(cur_time) % session_duration),
+                "user_agent": request.headers.get("User-Agent", None),
+                "username": logged_in_uname,
+                "xsrf_token": xsrf_token,
             }
             session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
-            current_session['expire_at'] = cur_time + session_duration
-            flsk_session['session_id'] = session_id
+            current_session["expire_at"] = cur_time + session_duration
+            flsk_session["session_id"] = session_id
 
             # Cleanup expired sessions
             for k, v in KV_SESSION.items().items():
-                expire_at = v.get('expire_at', 0)
+                expire_at = v.get("expire_at", 0)
                 if expire_at < cur_time:
                     KV_SESSION.pop(k)
-                    LOGGER.info(f"The following session ID was removed because of a timeout. "
-                                f"[User: {v.get('username', 'unknown')}, SessionID: {k[:16]}...]")
+                    LOGGER.info(
+                        f"The following session ID was removed because of a timeout. "
+                        f"[User: {v.get('username', 'unknown')}, SessionID: {k[:16]}...]"
+                    )
 
             KV_SESSION.add(session_id, current_session)
-            return make_api_response({
-                "username": logged_in_uname,
-                "roles_limit": roles_limit,
-                "session_duration": session_duration
-            }, cookies={'XSRF-TOKEN': xsrf_token})
+            return make_api_response(
+                {"username": logged_in_uname, "roles_limit": roles_limit, "session_duration": session_duration},
+                cookies={"XSRF-TOKEN": xsrf_token},
+            )
         except AuthenticationException as wpe:
-            uname = auth.get('username', '(None)')
+            uname = auth.get("username", "(None)")
             login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
             login_logger.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{wpe}]")
             return make_api_response("", err=str(wpe), status_code=401)
@@ -398,12 +420,12 @@ def logout(**_):
     }
     """
     try:
-        session_id = flsk_session.get('session_id', None)
+        session_id = flsk_session.get("session_id", None)
         if session_id:
             KV_SESSION.pop(session_id)
         flsk_session.clear()
         res = make_api_response({"success": True})
-        res.set_cookie('XSRF-TOKEN', '', max_age=0)
+        res.set_cookie("XSRF-TOKEN", "", max_age=0)
         return res
     except ValueError:
         return make_api_response("", err="No user logged in?", status_code=400)
@@ -432,7 +454,7 @@ def saml_sso(**_):
     host: str = config.ui.fqdn or request.host
     path: str = urlparse(request.referrer).path
     if isinstance(path, bytes):
-        path = path.decode('utf-8')
+        path = path.decode("utf-8")
     sso_built_url: str = auth.login(return_to=f"https://{host}{path}")
     flsk_session["AuthNRequestID"] = auth.get_last_request_id()
     return redirect(sso_built_url)
@@ -440,7 +462,7 @@ def saml_sso(**_):
 
 @auth_api.route("/saml/acs/", methods=["GET", "POST"])
 def saml_acs(**_):
-    '''
+    """
     SAML Assertion Consumer Service (ACS). This is the endpoint the SAML server will redirect to
     with the authentication token. This endpoint will validate the token and create or link to
     the associated user. And will then redirect the user to the login page.
@@ -456,7 +478,7 @@ def saml_acs(**_):
 
     Result example:
     <REDIRECT TO AL's LOGIN PAGE>
-    '''
+    """
     if not config.auth.saml.enabled:
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     request_data: Dict[str, Any] = _prepare_flask_request(request)
@@ -466,7 +488,7 @@ def saml_acs(**_):
     if not request_id:
         # Could not found the request ID, this token was already used, redirect to the UI with the error
         msg = "Invalid SAML token"
-        data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+        data = base64.b64encode(json.dumps({"error": msg}).encode("utf-8")).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
     auth.process_response(request_id=request_id)
@@ -477,11 +499,13 @@ def saml_acs(**_):
         # if the 'User' type is defined in the group_type_mapping
         # limit access to group members, else allow all athenticated users
         valid_groups = config.auth.saml.attributes.group_type_mapping
-        if 'user' in (value.lower() for value in valid_groups.values()):
+        if "user" in (value.lower() for value in valid_groups.values()):
             user_groups = auth.get_attribute(config.auth.saml.attributes.groups_attribute) or []
             if not any(group in valid_groups for group in user_groups):
-                error_message = (f"User was not in one of the required groups: {valid_groups.keys()}. "
-                                 f"User's groups: {user_groups}")
+                error_message = (
+                    f"User was not in one of the required groups: {valid_groups.keys()}. "
+                    f"User's groups: {user_groups}"
+                )
                 return make_api_response({"err_code": 1}, err=error_message, status_code=401)
 
         # Validate or create the user right away
@@ -499,26 +523,21 @@ def saml_acs(**_):
                 email = email.lower()
             name = get_attribute(saml_user_data, config.auth.saml.attributes.fullname_attribute) or username
 
-            data = dict(
-                uname=username,
-                name=name,
-                email=email,
-                password="__NO_PASSWORD__"
-            )
+            data = dict(uname=username, name=name, email=email, password="__NO_PASSWORD__")
 
             # Get the user type from the SAML data
-            data['type'] = get_types(saml_user_data) or ['user']
+            data["type"] = get_types(saml_user_data) or ["user"]
 
             # Load in user roles or get the roles from the types
             user_roles = get_roles(saml_user_data) or None
-            data['roles'] = load_roles(data['type'], user_roles)
+            data["roles"] = load_roles(data["type"], user_roles)
 
             # Load in the user DN
-            if (dn := get_attribute(saml_user_data, "dn")):
-                data['dn'] = dn
+            if dn := get_attribute(saml_user_data, "dn"):
+                data["dn"] = dn
 
             # Get the dynamic classification info
-            if (u_classification := get_attribute(saml_user_data, 'classification')):
+            if u_classification := get_attribute(saml_user_data, "classification"):
                 data["classification"] = get_dynamic_classification(u_classification, data)
 
             # Save the updated user
@@ -528,28 +547,24 @@ def saml_acs(**_):
         else:
             # User does not exists and auto_create is OFF, redirect to the UI with the error
             msg = "User does not exists"
-            data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+            data = base64.b64encode(json.dumps({"error": msg}).encode("utf-8")).decode()
             return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
         # Generating the Token the UI will use to login
-        saml_token_id = hashlib.sha256(request_id.encode("utf-8", errors='replace')).hexdigest()
+        saml_token_id = hashlib.sha256(request_id.encode("utf-8", errors="replace")).hexdigest()
 
-        if get_token_store(username, 'saml').exist(saml_token_id):
+        if get_token_store(username, "saml").exist(saml_token_id):
             # Token already exists, this may be a replay attack, redirect to the UI with the error
             msg = "Invalid SAML token"
-            data = base64.b64encode(json.dumps({'error': msg}).encode('utf-8')).decode()
+            data = base64.b64encode(json.dumps({"error": msg}).encode("utf-8")).decode()
             return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
         # Saving the ID of the valid session our token store
-        get_token_store(username, 'saml').add(saml_token_id)
+        get_token_store(username, "saml").add(saml_token_id)
 
         # Create the data blob to send to the UI
-        data = {
-            'username': username,
-            'email': cur_user['email'],
-            'saml_token_id': saml_token_id
-        }
-        data = base64.b64encode(json.dumps(data).encode('utf-8')).decode()
+        data = {"username": username, "email": cur_user["email"], "saml_token_id": saml_token_id}
+        data = base64.b64encode(json.dumps(data).encode("utf-8")).decode()
 
         # Redirect to the UI with the response
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
@@ -557,7 +572,7 @@ def saml_acs(**_):
         # The user could not be validated properly, redirect to the UI with the errors
         errors = "\n".join([f" - {error}\n" for error in auth.get_errors()])
         LOGGER.error(f"SAML ACS request failed: {auth.get_last_error_reason()}\n{errors}")
-        data = base64.b64encode(json.dumps({'error': errors}).encode('utf-8')).decode()
+        data = base64.b64encode(json.dumps({"error": errors}).encode("utf-8")).decode()
         return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
 
@@ -584,14 +599,14 @@ def oauth_validate(**_):
      "username": "user"
     }
     """
-    oauth_provider = request.values.get('provider', None)
+    oauth_provider = request.values.get("provider", None)
     avatar = None
     username = None
     email_adr = None
     oauth_token_id = None
 
     if config.auth.oauth.enabled:
-        oauth: OAuth = current_app.extensions.get('authlib.integrations.flask_client')
+        oauth: OAuth = current_app.extensions.get("authlib.integrations.flask_client")
         provider: FlaskOAuth2App = oauth.create_client(oauth_provider)
 
         if provider:
@@ -613,8 +628,8 @@ def oauth_validate(**_):
 
                         if not provider.access_token_params:
                             provider.access_token_params = {}
-                        provider.access_token_params['client_assertion'] = client_assertion
-                        provider.access_token_params['client_assertion_type'] = client_assertion_type
+                        provider.access_token_params["client_assertion"] = client_assertion
+                        provider.access_token_params["client_assertion_type"] = client_assertion_type
 
                 # Validate the token
                 if oauth_provider_config.validate_token_with_secret or oauth_provider_config.app_provider:
@@ -625,15 +640,17 @@ def oauth_validate(**_):
 
                 # Setup alternate app provider if we need to fetch groups of user info by hand
                 if oauth_provider_config.app_provider and (
-                        oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get):
+                    oauth_provider_config.app_provider.user_get or oauth_provider_config.app_provider.group_get
+                ):
                     # Initialize the app_provider
                     app_provider = OAuth2Session(
                         oauth_provider_config.app_provider.client_id or oauth_provider_config.client_id,
                         oauth_provider_config.app_provider.client_secret or oauth_provider_config.client_secret,
-                        scope=oauth_provider_config.app_provider.scope)
+                        scope=oauth_provider_config.app_provider.scope,
+                    )
                     app_provider.fetch_token(
-                        oauth_provider_config.app_provider.access_token_url,
-                        grant_type="client_credentials")
+                        oauth_provider_config.app_provider.access_token_url, grant_type="client_credentials"
+                    )
 
                 else:
                     app_provider = None
@@ -648,7 +665,7 @@ def oauth_validate(**_):
                 # Add user data from app_provider endpoint
                 if app_provider and oauth_provider_config.app_provider.user_get:
                     url = oauth_provider_config.app_provider.user_get
-                    uid = user_data.get('id', None)
+                    uid = user_data.get("id", None)
                     if not uid and user_data and oauth_provider_config.uid_field:
                         uid = user_data.get(oauth_provider_config.uid_field, None)
                     if uid:
@@ -666,7 +683,7 @@ def oauth_validate(**_):
                 groups = []
                 if app_provider and oauth_provider_config.app_provider.group_get:
                     url = oauth_provider_config.app_provider.group_get
-                    uid = user_data.get('id', None)
+                    uid = user_data.get("id", None)
                     if not uid and user_data and oauth_provider_config.uid_field:
                         uid = user_data.get(oauth_provider_config.uid_field, None)
                     if uid:
@@ -688,52 +705,55 @@ def oauth_validate(**_):
                     if oauth_provider_config.user_groups_name_field:
                         groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
 
-                    user_data['groups'] = groups
+                    user_data["groups"] = groups
 
                 if user_data:
                     data = parse_profile(user_data, oauth_provider_config)
-                    has_access = data.pop('access', False)
+                    has_access = data.pop("access", False)
 
-                    if data['email'] is None:
-                        return make_api_response({"err_code": 4}, err="Could not find an email address for the user",
-                                                 status_code=403)
+                    if data["email"] is None:
+                        return make_api_response(
+                            {"err_code": 4}, err="Could not find an email address for the user", status_code=403
+                        )
 
                     if not has_access:
-                        return make_api_response({"err_code": 2}, err="This user is not allowed access to the system",
-                                                 status_code=403)
+                        return make_api_response(
+                            {"err_code": 2}, err="This user is not allowed access to the system", status_code=403
+                        )
 
-                    oauth_avatar = data.pop('avatar', None)
+                    oauth_avatar = data.pop("avatar", None)
 
                     # Find if user already exists
-                    users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)['items']
+                    users = STORAGE.user.search(f"email:{data['email']}", fl="*", as_obj=False)["items"]
                     if users:
                         cur_user = users[0]
                         # Do not update username and password from the current user
-                        data['uname'] = cur_user.get('uname', data['uname'])
-                        data['password'] = cur_user.get('password', data['password'])
+                        data["uname"] = cur_user.get("uname", data["uname"])
+                        data["password"] = cur_user.get("password", data["password"])
                     else:
-                        if data['uname'] != data['email']:
+                        if data["uname"] != data["email"]:
                             # Username was computed using a regular expression, lets make sure we don't
                             # assign the same username to two users
                             res = STORAGE.user.search(f"uname:{data['uname']}", rows=0, as_obj=False)
-                            if res['total'] > 0:
-                                cnt = res['total']
+                            if res["total"] > 0:
+                                cnt = res["total"]
                                 new_uname = f"{data['uname']}{cnt}"
                                 while STORAGE.user.exists(new_uname):
                                     cnt += 1
                                     new_uname = f"{data['uname']}{cnt}"
-                                data['uname'] = new_uname
+                                data["uname"] = new_uname
                         cur_user = {}
 
-                    username = data['uname']
-                    email_adr = data['email']
+                    username = data["uname"]
+                    email_adr = data["email"]
 
                     # Add add dynamic classification group
-                    data['classification'] = get_dynamic_classification(data['classification'], data)
+                    data["classification"] = get_dynamic_classification(data["classification"], data)
 
                     # Make sure the user exists in AL and is in sync
-                    if (not cur_user and oauth_provider_config.auto_create) or \
-                            (cur_user and oauth_provider_config.auto_sync):
+                    if (not cur_user and oauth_provider_config.auto_create) or (
+                        cur_user and oauth_provider_config.auto_sync
+                    ):
 
                         # Update the current user
                         cur_user.update(data)
@@ -750,20 +770,20 @@ def oauth_validate(**_):
                     if cur_user:
                         if avatar is None:
                             avatar = STORAGE.user_avatar.get(username) or "/static/images/user_default.png"
-                        oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors='replace')).hexdigest()
-                        get_token_store(username, 'oauth').add(oauth_token_id)
+                        oauth_token_id = hashlib.sha256(str(token).encode("utf-8", errors="replace")).hexdigest()
+                        get_token_store(username, "oauth").add(oauth_token_id)
 
                         # Return valid token
-                        return make_api_response({
-                            "avatar": avatar,
-                            "username": username,
-                            "oauth_token_id": oauth_token_id,
-                            "email_adr": email_adr
-                        })
+                        return make_api_response(
+                            {
+                                "avatar": avatar,
+                                "username": username,
+                                "oauth_token_id": oauth_token_id,
+                                "email_adr": email_adr,
+                            }
+                        )
                     else:
-                        return make_api_response({"err_code": 3},
-                                                 err="User auto-creation is disabled",
-                                                 status_code=403)
+                        return make_api_response({"err_code": 3}, err="User auto-creation is disabled", status_code=403)
                 else:
                     return make_api_response({"err_code": 5}, err="Invalid oAuth token provided", status_code=401)
 
@@ -772,9 +792,11 @@ def oauth_validate(**_):
 
             except Exception as err:
                 LOGGER.exception(str(err))
-                return make_api_response({"err_code": 1, "exception": str(err)},
-                                         err="Unhandled exception occured while processing oAuth token",
-                                         status_code=401)
+                return make_api_response(
+                    {"err_code": 1, "exception": str(err)},
+                    err="Unhandled exception occured while processing oAuth token",
+                    status_code=401,
+                )
     else:
         return make_api_response({"err_code": 0}, err="oAuth disabled on the server", status_code=401)
 
@@ -811,9 +833,9 @@ def reset_pwd(**_):
     except (BadRequest, UnsupportedMediaType):
         data = request.values
 
-    reset_id = data.get('reset_id', None)
-    password = data.get('password', None)
-    password_confirm = data.get('password_confirm', None)
+    reset_id = data.get("reset_id", None)
+    password = data.get("password", None)
+    password_confirm = data.get("password_confirm", None)
 
     if reset_id and password and password_confirm:
         if password != password_confirm:
@@ -831,8 +853,8 @@ def reset_pwd(**_):
             if members:
                 email = members[0]
                 res = STORAGE.user.search(f"email:{email}", fl="*")
-                if res.get('total', 0) == 1:
-                    user = res['items'][0]
+                if res.get("total", 0) == 1:
+                    user = res["items"][0]
                     user.password = get_password_hash(password)
                     STORAGE.user.save(user.uname, user)
                     return make_api_response({"success": True})
@@ -841,9 +863,11 @@ def reset_pwd(**_):
             LOGGER.warning(f"Failed to reset the user's password: {str(e)}")
             pass
 
-        return make_api_response({"success": False},
-                                 err="This reset link has expired, please restart the password reset process",
-                                 status_code=403)
+        return make_api_response(
+            {"success": False},
+            err="This reset link has expired, please restart the password reset process",
+            status_code=403,
+        )
 
     return make_api_response({"success": False}, err="Invalid parameters passed", status_code=400)
 
@@ -870,27 +894,25 @@ def setup_otp(**kwargs):
      "secret_key": <SECRET KEY>
     }
     """
-    uname = kwargs['user']['uname']
+    uname = kwargs["user"]["uname"]
 
     user_data = STORAGE.user.get(uname, as_obj=False)
-    if user_data['otp_sk'] is not None:
+    if user_data["otp_sk"] is not None:
         return make_api_response("", err="OTP already set for this user", status_code=400)
 
     secret_key = generate_random_secret()
-    otp_url = 'otpauth://totp/{site}:{uname}?secret={secret_key}&issuer={site}'.format(uname=uname,
-                                                                                       secret_key=secret_key,
-                                                                                       site=config.ui.fqdn)
+    otp_url = "otpauth://totp/{site}:{uname}?secret={secret_key}&issuer={site}".format(
+        uname=uname, secret_key=secret_key, site=config.ui.fqdn
+    )
     qc_stream = BytesIO()
     temp_qrcode = pyqrcode.create(otp_url)
     temp_qrcode.svg(qc_stream, scale=3)
 
-    flsk_session['temp_otp_sk'] = secret_key
+    flsk_session["temp_otp_sk"] = secret_key
 
-    return make_api_response({
-        'qrcode': qc_stream.getvalue().decode('utf-8'),
-        'otp_url': otp_url,
-        'secret_key': secret_key
-    })
+    return make_api_response(
+        {"qrcode": qc_stream.getvalue().decode("utf-8"), "otp_url": otp_url, "secret_key": secret_key}
+    )
 
 
 # noinspection PyBroadException,PyPropertyAccess
@@ -926,24 +948,24 @@ def signup(**_):
     except (BadRequest, UnsupportedMediaType):
         data = request.values
 
-    uname = data.get('user', None)
-    password = data.get('password', None)
-    password_confirm = data.get('password_confirm', None)
-    email = data.get('email', None)
+    uname = data.get("user", None)
+    password = data.get("password", None)
+    password_confirm = data.get("password_confirm", None)
+    email = data.get("email", None)
 
     if not uname or not password or not password_confirm or not email:
         return make_api_response({"success": False}, "Not enough information to proceed with user creation", 400)
 
     if STORAGE.user.exists(uname) or len(uname) < 3:
-        return make_api_response({"success": False},
-                                 "There is already a user registered with this name",
-                                 460)
+        return make_api_response({"success": False}, "There is already a user registered with this name", 460)
     else:
         for c in uname:
             if not 97 <= ord(c) <= 122 and not ord(c) == 45:
-                return make_api_response({"success": False},
-                                         "Invalid username. [Lowercase letters and dashes "
-                                         "only with at least 3 letters]", 460)
+                return make_api_response(
+                    {"success": False},
+                    "Invalid username. [Lowercase letters and dashes " "only with at least 3 letters]",
+                    460,
+                )
 
     if password_confirm != password:
         return make_api_response("", "Passwords do not match", 469)
@@ -953,7 +975,7 @@ def signup(**_):
         error_msg = get_password_requirement_message(**password_requirements)
         return make_api_response({"success": False}, error_msg, 469)
 
-    if STORAGE.user.search(f"email:{email.lower()}").get('total', 0) != 0:
+    if STORAGE.user.search(f"email:{email.lower()}").get("total", 0) != 0:
         return make_api_response({"success": False}, "There is already a user registered with this email address", 466)
 
     # Normalize email address
@@ -972,16 +994,10 @@ def signup(**_):
         return make_api_response({"success": False}, f"Invalid email address{extra}", 466)
 
     password = get_password_hash(password)
-    key = hashlib.sha256(get_random_password(length=512).encode('utf-8')).hexdigest()
+    key = hashlib.sha256(get_random_password(length=512).encode("utf-8")).hexdigest()
     try:
         send_signup_email(email, key)
-        get_signup_queue(key).add({
-            "uname": uname,
-            "password": password,
-            "email": email,
-            "groups": [],
-            "name": uname
-        })
+        get_signup_queue(key).add({"uname": uname, "password": password, "email": email, "groups": [], "name": uname})
     except Exception as e:
         LOGGER.warning(f"Sending email for signup process failed: {str(e)}")
         return make_api_response({"success": False}, "The system failed to send signup confirmation link.", 400)
@@ -1019,7 +1035,7 @@ def signup_validate(**_):
     except (BadRequest, UnsupportedMediaType):
         data = request.values
 
-    registration_key = data.get('registration_key', None)
+    registration_key = data.get("registration_key", None)
 
     if registration_key:
         try:
@@ -1030,8 +1046,9 @@ def signup_validate(**_):
                 user_info = members[0]
 
                 # Add dynamic classification group
-                user_info['classification'] = get_dynamic_classification(
-                    user_info.get('classification', Classification.UNRESTRICTED), user_info)
+                user_info["classification"] = get_dynamic_classification(
+                    user_info.get("classification", Classification.UNRESTRICTED), user_info
+                )
 
                 user = User(user_info)
                 username = user.uname
@@ -1054,7 +1071,7 @@ def validate_otp(token, **kwargs):
     Validate newly setup OTP token
 
     Variables:
-    token     => Current token for temporary OTP sercret key
+    token     => Current token for temporary OTP secret key
 
     Arguments:
     None
@@ -1067,22 +1084,22 @@ def validate_otp(token, **kwargs):
      "success": true
     }
     """
-    uname = kwargs['user']['uname']
+    uname = kwargs["user"]["uname"]
     user_data = STORAGE.user.get(uname, as_obj=False)
 
     try:
         token = int(token)
     except ValueError:
-        return make_api_response({'success': False}, err="This is not a valid OTP token", status_code=400)
+        return make_api_response({"success": False}, err="This is not a valid OTP token", status_code=400)
 
-    secret_key = flsk_session.pop('temp_otp_sk', None)
+    secret_key = flsk_session.pop("temp_otp_sk", None)
     if secret_key and get_totp_token(secret_key) == token:
-        user_data['otp_sk'] = secret_key
+        user_data["otp_sk"] = secret_key
         STORAGE.user.save(uname, user_data)
-        return make_api_response({'success': True})
+        return make_api_response({"success": True})
     else:
-        flsk_session['temp_otp_sk'] = secret_key
-        return make_api_response({'success': False}, err="OTP token does not match secret key", status_code=400)
+        flsk_session["temp_otp_sk"] = secret_key
+        return make_api_response({"success": False}, err="OTP token does not match secret key", status_code=400)
 
 
 def _prepare_flask_request(request) -> Dict[str, Any]:
@@ -1096,7 +1113,7 @@ def _prepare_flask_request(request) -> Dict[str, Any]:
         "get_data": request.args.copy(),
         # lowercase_urlencoding if using ADFS as IdP, https://github.com/onelogin/python-saml/pull/144
         "lowercase_urlencoding": config.auth.saml.lowercase_urlencoding,
-        "post_data": request.form.copy()
+        "post_data": request.form.copy(),
     }
 
 
