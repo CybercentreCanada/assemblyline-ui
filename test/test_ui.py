@@ -1,13 +1,18 @@
 import hashlib
 import json
-import pytest
 import random
-
-from conftest import APIError, get_api_data
 from io import BytesIO
 
-from assemblyline.odm.random_data import create_users, wipe_users, create_services, wipe_services
+import pytest
+from conftest import APIError, get_api_data
+
 from assemblyline.common.uid import get_random_id
+from assemblyline.odm.random_data import (
+    create_services,
+    create_users,
+    wipe_services,
+    wipe_users,
+)
 from assemblyline.odm.randomizer import get_random_phrase
 
 
@@ -74,7 +79,7 @@ def test_ui_submission(datastore, login_session):
             else:
                 raise
 
-    ui_params = get_api_data(session, f"{host}/api/v4/user/settings/admin/")
+    ui_params = get_api_data(session, f"{host}/api/v4/user/settings/admin/")['submission_profiles']['static']
     ui_params['filename'] = 'test.txt'
     resp = get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(ui_params))
     assert resp['started']

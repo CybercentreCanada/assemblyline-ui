@@ -152,7 +152,7 @@ LOGGER = logging.getLogger('assemblyline.ui')
 if AUDIT:
     AUDIT_LOG.setLevel(logging.INFO)
 
-if DEBUG:
+if DEBUG and config.logging.log_to_file:
     if not os.path.exists(config.logging.log_directory):
         os.makedirs(config.logging.log_directory)
 

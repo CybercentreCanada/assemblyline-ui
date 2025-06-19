@@ -97,8 +97,8 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         submission_params['classification'] = file_info['classification']
         expiry = file_info['expiry_ts']
 
-        # Ignore external sources
-        submission_params.pop('default_external_sources', None)
+    # Ignore external sources
+    submission_params.pop('default_external_sources', None)
 
     if not FILESTORE.exists(sha256):
         if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
@@ -124,17 +124,25 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
 
     if profile:
         # Obtain any settings from the user and apply them to the submission
-        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
-        if user_settings:
+        user_settings = STORAGE.user_settings.get(user['uname'])
+        if user_settings and profile in user_settings['submission_profiles']:
             # Reuse existing settings for specified profile
-            profile_params = user_settings['submission_profiles'].get(profile, {})
+            profile_params = user_settings['submission_profiles'][profile].as_primitives(strip_null=True)
         else:
             # Otherwise default to what's set for the profile at the configuration-level
             profile_params = {}
         profile_params['submission_profile'] = profile
 
-        submission_params = update_submission_parameters(submission_params, profile_params, user)
+        # Omit the service selection from the submission and service_spec to use the profile's settings
+        submission_params.pop("services", None)
+        submission_params.pop("service_spec", None)
+
+        # Preserve the classification of the original submission
+        classification = submission_params['classification']
+
+        submission_params = update_submission_parameters(submission_params, {"params": profile_params}, user)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
+        submission_params['classification'] = classification
 
     else:
         # Only append Dynamic Analysis as a selected service and set the priority
@@ -142,6 +150,9 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
             submission_params['priority'] = 500
         if "Dynamic Analysis" not in submission_params['services']['selected']:
             submission_params['services']['selected'].append("Dynamic Analysis")
+        submission_params['services'].setdefault('excluded', [])
+        if "Dynamic Analysis" in submission_params['services']['excluded']:
+            submission_params['services']['excluded'].remove("Dynamic Analysis")
 
         # Ensure submission priority stays within the range of user priorities
         submission_params['priority'] = max(min(submission_params['priority'], MAX_PRIORITY), PRIORITIES['user-low'])
@@ -156,7 +167,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         return make_api_response("", err=str(e), status_code=400)
 
 # noinspection PyUnusedLocal
-@submit_api.route("/<profile>/<sha256>/", methods=["GET"])
+@submit_api.route("/<profile>/<sha256>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.submission_create], count_toward_quota=False)
 def resubmit_with_profile(profile, sha256, *args, **kwargs):
     """
