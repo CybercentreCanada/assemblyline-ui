@@ -355,10 +355,11 @@ def submit(**kwargs):
       "plaintext": "<RAW DATA OF THE FILE TO SCAN... ENCODED AS UTF-8 STRING>",
       "base64": "<BINARY DATA OF THE FILE TO SCAN... ENCODED AS BASE64 STRING>",
 
+      // CONDITIONALLY OPTIONAL VALUES:
+      "submission_profile": "static",       # Name of submission profile to use (condition: user has "submission_customize" role)
+
       // OPTIONAL VALUES
       "name": "file.exe",                   # Name of the file to scan otherwise the sha256 or base file of the url
-
-      "submission_profile": "static",       # Name of submission profile to use
 
       "metadata": {                         # Submission metadata
         "key": val,                             # Key/Value pair for metadata parameters

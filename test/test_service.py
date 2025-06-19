@@ -1,13 +1,19 @@
 import json
-import pytest
 import random
-import yaml
 
-from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION, BUILD_MINOR
-from assemblyline.odm.models.service import Service
-from assemblyline.odm.random_data import create_services, create_users, wipe_services, wipe_users
-from assemblyline.odm.randomizer import SERVICES
+import pytest
+import yaml
 from conftest import get_api_data
+
+from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
+from assemblyline.odm.models.service import Service
+from assemblyline.odm.random_data import (
+    create_services,
+    create_users,
+    wipe_services,
+    wipe_users,
+)
+from assemblyline.odm.randomizer import SERVICES
 
 TEMP_SERVICES = SERVICES
 
@@ -26,12 +32,14 @@ def datastore(datastore_connection):
 @pytest.fixture
 def suricata_init_config(datastore, login_session):
     _, session, host = login_session
+    name = "Suricata"
+    version = datastore.service.search("name:Suricata", fl="version", rows=1, as_obj=False)['items'][0]['version']
     service_conf = {
-        "name": "Suricata",
+        "name": name,
         "enabled": True,
         "category": "Networking",
         "stage": "CORE",
-        "version": f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1",
+        "version": version,
         "docker_config": {
             "image": f"cccs/assemblyline-service-suricata:{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.dev69",
         },
@@ -54,7 +62,7 @@ def suricata_init_config(datastore, login_session):
     }
 
     service_data = Service(service_conf).as_primitives()
-    resp = get_api_data(session, f"{host}/api/v4/service/Suricata/", method="POST", data=json.dumps(service_data))
+    resp = get_api_data(session, f"{host}/api/v4/service/{name}/", method="POST", data=json.dumps(service_data))
     if resp['success']:
         datastore.service_delta.commit()
         datastore.service.commit()
@@ -78,10 +86,11 @@ def clear_signature_source_statuses(service_config: dict):
 
 
 # noinspection PyUnusedLocal
-def test_backup_and_restore(datastore, login_session):
+@pytest.mark.parametrize("full", [True, False])
+def test_backup_and_restore(datastore, login_session, full):
     _, session, host = login_session
 
-    backup = get_api_data(session, f"{host}/api/v4/service/backup/", raw=True)
+    backup = get_api_data(session, f"{host}/api/v4/service/backup/?full={full}", raw=True)
     assert isinstance(backup, bytes)
     backup_data = yaml.safe_load(backup)
     assert isinstance(backup_data, dict)
@@ -186,8 +195,9 @@ def test_edit_service(datastore, login_session):
     svc_data = ds.service.search("id:*", rows=100, as_obj=False)
 
     target_version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
+    query = f"name:({ ' OR '.join(TEMP_SERVICES.keys())}) AND version:{target_version}"
+    service = ds.service.search(query, rows=1, as_obj=False)['items'][0]['name']
 
-    service = random.choice(list(TEMP_SERVICES.keys()))
     service_data = Service({
         "name": service,
         "enabled": True,

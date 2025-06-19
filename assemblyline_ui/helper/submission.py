@@ -3,12 +3,14 @@ import os
 import re
 import shutil
 import socket
+import subprocess
 import tempfile
 from copy import deepcopy
 from typing import List
 from urllib.parse import urlparse
 
 import requests
+
 from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.file import make_uri_file
 from assemblyline.common.iprange import is_ip_reserved
@@ -17,7 +19,7 @@ from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
-from assemblyline.odm.models.user_settings import DEFAULT_USER_PROFILE_SETTINGS
+from assemblyline.odm.models.user_settings import DEFAULT_SUBMISSION_PROFILE_SETTINGS
 from assemblyline_ui.config import (
     ARCHIVESTORE,
     CLASSIFICATION,
@@ -210,6 +212,31 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                                 ignore_size=s_params.get('ignore_size', False))
                     if dl_from is not None:
                         found = True
+
+                        download_fileinfo = IDENTIFY.fileinfo(out_file, generate_hashes=False, calculate_entropy=False,
+                                                              skip_fuzzy_hashes=True)
+                        if source.password and download_fileinfo['type'] == "archive/zip":
+                            # Determine the number of files contained and if it surpasses the maximum file size limit
+                            zip_namelist = subprocess.run(["7zz", "l", "-ba", out_file], capture_output=True, text=True).stdout.splitlines()
+                            if len(zip_namelist) == 1:
+                                # Check the size of the file and if it surpasses the maximum file size limit
+                                file_size = int(zip_namelist[0].split()[3])
+                                if file_size >= config.submission.max_file_size:
+                                    raise FileTooBigException("File too big to be scanned "
+                                                            f"({file_size} > {config.submission.max_file_size}).")
+                                else:
+                                    # If the file is a zip file, we need to extract it using the provided password
+                                    with tempfile.TemporaryDirectory() as extract_dir:
+                                        try:
+                                            # Extract the zip file to a temporary directory and replace the original file
+                                            subprocess.run(["7zz", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file], capture_output=True)
+                                            extracted_files = os.listdir(extract_dir)
+                                            if extracted_files:
+                                                # Extraction was successful, replace the original file with the extracted one
+                                                os.replace(os.path.join(extract_dir, extracted_files[0]), out_file)
+                                        except Exception:
+                                            # If the extraction fails, we can ignore it and keep the original file and let the extraction service handle it
+                                            pass
                 else:
                     # Check if we are allowed to task this system with URLs
                     if not config.ui.allow_url_submissions:
@@ -237,7 +264,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
                     # Check if the downloaded content has the same hash as the fetch method
                     if method in HASH_PATTERN_MAP and name == input:
-                        hash = IDENTIFY.fileinfo(out_file)[method]
+                        hash = IDENTIFY.fileinfo(out_file, calculate_entropy=False)[method]
                         if hash != input:
                             # Rename the file to the hash of the downloaded content to avoid confusion
                             name = hash
@@ -268,9 +295,9 @@ def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict
             raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
         # Apply the profile (but allow the user to change some properties)
         s_params = recursive_update(s_params, data.get("params", {}))
-        s_params = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, s_params)
+        s_params = get_recursive_delta(DEFAULT_SUBMISSION_PROFILE_SETTINGS, s_params)
         s_params = apply_changes_to_profile(s_profile, s_params, user)
-        s_params = recursive_update(deepcopy(DEFAULT_USER_PROFILE_SETTINGS), s_params)
+        s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")

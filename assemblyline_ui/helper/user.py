@@ -2,11 +2,12 @@ from typing import Optional
 
 from flask import session as flsk_session
 
-from assemblyline.common.dict_utils import get_recursive_delta
+from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.config import SubmissionProfile
 from assemblyline.odm.models.user import ROLES, User, load_roles
 from assemblyline.odm.models.user_settings import (
+    DEFAULT_SUBMISSION_PROFILE_SETTINGS,
     DEFAULT_USER_PROFILE_SETTINGS,
     UserSettings,
 )
