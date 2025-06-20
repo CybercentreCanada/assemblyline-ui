@@ -383,10 +383,16 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try setting a parameter that you are allowed to set
-    data['params'] = {'deep_scan': True}
+    data['params'] = {
+        'deep_scan': True,
+        'services': {
+            'excluded': ['Antivirus']
+        }
+    }
 
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert resp['params']['deep_scan']
+    assert resp['params']['services']['excluded'] == ['Antivirus']
 
     # Restore original roles for later tests
     datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
