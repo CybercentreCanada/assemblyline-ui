@@ -118,11 +118,4 @@ def ui_to_submission_params(params) -> Optional[dict[str, Any]]:
     if "services" in params and isinstance(params['services'], list):
         params['services'] = {'selected': simplify_services(params["services"])}
 
-    params['ttl'] = int(params.get('ttl', config.submission.dtl))
-
-    # Remove UI specific params that don't apply as submission params based on the model
-    for param in USER_SETTINGS_FIELDS:
-        if param not in SUBMISSION_PARAM_FIELDS:
-            params.pop(param, None)
-
     return params

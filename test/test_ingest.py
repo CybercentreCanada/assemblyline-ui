@@ -290,7 +290,6 @@ def test_ingest_metadata_validation(datastore, login_session):
     iq.delete()
 
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
-    sha256 = hashlib.sha256(byte_str).hexdigest()
 
     # Test with strict metadata validation that should pass
     data = {
