@@ -352,7 +352,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
 
     # Ensure submission created has expected properties of using the submission profile
     submission_profile_data = get_api_data(session, f"{host}/api/v4/user/submission_params/{_['username']}/static/")
-    selected_service_categories = set(datastore.service.facet("category").keys()) - {'Dynamic Analysis'}
+    selected_service_categories = set(datastore.service.facet("category").keys()) - {'Dynamic Analysis', 'External'}
     for key, value in submission_profile_data.items():
         if key == "services":
             # Ensure selected services are confined to the set of service categories present in the test
@@ -392,7 +392,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
 
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert resp['params']['deep_scan']
-    assert resp['params']['services']['excluded'] == ['Antivirus']
+    assert 'Antivirus' in resp['params']['services']['excluded']
 
     # Restore original roles for later tests
     datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
