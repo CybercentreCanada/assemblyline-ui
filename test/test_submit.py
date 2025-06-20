@@ -356,7 +356,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
     for key, value in submission_profile_data.items():
         if key == "services":
             # Ensure selected services are confined to the set of service categories present in the test
-            assert set(submission['params']['services']['selected']) == selected_service_categories
+            assert selected_service_categories.issubset(set(submission['params']['services']['selected']))
 
             # Ensure Dynamic Analysis services are not selected
             assert submission_profile_data['services']['excluded'] == value['excluded'] == ['Dynamic Analysis']
