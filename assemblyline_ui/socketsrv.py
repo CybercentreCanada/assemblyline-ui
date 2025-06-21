@@ -55,6 +55,9 @@ if 'APPLICATION_ROOT' in os.environ:
     app.config['APPLICATION_ROOT'] = os.environ['APPLICATION_ROOT']
     app.config['SESSION_COOKIE_PATH'] = '/'
 
+# Initialize the Redis session store with application
+Session(app)
+
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
 socketio = SocketIO(app, async_mode=os.environ.get('ASYNC_MODE', 'gevent'), cors_allowed_origins='*')
 
@@ -74,7 +77,6 @@ if __name__ == '__main__':
     app.logger.setLevel(log_level)
     wlog = logging.getLogger('werkzeug')
     wlog.setLevel(log_level)
-    Session(app)
     # Run debug mode
     if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
         # If all files required are present, start up encrypted comms
