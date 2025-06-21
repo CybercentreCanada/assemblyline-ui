@@ -6,12 +6,15 @@ except ImportError:
 
 import logging
 import os
+from datetime import timedelta
 
 from flask import Flask
+from flask_session import Session
 from flask_socketio import SocketIO
 
 from assemblyline.common import forge
 from assemblyline.common import log as al_log
+from assemblyline_ui.config import redis
 from assemblyline_ui.healthz import healthz
 from assemblyline_ui.sio.alert import AlertMonitoringNamespace
 from assemblyline_ui.sio.file import FileCommentNamespace
@@ -34,7 +37,16 @@ LOGGER.info("SocketIO server ready to receive connections...")
 
 # Prepare the app
 app = Flask('socketio')
-app.config['SECRET_KEY'] = config.ui.secret_key
+# Update app config with common settings
+app.config.update(
+    SECRET_KEY=config.ui.secret_key,
+    SESSION_TYPE='redis',
+    SESSION_REDIS=redis,
+    SESSION_KEY_PREFIX="flask_session:",
+    SESSION_SERIALIZATION_FORMAT='json',
+    SESSION_PERMANENT=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(seconds=config.ui.session_duration),
+)
 app.register_blueprint(healthz)
 
 # If the environment says we should prefix our app by something, do so
@@ -62,6 +74,7 @@ if __name__ == '__main__':
     app.logger.setLevel(log_level)
     wlog = logging.getLogger('werkzeug')
     wlog.setLevel(log_level)
+    Session(app)
     # Run debug mode
     if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
         # If all files required are present, start up encrypted comms

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from flask import session as flsk_session
+from flask import session
 
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.common.str_utils import safe_str
@@ -90,7 +90,7 @@ def increase_daily_submission_quota(user) -> Optional[str]:
 
         if daily_quota != 0:
             current_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
-            flsk_session['remaining_quota_submission'] = max(daily_quota - current_daily_quota, 0)
+            session['remaining_quota_submission'] = max(daily_quota - current_daily_quota, 0)
             if current_daily_quota > daily_quota:
                 LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
                 return f"You've exceeded your daily maximum submission quota of {daily_quota}"
