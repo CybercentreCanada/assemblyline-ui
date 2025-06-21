@@ -91,6 +91,9 @@ if AL_SESSION_COOKIE_SAMESITE:
     else:
         raise ValueError("AL_SESSION_COOKIE_SAMESITE must be set to 'Strict', 'Lax', or None")
 
+# Initialize the Redis session store with application
+Session(app)
+
 if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
     # If all files required are present, start up encrypted comms
     ssl_context = CERT_BUNDLE
@@ -198,8 +201,6 @@ def main():
     wlog.setLevel(config.LOGGER.getEffectiveLevel())
     for h in config.LOGGER.parent.handlers:
         wlog.addHandler(h)
-
-    Session(app)
     app.jinja_env.cache = {}
     app.run(host="0.0.0.0", debug=False, ssl_context=ssl_context, threaded=THREADED)
 
