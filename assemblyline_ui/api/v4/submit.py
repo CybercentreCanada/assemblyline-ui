@@ -436,15 +436,15 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
-        # Load in the user's settings in case it wasn't provided from the UI
-        # Ensure the `default_external_sources` are popped before converting UI params to submission params
-        user_settings = data['ui_params'] if "ui_params" in data else load_user_settings(user)
-        default_external_sources = user_settings.pop('default_external_sources', [])
+        default_external_sources = STORAGE.user_settings.get(user['uname'], {}).get('default_external_sources', [])
 
         # Create task object
+
+        # Check if submission was triggered by the UI or by a client using the API directly
         s_params = {}
-        if (ROLES.submission_customize in user['roles']) or "ui_params" in data:
-            s_params = ui_to_submission_params(user_settings)
+        if "ui_params" in data:
+            # Transform data from UI to submission parameters
+            s_params = ui_to_submission_params(data["ui_params"])
 
         # Update submission parameters as specified by the user
         try:

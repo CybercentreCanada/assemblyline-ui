@@ -1,13 +1,18 @@
 
-from flask import Blueprint, request, session as flsk_session
 from sys import exc_info
 from traceback import format_tb
-from werkzeug.exceptions import Forbidden, Unauthorized, BadRequest, NotFound
+
+from flask import Blueprint, request, session
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, Unauthorized
 
 from assemblyline_ui.api.base import make_api_response
-from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config, KV_SESSION
-from assemblyline_ui.http_exceptions import AccessDeniedException, AuthenticationException, \
-    InvalidDataException, NotFoundException
+from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config
+from assemblyline_ui.http_exceptions import (
+    AccessDeniedException,
+    AuthenticationException,
+    InvalidDataException,
+    NotFoundException,
+)
 from assemblyline_ui.logger import log_with_traceback
 
 errors = Blueprint("errors", __name__)
@@ -38,10 +43,7 @@ def handle_401(e):
         "allow_signup": config.auth.internal.enabled and config.auth.internal.signup.enabled,
         "allow_saml_login": config.auth.saml.enabled,
     }
-    session_id = flsk_session.get('session_id', None)
-    if session_id:
-        KV_SESSION.pop(session_id)
-    flsk_session.clear()
+    session.clear()
     res = make_api_response(data, msg, 401)
     res.set_cookie('XSRF-TOKEN', '', max_age=0)
     return res
@@ -57,13 +59,8 @@ def handle_403(e):
     trace = exc_info()[2]
     if AUDIT:
         uname = "(None)"
-        ip = request.remote_addr
-        session_id = flsk_session.get("session_id", None)
-        if session_id:
-            session = KV_SESSION.get(session_id)
-            if session:
-                uname = session.get("username", uname)
-                ip = session.get("ip", ip)
+        ip = session.get("ip", request.remote_addr)
+        uname = session.get("username", uname)
 
         log_with_traceback(AUDIT_LOG, trace, f"Access Denied. (U:{uname} - IP:{ip}) [{error_message}]")
 

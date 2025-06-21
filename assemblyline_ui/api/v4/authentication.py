@@ -12,13 +12,11 @@ import pyqrcode
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.flask_client import FlaskOAuth2App, OAuth
 from authlib.integrations.requests_client import OAuth2Session
-from flask import current_app, redirect, request
-from flask import session as flsk_session
+from flask import current_app, redirect, request, session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from assemblyline.common.comms import send_reset_email, send_signup_email
-from assemblyline.common.isotime import now
 from assemblyline.common.security import (
     check_password_requirements,
     generate_random_secret,
@@ -33,7 +31,6 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import (
     AUDIT_LOG,
     AUDIT_LOGIN,
-    KV_SESSION,
     LOGGER,
     SECRET_KEY,
     STORAGE,
@@ -354,36 +351,20 @@ def login(**_):
         logged_in_uname = None
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         try:
-            logged_in_uname, roles_limit = default_authenticator(auth, request, flsk_session, STORAGE)
-            session_duration = config.ui.session_duration
-            cur_time = now()
+            logged_in_uname, roles_limit = default_authenticator(auth, request, session, STORAGE)
             xsrf_token = generate_random_secret()
             current_session = {
-                "duration": session_duration,
                 "ip": ip,
                 "roles_limit": roles_limit,
-                "time": int(cur_time) - (int(cur_time) % session_duration),
                 "user_agent": request.headers.get("User-Agent", None),
                 "username": logged_in_uname,
                 "xsrf_token": xsrf_token,
+                "session_id": session.sid
             }
-            session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
-            current_session["expire_at"] = cur_time + session_duration
-            flsk_session["session_id"] = session_id
-
-            # Cleanup expired sessions
-            for k, v in KV_SESSION.items().items():
-                expire_at = v.get("expire_at", 0)
-                if expire_at < cur_time:
-                    KV_SESSION.pop(k)
-                    LOGGER.info(
-                        f"The following session ID was removed because of a timeout. "
-                        f"[User: {v.get('username', 'unknown')}, SessionID: {k[:16]}...]"
-                    )
-
-            KV_SESSION.add(session_id, current_session)
+            session.update(current_session)
             return make_api_response(
-                {"username": logged_in_uname, "roles_limit": roles_limit, "session_duration": session_duration},
+                {"username": logged_in_uname, "roles_limit": roles_limit,
+                 "session_duration": current_app.permanent_session_lifetime.total_seconds()},
                 cookies={"XSRF-TOKEN": xsrf_token},
             )
         except AuthenticationException as wpe:
@@ -420,10 +401,7 @@ def logout(**_):
     }
     """
     try:
-        session_id = flsk_session.get("session_id", None)
-        if session_id:
-            KV_SESSION.pop(session_id)
-        flsk_session.clear()
+        session.clear()
         res = make_api_response({"success": True})
         res.set_cookie("XSRF-TOKEN", "", max_age=0)
         return res
@@ -456,7 +434,7 @@ def saml_sso(**_):
     if isinstance(path, bytes):
         path = path.decode("utf-8")
     sso_built_url: str = auth.login(return_to=f"https://{host}{path}")
-    flsk_session["AuthNRequestID"] = auth.get_last_request_id()
+    session["AuthNRequestID"] = auth.get_last_request_id()
     return redirect(sso_built_url)
 
 
@@ -483,7 +461,7 @@ def saml_acs(**_):
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
-    request_id: str = flsk_session.pop("AuthNRequestID", None)
+    request_id: str = session.pop("AuthNRequestID", None)
 
     if not request_id:
         # Could not found the request ID, this token was already used, redirect to the UI with the error
@@ -908,7 +886,7 @@ def setup_otp(**kwargs):
     temp_qrcode = pyqrcode.create(otp_url)
     temp_qrcode.svg(qc_stream, scale=3)
 
-    flsk_session["temp_otp_sk"] = secret_key
+    session["temp_otp_sk"] = secret_key
 
     return make_api_response(
         {"qrcode": qc_stream.getvalue().decode("utf-8"), "otp_url": otp_url, "secret_key": secret_key}
@@ -1092,13 +1070,13 @@ def validate_otp(token, **kwargs):
     except ValueError:
         return make_api_response({"success": False}, err="This is not a valid OTP token", status_code=400)
 
-    secret_key = flsk_session.pop("temp_otp_sk", None)
+    secret_key = session.pop("temp_otp_sk", None)
     if secret_key and get_totp_token(secret_key) == token:
         user_data["otp_sk"] = secret_key
         STORAGE.user.save(uname, user_data)
         return make_api_response({"success": True})
     else:
-        flsk_session["temp_otp_sk"] = secret_key
+        session["temp_otp_sk"] = secret_key
         return make_api_response({"success": False}, err="OTP token does not match secret key", status_code=400)
 
 

@@ -1,7 +1,6 @@
 from typing import List
 
-from flask import request
-from flask import session as flsk_session
+from flask import request, session
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
@@ -186,10 +185,10 @@ def who_am_i(**kwargs):
 
     # Force quotas to be part of the session so they could be trapped by the UI
     if user_data['api_daily_quota'] != 0:
-        flsk_session['remaining_quota_api'] = max(
+        session['remaining_quota_api'] = max(
             user_data['api_daily_quota'] - DAILY_QUOTA_TRACKER.get_api(user_data['username']), 0)
     if user_data['submission_daily_quota'] != 0:
-        flsk_session['remaining_quota_submission'] = max(
+        session['remaining_quota_submission'] = max(
             user_data['submission_daily_quota'] - DAILY_QUOTA_TRACKER.get_submission(user_data['username']), 0)
 
     # System configuration

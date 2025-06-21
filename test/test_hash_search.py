@@ -1,18 +1,19 @@
-import pytest
 import random
-import requests
 
+import pytest
+import requests
+from assemblyline_ui.api.v4 import federated_lookup, hash_search
+from assemblyline_ui.app import app
+from assemblyline_ui.config import CLASSIFICATION
 from conftest import get_api_data
+from flask_session import Session
 
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.config import ExternalSource
-from assemblyline.odm.models.result import Result
 from assemblyline.odm.models.file import File
-from assemblyline.odm.randomizer import random_model_obj
+from assemblyline.odm.models.result import Result
 from assemblyline.odm.random_data import create_users, wipe_users
-from assemblyline_ui.app import app
-from assemblyline_ui.config import CLASSIFICATION
-from assemblyline_ui.api.v4 import hash_search, federated_lookup
+from assemblyline.odm.randomizer import random_model_obj
 
 NUM_ITEMS = 10
 f_hash_list = []
@@ -102,6 +103,7 @@ def ext_config():
 def test_client(ext_config):
     """generate a test client with test configuration."""
     app.config["TESTING"] = True
+    Session(app)
     with app.test_client() as client:
         with app.app_context():
             yield client

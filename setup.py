@@ -43,6 +43,7 @@ setup(
         'assemblyline-core',
         'werkzeug',
         'flask<3.0.0',
+        'flask-session[redis]',
         'pyqrcode',
         'markdown',
         'python-ldap',

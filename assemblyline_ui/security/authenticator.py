@@ -1,18 +1,13 @@
-import base64
-import zlib
+from flask import abort, current_app, request, session
+
 from assemblyline.odm.models.user import USER_ROLES
-
-from flask import abort, request, current_app, session as flsk_session
-
-from assemblyline.common.isotime import now
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_ui.config import AUDIT, AUDIT_LOG, AUDIT_KW_TARGET, KV_SESSION
-from assemblyline_ui.config import config
+from assemblyline_ui.config import AUDIT, AUDIT_KW_TARGET, AUDIT_LOG, config
 from assemblyline_ui.http_exceptions import AuthenticationException
-from assemblyline_ui.security.saml_auth import validate_saml_user
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser
 from assemblyline_ui.security.oauth_auth import validate_oauth_id, validate_oauth_token
+from assemblyline_ui.security.saml_auth import validate_saml_user
 from assemblyline_ui.security.second_factor_auth import validate_2fa
 from assemblyline_ui.security.userpass_auth import validate_userpass
 
@@ -76,64 +71,7 @@ class BaseSecurityRenderer(object):
         if auto_auth_uname is not None:
             return auto_auth_uname, roles_limit
 
-        session_id = flsk_session.get("session_id", None)
-
-        if not session_id:
-            if current_app.config['SESSION_COOKIE_NAME'] in request.cookies:
-                session = request.cookies.get(current_app.config['SESSION_COOKIE_NAME'])
-
-                # Try to load the session by hand to check why is rejected
-                try:
-                    serializer = current_app.session_interface.get_signing_serializer(current_app)
-                    max_age = int(current_app.permanent_session_lifetime.total_seconds())
-                    serializer.loads(session, max_age=max_age)
-                    session_err = None
-                except Exception as e:
-                    session_err = f"{type(e).__name__}: {str(e)}"
-
-                try:
-                    _, data, expiry, _ = session.split('.')
-                    # Get session details
-                    missing_padding = len(data) % 4
-                    if missing_padding:
-                        data += '=' * (4 - missing_padding)
-
-                    decoded = zlib.decompress(base64.urlsafe_b64decode(data)).decode('utf-8')
-
-                    # Get session expiry
-                    missing_padding = len(expiry) % 4
-                    if missing_padding:
-                        expiry += '=' * (4 - missing_padding)
-                    expiry_time = int.from_bytes(base64.urlsafe_b64decode(expiry), 'big')
-
-                    if session_err:
-                        current_app.logger.warning(
-                            f'The session was rejected: {decoded} ({expiry_time}) - Reason: {session_err}')
-                    else:
-                        current_app.logger.warning(f'The session was rejected: {decoded} ({expiry_time})')
-                except Exception as e:
-                    current_app.logger.warning(
-                        f'The session was rejected and could not be parsed: {session} - Reason: {str(e)}')
-
-                abort(401, "Session rejected")
-            else:
-                current_app.logger.debug('session_id cookie not found')
-                abort(401, "Session not found")
-
-        session = KV_SESSION.get(session_id)
-
-        if not session:
-            current_app.logger.debug(f'[{session_id}] session_id not found in redis')
-            abort(401, "Session expired")
-        else:
-            cur_time = now()
-            if session.get('expire_at', 0) < cur_time:
-                current_app.logger.debug(f'[{session_id}] session has expired '
-                                         f'{session.get("expire_at", 0)} < {cur_time}')
-                abort(401, "Session expired")
-            else:
-                session['expire_at'] = cur_time + session.get('duration', 3600)
-
+        session_id = session.get("session_id", None)
         if config.ui.validate_session_ip and \
                 request.headers.get("X-Forwarded-For", request.remote_addr) != session.get('ip', None):
             current_app.logger.debug(f'[{session_id}] X-Forwarded-For does not match session IP '
@@ -145,8 +83,6 @@ class BaseSecurityRenderer(object):
             current_app.logger.debug(f'[{session_id}] User-Agent does not match session user_agent '
                                      f'{request.headers.get("User-Agent", None)} != {session.get("user_agent", None)}')
             abort(401, "Invalid user agent for this session")
-
-        KV_SESSION.set(session_id, session)
 
         self.extra_session_checks(session)
 

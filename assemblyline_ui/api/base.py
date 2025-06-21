@@ -1,25 +1,43 @@
 
-from urllib.parse import quote
-import elasticapm
 import functools
 import hashlib
-import jwt
-
-from flask import current_app, Blueprint, jsonify, make_response, request, session as flsk_session, Response, abort
 from sys import exc_info
 from traceback import format_tb
+from urllib.parse import quote
 
+import elasticapm
+import jwt
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    current_app,
+    jsonify,
+    make_response,
+    request,
+    session,
+)
+
+from assemblyline.common.str_utils import safe_str
+from assemblyline.odm.models.user import ROLES
+from assemblyline_ui.config import (
+    AUDIT_LOG,
+    AUDIT_LOGIN,
+    CLASSIFICATION,
+    DAILY_QUOTA_TRACKER,
+    LOGGER,
+    QUOTA_TRACKER,
+    SECRET_KEY,
+    STORAGE,
+    VERSION,
+    config,
+)
+from assemblyline_ui.helper.user import login
+from assemblyline_ui.http_exceptions import AuthenticationException
+from assemblyline_ui.logger import log_with_traceback
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.authenticator import BaseSecurityRenderer
 from assemblyline_ui.security.oauth_auth import validate_oauth_token
-from assemblyline_ui.config import LOGGER, QUOTA_TRACKER, STORAGE, SECRET_KEY, VERSION, CLASSIFICATION, \
-    DAILY_QUOTA_TRACKER, AUDIT_LOG, AUDIT_LOGIN
-from assemblyline_ui.helper.user import login
-from assemblyline_ui.http_exceptions import AuthenticationException
-from assemblyline_ui.config import config
-from assemblyline_ui.logger import log_with_traceback
-from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import ROLES
 
 API_PREFIX = "/api"
 api = Blueprint("api", __name__, url_prefix=API_PREFIX)
@@ -210,8 +228,8 @@ class api_login(BaseSecurityRenderer):
                 if config.ui.enforce_quota:
                     # Prepare session for quotas
                     quota_user = user['uname']
-                    flsk_session['quota_user'] = quota_user
-                    flsk_session['quota_set'] = True
+                    session['quota_user'] = quota_user
+                    session['quota_set'] = True
 
                     # Check current user quota
                     quota = user.get('api_quota')
@@ -228,7 +246,7 @@ class api_login(BaseSecurityRenderer):
                         daily_quota = config.ui.default_quotas.daily_api_calls
                     if daily_quota != 0 and self.count_toward_quota:
                         current_daily_quota = DAILY_QUOTA_TRACKER.increment_api(quota_user)
-                        flsk_session['remaining_quota_api'] = max(daily_quota - current_daily_quota, 0)
+                        session['remaining_quota_api'] = max(daily_quota - current_daily_quota, 0)
                         if current_daily_quota > daily_quota:
                             LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                             return make_api_response(
@@ -248,12 +266,12 @@ def get_response_headers():
     headers = {}
 
     # Add remaining API quota
-    daily_quota_api = flsk_session.pop("remaining_quota_api", None)
+    daily_quota_api = session.pop("remaining_quota_api", None)
     if daily_quota_api is not None:
         headers['x-remaining-quota-api'] = daily_quota_api
 
     # Add remaining submission quota
-    daily_quota_submission = flsk_session.pop("remaining_quota_submission", None)
+    daily_quota_submission = session.pop("remaining_quota_submission", None)
     if daily_quota_submission is not None:
         headers['x-remaining-quota-submission'] = daily_quota_submission
 
@@ -261,8 +279,8 @@ def get_response_headers():
 
 
 def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
-    quota_user = flsk_session.pop("quota_user", None)
-    quota_set = flsk_session.pop("quota_set", False)
+    quota_user = session.pop("quota_user", None)
+    quota_set = session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -292,8 +310,8 @@ def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
 
 
 def make_file_response(data, name, size, status_code=200, content_type="application/octet-stream"):
-    quota_user = flsk_session.pop("quota_user", None)
-    quota_set = flsk_session.pop("quota_set", False)
+    quota_user = session.pop("quota_user", None)
+    quota_set = session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -311,8 +329,8 @@ def make_file_response(data, name, size, status_code=200, content_type="applicat
 
 
 def stream_file_response(reader, name, size, status_code=200):
-    quota_user = flsk_session.pop("quota_user", None)
-    quota_set = flsk_session.pop("quota_set", False)
+    quota_user = session.pop("quota_user", None)
+    quota_set = session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -339,8 +357,8 @@ def stream_file_response(reader, name, size, status_code=200):
 
 
 def make_binary_response(data, size, status_code=200):
-    quota_user = flsk_session.pop("quota_user", None)
-    quota_set = flsk_session.pop("quota_set", False)
+    quota_user = session.pop("quota_user", None)
+    quota_set = session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -355,8 +373,8 @@ def make_binary_response(data, size, status_code=200):
 
 
 def stream_binary_response(reader, status_code=200):
-    quota_user = flsk_session.pop("quota_user", None)
-    quota_set = flsk_session.pop("quota_set", False)
+    quota_user = session.pop("quota_user", None)
+    quota_set = session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 

@@ -280,19 +280,12 @@ def ingest_single_file(**kwargs):
         do_upload = True
         al_meta = {}
 
-        user_settings = load_user_settings(user)
-
         # Grab the user's `default_external_sources` from their settings as the default
-        default_external_sources = user_settings.pop('default_external_sources', [])
-
-        # Load default user params from user settings
-        s_params = {}
-        if ROLES.submission_customize in user['roles']:
-            s_params = ui_to_submission_params(user_settings)
+        default_external_sources = STORAGE.user_settings.get(user['uname'], {}).get('default_external_sources', [])
 
         # Update submission parameters as specified by the user
         try:
-            s_params = update_submission_parameters(s_params, data, user)
+            s_params = update_submission_parameters({}, data, user)
         except Exception as e:
             return make_api_response({}, str(e), 400)
 
