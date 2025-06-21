@@ -7,15 +7,11 @@ from flask import request, session
 from flask_socketio import Namespace, disconnect
 
 from assemblyline.common import forge
-from assemblyline.remote.datatypes.hash import Hash
 
 classification = forge.get_classification()
 config = forge.get_config()
 datastore = forge.get_datastore()
 
-KV_SESSION = Hash("flask_sessions",
-                  host=config.core.redis.nonpersistent.host,
-                  port=config.core.redis.nonpersistent.port)
 LOGGER = logging.getLogger('assemblyline.ui.socketio')
 
 
@@ -83,18 +79,14 @@ def get_user_info(request_p, session_p):
     src_ip = request_p.headers.get("X-Forwarded-For", request_p.remote_addr)
     sid = get_request_id(request_p)
     uname = None
-    session_id = session_p.get("session_id", None)
-    if session_id:
-        current_session = KV_SESSION.get(session_id)
-        if current_session:
-            if config.ui.validate_session_ip and src_ip != current_session.get('ip', None):
-                raise AuthenticationFailure(f"IP {src_ip} does not match session IP {current_session.get('ip', None)}")
+    if config.ui.validate_session_ip and src_ip != session.get('ip', None):
+        raise AuthenticationFailure(f"IP {src_ip} does not match session IP {session.get('ip', None)}")
 
-            if config.ui.validate_session_useragent and \
-                    request_p.headers.get("User-Agent", None) != current_session.get('user_agent', None):
-                raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
+    if config.ui.validate_session_useragent and \
+            request_p.headers.get("User-Agent", None) != session.get('user_agent', None):
+        raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
 
-            uname = current_session['username']
+    uname = session['username']
 
     user_classification = None
     if uname:

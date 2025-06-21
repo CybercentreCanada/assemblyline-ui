@@ -1,12 +1,15 @@
 import logging
 import os
+from datetime import timedelta
 
 from authlib.integrations.base_client.registry import OAUTH_CLIENT_PARAMS
 from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
 from flask.logging import default_handler
+from flask_session import Session
 
+from assemblyline_ui import config
 from assemblyline_ui.api.base import api
 from assemblyline_ui.api.v4 import apiv4
 from assemblyline_ui.api.v4.alert import alert_api
@@ -26,8 +29,8 @@ from assemblyline_ui.api.v4.ingest import ingest_api
 from assemblyline_ui.api.v4.live import live_api
 from assemblyline_ui.api.v4.ontology import ontology_api
 from assemblyline_ui.api.v4.proxy import proxy_api
-from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.replay import replay_api
+from assemblyline_ui.api.v4.result import result_api
 from assemblyline_ui.api.v4.retrohunt import retrohunt_api
 from assemblyline_ui.api.v4.safelist import safelist_api
 from assemblyline_ui.api.v4.search import search_api
@@ -43,8 +46,6 @@ from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
 from assemblyline_ui.healthz import healthz
 
-from assemblyline_ui import config
-
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 THREADED = os.environ.get('THREADED', 'true').lower() == 'true'
 AL_SESSION_COOKIE_SAMESITE = os.environ.get("AL_SESSION_COOKIE_SAMESITE", None)
@@ -59,6 +60,17 @@ current_directory = os.path.dirname(__file__)
 app = Flask("assemblyline_ui")
 app.logger.setLevel(60)  # This completely turns off the flask logger
 ssl_context = None
+
+# Update app config with common settings
+app.config.update(
+    SESSION_TYPE='redis',
+    SESSION_REDIS=config.redis,
+    SESSION_KEY_PREFIX="flask_session:",
+    SESSION_SERIALIZATION_FORMAT='json',
+    SESSION_PERMANENT=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(seconds=config.config.ui.session_duration),
+)
+
 if AL_UNSECURED_UI:
     app.config.update(
         SESSION_COOKIE_SECURE=False,
@@ -187,6 +199,7 @@ def main():
     for h in config.LOGGER.parent.handlers:
         wlog.addHandler(h)
 
+    Session(app)
     app.jinja_env.cache = {}
     app.run(host="0.0.0.0", debug=False, ssl_context=ssl_context, threaded=THREADED)
 

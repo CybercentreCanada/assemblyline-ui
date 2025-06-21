@@ -8,7 +8,6 @@ Lookup related data from external systems.
 import concurrent.futures
 import os
 import uuid
-
 from typing import TypedDict
 from urllib import parse as ul
 
@@ -18,8 +17,8 @@ from requests import Session, exceptions
 from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import config, CLASSIFICATION as Classification, LOGGER
-
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import LOGGER, config
 
 SUB_API = "federated_lookup"
 federated_lookup_api = make_subapi_blueprint(SUB_API, api_version=4)
