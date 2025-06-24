@@ -81,6 +81,12 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
     else:
         submission = None
 
+    submission_params = {
+        "services": {
+            "selected": [],
+            "excluded": []
+        },
+    }
     if submission:
         if not Classification.is_accessible(user['classification'], submission['classification']):
             return make_api_response("",
@@ -93,12 +99,9 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         metadata = submission['metadata']
 
     else:
-        submission_params = ui_to_submission_params(load_user_settings(user))
+        # Preserve the classification and expiration of the original file when resubmitting
         submission_params['classification'] = file_info['classification']
         expiry = file_info['expiry_ts']
-
-    # Ignore external sources
-    submission_params.pop('default_external_sources', None)
 
     if not FILESTORE.exists(sha256):
         if ARCHIVESTORE and ARCHIVESTORE != FILESTORE and \
@@ -123,15 +126,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
     files = [{'name': name, 'sha256': sha256, 'size': file_info['size']}]
 
     if profile:
-        # Obtain any settings from the user and apply them to the submission
-        user_settings = STORAGE.user_settings.get(user['uname'])
-        if user_settings and profile in user_settings['submission_profiles']:
-            # Reuse existing settings for specified profile
-            profile_params = user_settings['submission_profiles'][profile].as_primitives(strip_null=True)
-        else:
-            # Otherwise default to what's set for the profile at the configuration-level
-            profile_params = {}
-        profile_params['submission_profile'] = profile
+        submission_params['submission_profile'] = profile
 
         # Omit the service selection from the submission and service_spec to use the profile's settings
         submission_params.pop("services", None)
@@ -140,7 +135,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         # Preserve the classification of the original submission
         classification = submission_params['classification']
 
-        submission_params = update_submission_parameters(submission_params, {"params": profile_params}, user)
+        submission_params = update_submission_parameters(submission_params, user)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
         submission_params['classification'] = classification
 
@@ -436,7 +431,8 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
-        default_external_sources = STORAGE.user_settings.get(user['uname'], {}).get('default_external_sources', [])
+        user_settings = STORAGE.user_settings.get(user['uname'], {})
+        default_external_sources = user_settings.get('default_external_sources', [])
 
         # Create task object
 
@@ -444,16 +440,17 @@ def submit(**kwargs):
         s_params = {}
         if "ui_params" in data:
             # Transform data from UI to submission parameters
-            s_params = ui_to_submission_params(data["ui_params"])
+            data = ui_to_submission_params(data["ui_params"])
+
+        # Update default external sources based on user request
+        default_external_sources = data.pop('default_external_sources', []) or default_external_sources
 
         # Update submission parameters as specified by the user
         try:
-            s_params = update_submission_parameters(s_params, data, user)
+            s_params = update_submission_parameters(data, user)
         except Exception as e:
             return make_api_response({}, str(e), 400)
 
-
-        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
         if 'groups' not in s_params:
             s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
 
