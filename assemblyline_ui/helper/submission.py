@@ -11,7 +11,11 @@ from urllib.parse import urlparse
 
 import requests
 
-from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
+from assemblyline.common.dict_utils import (
+    get_recursive_delta,
+    recursive_update,
+    strip_nulls,
+)
 from assemblyline.common.file import make_uri_file
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
@@ -105,13 +109,7 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
 
                 raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
 
-    if updates['services']['selected'] == []:
-        # Populate the selected services with the default ones that are not in the excluded list
-        for svr in SERVICE_LIST:
-            if svr['enabled'] and svr['category'] not in updates['services']['excluded'] and svr['category'] not in updates['services']['selected']:
-                updates['services']['selected'].append(svr['category'])
-
-    return recursive_update(validated_profile, updates)
+    return recursive_update(validated_profile, strip_nulls(updates))
 
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
                default_external_sources: List[str], name: str):
@@ -216,27 +214,31 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                         download_fileinfo = IDENTIFY.fileinfo(out_file, generate_hashes=False, calculate_entropy=False,
                                                               skip_fuzzy_hashes=True)
                         if source.password and download_fileinfo['type'] == "archive/zip":
-                            # Determine the number of files contained and if it surpasses the maximum file size limit
-                            zip_namelist = subprocess.run(["7zz", "l", "-ba", out_file], capture_output=True, text=True).stdout.splitlines()
-                            if len(zip_namelist) == 1:
-                                # Check the size of the file and if it surpasses the maximum file size limit
-                                file_size = int(zip_namelist[0].split()[3])
-                                if file_size >= config.submission.max_file_size:
-                                    raise FileTooBigException("File too big to be scanned "
-                                                            f"({file_size} > {config.submission.max_file_size}).")
-                                else:
-                                    # If the file is a zip file, we need to extract it using the provided password
-                                    with tempfile.TemporaryDirectory() as extract_dir:
-                                        try:
-                                            # Extract the zip file to a temporary directory and replace the original file
-                                            subprocess.run(["7zz", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file], capture_output=True)
-                                            extracted_files = os.listdir(extract_dir)
-                                            if extracted_files:
-                                                # Extraction was successful, replace the original file with the extracted one
-                                                os.replace(os.path.join(extract_dir, extracted_files[0]), out_file)
-                                        except Exception:
-                                            # If the extraction fails, we can ignore it and keep the original file and let the extraction service handle it
-                                            pass
+                            try:
+                                # Determine the number of files contained and if it surpasses the maximum file size limit
+                                zip_namelist = subprocess.run(["7zz", "l", "-ba", out_file], capture_output=True, text=True, check=True).stdout.splitlines()
+                                if len(zip_namelist) == 1:
+                                    # Check the size of the file and if it surpasses the maximum file size limit
+                                    file_size = int(zip_namelist[0].split()[3])
+                                    if file_size >= config.submission.max_file_size:
+                                        raise FileTooBigException("File too big to be scanned "
+                                                                f"({file_size} > {config.submission.max_file_size}).")
+                                    else:
+                                        # If the file is a zip file, we need to extract it using the provided password
+                                        with tempfile.TemporaryDirectory() as extract_dir:
+                                            try:
+                                                # Extract the zip file to a temporary directory and replace the original file
+                                                subprocess.run(["7zz", "e", f"-p{source.password}", "-y", f"-o{extract_dir}", out_file], capture_output=True, check=True)
+                                                extracted_files = os.listdir(extract_dir)
+                                                if extracted_files:
+                                                    # Extraction was successful, replace the original file with the extracted one
+                                                    os.replace(os.path.join(extract_dir, extracted_files[0]), out_file)
+                                            except subprocess.CalledProcessError:
+                                                # If the extraction fails, we can ignore it and keep the original file and let the extraction service handle it
+                                                pass
+                            except subprocess.CalledProcessError:
+                                # If the 7zz command fails, we can ignore it and keep the original file and let the extraction service handle it
+                                pass
                 else:
                     # Check if we are allowed to task this system with URLs
                     if not config.ui.allow_url_submissions:
@@ -275,33 +277,50 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     return found, fileinfo, name
 
-def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict:
+def update_submission_parameters(data: dict, user: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
+
+    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+    s_params = {}
+    if "submission_profile" in data:
+        if not submission_customize and not s_profile:
+            # If the profile specified doesn't exist, raise an exception
+            raise Exception(f"Submission profile '{data['submission_profile']}' does not exist")
+        else:
+            # If the profile specified exists, get its parameters for the user settings as a base
+            s_params = strip_nulls(user_settings['submission_profiles'].get(data['submission_profile'], {}))
+    elif not submission_customize:
+        # No profile specified, raise an exception back to the user
+        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
+    else:
+        # No profile specified, use the default submission profile settings (legacy behaviour)
+        s_params = strip_nulls(user_settings['submission_profiles'].get('default', {}))
 
     # Ensure classification is set based on the user before applying updates
     classification = s_params.get("classification", user['classification'])
 
-    # Apply provided params (if the user is allowed to)
-    if submission_customize:
-        s_params.update(data.get("params", {}))
-    elif not s_profile:
-        # No profile specified, raise an exception back to the user
-        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
+    # Ensure any system-configured defaults are applied to parameters
+    s_params['ttl'] = int(s_params.get('ttl', config.submission.dtl))
 
+
+    # Apply the changes to the submission parameters based on the profile and user roles
+    s_params = recursive_update(s_params, data.get("params", {}))
     if s_profile:
         if not CLASSIFICATION.is_accessible(user['classification'], s_profile.classification):
-            # User isn't allowed to use the submission profile specified
-            raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
-        # Apply the profile (but allow the user to change some properties)
-        s_params = recursive_update(s_params, data.get("params", {}))
+                # User isn't allowed to use the submission profile specified
+                raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
+        # Calculate the delta between the default settings and the user changes and apply it to the profile
         s_params = get_recursive_delta(DEFAULT_SUBMISSION_PROFILE_SETTINGS, s_params)
         s_params = apply_changes_to_profile(s_profile, s_params, user)
-        s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
+
+    # Apply final changes on top of the default submission settings
+    s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")
     s_params.setdefault("classification", classification)
+
     return s_params
 
 

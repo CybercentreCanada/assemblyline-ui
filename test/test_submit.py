@@ -329,22 +329,44 @@ def test_submit_base64_nameless(datastore, login_session, scheduler):
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
-def test_submit_submission_profile(datastore, login_session, scheduler):
+@pytest.mark.parametrize("submission_customize", [True, False], ids=["submission_customize_enabled", "submission_customize_disabled"])
+def test_submit_submission_profile(datastore, login_session, scheduler, submission_customize):
     _, session, host = login_session
     sq.delete()
 
     # Make the user a simple user and try to submit
-    datastore.user.update('admin', [
-        (datastore.user.UPDATE_REMOVE, 'type', 'admin'),
-        (datastore.user.UPDATE_APPEND, 'roles', 'submission_create')])
+    if not submission_customize:
+        datastore.user.update('admin', [
+            (datastore.user.UPDATE_REMOVE, 'type', 'admin'),
+            (datastore.user.UPDATE_APPEND, 'roles', 'submission_create')])
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
     data = {
         'base64': base64.b64encode(byte_str).decode('ascii'),
         'metadata': {'test': 'test_submit_base64_nameless'}
     }
-    with pytest.raises(APIError, match="You must specify a submission profile"):
-        # A basic user must specify a submission profile name
-        get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    if submission_customize:
+        # Users with submission customization enabled can submit without a profile specified
+        resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+        # This should correspond with the submission parameters defined in the default submission profile
+        submission_profile_data = get_api_data(session, f"{host}/api/v4/user/submission_params/{_['username']}/default/")
+        for key, value in submission_profile_data.items():
+            if key == "services":
+                # Service selection should be the same
+                for k, v in value.items():
+                    assert set(v) == set(resp['params'][key][k])
+            else:
+                # All other parameters should match
+                assert resp['params'][key] == value
+    else:
+        with pytest.raises(APIError, match="You must specify a submission profile"):
+            # A basic user must specify a submission profile name
+            get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+        # Attempt to submission using a default submission profile
+        data['submission_profile'] = "default"
+        with pytest.raises(APIError, match="Submission profile 'default' does not exist"):
+            get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try using a submission profile with no parameters
     data['submission_profile'] = "static"
@@ -352,11 +374,11 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
 
     # Ensure submission created has expected properties of using the submission profile
     submission_profile_data = get_api_data(session, f"{host}/api/v4/user/submission_params/{_['username']}/static/")
-    selected_service_categories = set(datastore.service.facet("category").keys()) - {'Dynamic Analysis'}
+    selected_service_categories = set(datastore.service.facet("category").keys()) - {'Dynamic Analysis', 'External'}
     for key, value in submission_profile_data.items():
         if key == "services":
             # Ensure selected services are confined to the set of service categories present in the test
-            assert set(submission['params']['services']['selected']) == selected_service_categories
+            assert selected_service_categories.issubset(set(submission['params']['services']['selected']))
 
             # Ensure Dynamic Analysis services are not selected
             assert submission_profile_data['services']['excluded'] == value['excluded'] == ['Dynamic Analysis']
@@ -378,15 +400,27 @@ def test_submit_submission_profile(datastore, login_session, scheduler):
         # Wait for the API to update it's service list cache
         time.sleep(60)
 
-    with pytest.raises(APIError, match='User isn\'t allowed to select the \w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
-        data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
+    data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
+    if not submission_customize:
+        # Users without submission customization enabled cannot select services from the "Dynamic Analysis" category
+        with pytest.raises(APIError, match='User isn\'t allowed to select the \w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
+            get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    else:
+        # Users with submission customization enabled can select services from any category they'd like
         get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
 
     # Try setting a parameter that you are allowed to set
-    data['params'] = {'deep_scan': True}
+    data['params'] = {
+        'deep_scan': True,
+        'services': {
+            'excluded': ['Antivirus']
+        }
+    }
 
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     assert resp['params']['deep_scan']
+    assert 'Antivirus' in resp['params']['services']['excluded']
 
-    # Restore original roles for later tests
-    datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
+    if not submission_customize:
+        # Restore original roles for later tests
+        datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])

@@ -84,7 +84,6 @@ SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minu
 DAILY_QUOTA_TRACKER = DailyQuotaTracker(redis=redis_persistent)
 
 # UI queues
-KV_SESSION = Hash("flask_sessions", host=redis)
 UI_MESSAGING = Hash("ui_messaging", host=redis_persistent)
 CLASSIFICATION_ALIASES = Hash("classification_aliases", host=redis_persistent)
 

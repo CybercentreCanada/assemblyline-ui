@@ -273,11 +273,15 @@ def start_ui_submission(ui_sid, **kwargs):
                     allow_description_overwrite = True
                     ui_params['description'] = f"Inspection of file: {fname}"
 
-                params = ui_to_submission_params(ui_params)
+                ui_params = ui_to_submission_params(ui_params)
 
                 # Update submission parameters as specified by the user
                 try:
-                    params = update_submission_parameters(params, ui_params, user)
+                    params = {"params": ui_params}
+                    if "submission_profile" in ui_params:
+                        params["submission_profile"] = ui_params["submission_profile"]
+
+                    params = update_submission_parameters(params, user)
                 except Exception as e:
                     return make_api_response({}, str(e), 400)
 
