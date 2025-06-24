@@ -283,9 +283,12 @@ def ingest_single_file(**kwargs):
         # Grab the user's `default_external_sources` from their settings as the default
         default_external_sources = STORAGE.user_settings.get(user['uname'], {}).get('default_external_sources', [])
 
+        # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
+        default_external_sources = data.pop('default_external_sources', []) or default_external_sources
+
         # Update submission parameters as specified by the user
         try:
-            s_params = update_submission_parameters({}, data, user)
+            s_params = update_submission_parameters(data, user)
         except Exception as e:
             return make_api_response({}, str(e), 400)
 
@@ -293,9 +296,6 @@ def ingest_single_file(**kwargs):
         for k, v in DEFAULT_INGEST_PARAMS.items():
             if k not in s_params:
                 s_params[k] = v
-
-        # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
-        default_external_sources = s_params.pop('default_external_sources', []) or default_external_sources
 
         metadata = flatten(data.get("metadata", {}))
         found = False

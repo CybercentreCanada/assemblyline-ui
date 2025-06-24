@@ -277,32 +277,42 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     return found, fileinfo, name
 
-def update_submission_parameters(s_params: dict, data: dict, user: dict) -> dict:
+def update_submission_parameters(data: dict, user: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
+
+    s_params = {}
+    if "submission_profile" in data:
+        if not s_profile:
+            # If the profile specified doesn't exist, raise an exception
+            raise Exception(f"Submission profile '{data['submission_profile']}' does not exist")
+        else:
+            # If the profile specified exists, get its parameters for the user settings as a base
+            user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+            s_params = strip_nulls(user_settings['submission_profiles'].get(data['submission_profile'], {}))
+    elif not submission_customize:
+        # No profile specified, raise an exception back to the user
+        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
 
     # Ensure classification is set based on the user before applying updates
     classification = s_params.get("classification", user['classification'])
 
-    # Apply provided params (if the user is allowed to)
-    if submission_customize:
-        s_params.update(data.get("params", {}))
-    elif not s_profile:
-        # No profile specified, raise an exception back to the user
-        raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
-
     # Ensure any system-configured defaults are applied to parameters
     s_params['ttl'] = int(s_params.get('ttl', config.submission.dtl))
 
+
+    # Apply the changes to the submission parameters based on the profile and user roles
+    s_params = recursive_update(s_params, data.get("params", {}))
     if s_profile:
         if not CLASSIFICATION.is_accessible(user['classification'], s_profile.classification):
-            # User isn't allowed to use the submission profile specified
-            raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
-        # Apply the profile (but allow the user to change some properties)
-        s_params = recursive_update(s_params, data.get("params", {}))
+                # User isn't allowed to use the submission profile specified
+                raise PermissionError(f"You aren't allowed to use '{s_profile.name}' submission profile")
+        # Calculate the delta between the default settings and the user changes and apply it to the profile
         s_params = get_recursive_delta(DEFAULT_SUBMISSION_PROFILE_SETTINGS, s_params)
         s_params = apply_changes_to_profile(s_profile, s_params, user)
-        s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
+
+    # Apply final changes on top of the default submission settings
+    s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
 
     # Ensure the description key exists in the resulting submission params
     s_params.setdefault("description", "")
