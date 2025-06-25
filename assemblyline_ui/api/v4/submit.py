@@ -444,7 +444,8 @@ def submit(**kwargs):
             data["params"] = ui_to_submission_params(ui_params)
 
         # Update default external sources based on user request
-        default_external_sources = ui_params.pop('default_external_sources', []) or data.pop('default_external_sources', [])) or default_external_sources
+        default_external_sources = ui_params.pop('default_external_sources', []) or data.pop(
+            'default_external_sources', []) or default_external_sources
 
         # Update submission parameters as specified by the user
         try:
