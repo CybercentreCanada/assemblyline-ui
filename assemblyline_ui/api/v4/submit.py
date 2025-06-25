@@ -439,13 +439,17 @@ def submit(**kwargs):
         # Check if submission was triggered by the UI or by a client using the API directly
         s_params = {}
         if "ui_params" in data:
-            # Transform data from UI to submission parameters
+            # Extract the ui_params
             ui_params = data.pop("ui_params")
+
+            # Transform data from UI to submission parameters
             data["params"] = ui_to_submission_params(ui_params)
 
-        # Update default external sources based on user request
-        default_external_sources = ui_params.pop('default_external_sources', []) or data.pop(
-            'default_external_sources', []) or default_external_sources
+            # Update default external sources based on user request
+            default_external_sources = ui_params.pop('default_external_sources', []) or default_external_sources
+        else:
+            # Update default external sources based on user request
+            default_external_sources = data.pop('default_external_sources', []) or default_external_sources
 
         # Update submission parameters as specified by the user
         try:
