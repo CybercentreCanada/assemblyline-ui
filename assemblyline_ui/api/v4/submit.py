@@ -440,7 +440,8 @@ def submit(**kwargs):
         s_params = {}
         if "ui_params" in data:
             # Transform data from UI to submission parameters
-            data = ui_to_submission_params(data["ui_params"])
+            ui_params = data.pop("ui_params")
+            data["params"] = ui_to_submission_params(ui_params)
 
         # Update default external sources based on user request
         default_external_sources = data.pop('default_external_sources', []) or default_external_sources
