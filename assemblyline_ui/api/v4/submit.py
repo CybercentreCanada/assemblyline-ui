@@ -431,7 +431,7 @@ def submit(**kwargs):
         if not name:
             return make_api_response({}, "Filename missing", 400)
 
-        user_settings = STORAGE.user_settings.get(user['uname'], {})
+        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
         default_external_sources = user_settings.get('default_external_sources', [])
 
         # Create task object

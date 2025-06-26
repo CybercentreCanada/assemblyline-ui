@@ -281,7 +281,9 @@ def update_submission_parameters(data: dict, user: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
 
-    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+    user_settings = user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
+    submission_profiles = user_settings.get('submission_profiles', {})
+
     s_params = {}
     if "submission_profile" in data:
         if not submission_customize and not s_profile:
@@ -289,13 +291,13 @@ def update_submission_parameters(data: dict, user: dict) -> dict:
             raise Exception(f"Submission profile '{data['submission_profile']}' does not exist")
         else:
             # If the profile specified exists, get its parameters for the user settings as a base
-            s_params = strip_nulls(user_settings['submission_profiles'].get(data['submission_profile'], {}))
+            s_params = strip_nulls(submission_profiles.get(data['submission_profile'], {}))
     elif not submission_customize:
         # No profile specified, raise an exception back to the user
         raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
     else:
         # No profile specified, use the default submission profile settings (legacy behaviour)
-        s_params = strip_nulls(user_settings['submission_profiles'].get('default', {}))
+        s_params = strip_nulls(submission_profiles.get('default', {}))
 
     # Ensure classification is set based on the user before applying updates
     classification = s_params.get("classification", user['classification'])

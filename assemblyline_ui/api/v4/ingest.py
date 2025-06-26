@@ -29,7 +29,6 @@ from assemblyline_ui.config import (
     metadata_validator,
 )
 from assemblyline_ui.config import CLASSIFICATION as Classification
-from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import (
     FETCH_METHODS,
     URL_GENERATORS,
@@ -42,7 +41,6 @@ from assemblyline_ui.helper.submission import (
 from assemblyline_ui.helper.user import (
     check_async_submission_quota,
     decrement_submission_ingest_quota,
-    load_user_settings,
 )
 
 SUB_API = 'ingest'
@@ -281,7 +279,8 @@ def ingest_single_file(**kwargs):
         al_meta = {}
 
         # Grab the user's `default_external_sources` from their settings as the default
-        default_external_sources = STORAGE.user_settings.get(user['uname'], {}).get('default_external_sources', [])
+        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
+        default_external_sources = user_settings.get("default_external_sources", [])
 
         # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
         default_external_sources = data.pop('default_external_sources', []) or default_external_sources
