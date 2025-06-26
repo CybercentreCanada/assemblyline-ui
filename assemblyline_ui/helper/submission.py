@@ -281,7 +281,7 @@ def update_submission_parameters(data: dict, user: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
 
-    user_settings = user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
+    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
     submission_profiles = user_settings.get('submission_profiles', {})
 
     s_params = {}
