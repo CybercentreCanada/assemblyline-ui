@@ -32,12 +32,10 @@ def load_openid_configuration(old_config: OAuthProvider, url: str) -> OAuthProvi
     try:
         with requests.request("GET", url) as resp:
             config_data = resp.json()
-
-            for f in OAuthProvider.fields():
-                # add/override associated values using open id configuration values
-                for key, value in OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP.items():
-                    if key in config_data:
-                        old_config[value] = config_data[key]
+            # add/override associated values using open id configuration values
+            for key, value in OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP.items():
+                if key in config_data:
+                    old_config[value] = config_data[key]
 
     except Exception:
         return old_config
