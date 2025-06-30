@@ -677,7 +677,7 @@ def oauth_validate(**_):
                     if resp_grp.ok:
                         groups = resp_grp.json()
                 # Add group data from group_get endpoint
-                elif and oauth_provider_config.user_groups:
+                elif oauth_provider_config.user_groups:
                     resp_grp = provider.get(oauth_provider_config.user_groups)
                     if resp_grp.ok:
                         groups = resp_grp.json()
