@@ -640,8 +640,11 @@ def oauth_validate(**_):
                 if oauth_provider_config.jwks_uri:
                     user_data = provider.parse_id_token(token, None)
 
+                # if user_data is already contained in id_token, skip querying user_get endpoints
+                if user_data.get("email", False) and user_data.get("name", False):
+                    pass
                 # Add user data from app_provider endpoint
-                if app_provider and oauth_provider_config.app_provider.user_get:
+                elif app_provider and oauth_provider_config.app_provider.user_get:
                     url = oauth_provider_config.app_provider.user_get
                     uid = user_data.get("id", None)
                     if not uid and user_data and oauth_provider_config.uid_field:
@@ -659,8 +662,11 @@ def oauth_validate(**_):
 
                 groups = user_data.get(oauth_provider_config.groups_id_token_field, [])
 
+                # if groups can be parsed from id_token, skip querying group_get endpoint
+                if groups:
+                    pass
                 # Add group data from app_provider endpoint
-                if (not groups) and app_provider and oauth_provider_config.app_provider.group_get:
+                elif app_provider and oauth_provider_config.app_provider.group_get:
                     url = oauth_provider_config.app_provider.group_get
                     uid = user_data.get("id", None)
                     if not uid and user_data and oauth_provider_config.uid_field:
@@ -671,7 +677,7 @@ def oauth_validate(**_):
                     if resp_grp.ok:
                         groups = resp_grp.json()
                 # Add group data from group_get endpoint
-                elif (not groups) and oauth_provider_config.user_groups:
+                elif and oauth_provider_config.user_groups:
                     resp_grp = provider.get(oauth_provider_config.user_groups)
                     if resp_grp.ok:
                         groups = resp_grp.json()
