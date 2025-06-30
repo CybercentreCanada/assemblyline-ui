@@ -37,9 +37,8 @@ def load_openid_configuration(old_config: OAuthProvider, url: str) -> OAuthProvi
                 if key in config_data:
                     old_config[value] = config_data[key]
 
-    except Exception:
+    finally:
         return old_config
-    return old_config
 
 
 config = forge.get_config()
