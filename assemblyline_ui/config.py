@@ -121,9 +121,9 @@ REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 # Update OIDC config using discovery url if exist
 for oauth_provider in config.auth.oauth.providers:
     old_config = config.auth.oauth.providers[oauth_provider]
-    if old_config.openid_connect_url:
+    if old_config.openid_connect_discovery_url:
         config.auth.oauth.providers[oauth_provider] = load_openid_configuration(
-            old_config, old_config.openid_connect_url
+            old_config, old_config.openid_connect_discovery_url
         )
 
 
