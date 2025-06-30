@@ -657,9 +657,10 @@ def oauth_validate(**_):
                     if resp.ok:
                         user_data.update(resp.json())
 
+                groups = user_data.get(oauth_provider_config.groups_id_token_field, [])
+
                 # Add group data from app_provider endpoint
-                groups = []
-                if app_provider and oauth_provider_config.app_provider.group_get:
+                if (not groups) and app_provider and oauth_provider_config.app_provider.group_get:
                     url = oauth_provider_config.app_provider.group_get
                     uid = user_data.get("id", None)
                     if not uid and user_data and oauth_provider_config.uid_field:
@@ -670,7 +671,7 @@ def oauth_validate(**_):
                     if resp_grp.ok:
                         groups = resp_grp.json()
                 # Add group data from group_get endpoint
-                elif oauth_provider_config.user_groups:
+                elif (not groups) and oauth_provider_config.user_groups:
                     resp_grp = provider.get(oauth_provider_config.user_groups)
                     if resp_grp.ok:
                         groups = resp_grp.json()
