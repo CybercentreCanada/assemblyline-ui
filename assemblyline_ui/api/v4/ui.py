@@ -222,15 +222,6 @@ def start_ui_submission(ui_sid, **kwargs):
         return make_api_response("", quota_error, 503)
 
     ui_params = request.json
-    submitted_classification = ui_params.get('classification', None)
-    ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']] if submitted_classification else []
-    ui_params['quota_item'] = True
-    ui_params['submitter'] = user['uname']
-
-    if not Classification.is_accessible(user['classification'], ui_params['classification']):
-        return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
-                                                                  "classification then you're allowed to see", 403)
-
     submit_result = None
     submitted_file = None
 
@@ -268,8 +259,9 @@ def start_ui_submission(ui_sid, **kwargs):
             try:
             # Initialize submission validation process
                 _, _, _, _, s_params, metadata = init_submission(request, user, endpoint="ui")
+                s_params['quota_item'] = True
                 allow_description_overwrite = False
-                if "description" not in s_params:
+                if not s_params.get("description"):
                     # If no custom description is specified, create one based on filename
                     s_params["description"] = f"Inspection of file: {fname}"
                     allow_description_overwrite = True
