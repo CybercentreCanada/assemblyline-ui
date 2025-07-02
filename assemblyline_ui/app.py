@@ -90,6 +90,10 @@ if AL_SESSION_COOKIE_SAMESITE:
         )
     else:
         raise ValueError("AL_SESSION_COOKIE_SAMESITE must be set to 'Strict', 'Lax', or None")
+else:
+    app.config.update(
+        SESSION_COOKIE_SAMESITE="None"
+    )
 
 # Initialize the Redis session store with application
 Session(app)
