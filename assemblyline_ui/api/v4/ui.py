@@ -21,12 +21,10 @@ from assemblyline_ui.config import (
     STORAGE,
     TEMP_DIR,
     config,
-    metadata_validator,
 )
-from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import (
+    init_submission,
     submission_received,
-    update_submission_parameters,
 )
 from assemblyline_ui.helper.user import (
     check_submission_quota,
@@ -224,15 +222,6 @@ def start_ui_submission(ui_sid, **kwargs):
         return make_api_response("", quota_error, 503)
 
     ui_params = request.json
-    submitted_classification = ui_params.get('classification', None)
-    ui_params['groups'] = [g for g in kwargs['user']['groups'] if g in ui_params['classification']] if submitted_classification else []
-    ui_params['quota_item'] = True
-    ui_params['submitter'] = user['uname']
-
-    if not Classification.is_accessible(user['classification'], ui_params['classification']):
-        return make_api_response({"started": False, "sid": None}, "You cannot start a scan with higher "
-                                                                  "classification then you're allowed to see", 403)
-
     submit_result = None
     submitted_file = None
 
@@ -268,53 +257,18 @@ def start_ui_submission(ui_sid, **kwargs):
 
             # Submit to dispatcher
             try:
+            # Initialize submission validation process
+                _, _, _, _, s_params, metadata = init_submission(request, user, endpoint="ui")
+                s_params['quota_item'] = True
                 allow_description_overwrite = False
-                if not ui_params.get("description", None):
+                if not s_params.get("description"):
+                    # If no custom description is specified, create one based on filename
+                    s_params["description"] = f"Inspection of file: {fname}"
                     allow_description_overwrite = True
-                    ui_params['description'] = f"Inspection of file: {fname}"
-
-                ui_params = ui_to_submission_params(ui_params)
-
-                # Update submission parameters as specified by the user
-                try:
-                    params = {"params": ui_params}
-                    if "submission_profile" in ui_params:
-                        params["submission_profile"] = ui_params["submission_profile"]
-
-                    params = update_submission_parameters(params, user)
-                except Exception as e:
-                    return make_api_response({}, str(e), 400)
-
-                metadata = params.pop("metadata", {})
-
-                # Enforce maximum DTL
-                if config.submission.max_dtl > 0:
-                    params['ttl'] = min(
-                        int(params['ttl']),
-                        config.submission.max_dtl) if int(params['ttl']) else config.submission.max_dtl
-
-                # Validate the metadata (use validation scheme if we have one configured for submissions)
-                strict = 'submit' in config.submission.metadata.strict_schemes
-                metadata_error = metadata_validator.check_metadata(metadata,
-                                                                   validation_scheme=config.submission.metadata.submit,
-                                                                   strict=strict)
-                if metadata_error:
-                    return make_api_response({}, err=metadata_error[1], status_code=400)
-
-                if params.get('auto_archive', False):
-                    # If the submission was set to auto-archive we need to validate the archive metadata fields also
-                    strict = 'archive' in config.submission.metadata.strict_schemes
-                    metadata_error = metadata_validator.check_metadata(metadata,
-                                                                       validation_scheme=config.submission.metadata.archive,
-                                                                       strict=strict,
-                                                                       skip_elastic_fields=True)
-                    if metadata_error:
-                        return make_api_response({}, err=metadata_error[1], status_code=400)
-
                 submission_obj = Submission({
                     "files": [],
                     "metadata": metadata,
-                    "params": params
+                    "params": s_params
                 })
             except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)

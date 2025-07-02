@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import io
 import json
 import os
 import re
@@ -6,12 +9,16 @@ import socket
 import subprocess
 import tempfile
 from copy import deepcopy
-from typing import List
+from typing import Dict, List
 from urllib.parse import urlparse
 
 import requests
+from flask import Request
 
+from assemblyline.common.classification import InvalidClassification
+from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import (
+    flatten,
     get_recursive_delta,
     recursive_update,
     strip_nulls,
@@ -20,6 +27,7 @@ from assemblyline.common.file import make_uri_file
 from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
+from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
@@ -33,8 +41,11 @@ from assemblyline_ui.config import (
     STORAGE,
     SUBMISSION_PROFILES,
     SUBMISSION_TRAFFIC,
+    TEMP_SUBMIT_DIR,
     config,
+    metadata_validator,
 )
+from assemblyline_ui.helper.service import ui_to_submission_params
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -59,8 +70,9 @@ except socket.gaierror:
 #############################
 # download functions
 class FileTooBigException(Exception):
+    def __init__(self, file_size, *args):
+        super().__init__(msg=f"File too big to be scanned ({file_size} > {config.submission.max_file_size}).", *args)
     pass
-
 
 class InvalidUrlException(Exception):
     pass
@@ -110,6 +122,183 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
                 raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
 
     return recursive_update(validated_profile, strip_nulls(updates))
+
+# This should be a common function used by endpoints to trigger a submission that provides a baseline
+def init_submission(request: Request, user: Dict, endpoint: str):
+    # Default output
+    out_file = None
+    name = None
+    fileinfo = None
+
+    # Prepare output directory/file path
+    if endpoint != "ui":
+        out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
+        os.makedirs(out_dir, exist_ok=True)
+        out_file = os.path.join(out_dir, get_random_id())
+
+    # Get data block and binary blob
+    string_type, string_value = None, None
+    if 'multipart/form-data' in request.content_type:
+        if 'json' in request.values:
+            data = json.loads(request.values['json'])
+        else:
+            data = {}
+
+        binary = request.files['bin']
+        name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
+    elif 'application/json' in request.content_type:
+        data = request.json
+        binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
+        file_size = len(binary)
+        if file_size > config.submission.max_file_size:
+            raise FileTooBigException(file_size)
+
+        # Determine if we're expected to fetch a file
+        for method in FETCH_METHODS:
+            if data.get(method):
+                string_type, string_value = method, data[method]
+                break
+
+        if string_type in URL_GENERATORS:
+            string_value = refang_url(string_value)
+            name = string_value
+        else:
+            hash = string_value
+            if binary:
+                hash = safe_str(hashlib.sha256(binary).hexdigest())
+                binary = io.BytesIO(binary)
+            name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
+    else:
+        raise Exception("Invalid content type")
+
+    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+    default_external_sources = user_settings.get("default_external_sources", [])
+
+    # Extract submission parameters from data block
+    if "ui_params" in data:
+        # Submission was triggered from the frontend which stores data in a different format, normalize to what's expected
+        ui_params: dict = data.pop("ui_params")
+        data["params"] = ui_to_submission_params(ui_params)
+
+        # Use the external sources provided by the request otherwise default to user settings
+        default_external_sources = ui_params.pop('default_external_sources', []) or default_external_sources
+    else:
+        # Assume the data was submitted to the API directly in the expected format
+        default_external_sources = data.pop('default_external_sources', []) or default_external_sources
+
+    # Validate submission parameters provided in data block
+    s_params = update_submission_parameters(data, user, user_settings.get('submission_profiles', {}))
+
+    # Check the validity of some parameters relative to system configurations
+    if config.submission.max_dtl > 0:
+        # Ensure that the TTL doesn't exceed the maximum allowed
+        if s_params['ttl'] != 0:
+            s_params['ttl'] = min(s_params['ttl'], config.submission.max_dtl)
+        else:
+            s_params['ttl'] = config.submission.max_dtl
+
+    # Get the metadata and validate depending on endpoint
+    metadata = flatten(data.get('metadata', {}))
+
+    if endpoint in ["submit", "ui"]:
+        # Get metadata validation configuration
+        strict = 'submit' in config.submission.metadata.strict_schemes
+        scheme = config.submission.metadata.submit
+    else:
+        # Get metadata validation configuration
+        strict = s_params.get('type') in config.submission.metadata.strict_schemes
+        scheme = config.submission.metadata.ingest.get('_default', {})
+        scheme.update(config.submission.metadata.ingest.get(s_params.get('type'), {}))
+
+    # If an error is returned as part of validation, raise it back to user
+    metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=scheme, strict=strict)
+    if metadata_error:
+        raise Exception(metadata_error[1])
+
+    # If the submission was set to auto-archive we need to validate the archive metadata fields also
+    if s_params.get('auto_archive', False):
+        strict = 'archive' in config.submission.metadata.strict_schemes
+        metadata_error = metadata_validator.check_metadata(
+            metadata, validation_scheme=config.submission.metadata.archive,
+            strict=strict, skip_elastic_fields=True)
+        if metadata_error:
+            raise Exception(metadata_error[1])
+
+
+
+    if endpoint == "ui":
+        # If this was submitted through the UI, then the file is in the cachestore
+        # Return the validated submission parameters and metadata
+        return data, out_file, name, fileinfo, s_params, metadata
+    elif not binary:
+        # If the file wasn't provided in a binary blob, then seek to fetch the file from an external source
+        if string_type:
+            found, fileinfo, name = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
+                                    default_external_sources, name)
+            if not found:
+                raise FileNotFoundError(
+                    f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
+        else:
+            raise Exception("Missing file to scan. No binary or fetching method provided.")
+    else:
+        with open(out_file, "wb") as my_file:
+            shutil.copyfileobj(binary, my_file, 16384)
+
+    if not fileinfo:
+        fileinfo = IDENTIFY.fileinfo(out_file, skip_fuzzy_hashes=True, calculate_entropy=False)
+        if STORAGE.file.exists(fileinfo['sha256']):
+            # Re-use existing file information
+            fileinfo = STORAGE.file.get(fileinfo['sha256'], as_obj=False)
+        elif endpoint == 'ingest':
+            # If this is the ingest endpoint, then calculate the full file information
+            fileinfo = IDENTIFY.fileinfo(out_file)
+        else:
+            # Otherwise if this is the submit endpoint, full calculation isn't necessary
+            fileinfo = IDENTIFY.fileinfo(out_file, skip_fuzzy_hashes=True, calculate_entropy=False)
+
+    if fileinfo['size'] > config.submission.max_file_size and not s_params.get('ignore_size', False):
+        raise FileTooBigException(file_size=fileinfo['size'])
+    elif fileinfo['size'] == 0:
+        raise Exception("File empty.")
+
+    # Check if this is a cart file to be decoded
+    extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
+    if extracted_path:
+        try:
+            # Remove the old out_file
+            os.unlink(out_file)
+        finally:
+            # Replace it with the extracted path
+            out_file = extracted_path
+
+    # Alter filename and classification based on CaRT output
+    if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
+        al_meta["name"] = fileinfo["uri_info"]["uri"]
+
+    meta_classification = al_meta.pop('classification', s_params['classification'])
+    if meta_classification != s_params['classification']:
+        try:
+            s_params['classification'] = CLASSIFICATION.max_classification(meta_classification,
+                                                                            s_params['classification'])
+        except InvalidClassification as ic:
+            raise Exception(f"The classification found inside the cart file cannot be merged with the classification the file was submitted as: {str(ic)}")
+    name = al_meta.pop('name', name)
+    metadata.update(al_meta)
+
+    # Ensure a description is set on the submission (if not already)
+    if not s_params.get('description'):
+        s_params['description'] = f"Inspection of {'URL' if fileinfo['type'].startswith('uri/') else 'file'}: {name}"
+
+    # Perform a series to input checks to make sure everything is valid before proceeding
+    if not CLASSIFICATION.is_accessible(user['classification'], s_params['classification']):
+        raise Exception("You cannot start a submission with higher classification then you're allowed to see")
+    elif not name:
+        # No filename given or derived
+        raise Exception("Filename missing")
+
+    # Return the file path, name, & information, validated submission parameters, and metadata (yet to be validated)
+    return data, out_file, name, fileinfo, s_params, metadata
+
 
 def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: dict,  out_file: str,
                default_external_sources: List[str], name: str):
@@ -211,7 +400,8 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     if dl_from is not None:
                         found = True
 
-                        download_fileinfo = IDENTIFY.fileinfo(out_file, generate_hashes=False, calculate_entropy=False,
+                        download_fileinfo = IDENTIFY.fileinfo(out_file, generate_hashes=False,
+                                                              calculate_entropy=False,
                                                               skip_fuzzy_hashes=True)
                         if source.password and download_fileinfo['type'] == "archive/zip":
                             try:
@@ -221,8 +411,7 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                     # Check the size of the file and if it surpasses the maximum file size limit
                                     file_size = int(zip_namelist[0].split()[3])
                                     if file_size >= config.submission.max_file_size:
-                                        raise FileTooBigException("File too big to be scanned "
-                                                                f"({file_size} > {config.submission.max_file_size}).")
+                                        raise FileTooBigException(file_size)
                                     else:
                                         # If the file is a zip file, we need to extract it using the provided password
                                         with tempfile.TemporaryDirectory() as extract_dir:
@@ -277,12 +466,9 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     return found, fileinfo, name
 
-def update_submission_parameters(data: dict, user: dict) -> dict:
+def update_submission_parameters(data: dict, user: dict, user_submission_profiles: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
-
-    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
-    submission_profiles = user_settings.get('submission_profiles', {})
 
     s_params = {}
     if "submission_profile" in data:
@@ -291,20 +477,24 @@ def update_submission_parameters(data: dict, user: dict) -> dict:
             raise Exception(f"Submission profile '{data['submission_profile']}' does not exist")
         else:
             # If the profile specified exists, get its parameters for the user settings as a base
-            s_params = strip_nulls(submission_profiles.get(data['submission_profile'], {}))
+            s_params = strip_nulls(user_submission_profiles.get(data['submission_profile'], {}))
     elif not submission_customize:
         # No profile specified, raise an exception back to the user
         raise Exception(f"You must specify a submission profile. One of: {list(SUBMISSION_PROFILES.keys())}")
     else:
         # No profile specified, use the default submission profile settings (legacy behaviour)
-        s_params = strip_nulls(submission_profiles.get('default', {}))
+        s_params = strip_nulls(user_submission_profiles.get('default', {}))
 
     # Ensure classification is set based on the user before applying updates
     classification = s_params.get("classification", user['classification'])
 
     # Ensure any system-configured defaults are applied to parameters
-    s_params['ttl'] = int(s_params.get('ttl', config.submission.dtl))
-
+    s_params.update({
+        'groups': s_params['groups'] if 'groups' in s_params else \
+            [g for g in user['groups'] if g in classification],
+        'submitter': user['uname'],
+        'ttl': int(s_params.get('ttl', config.submission.dtl))
+    })
 
     # Apply the changes to the submission parameters based on the profile and user roles
     s_params = recursive_update(s_params, data.get("params", {}))
@@ -319,8 +509,7 @@ def update_submission_parameters(data: dict, user: dict) -> dict:
     # Apply final changes on top of the default submission settings
     s_params = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS), s_params)
 
-    # Ensure the description key exists in the resulting submission params
-    s_params.setdefault("description", "")
+    # Ensure the classification exists in the resulting parameters
     s_params.setdefault("classification", classification)
 
     return s_params
@@ -404,8 +593,7 @@ def download_from_url(download_url, target, data=None, method="GET",
 
     if r.ok:
         if int(r.headers.get('content-length', 0)) > config.submission.max_file_size and not ignore_size:
-            raise FileTooBigException("File too big to be scanned "
-                                      f"({r.headers['content-length']} > {config.submission.max_file_size}).")
+            raise FileTooBigException(file_size=r.headers['content-length'])
 
         written = 0
 
@@ -421,7 +609,7 @@ def download_from_url(download_url, target, data=None, method="GET",
                     if written > config.submission.max_file_size and not ignore_size:
                         f.close()
                         os.unlink(target)
-                        raise FileTooBigException("File too big to be scanned.")
+                        raise FileTooBigException(file_size=written)
                     f.write(chunk)
 
             if written > 0:
