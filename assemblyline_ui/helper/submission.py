@@ -184,7 +184,7 @@ def init_submission(request: Request, user: Dict, endpoint: str):
         default_external_sources = ui_params.pop('default_external_sources', []) or default_external_sources
     else:
         # Assume the data was submitted to the API directly in the expected format
-        default_external_sources = data.pop('default_external_sources', []) or default_external_sources
+        default_external_sources = data.get('params', {}).pop('default_external_sources', []) or default_external_sources
 
     # Validate submission parameters provided in data block
     s_params = update_submission_parameters(data, user, user_settings.get('submission_profiles', {}))
