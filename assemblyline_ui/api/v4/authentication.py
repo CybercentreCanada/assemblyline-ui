@@ -352,20 +352,22 @@ def login(**_):
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         try:
             logged_in_uname, roles_limit = default_authenticator(auth, request, session, STORAGE)
-            xsrf_token = generate_random_secret()
-            current_session = {
-                "ip": ip,
-                "roles_limit": roles_limit,
-                "user_agent": request.headers.get("User-Agent", None),
-                "username": logged_in_uname,
-                "xsrf_token": xsrf_token,
-                "session_id": session.sid
-            }
-            session.update(current_session)
+            if "xsrf_token" not in session:
+                # If this session doesn't have XSRF token, then generate one
+                xsrf_token = generate_random_secret()
+                current_session = {
+                    "ip": ip,
+                    "roles_limit": roles_limit,
+                    "user_agent": request.headers.get("User-Agent", None),
+                    "username": logged_in_uname,
+                    "xsrf_token": xsrf_token,
+                    "session_id": session.sid
+                }
+                session.update(current_session)
             return make_api_response(
                 {"username": logged_in_uname, "roles_limit": roles_limit,
                  "session_duration": current_app.permanent_session_lifetime.total_seconds()},
-                cookies={"XSRF-TOKEN": xsrf_token},
+                cookies={"XSRF-TOKEN": session['xsrf_token']},
             )
         except AuthenticationException as wpe:
             uname = auth.get("username", "(None)")
