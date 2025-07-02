@@ -446,7 +446,12 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                                                             source.classification)
 
                     # Applying the source used to the metadata
-                    metadata['original_source'] = source.name
+                    if source.metadata:
+                        # If a source has it's own metadata configuration, merge it with user's metadata
+                        metadata.update(source.metadata)
+                    else:
+                        # Otherwise default to just providing the original source information
+                        metadata['original_source'] = source.name
 
                     # Forcing service selection
                     for service in source.select_services:
