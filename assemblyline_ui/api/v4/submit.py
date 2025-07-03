@@ -122,7 +122,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         # Preserve the classification of the original submission
         classification = submission_params['classification']
 
-        submission_profiles = STORAGE.user_settings.get(user['uname'], as_obj=False).get('submission_profiles', {})
+        submission_profiles = (STORAGE.user_settings.get(user['uname'], as_obj=False) or {}).get('submission_profiles', {})
         submission_params = update_submission_parameters(submission_params, user, submission_profiles)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
         submission_params['classification'] = classification
