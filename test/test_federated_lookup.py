@@ -4,7 +4,6 @@ import pytest
 from assemblyline_ui.api.v4 import federated_lookup
 from assemblyline_ui.app import app
 from assemblyline_ui.config import CLASSIFICATION, config
-from flask_session import Session
 from requests import Response
 
 from assemblyline.odm.random_data import create_users, wipe_users
@@ -48,7 +47,6 @@ def ext_config():
 def test_client(ext_config):
     """generate a test client with test configuration."""
     app.config["TESTING"] = True
-    Session(app)
     with app.test_client() as client:
         with app.app_context():
             yield client

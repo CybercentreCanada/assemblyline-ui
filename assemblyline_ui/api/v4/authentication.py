@@ -12,7 +12,8 @@ import pyqrcode
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.flask_client import FlaskOAuth2App, OAuth
 from authlib.integrations.requests_client import OAuth2Session
-from flask import current_app, redirect, request, session
+from flask import current_app, redirect, request
+from flask import session as flask_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
@@ -31,8 +32,10 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import (
     AUDIT_LOG,
     AUDIT_LOGIN,
+    FLASK_SESSIONS,
     LOGGER,
     SECRET_KEY,
+    SESSION_DURATION,
     STORAGE,
     config,
     get_reset_queue,
@@ -351,7 +354,7 @@ def login(**_):
         logged_in_uname = None
         ip = request.headers.get("X-Forwarded-For", request.remote_addr)
         try:
-            logged_in_uname, roles_limit = default_authenticator(auth, request, session, STORAGE)
+            logged_in_uname, roles_limit = default_authenticator(auth, request, flask_session, STORAGE)
             xsrf_token = generate_random_secret()
             current_session = {
                 "ip": ip,
@@ -359,12 +362,14 @@ def login(**_):
                 "user_agent": request.headers.get("User-Agent", None),
                 "username": logged_in_uname,
                 "xsrf_token": xsrf_token,
-                "session_id": session.sid
             }
-            session.update(current_session)
+            session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
+            flask_session["session_id"] = session_id
+
+            FLASK_SESSIONS.add(session_id, current_session)
             return make_api_response(
                 {"username": logged_in_uname, "roles_limit": roles_limit,
-                 "session_duration": current_app.permanent_session_lifetime.total_seconds()},
+                 "session_duration": SESSION_DURATION},
                 cookies={"XSRF-TOKEN": xsrf_token},
             )
         except AuthenticationException as wpe:
@@ -384,7 +389,7 @@ def login(**_):
 @api_login(audit=False, check_xsrf_token=False, count_toward_quota=False)
 def logout(**_):
     """
-    Logout from the system clearing the current session
+    Logout from the system clearing the current flask_session
 
     Variables:
     None
@@ -401,7 +406,10 @@ def logout(**_):
     }
     """
     try:
-        session.clear()
+        session_id = flask_session.get("session_id", None)
+        if session_id:
+            FLASK_SESSIONS.pop(session_id)
+        flask_session.clear()
         res = make_api_response({"success": True})
         res.set_cookie("XSRF-TOKEN", "", max_age=0)
         return res
@@ -434,7 +442,7 @@ def saml_sso(**_):
     if isinstance(path, bytes):
         path = path.decode("utf-8")
     sso_built_url: str = auth.login(return_to=f"https://{host}{path}")
-    session["AuthNRequestID"] = auth.get_last_request_id()
+    flask_session["AuthNRequestID"] = auth.get_last_request_id()
     return redirect(sso_built_url)
 
 
@@ -461,7 +469,7 @@ def saml_acs(**_):
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
-    request_id: str = session.pop("AuthNRequestID", None)
+    request_id: str = flask_session.pop("AuthNRequestID", None)
 
     if not request_id:
         # Could not found the request ID, this token was already used, redirect to the UI with the error
@@ -537,7 +545,7 @@ def saml_acs(**_):
             data = base64.b64encode(json.dumps({"error": msg}).encode("utf-8")).decode()
             return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
-        # Saving the ID of the valid session our token store
+        # Saving the ID of the valid flask_session our token store
         get_token_store(username, "saml").add(saml_token_id)
 
         # Create the data blob to send to the UI
@@ -558,7 +566,7 @@ def saml_acs(**_):
 @auth_api.route("/oauth/", methods=["GET"])
 def oauth_validate(**_):
     """
-    Validate and oAuth session and return it's associated username, avatar and oAuth Token
+    Validate and oAuth flask_session and return it's associated username, avatar and oAuth Token
 
     Variables:
     None
@@ -893,7 +901,7 @@ def setup_otp(**kwargs):
     temp_qrcode = pyqrcode.create(otp_url)
     temp_qrcode.svg(qc_stream, scale=3)
 
-    session["temp_otp_sk"] = secret_key
+    flask_session["temp_otp_sk"] = secret_key
 
     return make_api_response(
         {"qrcode": qc_stream.getvalue().decode("utf-8"), "otp_url": otp_url, "secret_key": secret_key}
@@ -1077,13 +1085,13 @@ def validate_otp(token, **kwargs):
     except ValueError:
         return make_api_response({"success": False}, err="This is not a valid OTP token", status_code=400)
 
-    secret_key = session.pop("temp_otp_sk", None)
+    secret_key = flask_session.pop("temp_otp_sk", None)
     if secret_key and get_totp_token(secret_key) == token:
         user_data["otp_sk"] = secret_key
         STORAGE.user.save(uname, user_data)
         return make_api_response({"success": True})
     else:
-        session["temp_otp_sk"] = secret_key
+        flask_session["temp_otp_sk"] = secret_key
         return make_api_response({"success": False}, err="OTP token does not match secret key", status_code=400)
 
 

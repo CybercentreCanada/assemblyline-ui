@@ -1,18 +1,10 @@
-import base64
-import hashlib
-import io
-import json
 import os
 import shutil
 
 from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from flask import request
 
-from assemblyline.common.classification import InvalidClassification
-from assemblyline.common.codec import decode_file
-from assemblyline.common.dict_utils import flatten
 from assemblyline.common.isotime import now_as_iso
-from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
@@ -21,22 +13,14 @@ from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_b
 from assemblyline_ui.config import (
     ARCHIVESTORE,
     FILESTORE,
-    IDENTIFY,
     LOGGER,
     STORAGE,
-    TEMP_SUBMIT_DIR,
     config,
-    metadata_validator,
 )
-from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.submission import (
-    FETCH_METHODS,
-    URL_GENERATORS,
     FileTooBigException,
-    fetch_file,
-    refang_url,
+    init_submission,
     submission_received,
-    update_submission_parameters,
 )
 from assemblyline_ui.helper.user import (
     check_async_submission_quota,
@@ -59,7 +43,6 @@ DEFAULT_INGEST_PARAMS = {
     "ignore_cache": False,
     "ignore_recursion_prevention": False,
     "ignore_filtering": False,
-    "ttl": config.submission.dtl,
     "type": "INGEST"
 }
 
@@ -219,48 +202,17 @@ def ingest_single_file(**kwargs):
         return make_api_response("", quota_error, 503)
 
     try:
-        out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
-        extracted_path = original_file = None
-        string_type = None
-        string_value = None
+        try:
+            # Initialize submission validation process
+            data, out_file, name, fileinfo, s_params, metadata = init_submission(request, user, endpoint="ingest")
+        except FileTooBigException as e:
+            LOGGER.warning(f"[{user['uname']}] {e}")
+            return make_api_response({}, str(e), 413)
+        except FileNotFoundError as e:
+            return make_api_response({}, str(e), 404)
+        except (PermissionError, Exception) as e:
+            return make_api_response({}, str(e), 400)
 
-        # Get data block and binary blob
-        if 'multipart/form-data' in request.content_type:
-            if 'json' in request.values:
-                data = json.loads(request.values['json'])
-            else:
-                data = {}
-            binary = request.files['bin']
-            name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
-        elif 'application/json' in request.content_type:
-            data = request.json
-            binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
-
-            # Determine if we're expected to fetch a file
-            for method in FETCH_METHODS:
-                if data.get(method):
-                    string_type, string_value = method, data[method]
-                    break
-
-            hash = string_value
-            if string_type in URL_GENERATORS:
-                string_value = refang_url(string_value)
-                name = string_value
-            else:
-                hash = string_value
-                if binary:
-                    hash = safe_str(hashlib.sha256(binary).hexdigest())
-                    binary = io.BytesIO(binary)
-                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
-        else:
-            return make_api_response({}, "Invalid content type", 400)
-
-        # Get default description
-        default_description = f"Inspection of {'URL' if string_type in URL_GENERATORS else 'file'}: {name}"
-
-        # Get file name
-        if not name:
-            return make_api_response({}, "Filename missing", 400)
 
         # Get notification queue parameters
         notification_queue = data.get('notification_queue', None)
@@ -268,145 +220,32 @@ def ingest_single_file(**kwargs):
         if not isinstance(notification_threshold, int) and notification_threshold:
             return make_api_response({}, "notification_threshold should be and int", 400)
 
-        try:
-            os.makedirs(out_dir)
-        except Exception:
-            pass
-        original_file = out_file = os.path.join(out_dir, get_random_id())
-
-        # Prepare variables
-        do_upload = True
-        al_meta = {}
-
-        # Grab the user's `default_external_sources` from their settings as the default
-        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
-        default_external_sources = user_settings.get("default_external_sources", [])
-
-        # Use the `default_external_sources` if specified as a param in request otherwise default to user's settings
-        default_external_sources = data.pop('default_external_sources', []) or default_external_sources
-
-        # Update submission parameters as specified by the user
-        try:
-            s_params = update_submission_parameters(data, user)
-        except Exception as e:
-            return make_api_response({}, str(e), 400)
-
         # Set any dangerous user settings to safe values (if wasn't set in request)
         for k, v in DEFAULT_INGEST_PARAMS.items():
-            if k not in s_params:
-                s_params[k] = v
+            s_params.setdefault(k, v)
 
-        metadata = flatten(data.get("metadata", {}))
-        found = False
-        fileinfo = None
-        # Load file
-        if not binary:
-            if string_type:
-                try:
-                    found, fileinfo, name = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
-                                                       default_external_sources, name)
-                    if not found:
-                        raise FileNotFoundError(
-                            f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
-                except FileTooBigException as e:
-                    LOGGER.warning(f"[{user['uname']}] {e}")
-                    return make_api_response({}, str(e), 400)
-                except FileNotFoundError as e:
-                    return make_api_response({}, str(e), 404)
-                except PermissionError as e:
-                    return make_api_response({}, str(e), 400)
-            else:
-                return make_api_response({}, "Missing file to scan. No binary or fetching method provided.", 400)
-        else:
-            with open(out_file, "wb") as my_file:
-                shutil.copyfileobj(binary, my_file, 16384)
 
         # Determine where the file exists and whether or not we need to re-upload to hot storage
-        if found and string_type != "url":
-            if not fileinfo:
-                # File was downloaded from an external source but wasn't known to the system
-                do_upload = True
-            elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
-                # File is in storage and the DB no need to upload anymore
-                do_upload = False
-            elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
-                # File is only in archivestorage so I'll still need to upload it to the hot storage
-                do_upload = True
-            else:
-                # Corner case: If we do know about the file but it doesn't exist in our filestores
-                do_upload = True
-
-        if do_upload and os.path.getsize(out_file) == 0:
-            return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
-
-        # Apply group params if not specified
-        if 'groups' not in s_params:
-            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
-
-        # Get generate alert parameter
-        generate_alert = data.get('generate_alert', s_params.get('generate_alert', False))
-        if not isinstance(generate_alert, bool):
-            return make_api_response({}, "generate_alert should be a boolean", 400)
+        if not STORAGE.file.exists(fileinfo['sha256']):
+            # File was downloaded from an external source but wasn't known to the system
+            do_upload = True
+        elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
+            # File is in storage and the DB no need to upload anymore
+            do_upload = False
+        elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
+            # File is only in archivestorage so I'll still need to upload it to the hot storage
+            do_upload = True
+        else:
+            # Corner case: If we do know about the file but it doesn't exist in our filestores
+            do_upload = True
 
         # Override final parameters
         s_params.update({
-            'generate_alert': generate_alert,
+            'generate_alert': s_params.get('generate_alert', False),
             'max_extracted': config.core.ingester.default_max_extracted,
             'max_supplementary': config.core.ingester.default_max_supplementary,
             'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
-            'submitter': user['uname']
         })
-
-        # Enforce maximum DTL
-        if config.submission.max_dtl > 0:
-            # Read the submissions ttl, returning an error if it is not understood
-            try:
-                ttl = int(s_params['ttl'])
-            except ValueError:
-                return make_api_response({}, "time to live [ttl] parameter must be an integer (in days)", 400)
-
-            # Take the minimum of the requested and system max dtl, taking the maximum if the number is zero
-            # We retain forever or the maximum ammount for zero values on ttl
-            if ttl != 0:
-                s_params['ttl'] = min(ttl, config.submission.max_dtl)
-            else:
-                s_params['ttl'] = config.submission.max_dtl
-
-        # No need to re-calculate fileinfo if we have it already
-        if not fileinfo:
-            # Calculate file digest
-            fileinfo = IDENTIFY.fileinfo(out_file)
-
-            # Validate file size
-            if fileinfo['size'] > MAX_SIZE and not s_params.get('ignore_size', False):
-                msg = f"File too large ({fileinfo['size']} > {MAX_SIZE}). Ingestion failed"
-                return make_api_response({}, err=msg, status_code=413)
-            elif fileinfo['size'] == 0:
-                return make_api_response({}, err="File empty. Ingestion failed", status_code=400)
-
-            # Decode cart if needed
-            extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
-            if extracted_path:
-                out_file = extracted_path
-
-        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
-            al_meta["name"] = fileinfo["uri_info"]["uri"]
-
-        # Alter filename and classification based on CaRT output
-        meta_classification = al_meta.pop('classification', s_params['classification'])
-        if meta_classification != s_params['classification']:
-            try:
-                s_params['classification'] = Classification.max_classification(meta_classification,
-                                                                               s_params['classification'])
-            except InvalidClassification as ic:
-                return make_api_response({}, "The classification found inside the cart file cannot be merged with "
-                                             f"the classification the file was submitted as: {str(ic)}", 400)
-        name = al_meta.pop('name', name)
-
-        # Validate ingest classification
-        if not Classification.is_accessible(user['classification'], s_params['classification']):
-            return make_api_response({}, "You cannot start a submission with higher "
-                                     "classification then you're allowed to see", 400)
 
         # Freshen file object
         expiry = now_as_iso(s_params['ttl'] * 24 * 60 * 60) if s_params.get('ttl', None) else None
@@ -430,30 +269,8 @@ def ingest_single_file(**kwargs):
         ingest_id = get_random_id()
         metadata['ingest_id'] = ingest_id
         metadata['type'] = s_params['type']
-        metadata.update(al_meta)
         if 'ts' not in metadata:
             metadata['ts'] = now_as_iso()
-
-        # Validate the metadata (use validation scheme if we have one configured for the ingest_type)
-        validation_scheme = config.submission.metadata.ingest.get('_default', {})
-        validation_scheme.update(config.submission.metadata.ingest.get(s_params['type'], {}))
-        strict = s_params['type'] in config.submission.metadata.strict_schemes
-        metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=validation_scheme, strict=strict)
-        if metadata_error:
-            return make_api_response({}, err=metadata_error[1], status_code=400)
-
-        if s_params.get('auto_archive', False):
-            # If the submission was set to auto-archive we need to validate the archive metadata fields also
-            strict = 'archive' in config.submission.metadata.strict_schemes
-            metadata_error = metadata_validator.check_metadata(
-                metadata, validation_scheme=config.submission.metadata.archive, strict=strict, skip_elastic_fields=True)
-            if metadata_error:
-                return make_api_response({}, err=metadata_error[1], status_code=400)
-
-        # Set description if it does not exists
-        if fileinfo["type"].startswith("uri/") and "uri_info" in fileinfo and "uri" in fileinfo["uri_info"]:
-            default_description = f"Inspection of URL: {fileinfo['uri_info']['uri']}"
-        s_params['description'] = s_params['description'] or f"[{s_params['type']}] {default_description}"
 
         # Create submission object
         try:
@@ -481,19 +298,12 @@ def ingest_single_file(**kwargs):
 
         # Cleanup files on disk
         try:
-            if original_file and os.path.exists(original_file):
-                os.unlink(original_file)
+            # noinspection PyUnboundLocalVariable
+            os.unlink(out_file)
         except Exception:
             pass
 
         try:
-            if extracted_path and os.path.exists(extracted_path):
-                os.unlink(extracted_path)
-        except Exception:
-            pass
-
-        try:
-            if os.path.exists(out_dir):
-                shutil.rmtree(out_dir, ignore_errors=True)
+            shutil.rmtree(os.path.dirname(out_file), ignore_errors=True)
         except Exception:
             pass

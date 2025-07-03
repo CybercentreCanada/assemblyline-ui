@@ -1,7 +1,3 @@
-import base64
-import hashlib
-import io
-import json
 import os
 import shutil
 import tempfile
@@ -11,9 +7,7 @@ from assemblyline_core.submission_client import SubmissionClient, SubmissionExce
 from flask import request
 
 from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
-from assemblyline.common.dict_utils import flatten
 from assemblyline.common.str_utils import safe_str
-from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import (
@@ -29,25 +23,18 @@ from assemblyline_ui.config import (
     LOGGER,
     STORAGE,
     SUBMISSION_PROFILES,
-    TEMP_SUBMIT_DIR,
     config,
-    metadata_validator,
 )
 from assemblyline_ui.config import CLASSIFICATION as Classification
-from assemblyline_ui.helper.service import ui_to_submission_params
 from assemblyline_ui.helper.submission import (
-    FETCH_METHODS,
-    URL_GENERATORS,
     FileTooBigException,
-    fetch_file,
-    refang_url,
+    init_submission,
     submission_received,
     update_submission_parameters,
 )
 from assemblyline_ui.helper.user import (
     check_submission_quota,
     decrement_submission_quota,
-    load_user_settings,
 )
 
 SUB_API = 'submit'
@@ -135,7 +122,8 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         # Preserve the classification of the original submission
         classification = submission_params['classification']
 
-        submission_params = update_submission_parameters(submission_params, user)
+        submission_profiles = (STORAGE.user_settings.get(user['uname'], as_obj=False) or {}).get('submission_profiles', {})
+        submission_params = update_submission_parameters(submission_params, user, submission_profiles)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
         submission_params['classification'] = classification
 
@@ -383,7 +371,6 @@ def submit(**kwargs):
     <Submission message object as a json dictionary>
     """
     user = kwargs['user']
-    out_dir = os.path.join(TEMP_SUBMIT_DIR, get_random_id())
 
     # Check if we've reached the quotas
     quota_error = check_submission_quota(user)
@@ -391,137 +378,29 @@ def submit(**kwargs):
         return make_api_response("", quota_error, 503)
 
     submit_result = None
-    string_type = None
-    string_value = None
     try:
-        # Get data block and binary blob
-        if 'multipart/form-data' in request.content_type:
-            if 'json' in request.values:
-                data = json.loads(request.values['json'])
-            else:
-                data = {}
-            binary = request.files['bin']
-            name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
-        elif 'application/json' in request.content_type:
-            data = request.json
-            binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
-
-            # Determine if we're expected to fetch a file
-            for method in FETCH_METHODS:
-                if data.get(method):
-                    string_type, string_value = method, data[method]
-                    break
-
-            if string_type in URL_GENERATORS:
-                string_value = refang_url(string_value)
-                name = string_value
-            else:
-                hash = string_value
-                if binary:
-                    hash = safe_str(hashlib.sha256(binary).hexdigest())
-                    binary = io.BytesIO(binary)
-                name = safe_str(os.path.basename(data.get("name", None) or hash or ""))
-
-        else:
-            return make_api_response({}, "Invalid content type", 400)
-
-        # Get default description
-        default_description = f"Inspection of {'URL' if string_type in URL_GENERATORS else 'file'}: {name}"
-
-        if not name:
-            return make_api_response({}, "Filename missing", 400)
-
-        user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
-        default_external_sources = user_settings.get('default_external_sources', [])
-
-        # Create task object
-
-        # Check if submission was triggered by the UI or by a client using the API directly
-        s_params = {}
-        if "ui_params" in data:
-            # Extract the ui_params
-            ui_params = data.pop("ui_params")
-
-            # Transform data from UI to submission parameters
-            data["params"] = ui_to_submission_params(ui_params)
-
-            # Update default external sources based on user request
-            default_external_sources = ui_params.pop('default_external_sources', []) or default_external_sources
-        else:
-            # Update default external sources based on user request
-            default_external_sources = data.pop('default_external_sources', []) or default_external_sources
-
-        # Update submission parameters as specified by the user
         try:
-            s_params = update_submission_parameters(data, user)
-        except Exception as e:
+            # Initialize submission validation process
+            _, out_file, name, _, s_params, metadata = init_submission(request, user, endpoint="submit")
+        except FileTooBigException as e:
+            LOGGER.warning(f"[{user['uname']}] {e}")
+            return make_api_response({}, str(e), 413)
+        except FileNotFoundError as e:
+            return make_api_response({}, str(e), 404)
+        except (PermissionError, Exception) as e:
             return make_api_response({}, str(e), 400)
 
-        if 'groups' not in s_params:
-            s_params['groups'] = [g for g in user['groups'] if g in s_params['classification']]
+        # Update submission parameters relative to the endpoint
+        s_params.update({
+            # Submission counts toward their quota
+            'quota_item': True,
+            # Set max extracted/supplementary if missing from request
+            'max_extracted': s_params.get('max_extracted', config.submission.default_max_extracted),
+            'max_supplementary': s_params.get('max_supplementary', config.submission.default_max_supplementary)
+        })
 
-        s_params['quota_item'] = True
-        s_params['submitter'] = user['uname']
-
-        # Set max extracted/supplementary if missing from request
-        s_params['max_extracted'] = s_params.get('max_extracted', config.submission.default_max_extracted)
-        s_params['max_supplementary'] = s_params.get('max_supplementary', config.submission.default_max_supplementary)
-
-        if not Classification.is_accessible(user['classification'], s_params['classification']):
-            return make_api_response({}, "You cannot start a scan with higher "
-                                     "classification then you're allowed to see", 400)
-
-        # Prepare the output directory
+        # Create a submission object for tasking
         try:
-            os.makedirs(out_dir)
-        except Exception:
-            pass
-        out_file = os.path.join(out_dir, get_random_id())
-
-        # Get the output file
-        metadata = flatten(data.get('metadata', {}))
-        if not binary:
-            if string_type:
-                try:
-                    found, _, name = fetch_file(string_type, string_value, user, s_params, metadata, out_file,
-                                          default_external_sources, name)
-                    if not found:
-                        raise FileNotFoundError(
-                            f"{string_type.upper()} does not exist in Assemblyline or any of the selected sources")
-
-                except FileTooBigException as e:
-                    LOGGER.warning(f"[{user['uname']}] {e}")
-                    return make_api_response({}, str(e), 400)
-                except FileNotFoundError as e:
-                    return make_api_response({}, str(e), 404)
-                except PermissionError as e:
-                    return make_api_response({}, str(e), 400)
-            else:
-                return make_api_response({}, "Missing file to scan. No binary or fetching method provided.", 400)
-        else:
-            with open(out_file, "wb") as my_file:
-                shutil.copyfileobj(binary, my_file, 16384)
-
-        if not s_params['description']:
-            s_params['description'] = default_description
-
-        try:
-            # Validate the metadata (use validation scheme if we have one configured for submissions)
-            strict = 'submit' in config.submission.metadata.strict_schemes
-            metadata_error = metadata_validator.check_metadata(
-                metadata, validation_scheme=config.submission.metadata.submit)
-            if metadata_error:
-                return make_api_response({}, err=metadata_error[1], status_code=400)
-
-            if s_params.get('auto_archive', False):
-                # If the submission was set to auto-archive we need to validate the archive metadata fields also
-                strict = 'archive' in config.submission.metadata.strict_schemes
-                metadata_error = metadata_validator.check_metadata(
-                    metadata, validation_scheme=config.submission.metadata.archive,
-                    strict=strict, skip_elastic_fields=True)
-                if metadata_error:
-                    return make_api_response({}, err=metadata_error[1], status_code=400)
-
             submission_obj = Submission({
                 "files": [],
                 "metadata": metadata,
@@ -544,6 +423,7 @@ def submit(**kwargs):
             # We had an error during the submission, release the quotas for the user
             decrement_submission_quota(user)
 
+        # Cleanup files on disk
         try:
             # noinspection PyUnboundLocalVariable
             os.unlink(out_file)
@@ -551,6 +431,6 @@ def submit(**kwargs):
             pass
 
         try:
-            shutil.rmtree(out_dir, ignore_errors=True)
+            shutil.rmtree(os.path.dirname(out_file), ignore_errors=True)
         except Exception:
             pass

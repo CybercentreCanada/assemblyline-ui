@@ -18,7 +18,7 @@ from assemblyline.odm.models.config import (
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
 from assemblyline.remote.datatypes.daily_quota_tracker import DailyQuotaTracker
-from assemblyline.remote.datatypes.hash import Hash
+from assemblyline.remote.datatypes.hash import ExpiringHash, Hash
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
@@ -56,6 +56,7 @@ AUDIT = config.ui.audit
 AUDIT_LOGIN = config.ui.audit_login
 
 SECRET_KEY = config.ui.secret_key
+SESSION_DURATION = config.ui.session_duration
 DEBUG = config.ui.debug
 DOWNLOAD_ENCODING = config.ui.download_encoding
 DEFAULT_ZIP_PASSWORD = config.ui.default_zip_password
@@ -103,6 +104,7 @@ SUBMISSION_TRACKER = UserQuotaTracker('submissions', timeout=60 * 60,  # 60 minu
 DAILY_QUOTA_TRACKER = DailyQuotaTracker(redis=redis_persistent)
 
 # UI queues
+FLASK_SESSIONS = ExpiringHash("flask_sessions", ttl=SESSION_DURATION, host=redis)
 UI_MESSAGING = Hash("ui_messaging", host=redis_persistent)
 CLASSIFICATION_ALIASES = Hash("classification_aliases", host=redis_persistent)
 

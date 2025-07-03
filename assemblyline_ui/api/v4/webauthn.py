@@ -3,13 +3,13 @@ from fido2 import cbor
 from fido2.client import ClientData
 from fido2.ctap2 import AttestationObject, AttestedCredentialData
 from fido2.server import U2FFido2Server
-from fido2.utils import websafe_encode, websafe_decode
+from fido2.utils import websafe_decode, websafe_encode
 from fido2.webauthn import PublicKeyCredentialRpEntity
-
-from flask import session, request
+from flask import request
+from flask import session as flask_session
 
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.api.base import make_api_response, api_login, make_subapi_blueprint
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, config
 
 SUB_API = 'webauthn'
@@ -41,12 +41,12 @@ def authenticate_begin(username, **_):
     if not user:
         return make_api_response({'success': False}, err="Bad Request", status_code=400)
 
-    session.pop('state', None)
+    flask_session.pop('state', None)
     security_tokens = user.get('security_tokens', {}) or {}
     credentials = [AttestedCredentialData(websafe_decode(x)) for x in security_tokens.values()]
 
     auth_data, state = server.authenticate_begin(credentials)
-    session['state'] = state
+    flask_session['state'] = state
 
     return make_api_response(list(cbor.encode(auth_data)))
 
@@ -75,7 +75,7 @@ def register_begin(**kwargs):
     if user['otp_sk'] is None:
         return make_api_response(None, err="OTP must be setup before adding security tokens", status_code=403)
 
-    session.pop('state', None)
+    flask_session.pop('state', None)
     security_tokens = user.get('security_tokens', {}) or {}
 
     registration_data, state = server.register_begin(
@@ -88,7 +88,7 @@ def register_begin(**kwargs):
         credentials=[AttestedCredentialData(websafe_decode(x)) for x in security_tokens.values()]
     )
 
-    session['state'] = state
+    flask_session['state'] = state
 
     return make_api_response(list(cbor.encode(registration_data)))
 
@@ -121,7 +121,7 @@ def register_complete(name, **kwargs):
     client_data = ClientData(data['clientDataJSON'])
     att_obj = AttestationObject(data['attestationObject'])
 
-    auth_data = server.register_complete(session.pop('state', None), client_data, att_obj)
+    auth_data = server.register_complete(flask_session.pop('state', None), client_data, att_obj)
 
     security_tokens = user.get('security_tokens', {})
     if name in security_tokens:
