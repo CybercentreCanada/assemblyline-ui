@@ -1,5 +1,6 @@
 import logging
 import os
+import requests
 
 from assemblyline.common import forge
 from assemblyline.common import log as al_log
@@ -9,7 +10,11 @@ from assemblyline.common.logformat import AL_LOG_FORMAT
 from assemblyline.common.version import BUILD_MINOR, FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidator
 from assemblyline.filestore import FileStore
-from assemblyline.odm.models.config import METADATA_FIELDTYPE_MAP
+from assemblyline.odm.models.config import (
+    METADATA_FIELDTYPE_MAP,
+    OAuthProvider,
+    OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP,
+)
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
 from assemblyline.remote.datatypes.daily_quota_tracker import DailyQuotaTracker
@@ -21,6 +26,20 @@ from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 from assemblyline_ui.helper.ai import get_ai_agent
 from assemblyline_ui.helper.ai.base import AIAgentPool
 from assemblyline_ui.helper.discover import get_apps_list
+
+
+def load_openid_configuration(old_config: OAuthProvider, url: str) -> OAuthProvider:
+    try:
+        with requests.request("GET", url) as resp:
+            config_data = resp.json()
+            # add associated values using open id configuration ONLY if value not configured in config
+            for key_open_id, key_al_config in OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP.items():
+                if key_open_id in config_data and not old_config[key_al_config]:
+                    old_config[key_al_config] = config_data[key_open_id]
+
+    finally:
+        return old_config
+
 
 config = forge.get_config()
 
@@ -95,6 +114,14 @@ REPLAY_ALERT_QUEUE = NamedQueue("replay_alert", host=redis)
 REPLAY_FILE_QUEUE = NamedQueue("replay_file", host=redis)
 REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
 REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
+
+# Update OIDC config using discovery url if exist
+for oauth_provider in config.auth.oauth.providers:
+    old_config = config.auth.oauth.providers[oauth_provider]
+    if old_config.openid_connect_discovery_url:
+        config.auth.oauth.providers[oauth_provider] = load_openid_configuration(
+            old_config, old_config.openid_connect_discovery_url
+        )
 
 
 def get_token_store(key, token_type):
