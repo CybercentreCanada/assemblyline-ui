@@ -15,7 +15,9 @@ from flask import (
     jsonify,
     make_response,
     request,
-    session,
+)
+from flask import (
+    session as flask_session,
 )
 
 from assemblyline.common.str_utils import safe_str
@@ -228,8 +230,8 @@ class api_login(BaseSecurityRenderer):
                 if config.ui.enforce_quota:
                     # Prepare session for quotas
                     quota_user = user['uname']
-                    session['quota_user'] = quota_user
-                    session['quota_set'] = True
+                    flask_session['quota_user'] = quota_user
+                    flask_session['quota_set'] = True
 
                     # Check current user quota
                     quota = user.get('api_quota')
@@ -246,7 +248,7 @@ class api_login(BaseSecurityRenderer):
                         daily_quota = config.ui.default_quotas.daily_api_calls
                     if daily_quota != 0 and self.count_toward_quota:
                         current_daily_quota = DAILY_QUOTA_TRACKER.increment_api(quota_user)
-                        session['remaining_quota_api'] = max(daily_quota - current_daily_quota, 0)
+                        flask_session['remaining_quota_api'] = max(daily_quota - current_daily_quota, 0)
                         if current_daily_quota > daily_quota:
                             LOGGER.info(f"User {quota_user} was prevented from using the api due to exceeded quota.")
                             return make_api_response(
@@ -266,12 +268,12 @@ def get_response_headers():
     headers = {}
 
     # Add remaining API quota
-    daily_quota_api = session.pop("remaining_quota_api", None)
+    daily_quota_api = flask_session.pop("remaining_quota_api", None)
     if daily_quota_api is not None:
         headers['x-remaining-quota-api'] = daily_quota_api
 
     # Add remaining submission quota
-    daily_quota_submission = session.pop("remaining_quota_submission", None)
+    daily_quota_submission = flask_session.pop("remaining_quota_submission", None)
     if daily_quota_submission is not None:
         headers['x-remaining-quota-submission'] = daily_quota_submission
 
@@ -279,8 +281,8 @@ def get_response_headers():
 
 
 def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
-    quota_user = session.pop("quota_user", None)
-    quota_set = session.pop("quota_set", False)
+    quota_user = flask_session.pop("quota_user", None)
+    quota_set = flask_session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -310,8 +312,8 @@ def make_api_response(data, err="", status_code=200, cookies=None) -> Response:
 
 
 def make_file_response(data, name, size, status_code=200, content_type="application/octet-stream"):
-    quota_user = session.pop("quota_user", None)
-    quota_set = session.pop("quota_set", False)
+    quota_user = flask_session.pop("quota_user", None)
+    quota_set = flask_session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -329,8 +331,8 @@ def make_file_response(data, name, size, status_code=200, content_type="applicat
 
 
 def stream_file_response(reader, name, size, status_code=200):
-    quota_user = session.pop("quota_user", None)
-    quota_set = session.pop("quota_set", False)
+    quota_user = flask_session.pop("quota_user", None)
+    quota_set = flask_session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -357,8 +359,8 @@ def stream_file_response(reader, name, size, status_code=200):
 
 
 def make_binary_response(data, size, status_code=200):
-    quota_user = session.pop("quota_user", None)
-    quota_set = session.pop("quota_set", False)
+    quota_user = flask_session.pop("quota_user", None)
+    quota_set = flask_session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 
@@ -373,8 +375,8 @@ def make_binary_response(data, size, status_code=200):
 
 
 def stream_binary_response(reader, status_code=200):
-    quota_user = session.pop("quota_user", None)
-    quota_set = session.pop("quota_set", False)
+    quota_user = flask_session.pop("quota_user", None)
+    quota_set = flask_session.pop("quota_set", False)
     if quota_user and quota_set:
         QUOTA_TRACKER.end(quota_user)
 

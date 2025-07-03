@@ -7,7 +7,6 @@ from authlib.integrations.flask_client import OAuth
 from elasticapm.contrib.flask import ElasticAPM
 from flask import Flask
 from flask.logging import default_handler
-from flask_session import Session
 
 from assemblyline_ui import config
 from assemblyline_ui.api.base import api
@@ -63,12 +62,8 @@ ssl_context = None
 
 # Update app config with common settings
 app.config.update(
-    SESSION_TYPE='redis',
-    SESSION_REDIS=config.redis,
-    SESSION_KEY_PREFIX="flask_session:",
-    SESSION_SERIALIZATION_FORMAT='json',
     SESSION_PERMANENT=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(seconds=config.config.ui.session_duration),
+    PERMANENT_SESSION_LIFETIME=timedelta(seconds=config.SESSION_DURATION),
 )
 
 if AL_UNSECURED_UI:
@@ -94,9 +89,6 @@ else:
     app.config.update(
         SESSION_COOKIE_SAMESITE="None"
     )
-
-# Initialize the Redis session store with application
-Session(app)
 
 if all([os.path.exists(fp) for fp in CERT_BUNDLE]):
     # If all files required are present, start up encrypted comms

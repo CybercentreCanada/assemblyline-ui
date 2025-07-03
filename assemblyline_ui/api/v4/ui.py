@@ -14,7 +14,6 @@ from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.config import (
     FILESTORE,
     IDENTIFY,
