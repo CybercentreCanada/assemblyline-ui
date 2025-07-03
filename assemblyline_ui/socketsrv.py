@@ -9,12 +9,10 @@ import os
 from datetime import timedelta
 
 from flask import Flask
-from flask_session import Session
 from flask_socketio import SocketIO
 
 from assemblyline.common import forge
 from assemblyline.common import log as al_log
-from assemblyline_ui.config import redis
 from assemblyline_ui.healthz import healthz
 from assemblyline_ui.sio.alert import AlertMonitoringNamespace
 from assemblyline_ui.sio.file import FileCommentNamespace
@@ -40,10 +38,6 @@ app = Flask('socketio')
 # Update app config with common settings
 app.config.update(
     SECRET_KEY=config.ui.secret_key,
-    SESSION_TYPE='redis',
-    SESSION_REDIS=redis,
-    SESSION_KEY_PREFIX="flask_session:",
-    SESSION_SERIALIZATION_FORMAT='json',
     SESSION_PERMANENT=True,
     PERMANENT_SESSION_LIFETIME=timedelta(seconds=config.ui.session_duration),
 )
@@ -54,9 +48,6 @@ if 'APPLICATION_ROOT' in os.environ:
     LOGGER.info(f"Flask application root changing: {os.environ['APPLICATION_ROOT']}")
     app.config['APPLICATION_ROOT'] = os.environ['APPLICATION_ROOT']
     app.config['SESSION_COOKIE_PATH'] = '/'
-
-# Initialize the Redis session store with application
-Session(app)
 
 # NOTE: we need to run in threading mode while debugging otherwise, use gevent
 socketio = SocketIO(app, async_mode=os.environ.get('ASYNC_MODE', 'gevent'), cors_allowed_origins='*')

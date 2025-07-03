@@ -1,8 +1,15 @@
-from flask import abort, current_app, request, session
+from flask import abort, current_app, request
+from flask import session as flask_session
 
 from assemblyline.odm.models.user import USER_ROLES
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_ui.config import AUDIT, AUDIT_KW_TARGET, AUDIT_LOG, config
+from assemblyline_ui.config import (
+    AUDIT,
+    AUDIT_KW_TARGET,
+    AUDIT_LOG,
+    FLASK_SESSIONS,
+    config,
+)
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser
@@ -71,7 +78,17 @@ class BaseSecurityRenderer(object):
         if auto_auth_uname is not None:
             return auto_auth_uname, roles_limit
 
-        session_id = session.get("session_id", None)
+
+        session_id = flask_session.get("session_id", None)
+        if not session_id:
+            current_app.logger.debug('session_id cookie not found')
+            abort(401, "Session not found")
+
+        session = FLASK_SESSIONS.get(session_id)
+        if not session:
+            current_app.logger.debug(f'[{session_id}] session_id not found in redis')
+            abort(401, "Session expired")
+
         if config.ui.validate_session_ip and \
                 request.headers.get("X-Forwarded-For", request.remote_addr) != session.get('ip', None):
             current_app.logger.debug(f'[{session_id}] X-Forwarded-For does not match session IP '
