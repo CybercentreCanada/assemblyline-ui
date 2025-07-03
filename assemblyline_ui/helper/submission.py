@@ -171,7 +171,7 @@ def init_submission(request: Request, user: Dict, endpoint: str):
     else:
         raise Exception("Invalid content type")
 
-    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False)
+    user_settings = STORAGE.user_settings.get(user['uname'], as_obj=False) or {}
     default_external_sources = user_settings.get("default_external_sources", [])
 
     # Extract submission parameters from data block
