@@ -197,34 +197,8 @@ def init_submission(request: Request, user: Dict, endpoint: str):
         else:
             s_params['ttl'] = config.submission.max_dtl
 
-    # Get the metadata and validate depending on endpoint
+    # Get the metadata
     metadata = flatten(data.get('metadata', {}))
-
-    if endpoint in ["submit", "ui"]:
-        # Get metadata validation configuration
-        strict = 'submit' in config.submission.metadata.strict_schemes
-        scheme = config.submission.metadata.submit
-    else:
-        # Get metadata validation configuration
-        strict = s_params.get('type') in config.submission.metadata.strict_schemes
-        scheme = config.submission.metadata.ingest.get('_default', {})
-        scheme.update(config.submission.metadata.ingest.get(s_params.get('type'), {}))
-
-    # If an error is returned as part of validation, raise it back to user
-    metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=scheme, strict=strict)
-    if metadata_error:
-        raise Exception(metadata_error[1])
-
-    # If the submission was set to auto-archive we need to validate the archive metadata fields also
-    if s_params.get('auto_archive', False):
-        strict = 'archive' in config.submission.metadata.strict_schemes
-        metadata_error = metadata_validator.check_metadata(
-            metadata, validation_scheme=config.submission.metadata.archive,
-            strict=strict, skip_elastic_fields=True)
-        if metadata_error:
-            raise Exception(metadata_error[1])
-
-
 
     if endpoint == "ui":
         # If this was submitted through the UI, then the file is in the cachestore
@@ -260,6 +234,31 @@ def init_submission(request: Request, user: Dict, endpoint: str):
         raise FileTooBigException(file_size=fileinfo['size'])
     elif fileinfo['size'] == 0:
         raise Exception("File empty.")
+
+    # Validate metadata depending on endpoint
+    if endpoint in ["submit", "ui"]:
+        # Get metadata validation configuration
+        strict = 'submit' in config.submission.metadata.strict_schemes
+        scheme = config.submission.metadata.submit
+    else:
+        # Get metadata validation configuration
+        strict = s_params.get('type') in config.submission.metadata.strict_schemes
+        scheme = config.submission.metadata.ingest.get('_default', {})
+        scheme.update(config.submission.metadata.ingest.get(s_params.get('type'), {}))
+
+    # If an error is returned as part of validation, raise it back to user
+    metadata_error = metadata_validator.check_metadata(metadata, validation_scheme=scheme, strict=strict)
+    if metadata_error:
+        raise Exception(metadata_error[1])
+
+    # If the submission was set to auto-archive we need to validate the archive metadata fields also
+    if s_params.get('auto_archive', False):
+        strict = 'archive' in config.submission.metadata.strict_schemes
+        metadata_error = metadata_validator.check_metadata(
+            metadata, validation_scheme=config.submission.metadata.archive,
+            strict=strict, skip_elastic_fields=True)
+        if metadata_error:
+            raise Exception(metadata_error[1])
 
     # Check if this is a cart file to be decoded
     extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
