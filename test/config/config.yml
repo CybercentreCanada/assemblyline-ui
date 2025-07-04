@@ -17,6 +17,8 @@ core:
 
 datastore:
   hosts: [http://elastic:devpass@elasticsearch:9200]
+  archive:
+    enabled: true
 
 filestore:
   cache:
@@ -26,6 +28,10 @@ filestore:
   storage:
     [
       "s3://al_storage_key:Ch@ngeTh!sPa33w0rd@minio:9000?s3_bucket=al-storage&use_ssl=False",
+    ]
+  archive:
+    [
+      "s3://al_storage_key:Ch@ngeTh!sPa33w0rd@minio:9000?s3_bucket=al-archive&use_ssl=False",
     ]
 
 logging:

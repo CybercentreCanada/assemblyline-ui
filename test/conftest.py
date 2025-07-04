@@ -1,11 +1,10 @@
 import os
-import redis
-import requests
 import warnings
+from json import JSONDecodeError
 
 import pytest
-
-from json import JSONDecodeError
+import redis
+import requests
 
 from assemblyline.common import forge
 from assemblyline.datastore.store import ESStore
@@ -64,6 +63,13 @@ def datastore_connection(config):
 def filestore(config):
     try:
         return forge.get_filestore(config, connection_attempts=1)
+    except ConnectionError as err:
+        pytest.skip(str(err))
+
+@pytest.fixture(scope='module')
+def archivestore(config):
+    try:
+        return forge.get_archivestore(config, connection_attempts=1)
     except ConnectionError as err:
         pytest.skip(str(err))
 
