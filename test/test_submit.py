@@ -11,6 +11,7 @@ from assemblyline_core.dispatching.dispatcher import SubmissionTask
 from conftest import APIError, get_api_data
 
 from assemblyline.common import forge
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.random_data import (
@@ -58,13 +59,16 @@ def test_resubmit(datastore, filestore, archivestore, login_session, scheduler, 
         for sha256 in submission_files:
             archivestore.put(sha256, filestore.get(sha256))
             filestore.delete(sha256)
-            datastore.file.update(sha256, [(datastore.file.UPDATE_SET, 'from_archive', True)])
+            datastore.file.archive(sha256)
+            datastore.file.delete(sha256, index_type=Index.HOT)
+        datastore.file.commit()
 
     resp = get_api_data(session, f"{host}/api/v4/submit/resubmit/{submission.sid}/")
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['sid'] != submission.sid
     for f in resp['files']:
         assert f['sha256'] in submission_files
+        assert filestore.exists(f['sha256'])
 
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
