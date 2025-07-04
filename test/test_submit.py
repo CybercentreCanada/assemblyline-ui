@@ -46,11 +46,20 @@ def datastore(datastore_connection, filestore):
 
 
 # noinspection PyUnusedLocal
-def test_resubmit(datastore, login_session, scheduler):
+@pytest.mark.parametrize("from_archive", [False, True], ids=["from_filestore", "from_archivestore"])
+def test_resubmit(datastore, filestore, archivestore, login_session, scheduler, from_archive):
     _, session, host = login_session
 
     sq.delete()
     submission_files = [f.sha256 for f in submission.files]
+
+    if from_archive:
+        # Save file to archivestore and remove from filestore (let's pretend it was archived and expired from filestore)
+        for sha256 in submission_files:
+            archivestore.put(sha256, filestore.get(sha256))
+            filestore.delete(sha256)
+            datastore.file.update(sha256, [(datastore.file.UPDATE_SET, 'from_archive', True)])
+
     resp = get_api_data(session, f"{host}/api/v4/submit/resubmit/{submission.sid}/")
     assert resp['params']['description'].startswith('Resubmit')
     assert resp['sid'] != submission.sid
