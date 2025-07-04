@@ -1190,7 +1190,11 @@ def get_remaining_quotas(username, **kwargs):
     if username != user['uname']:
         if ROLES.administration not in user['roles']:
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
+        
         user = STORAGE.user.get(username, as_obj=False)
+        if not user:
+            return make_api_response({}, "User %s does not exists" % username, 404)
+
         user = get_default_user_quotas(user)
 
     return make_api_response({
