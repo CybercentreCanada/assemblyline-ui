@@ -58,6 +58,11 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         return make_api_response({}, f"File {sha256} cannot be found on the server therefore it cannot be resubmitted.",
                                  status_code=404)
 
+    # Check if this pertains to a file that's been archived and it's not currently in the filestore
+    if file_info.get('from_archive', False) and not FILESTORE.exists(sha256):
+        # If the file in question doesn't exist in the filestore, then make a copy from the archivestore
+        FILESTORE.put(sha256, content=ARCHIVESTORE.get(sha256), location="far")
+
     if not Classification.is_accessible(user['classification'], file_info['classification']):
         return make_api_response("", "You are not allowed to re-submit a file that you don't have access to", 403)
 
@@ -278,6 +283,15 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         submission_params['quota_item'] = True
         submission_params['description'] = "Resubmit %s for analysis" % ", ".join([x['name']
                                                                                    for x in submission["files"]])
+
+        # Ensure the files associated in the submission are present in the system
+        for file in submission['files']:
+            sha256 = file['sha256']
+            file_info = STORAGE.file.get(sha256, as_obj=False)
+            # Check if this pertains to a file that's been archived and it's not currently in the filestore
+            if file_info.get('from_archive', False) and not FILESTORE.exists(sha256):
+                # If the file in question doesn't exist in the filestore, then make a copy from the archivestore
+                FILESTORE.put(sha256, content=ARCHIVESTORE.get(sha256), location="far")
 
         try:
             submission_obj = Submission({
