@@ -1,13 +1,13 @@
-import os
-import pytest
 import base64
+import json
+import os
 
+import pytest
 from conftest import APIError, get_api_data
 
 from assemblyline.common.security import get_totp_token
-from assemblyline.odm.models.user import ACL_MAP
-from assemblyline.odm.random_data import create_users, wipe_users
-from assemblyline.odm.randomizer import get_random_hash
+from assemblyline.odm.models.apikey import get_apikey_id
+from assemblyline.odm.random_data import DEV_APIKEY_NAME, create_users, wipe_users
 
 
 @pytest.fixture(scope="module")
@@ -36,6 +36,39 @@ def test_login(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v4/auth/logout/")
     assert resp.get("success", False) is True
+
+@pytest.mark.parametrize("is_active", [True, False], ids=["account_enabled", "account_disabled"])
+def test_apikey(datastore, login_session, is_active):
+    _, session, host = login_session
+
+    apikey = datastore.apikey.get(get_apikey_id(DEV_APIKEY_NAME, "admin"))
+    password = os.getenv("DEV_ADMIN_PASS", 'admin') or 'admin'
+
+    if is_active:
+        datastore.user.update("admin", [(datastore.user.UPDATE_SET, 'is_active', True)])
+        datastore.user.commit()
+
+        # Test authentication to the API using API keys
+        get_api_data(session, f"{host}/api/v4/auth/login/", method="POST", data=json.dumps({
+            "user": "admin",
+            "apikey": f"{apikey.key_name}:{password}"
+        }))
+
+    else:
+        # If a user account is disabled, they shouldn't be able to use an API key to authenticate
+        datastore.user.update("admin", [(datastore.user.UPDATE_SET, 'is_active', False)])
+        datastore.user.commit()
+
+        with pytest.raises(APIError, match="This owner of this API Key is not active."):
+            get_api_data(session, f"{host}/api/v4/auth/login/", method="POST", data=json.dumps({
+                "user": "admin",
+                "apikey": f"{apikey.key_name}:{apikey.password}"
+            }))
+
+        # Restore user account active status for the rest of tests
+        datastore.user.update("admin", [(datastore.user.UPDATE_SET, 'is_active', True)])
+        datastore.user.commit()
+
 
 
 # noinspection PyUnusedLocal
