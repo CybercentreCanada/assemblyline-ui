@@ -73,6 +73,7 @@ def parse_external_links(external_links: List[ExternalLinks]):
                 "replace_pattern": link.replace_pattern,
                 "url": link.url,
                 "max_classification": link.max_classification,
+                "encoding": link.encoding
             })
 
     return out
