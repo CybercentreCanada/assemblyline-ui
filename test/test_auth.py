@@ -59,7 +59,7 @@ def test_apikey(datastore, login_session, is_active):
         datastore.user.update("admin", [(datastore.user.UPDATE_SET, 'is_active', False)])
         datastore.user.commit()
 
-        with pytest.raises(APIError, match="Invalid user or APIKey"):
+        with pytest.raises(APIError, match="This owner of this API Key is not active."):
             get_api_data(session, f"{host}/api/v4/auth/login/", method="POST", data=json.dumps({
                 "user": "admin",
                 "apikey": f"{apikey.key_name}:{apikey.password}"
