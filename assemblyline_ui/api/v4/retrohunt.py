@@ -378,18 +378,33 @@ def get_retrohunt_job_hits(id, **kwargs):
         req_data = request.args
 
     try:
-        params = {
-            'query': f"search:{id}",
-            'offset': 0,
-            'rows': req_data.get("track_total_hits", 10000),
-            'fl': 'sha256',
-            'as_obj': False,
-            'index_type': Index.HOT_AND_ARCHIVE,
-            'track_total_hits': req_data.get("track_total_hits", True)
-        }
+        key_space = []
+        offset = 0
+        rows = 10000
 
-        hits = STORAGE.retrohunt_hit.search(**params)
-        key_space = [item['sha256'] for item in hits['items']]
+        while True:
+            params = {
+                "query": f"search:{id}",
+                "offset": offset,
+                "rows": rows,
+                "fl": "sha256",
+                "as_obj": False,
+                "index_type": Index.HOT_AND_ARCHIVE,
+                "track_total_hits": True,
+            }
+
+            hits = STORAGE.retrohunt_hit.search(**params)
+
+            items = hits.get("items", [])
+            if not items:
+                break
+
+            key_space.extend(item["sha256"] for item in items if "sha256" in item)
+
+            if len(items) < rows:
+                break
+
+            offset += rows
 
         params = {
             'query': '*',
