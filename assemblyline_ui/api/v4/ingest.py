@@ -232,7 +232,7 @@ def ingest_single_file(**kwargs):
         elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
             # File is in storage and the DB no need to upload anymore
             do_upload = False
-        elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
+        elif ARCHIVESTORE and FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
             # File is only in archivestorage so I'll still need to upload it to the hot storage
             do_upload = True
         else:
