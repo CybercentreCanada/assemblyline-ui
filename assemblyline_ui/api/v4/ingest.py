@@ -131,7 +131,7 @@ def ingest_single_file(**kwargs):
 
             The multipart/form-data for sending binary has two parts:
                 - The first part contains a JSON dump of the optional params and uses the name 'json'
-                - The last part conatins the file binary, uses the name 'bin' and includes a filename
+                - The last part contains the file binary, uses the name 'bin' and includes a filename
 
             If your system can handle the memory footprint and slowdown, you can also submit a file
             via the plaintext (not encoded) or base64 (encoded) parameters included in the data block.
@@ -232,7 +232,7 @@ def ingest_single_file(**kwargs):
         elif fileinfo and FILESTORE.exists(fileinfo['sha256']):
             # File is in storage and the DB no need to upload anymore
             do_upload = False
-        elif FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
+        elif ARCHIVESTORE and FILESTORE != ARCHIVESTORE and ARCHIVESTORE.exists(fileinfo['sha256']):
             # File is only in archivestorage so I'll still need to upload it to the hot storage
             do_upload = True
         else:
