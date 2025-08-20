@@ -1,14 +1,15 @@
 import typing
 
-from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.forge import get_hauntedhouse_client
+from assemblyline.common.isotime import now_as_iso
+
 # from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, STORAGE, config, LOGGER
-from flask import request, Response
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, config
+from flask import Response, request
 
 SUB_API = 'retrohunt'
 retrohunt_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -378,18 +379,33 @@ def get_retrohunt_job_hits(id, **kwargs):
         req_data = request.args
 
     try:
-        params = {
-            'query': f"search:{id}",
-            'offset': 0,
-            'rows': req_data.get("track_total_hits", 10000),
-            'fl': 'sha256',
-            'as_obj': False,
-            'index_type': Index.HOT_AND_ARCHIVE,
-            'track_total_hits': req_data.get("track_total_hits", True)
-        }
+        key_space = []
+        offset = 0
+        rows = 10000
 
-        hits = STORAGE.retrohunt_hit.search(**params)
-        key_space = [item['sha256'] for item in hits['items']]
+        while True:
+            params = {
+                "query": f"search:{id}",
+                "offset": offset,
+                "rows": rows,
+                "fl": "sha256",
+                "as_obj": False,
+                "index_type": Index.HOT_AND_ARCHIVE,
+                "track_total_hits": True,
+            }
+
+            hits = STORAGE.retrohunt_hit.search(**params)
+
+            items = hits.get("items", [])
+            if not items:
+                break
+
+            key_space.extend(item["sha256"] for item in items if "sha256" in item)
+
+            if len(items) < rows:
+                break
+
+            offset += rows
 
         params = {
             'query': '*',
