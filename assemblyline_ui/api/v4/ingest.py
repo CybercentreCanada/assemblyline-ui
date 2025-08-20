@@ -245,6 +245,8 @@ def ingest_single_file(**kwargs):
             'max_extracted': config.core.ingester.default_max_extracted,
             'max_supplementary': config.core.ingester.default_max_supplementary,
             'priority': min(s_params.get("priority", 150), config.ui.ingest_max_priority),
+            # Prepend ingestion type to description
+            'description': f"[{s_params['type']}] {s_params['description']}"
         })
 
         # Freshen file object
