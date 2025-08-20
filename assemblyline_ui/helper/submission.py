@@ -66,7 +66,6 @@ except socket.gaierror:
     MYIP = '127.0.0.1'
 
 
-
 #############################
 # download functions
 class FileTooBigException(Exception):
@@ -145,7 +144,7 @@ def init_submission(request: Request, user: Dict, endpoint: str):
             data = {}
 
         binary = request.files['bin']
-        name = safe_str(os.path.basename(data.get("name", binary.filename) or ""))
+        name = safe_str(data.get("name", os.path.basename(binary.filename or "")))
     elif 'application/json' in request.content_type:
         data = request.json
         binary = data.get('plaintext', '').encode() or base64.b64decode(data.get('base64', ''))
