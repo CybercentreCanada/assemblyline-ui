@@ -1,15 +1,14 @@
 import typing
 
-from assemblyline.common.forge import get_hauntedhouse_client
 from assemblyline.common.isotime import now_as_iso
-
+from assemblyline.common.forge import get_hauntedhouse_client
 # from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE, config
-from flask import Response, request
+from assemblyline_ui.config import CLASSIFICATION, STORAGE, config, LOGGER
+from flask import request, Response
 
 SUB_API = 'retrohunt'
 retrohunt_api = make_subapi_blueprint(SUB_API, api_version=4)
