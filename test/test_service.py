@@ -2,6 +2,7 @@ import json
 import random
 
 import pytest
+from conftest import APIError
 import yaml
 from conftest import get_api_data
 
@@ -135,6 +136,11 @@ def test_get_service(datastore, login_session):
     resp.pop('auto_update', None)
 
     assert resp == service_data
+
+    # Should return error message when service does not exist
+    BAD_SERVICE_NAME = "servicenotexist"
+    with pytest.raises(APIError, match=f"{BAD_SERVICE_NAME} service does not exist"):
+        resp = get_api_data(session, f"{host}/api/v4/service/{BAD_SERVICE_NAME}/")
 
 
 # noinspection PyUnusedLocal
