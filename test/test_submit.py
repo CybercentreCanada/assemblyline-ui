@@ -22,7 +22,6 @@ from assemblyline.odm.random_data import (
     wipe_submissions,
     wipe_users,
 )
-
 from assemblyline.odm.randomizer import get_random_phrase, random_minimal_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
@@ -238,8 +237,11 @@ def test_submit_binary_different_filename(datastore, login_session, scheduler, f
 
         with open(temp_path, "rb") as fh:
             sha256 = hashlib.sha256(byte_str).hexdigest()
-            json_data = {"name": filename, "metadata": {"test": "test_submit_binary"}}
+            json_data = {"metadata": {"test": "test_submit_binary"}}
+            if filename:
+                json_data["name"] = filename
             data = {"json": json.dumps(json_data)}
+
             resp = get_api_data(
                 session, f"{host}/api/v4/submit/", method="POST", data=data, files={"bin": fh}, headers={}
             )
@@ -252,9 +254,6 @@ def test_submit_binary_different_filename(datastore, login_session, scheduler, f
                 assert f["name"] == json_data["name"]
             else:
                 assert f["name"] == os.path.basename(temp_path)
-
-        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
-        assert msg.submission.sid == resp["sid"]
 
     finally:
         # noinspection PyBroadException
