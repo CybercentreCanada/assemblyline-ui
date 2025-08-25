@@ -4,7 +4,7 @@ import json
 import os
 import re
 from io import BytesIO
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 import jwt
@@ -469,13 +469,7 @@ def saml_acs(**_):
         return make_api_response({"err_code": 0}, err="SAML disabled on the server", status_code=401)
     request_data: Dict[str, Any] = _prepare_flask_request(request)
     auth: OneLogin_Saml2_Auth = _make_saml_auth(request_data)
-    request_id: str = flask_session.pop("AuthNRequestID", None)
-
-    if not request_id:
-        # Could not found the request ID, this token was already used, redirect to the UI with the error
-        msg = "Invalid SAML token"
-        data = base64.b64encode(json.dumps({"error": msg}).encode("utf-8")).decode()
-        return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
+    request_id: Optional[str] = flask_session.pop("AuthNRequestID", None)
 
     auth.process_response(request_id=request_id)
     errors: list = auth.get_errors()
@@ -537,7 +531,7 @@ def saml_acs(**_):
             return redirect(f"https://{config.ui.fqdn}/saml/?data={data}")
 
         # Generating the Token the UI will use to login
-        saml_token_id = hashlib.sha256(request_id.encode("utf-8", errors="replace")).hexdigest()
+        saml_token_id = hashlib.sha256(auth.get_last_message_id().encode("utf-8", errors="replace")).hexdigest()
 
         if get_token_store(username, "saml").exist(saml_token_id):
             # Token already exists, this may be a replay attack, redirect to the UI with the error
