@@ -111,6 +111,7 @@ def import_bundle(**_):
     exist_ok = request.args.get('exist_ok', 'false').lower() in ['true', '']
     min_classification = request.args.get('min_classification', Classification.UNRESTRICTED)
     rescan_services = request.args.get('rescan_services', None)
+    to_ingest = request.args.get("to_ingest", False)
 
     if rescan_services is not None:
         rescan_services = rescan_services.split(',')
@@ -127,9 +128,16 @@ def import_bundle(**_):
                 fh.write(request.data)
 
     try:
-        bundle_import(current_bundle, working_dir=BUNDLING_DIR, min_classification=min_classification,
-                      allow_incomplete=allow_incomplete, rescan_services=rescan_services, exist_ok=exist_ok,
-                      identify=IDENTIFY)
+        bundle_import(
+            current_bundle,
+            working_dir=BUNDLING_DIR,
+            min_classification=min_classification,
+            allow_incomplete=allow_incomplete,
+            rescan_services=rescan_services,
+            exist_ok=exist_ok,
+            identify=IDENTIFY,
+            to_ingest=to_ingest,
+        )
 
         return make_api_response({'success': True})
     except SubmissionException as se:
