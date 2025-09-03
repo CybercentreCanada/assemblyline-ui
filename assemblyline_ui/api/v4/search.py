@@ -261,7 +261,7 @@ def list_index_fields(index, **kwargs):
     if collection is not None:
         return make_api_response(collection.fields())
     elif index == "ALL":
-        return make_api_response(list_all_fields(user))
+        return make_api_response(list_all_fields(user, include_description=True))
     else:
         return make_api_response("", f"Not a valid index to search in: {index}", 400)
 

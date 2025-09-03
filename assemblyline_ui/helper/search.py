@@ -55,8 +55,8 @@ INDEX_ORDER_MAP = {
 }
 
 
-def list_all_fields(user=None):
-    fields_map = {k: INDEX_MAP[k].fields() for k in INDEX_MAP.keys()}
+def list_all_fields(user=None, include_description=False):
+    fields_map = {k: INDEX_MAP[k].fields(include_description) for k in INDEX_MAP.keys()}
 
     if user and user['is_admin']:
         fields_map.update({k: ADMIN_INDEX_MAP[k].fields() for k in ADMIN_INDEX_MAP.keys()})

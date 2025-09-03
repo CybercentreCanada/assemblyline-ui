@@ -343,7 +343,7 @@ def who_am_i(**kwargs):
             "types": [t for t in USER_TYPES if t != 'custom']
         }
     }
-    user_data['indexes'] = list_all_fields(user_data)
+    user_data['indexes'] = list_all_fields(user_data, include_description=True)
     user_data['settings'] = load_user_settings(kwargs['user'])
 
     msg = UI_MESSAGING.get('system_message')
@@ -1191,7 +1191,7 @@ def get_remaining_quotas(username, **kwargs):
     if username != user['uname']:
         if ROLES.administration not in user['roles']:
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
-        
+
         user = STORAGE.user.get(username, as_obj=False)
         if not user:
             return make_api_response({}, "User %s does not exists" % username, 404)
