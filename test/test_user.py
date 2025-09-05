@@ -43,9 +43,8 @@ def datastore(datastore_connection):
         for x in range(NUM_FAVS):
             f = random_model_obj(Favorite)
             f.name = f"test_{x+1}"
-            for key in data:
-                data[key].append(f)
-
+            for items in data.values():
+                items.append(f)
 
         ds.user_favorites.save('admin', data)
         ds.user_favorites.save('user', data)
@@ -68,7 +67,6 @@ def datastore(datastore_connection):
                 key_data.key_name = key_name
 
                 ds.apikey.save(key_id, key_data)
-
 
         yield ds
     finally:
@@ -184,6 +182,7 @@ def test_get_user_favorites(datastore, login_session, public):
     for ft in FAV_TYPES:
         assert len(resp[ft]) >= NUM_FAVS - 1
 
+
 # noinspection PyUnusedLocal
 def test_get_user_settings(datastore, login_session):
     _, session, host = login_session
@@ -196,7 +195,6 @@ def test_get_user_settings(datastore, login_session):
     # Ensure submission settings are present under "submission_profiles"
     for submission_profile in resp['submission_profiles'].values():
         assert set(DEFAULT_SUBMISSION_PROFILE_SETTINGS.keys()).issubset(set(submission_profile.keys()))
-
 
 
 # noinspection PyUnusedLocal
@@ -241,7 +239,6 @@ def test_remove_user(datastore, login_session):
     datastore.user_settings.commit()
     datastore.apikey.commit()
 
-
     result = datastore.apikey.search(f"uname:{username}")
 
     assert datastore.user.get(username) is None
@@ -270,7 +267,6 @@ def test_remove_user_favorite(datastore, login_session, login_user_session, publ
         with pytest.raises(APIError, match="You are not allowed to remove favorites for another user than yourself."):
             resp = get_api_data(user_session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                                 method="DELETE", data=json.dumps(to_be_removed))
-
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                         method="DELETE", data=json.dumps(to_be_removed))
@@ -307,8 +303,8 @@ def test_set_user(datastore, login_session):
     new_user['classification'] = CLASSIFICATION.normalize_classification(new_user['classification'])
     u['classification'] = CLASSIFICATION.normalize_classification(u['classification'])
 
-    for k in u.keys():
-        assert u[k] == new_user[k]
+    for k, value in u.items():
+        assert value == new_user[k]
 
 
 # noinspection PyUnusedLocal
@@ -337,9 +333,9 @@ def test_set_user_favorites(datastore, login_session):
     user_favs = datastore.user_favorites.get(username, as_obj=False)
 
     # Normalize classification
-    [fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
-        for fav_type in list(user_favs.keys())
-        for fav in user_favs[fav_type]]
+    for fav_type in list(user_favs.keys()):
+        for fav in user_favs[fav_type]:
+            fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
 
     favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in favs.items()}
     user_favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in user_favs.items()}
@@ -360,7 +356,8 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         if 'submission_customize' not in user['roles']:
             user['roles'].append('submission_customize')
     else:
-        # Users that aren't allow to customize submissions shouldn't be able to customize submission profiles parameters if the configuration doesn't allow it
+        # Users that aren't allow to customize submissions shouldn't be able to customize 
+        # submission profiles parameters if the configuration doesn't allow it
         datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'submission_customize')])
         if 'submission_customize' in user['roles']:
             user['roles'].remove('submission_customize')
