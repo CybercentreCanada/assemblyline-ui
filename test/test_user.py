@@ -3,6 +3,7 @@ import random
 
 import pytest
 from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.common.security import verify_password
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
@@ -305,6 +306,44 @@ def test_set_user(datastore, login_session):
 
     for k, value in u.items():
         assert value == new_user[k]
+
+
+# noinspection PyUnusedLocal
+def test_user_update_user(datastore, login_user_session):
+    login_data, session, host = login_user_session
+    username = login_data['username']
+
+    # Get the starting user data
+    user = get_api_data(session, f"{host}/api/v4/user/{username}/")
+
+    try:
+        # Do a noop update, we should always be able to just send back what we got from the api
+        resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(user))
+        assert resp['success']
+
+        # Try to adjust quota as a non-admin
+        modified = dict(user)
+        modified['api_daily_quota'] += 1000
+        with pytest.raises(APIError, match=r'.*Only Administrators can change .*api_daily_quota.*'):
+            get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(modified))
+
+        # Change the user name and password
+        modified = dict(user)
+        modified['name'] = "Orange Cat " + str(random.random())
+        modified['new_pass'] = "2cool4passwords" + str(random.random())
+        resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(modified))
+        assert resp['success']
+
+        # Check that the changes were applied by directly checking the database
+        datastore.user.commit()
+        new_user = datastore.user.get(username, as_obj=False)
+        assert verify_password(modified.pop('new_pass'), new_user['password'])
+        assert new_user['name'] == modified['name']
+
+    finally:
+        # Revert the user name change
+        resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(user))
+        assert resp['success']
 
 
 # noinspection PyUnusedLocal

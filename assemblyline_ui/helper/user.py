@@ -219,52 +219,59 @@ def login(uname, roles_limit, user=None):
     return user
 
 
+QUOTA_FIELDS = [
+    ('api_quota', config.ui.default_quotas.concurrent_api_calls),
+    ('api_daily_quota', config.ui.default_quotas.daily_api_calls),
+    ('submission_quota', config.ui.default_quotas.concurrent_submissions),
+    ('submission_async_quota', config.ui.default_quotas.concurrent_async_submissions),
+    ('submission_daily_quota', config.ui.default_quotas.daily_submissions),
+]
+
+
 def get_default_user_quotas(user_profile: dict):
-    if user_profile.get('api_quota') is None:
-        user_profile['api_quota'] = config.ui.default_quotas.concurrent_api_calls
-
-    if user_profile.get('api_daily_quota') is None:
-        user_profile['api_daily_quota'] = config.ui.default_quotas.daily_api_calls
-
-    if user_profile.get('submission_quota') is None:
-        user_profile['submission_quota'] = config.ui.default_quotas.concurrent_submissions
-
-    if user_profile.get('submission_async_quota') is None:
-        user_profile['submission_async_quota'] = config.ui.default_quotas.concurrent_async_submissions
-
-    if user_profile.get('submission_daily_quota') is None:
-        user_profile['submission_daily_quota'] = config.ui.default_quotas.daily_submissions
-
+    for key, default in QUOTA_FIELDS:
+        if user_profile.get(key) is None:
+            user_profile[key] = default
     return user_profile
 
 
-def save_user_account(username, data, user):
+def save_user_account(username: str, data: dict, user: dict):
     # Clear non user account data
     avatar = data.pop('avatar', None)
     data.pop('2fa_enabled', None)
     data.pop('security_token_enabled', None)
     data.pop('has_password', None)
 
-    # Make sure the default quotas are set
-    get_default_user_quotas(data)
-
-    # Test the user params againts the model
-    data = User(data).as_primitives()
-
+    # Verify the user name never changes and that this user is allowed to be modified by the caller
     if username != data['uname']:
         raise AccessDeniedException("You are not allowed to change the username.")
-
     if username != user['uname'] and ROLES.administration not in user['roles']:
         raise AccessDeniedException("You are not allowed to change another user then yourself.")
 
+    # Get the current data for comparison
     current = STORAGE.user.get(username, as_obj=False)
-    if current:
-        if ROLES.administration not in user['roles']:
-            for key in current.keys():
-                if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
-                    raise AccessDeniedException("Only Administrators can change the value of the field [%s]." % key)
-    else:
+    if current is None:
         raise InvalidDataException("You cannot save a user that does not exists [%s]." % username)
+    current.pop('apikeys', None)  # No longer maintained in this space
+    current['roles'] = load_roles(current['type'], current.get('roles', None))
+
+    # The quota defaults get set on profile fetch so we need to handle them separately
+    # if no value is set on the database side, don't count the default as an explicit value
+    for quota_key, quota_default in QUOTA_FIELDS:
+        if current[quota_key] is None:
+            if data.get(quota_key, quota_default) == quota_default:
+                data.pop(quota_key)
+                continue
+
+    # Normalize all other fields of the new data
+    data = User(data).as_primitives()
+
+    # Non-admin users are only allowed to modify some fields
+    if ROLES.administration not in user['roles']:
+        for key in current.keys():
+            if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
+                LOGGER.warning('%s tried to modify setting %s: %s -> %s', username, key, current[key], data[key])
+                raise AccessDeniedException("Only Administrators can change the value of the field [%s]." % key)
 
     if avatar is None:
         STORAGE.user_avatar.delete(username)
