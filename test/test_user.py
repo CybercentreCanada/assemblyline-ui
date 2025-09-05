@@ -313,6 +313,11 @@ def test_user_update_user(datastore, login_user_session):
     login_data, session, host = login_user_session
     username = login_data['username']
 
+    # Add an identity_id to the user to ensure it doesn't interfere with user access
+    user_data = datastore.user.get(username)
+    user_data.identity_id = str(random.random())
+    datastore.user.save(username, user_data)
+
     # Get the starting user data
     user = get_api_data(session, f"{host}/api/v4/user/{username}/")
 

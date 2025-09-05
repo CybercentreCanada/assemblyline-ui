@@ -268,6 +268,10 @@ def save_user_account(username: str, data: dict, user: dict):
 
     # Non-admin users are only allowed to modify some fields
     if ROLES.administration not in user['roles']:
+        # identity_id is wiped on data sent to non-admins so needs to be restored here
+        data['identity_id'] = current['identity_id']
+
+        # Check all other fields
         for key in current.keys():
             if data[key] != current[key] and key not in ACCOUNT_USER_MODIFIABLE:
                 LOGGER.warning('%s tried to modify setting %s: %s -> %s', username, key, current[key], data[key])
