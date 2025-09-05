@@ -284,6 +284,7 @@ def test_ingest_base64_nameless(datastore, login_session):
     assert msg.files[0].sha256 == sha256
     assert msg.files[0].name == sha256
 
+
 def test_ingest_metadata_validation(datastore, login_session):
     _, session, host = login_session
 
@@ -324,7 +325,6 @@ def test_ingest_metadata_validation(datastore, login_session):
     assert isinstance(resp['ingest_id'], str)
 
 
-
 # noinspection PyUnusedLocal
 def test_get_message(datastore, login_session):
     _, session, host = login_session
@@ -352,6 +352,7 @@ def test_get_message_list(datastore, login_session):
     for x in range(NUM_FILES):
         assert resp[x] == messages[x]
 
+
 # noinspection PyUnusedLocal
 def test_get_message_list_with_paging(datastore, login_session):
     _, session, host = login_session
@@ -371,6 +372,7 @@ def test_get_message_list_with_paging(datastore, login_session):
         message_list += resp
     for x in range(NUM_FILES):
         assert message_list[x] == messages[x]
+
 
 def test_ingest_submission_profile(datastore, login_session, scheduler):
     _, session, host = login_session
