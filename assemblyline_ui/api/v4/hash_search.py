@@ -5,7 +5,7 @@ import re
 from urllib import parse as ul
 
 from flask import request
-from requests import Session
+from requests import Session, Timeout
 
 from assemblyline.common.importing import load_module_by_path
 from assemblyline.common.threading import APMAwareThreadPoolExecutor
@@ -86,6 +86,7 @@ def get_external_details(
     hash_classification: str,
     limit: int,
     timeout: float,
+    request_timeout: float,
 ):
     """Return the details from the external source.
 
@@ -103,7 +104,7 @@ def get_external_details(
     }
     """
     sname = f"x.{source.name}"
-    result = {"error": None, "items": []}
+    result: dict = {"error": None, "items": []}
     if hash_type not in all_supported_tags.get(source.name, {}):
         result["error"] = NOT_SUPPORTED
         return result
@@ -131,7 +132,11 @@ def get_external_details(
     # perform the lookup, ensuring access controls are applied
     encoded = ul.quote(ul.quote(file_hash, safe=""), safe="")
     url = f"{source.url}/details/{hash_type}/{encoded}/"
-    rsp = session.get(url, params=params, headers=headers)
+    try:
+        rsp = session.get(url, timeout=request_timeout, params=params, headers=headers)
+    except Timeout:
+        result['error'] = 'Transport timeout'
+        return result
 
     status_code = rsp.status_code
     if status_code == 404 or status_code == 422:
@@ -261,6 +266,7 @@ def search_hash(file_hash, *args, **kwargs):
                 file_hash=file_hash,
                 hash_classification=hash_classification,
                 timeout=max(0, max_timeout - 0.5),
+                request_timeout=max(0, max_timeout - 0.25),
                 limit=limit,
             ): f"x.{source.name}"
             for source in ext
