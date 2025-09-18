@@ -37,9 +37,6 @@ def upload_file_flowjs(session, host):
     chunk_size = int(len(data) / total_chunk)
     ui_id = get_random_id()
 
-    chunk_size = int(len(data) / total_chunk)
-    ui_id = get_random_id()
-
     counter = 0
     while True:
         x = counter % total_chunk
@@ -128,7 +125,6 @@ def test_ui_submission_parameter(datastore, login_session):
     submission_params = submission["params"]
 
     assert "Extract" in submission_params["service_spec"]
-    assert "password" in submission_params["service_spec"]["Extract"]
     assert "password" in submission_params["service_spec"]["Extract"]
     assert submission_params["service_spec"]["Extract"]["password"] == "test"
 
