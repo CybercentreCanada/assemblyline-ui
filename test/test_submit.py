@@ -222,6 +222,47 @@ def test_submit_binary(datastore, login_session, scheduler):
         except Exception:
             pass
 
+
+@pytest.mark.parametrize("filename", [None, "binary.txt", "./binary.txt"])
+# noinspection PyUnusedLocal
+def test_submit_binary_different_filename(datastore, login_session, scheduler, filename):
+    _, session, host = login_session
+
+    sq.delete()
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    fd, temp_path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(byte_str)
+
+        with open(temp_path, "rb") as fh:
+            sha256 = hashlib.sha256(byte_str).hexdigest()
+            json_data = {"metadata": {"test": "test_submit_binary"}}
+            if filename:
+                json_data["name"] = filename
+            data = {"json": json.dumps(json_data)}
+
+            resp = get_api_data(
+                session, f"{host}/api/v4/submit/", method="POST", data=data, files={"bin": fh}, headers={}
+            )
+
+        assert isinstance(resp["sid"], str)
+        for f in resp["files"]:
+            assert f["sha256"] == sha256
+
+            if filename:
+                assert f["name"] == json_data["name"]
+            else:
+                assert f["name"] == os.path.basename(temp_path)
+
+    finally:
+        # noinspection PyBroadException
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass
+
+
 # noinspection PyUnusedLocal
 def test_submit_binary_nameless(datastore, login_session, scheduler):
     _, session, host = login_session

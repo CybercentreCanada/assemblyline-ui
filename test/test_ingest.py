@@ -284,6 +284,7 @@ def test_ingest_base64_nameless(datastore, login_session):
     assert msg.files[0].sha256 == sha256
     assert msg.files[0].name == sha256
 
+
 def test_ingest_metadata_validation(datastore, login_session):
     _, session, host = login_session
 
@@ -324,7 +325,6 @@ def test_ingest_metadata_validation(datastore, login_session):
     assert isinstance(resp['ingest_id'], str)
 
 
-
 # noinspection PyUnusedLocal
 def test_get_message(datastore, login_session):
     _, session, host = login_session
@@ -352,6 +352,7 @@ def test_get_message_list(datastore, login_session):
     for x in range(NUM_FILES):
         assert resp[x] == messages[x]
 
+
 # noinspection PyUnusedLocal
 def test_get_message_list_with_paging(datastore, login_session):
     _, session, host = login_session
@@ -371,6 +372,7 @@ def test_get_message_list_with_paging(datastore, login_session):
         message_list += resp
     for x in range(NUM_FILES):
         assert message_list[x] == messages[x]
+
 
 def test_ingest_submission_profile(datastore, login_session, scheduler):
     _, session, host = login_session
@@ -402,3 +404,36 @@ def test_ingest_submission_profile(datastore, login_session, scheduler):
 
     # Restore original roles for later tests
     datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
+
+
+def test_ingest_submission_parameter(datastore, login_session, scheduler):
+    _, session, host = login_session
+    iq.delete()
+
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    data = {"base64": base64.b64encode(byte_str).decode("ascii"), "metadata": {"test": "test_submit_base64_nameless"}}
+
+    profile = DEFAULT_SUBMISSION_PROFILES[0]
+    data["submission_profile"] = profile["name"]
+
+    # check if service spec is getting store properly
+    data["params"] = {"services": {"selected": ["Extract"]}, "service_spec": {"Extract": {"password": "test_password"}}}
+    get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    msg = Submission(iq.pop(blocking=False))
+
+    submission_params = msg["params"]
+
+    assert "Extract" in submission_params["service_spec"]
+    assert submission_params["service_spec"]["Extract"]["password"] == "test_password"
+
+    # check if service spec with empty string value is stored properly
+    # check that empty string password still gets stored in database
+    iq.delete()
+    data["params"] = {"services": {"selected": ["Extract"]}, "service_spec": {"Extract": {"password": ""}}}
+    get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+
+    msg = Submission(iq.pop(blocking=False))
+    submission_params = msg["params"]
+
+    assert "Extract" in submission_params["service_spec"]
+    assert submission_params["service_spec"]["Extract"]["password"] == ""

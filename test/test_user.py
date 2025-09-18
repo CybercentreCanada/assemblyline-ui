@@ -3,6 +3,7 @@ import random
 
 import pytest
 from assemblyline_ui.helper.user import load_user_settings
+from assemblyline.common.security import verify_password
 from conftest import APIError, get_api_data
 
 from assemblyline.common.forge import get_classification
@@ -43,9 +44,8 @@ def datastore(datastore_connection):
         for x in range(NUM_FAVS):
             f = random_model_obj(Favorite)
             f.name = f"test_{x+1}"
-            for key in data:
-                data[key].append(f)
-
+            for items in data.values():
+                items.append(f)
 
         ds.user_favorites.save('admin', data)
         ds.user_favorites.save('user', data)
@@ -68,7 +68,6 @@ def datastore(datastore_connection):
                 key_data.key_name = key_name
 
                 ds.apikey.save(key_id, key_data)
-
 
         yield ds
     finally:
@@ -184,6 +183,7 @@ def test_get_user_favorites(datastore, login_session, public):
     for ft in FAV_TYPES:
         assert len(resp[ft]) >= NUM_FAVS - 1
 
+
 # noinspection PyUnusedLocal
 def test_get_user_settings(datastore, login_session):
     _, session, host = login_session
@@ -196,7 +196,6 @@ def test_get_user_settings(datastore, login_session):
     # Ensure submission settings are present under "submission_profiles"
     for submission_profile in resp['submission_profiles'].values():
         assert set(DEFAULT_SUBMISSION_PROFILE_SETTINGS.keys()).issubset(set(submission_profile.keys()))
-
 
 
 # noinspection PyUnusedLocal
@@ -241,7 +240,6 @@ def test_remove_user(datastore, login_session):
     datastore.user_settings.commit()
     datastore.apikey.commit()
 
-
     result = datastore.apikey.search(f"uname:{username}")
 
     assert datastore.user.get(username) is None
@@ -270,7 +268,6 @@ def test_remove_user_favorite(datastore, login_session, login_user_session, publ
         with pytest.raises(APIError, match="You are not allowed to remove favorites for another user than yourself."):
             resp = get_api_data(user_session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                                 method="DELETE", data=json.dumps(to_be_removed))
-
 
     resp = get_api_data(session, f"{host}/api/v4/user/favorites/{username}/{fav_type}/",
                         method="DELETE", data=json.dumps(to_be_removed))
@@ -307,8 +304,51 @@ def test_set_user(datastore, login_session):
     new_user['classification'] = CLASSIFICATION.normalize_classification(new_user['classification'])
     u['classification'] = CLASSIFICATION.normalize_classification(u['classification'])
 
-    for k in u.keys():
-        assert u[k] == new_user[k]
+    for k, value in u.items():
+        assert value == new_user[k]
+
+
+# noinspection PyUnusedLocal
+def test_user_update_user(datastore, login_user_session):
+    login_data, session, host = login_user_session
+    username = login_data['username']
+
+    # Add an identity_id to the user to ensure it doesn't interfere with user access
+    user_data = datastore.user.get(username)
+    user_data.identity_id = str(random.random())
+    datastore.user.save(username, user_data)
+
+    # Get the starting user data
+    user = get_api_data(session, f"{host}/api/v4/user/{username}/")
+
+    try:
+        # Do a noop update, we should always be able to just send back what we got from the api
+        resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(user))
+        assert resp['success']
+
+        # Try to adjust quota as a non-admin
+        modified = dict(user)
+        modified['api_daily_quota'] += 1000
+        with pytest.raises(APIError, match=r'.*Only Administrators can change .*api_daily_quota.*'):
+            get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(modified))
+
+        # Change the user name and password
+        modified = dict(user)
+        modified['name'] = "Orange Cat " + str(random.random())
+        modified['new_pass'] = "2cool4passwords" + str(random.random())
+        resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(modified))
+        assert resp['success']
+
+        # Check that the changes were applied by directly checking the database
+        datastore.user.commit()
+        new_user = datastore.user.get(username, as_obj=False)
+        assert verify_password(modified.pop('new_pass'), new_user['password'])
+        assert new_user['name'] == modified['name']
+
+    finally:
+        # Revert the user name change
+        resp = get_api_data(session, f"{host}/api/v4/user/{username}/", method="POST", data=json.dumps(user))
+        assert resp['success']
 
 
 # noinspection PyUnusedLocal
@@ -337,9 +377,9 @@ def test_set_user_favorites(datastore, login_session):
     user_favs = datastore.user_favorites.get(username, as_obj=False)
 
     # Normalize classification
-    [fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
-        for fav_type in list(user_favs.keys())
-        for fav in user_favs[fav_type]]
+    for fav_type in list(user_favs.keys()):
+        for fav in user_favs[fav_type]:
+            fav.update({'classification': CLASSIFICATION.normalize_classification(fav['classification'])})
 
     favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in favs.items()}
     user_favs = {key: sorted([sorted(x.items()) for x in value]) for key, value in user_favs.items()}
@@ -360,7 +400,8 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         if 'submission_customize' not in user['roles']:
             user['roles'].append('submission_customize')
     else:
-        # Users that aren't allow to customize submissions shouldn't be able to customize submission profiles parameters if the configuration doesn't allow it
+        # Users that aren't allow to customize submissions shouldn't be able to customize 
+        # submission profiles parameters if the configuration doesn't allow it
         datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'submission_customize')])
         if 'submission_customize' in user['roles']:
             user['roles'].remove('submission_customize')
