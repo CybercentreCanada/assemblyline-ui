@@ -123,6 +123,7 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
 
     return recursive_update(validated_profile, strip_nulls(updates))
 
+
 # This should be a common function used by endpoints to trigger a submission that provides a baseline
 def init_submission(request: Request, user: Dict, endpoint: str):
     # Default output
