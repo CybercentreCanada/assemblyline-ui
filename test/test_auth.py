@@ -3,11 +3,11 @@ import json
 import os
 
 import pytest
-from conftest import APIError, get_api_data
-
+import requests
 from assemblyline.common.security import get_totp_token
 from assemblyline.odm.models.apikey import get_apikey_id
 from assemblyline.odm.random_data import DEV_APIKEY_NAME, create_users, wipe_users
+from conftest import APIError, get_api_data
 
 
 @pytest.fixture(scope="module")
@@ -27,7 +27,7 @@ def datastore(datastore_connection):
 
 
 # noinspection PyUnusedLocal
-def test_login(datastore, login_session):
+def test_internal_login(login_session):
     user_info, session, host = login_session
     assert user_info["username"] == "admin"
 
@@ -36,6 +36,28 @@ def test_login(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v4/auth/logout/")
     assert resp.get("success", False) is True
+
+def test_ldap_login(host):
+    # Assert that login via LDAP works
+    session = requests.Session()
+    data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'ldap_user', 'password': 'ldap_password'})
+
+    assert data['username'] == 'ldap_user'
+
+# TODO: Add tests for OAuth and SAML once we have a test setup for them
+# def test_oauth_login(host):
+#     # Assert that login via OAuth works
+#     session = requests.Session()
+#     data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'oauth_user', 'oauth_token_id': 'oauth_password'})
+
+#     assert data['username'] == 'oauth_user'
+
+# def test_saml_login(host):
+#     # Assert that login via SAML works
+#     session = requests.Session()
+#     data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'saml_user', 'saml_token_id': 'saml_password'})
+
+#     assert data['username'] == 'saml_user'
 
 @pytest.mark.parametrize("is_active", [True, False], ids=["account_enabled", "account_disabled"])
 def test_apikey(datastore, login_session, is_active):
