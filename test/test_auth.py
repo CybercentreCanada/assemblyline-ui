@@ -27,7 +27,7 @@ def datastore(datastore_connection):
 
 
 # noinspection PyUnusedLocal
-def test_internal_login(login_session):
+def test_internal_login(datastore, login_session):
     user_info, session, host = login_session
     assert user_info["username"] == "admin"
 
