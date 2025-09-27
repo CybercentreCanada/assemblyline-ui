@@ -70,6 +70,7 @@ jobs:
       elasticsearch: elasticsearch
       redis: redis
       minio: minio
+      openldap: openldap
 
     steps:
       - task: UsePythonVersion@0
