@@ -3,10 +3,6 @@ import re
 from math import floor
 
 import yaml
-from assemblyline_core.updater.helper import get_latest_tag_for_service
-from flask import request
-from packaging.version import parse
-
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.common.version import FRAMEWORK_VERSION, SYSTEM_VERSION
 from assemblyline.odm.messages.changes import Operation
@@ -17,6 +13,10 @@ from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
+from assemblyline_core.updater.helper import get_latest_tag_for_service
+from flask import request
+from packaging.version import parse
+
 from assemblyline_ui.api.base import (
     api_login,
     make_api_response,
@@ -25,7 +25,7 @@ from assemblyline_ui.api.base import (
 )
 from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.config import LOGGER, STORAGE, config
-from assemblyline_ui.helper.signature import append_source_status
+from assemblyline_ui.helper.signature import append_source_status, preprocess_sources
 
 SUB_API = "service"
 service_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -66,13 +66,6 @@ root_event_sender = EventSender(
     "changes", host=config.core.redis.nonpersistent.host, port=config.core.redis.nonpersistent.port
 )
 
-
-def check_private_keys(source_list):
-    # Check format of private_key(if any) in sources
-    for source in source_list:
-        if source.get("private_key", None) and not source["private_key"].endswith("\n"):
-            source["private_key"] += "\n"
-    return source_list
 
 
 def source_exists(delta_list, source):
@@ -191,19 +184,6 @@ def get_service_stats(service_name, version=None, max_docs=500):
         data["service"]["version"] = version
 
     return data
-
-
-def preprocess_sources(source_list):
-    source_list = sanitize_source_names(source_list)
-    source_list = check_private_keys(source_list)
-    return source_list
-
-
-def sanitize_source_names(source_list):
-    for source in source_list:
-        source["name"] = source["name"].replace(" ", "_")
-    return source_list
-
 
 def synchronize_sources(service_name, current_sources, new_sources):
     removed_sources = {}
@@ -864,30 +844,23 @@ def set_service(servicename, **_):
 
     current_default = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
     current_service = STORAGE.get_service_with_delta(servicename, as_obj=False)
-
     if not current_default:
         return make_api_response({"success": False}, "The service you are trying to modify does not exist", 404)
 
     if "name" in data and servicename != data["name"]:
         return make_api_response({"success": False}, "You cannot change the service name", 400)
 
-    if current_service["version"] != version:
-        # On version change, reset all container versions
-        data["docker_config"]["image"] = current_default["docker_config"]["image"]
-        for k, v in data["dependencies"].items():
-            if k in current_default["dependencies"]:
-                v["container"]["image"] = current_default["dependencies"][k]["container"]["image"]
-
-    delta = get_recursive_delta(current_default, data, stop_keys=["config"])
+    delta = get_recursive_delta(current_default, data, stop_keys=["config"], list_group_by=STORAGE.service_list_keys,
+                                required_keys=STORAGE.service_required_keys)
     delta["version"] = version
 
     removed_sources = {}
     # Check sources, especially to remove old sources
     if delta.get("update_config", {}).get("sources", None) is not None:
-        delta["update_config"]["sources"] = preprocess_sources(delta["update_config"]["sources"])
+        d_srcs = preprocess_sources(data.get("update_config", {}).get("sources", []))
 
         c_srcs = current_service.get("update_config", {}).get("sources", [])
-        removed_sources = synchronize_sources(servicename, c_srcs, delta["update_config"]["sources"])
+        removed_sources = synchronize_sources(servicename, c_srcs, d_srcs)
 
     # Notify components watching for service config changes
     success = STORAGE.service_delta.save(servicename, delta)

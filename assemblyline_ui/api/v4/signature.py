@@ -2,6 +2,7 @@ import re
 from hashlib import sha256
 
 from assemblyline.common import forge
+from assemblyline.common.dict_utils import get_recursive_delta, recursive_update
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline.odm.messages.changes import Operation
@@ -10,11 +11,17 @@ from assemblyline.remote.datatypes.events import EventSender
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.lock import Lock
 from assemblyline_core.signature_client import SignatureClient
-from assemblyline_ui.api.base import api_login, make_api_response, make_file_response, make_subapi_blueprint
+from flask import request
+
+from assemblyline_ui.api.base import (
+    api_login,
+    make_api_response,
+    make_file_response,
+    make_subapi_blueprint,
+)
 from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.config import LOGGER, STORAGE, config
-from assemblyline_ui.helper.signature import append_source_status
-from flask import request
+from assemblyline_ui.helper.signature import append_source_status, preprocess_sources
 
 SUB_API = 'signature'
 signature_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -31,6 +38,67 @@ service_event_sender = EventSender('changes.services',
                                    host=config.core.redis.nonpersistent.host,
                                    port=config.core.redis.nonpersistent.port)
 
+def get_service_delta_for_source(changed_source: dict, service_data: dict, operation: Operation):
+    """
+    Update the service delta based on the operation provided when adding, modifying or removing a source.
+
+    :param source: The source being added, modified or removed
+    :param service_data: The current service data
+    :param operation: The operation that was performed on the service
+    :return: The updated service delta
+    """
+    service = service_data['name']
+    current_sources = service_data.get('update_config', {}).get('sources', [])
+    source_found = False
+    for idx, source in enumerate(current_sources):
+        if changed_source['name'] == source['name']:
+            source_found = True
+            break
+
+    # Return errors if the operation is not valid
+    if operation in [Operation.Removed, Operation.Modified] and not source_found:
+        raise ValueError(f"Could not found source '{source['name']}' in service: {service_data['name']}.")
+    elif operation == Operation.Added and source_found:
+        raise ValueError(f"Source name already exist: '{source['name']}' in service: {service_data['name']}.")
+
+    # Apply the appropriate operation to the current sources
+    if operation == Operation.Added:
+        # Add the new source to the current sources
+        current_sources.append(changed_source)
+    elif operation == Operation.Modified:
+        # Update the source in the current sources
+        current_sources[idx].update(changed_source)
+    elif operation == Operation.Removed:
+        # Remove the source from the current sources
+        current_sources.pop(idx)
+
+    # Ensure the current sources are in the correct format
+    service_data['update_config']['sources'] = current_sources
+
+    # Get the current service delta to update
+    original_service_delta = STORAGE.service_delta.get(service, as_obj=False)
+
+    # Compute the new delta based on changes made, relative to the current service stored
+    new_service_delta = get_recursive_delta(
+        STORAGE.service.get(f"{service}_{service_data['version']}", as_obj=False),
+        service_data,
+        list_group_by=STORAGE.service_list_keys,
+        required_keys=STORAGE.service_required_keys,
+        stop_keys=["config", 'update_config.sources.configuration'],
+    )
+
+    updated_delta = recursive_update(original_service_delta, new_service_delta)
+
+    # If all sources have been removed, ensure the delta reflects that
+    if len(current_sources) == 0:
+        if 'update_config' not in updated_delta:
+            updated_delta['update_config'] = {}
+        updated_delta['update_config']['sources'] = []
+
+    updated_delta['update_config']['sources'] = preprocess_sources(updated_delta['update_config']['sources'])
+
+    # Return the new delta after merging with the original
+    return updated_delta
 
 @signature_api.route("/add_update/", methods=["POST", "PUT"])
 @api_login(audit=False, allow_readonly=False, require_role=[ROLES.signature_import])
@@ -174,22 +242,15 @@ def add_signature_source(service, **_):
                                  err="This service is not configured to use external sources.",
                                  status_code=400)
 
-    current_sources = service_data.get('update_config', {}).get('sources', [])
-    for source in current_sources:
-        if source['name'] == data['name']:
-            return make_api_response({"success": False},
-                                     err=f"Update source name already exist: {data['name']}",
-                                     status_code=400)
-
-    current_sources.append(data)
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
-    if service_delta.get('update_config') is None:
-        service_delta['update_config'] = {"sources": current_sources}
-    else:
-        service_delta['update_config']['sources'] = current_sources
+    try:
+        new_delta = get_service_delta_for_source(data, service_data, Operation.Added)
+    except ValueError as ve:
+        return make_api_response({"success": False}, err=str(ve), status_code=404)
+    except Exception as e:
+        return make_api_response({"success": False}, err=str(e), status_code=400)
 
     # Save the signature
-    success = STORAGE.service_delta.save(service, service_delta)
+    success = STORAGE.service_delta.save(service, new_delta)
     if success:
         service_event_sender.send(service, {
             'operation': Operation.Modified,
@@ -343,35 +404,21 @@ def delete_signature_source(service, name, **_):
     }
     """
     service_data = STORAGE.get_service_with_delta(service, as_obj=False)
-    current_sources = service_data.get('update_config', {}).get('sources', [])
 
     if not service_data.get('update_config', {}):
         return make_api_response({"success": False},
                                  err="This service is not configured to use external sources. "
                                      "Therefore you cannot delete one of its sources.",
                                  status_code=400)
-
-    new_sources = []
-    found = False
-    for source in current_sources:
-        if name == source['name']:
-            found = True
-        else:
-            new_sources.append(source)
-
-    if not found:
-        return make_api_response({"success": False},
-                                 err=f"Could not found source '{name}' in service {service}.",
-                                 status_code=404)
-
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
-    if service_delta.get('update_config') is None:
-        service_delta['update_config'] = {"sources": new_sources}
-    else:
-        service_delta['update_config']['sources'] = new_sources
+    try:
+        new_delta = get_service_delta_for_source({'name': name}, service_data, Operation.Removed)
+    except ValueError as ve:
+        return make_api_response({"success": False}, err=str(ve), status_code=404)
+    except Exception as e:
+        return make_api_response({"success": False}, err=str(e), status_code=400)
 
     # Save the new sources
-    success = STORAGE.service_delta.save(service, service_delta)
+    success = STORAGE.service_delta.save(service, new_delta)
     if success:
         # Remove old source signatures and clear related caching entries from Redis
         STORAGE.signature.delete_by_query(f'type:"{service.lower()}" AND source:"{name}"')
@@ -524,6 +571,8 @@ def get_signature_sources(**_):
             # Update update_interval to default to globally configured value by updater
             if 'update_interval' not in s:
                 s['update_interval'] = service['update_config']['update_interval_seconds']
+            if not s.get('pattern'):
+                s['pattern'] = service['update_config']['default_pattern']
         append_source_status(service)
         out[service['name']] = {key: service['update_config'][key] if key in service['update_config'] else None
                                 for key in ['sources', 'generates_signatures', 'update_interval_seconds', 'default_pattern']}
@@ -640,31 +689,24 @@ def update_signature_source(service, name, **_):
         return make_api_response({"success": False},
                                  err="This service does not have any sources therefore you cannot update any source.",
                                  status_code=400)
+    try:
+        new_delta = get_service_delta_for_source(data, service_data, Operation.Modified)
+    except ValueError as ve:
+        return make_api_response({"success": False}, err=str(ve), status_code=404)
+    except Exception as e:
+        return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    new_sources = []
-    found = False
+    # Save the service changes while keeping other changes that could have been made in the meantime
+    success = STORAGE.service_delta.save(service, new_delta)
+
+    # Check to see if the classification of the source has changed and if we need to update the signatures
     classification_changed = False
-    for source in current_sources:
-        if data['name'] == source['name']:
-            new_sources.append(data)
-            found = True
-            classification_changed = data['default_classification'] != source['default_classification']
-        else:
-            new_sources.append(source)
-
-    if not found:
-        return make_api_response({"success": False},
-                                 err=f"Could not found source '{data['name']}' in service {service}.",
-                                 status_code=404)
-
-    service_delta = STORAGE.service_delta.get(service, as_obj=False)
-    if service_delta.get('update_config') is None:
-        service_delta['update_config'] = {"sources": new_sources}
-    else:
-        service_delta['update_config']['sources'] = new_sources
-
-    # Save the service changes
-    success = STORAGE.service_delta.save(service, service_delta)
+    for src in new_delta.get('update_config', {}).get('sources', []):
+        if src['name'] == data['name']:
+            if src.get('default_classification'):
+                # If the delta recorded a change in the default classification, we need to update the signatures
+                classification_changed = True
+            break
 
     if classification_changed or data['override_classification']:
         class_norm = Classification.normalize_classification(data['default_classification'])
