@@ -1,7 +1,5 @@
 from typing import Optional
 
-from flask import session as flask_session
-
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.config import SubmissionProfile
@@ -10,6 +8,8 @@ from assemblyline.odm.models.user_settings import (
     DEFAULT_USER_PROFILE_SETTINGS,
     UserSettings,
 )
+from flask import session as flask_session
+
 from assemblyline_ui.config import (
     ASYNC_SUBMISSION_TRACKER,
     DAILY_QUOTA_TRACKER,
@@ -181,10 +181,8 @@ def decrement_submission_quota(user):
 
 
 def login(uname, roles_limit, user=None):
-    apikeys = {}
     if user is None:
         user = STORAGE.user.get(uname, as_obj=False)
-        apikeys = get_user_api_keys_dict(uname)
 
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
@@ -200,7 +198,12 @@ def login(uname, roles_limit, user=None):
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_security_tokens'] = config.auth.allow_security_tokens
-    user['apikeys'] = list(apikeys.keys())
+    user["apikeys"] = [
+        key["key_name"]
+        for key in STORAGE.apikey.stream_search(
+            f"uname:{uname}", as_obj=False, fl="key_name"
+        )
+    ]
     user['c12n_enforcing'] = Classification.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
@@ -309,15 +312,6 @@ def get_default_user_settings(user: dict) -> dict:
     settings = DEFAULT_USER_PROFILE_SETTINGS
     settings.update({"default_zip_password": DEFAULT_ZIP_PASSWORD, "download_encoding": DOWNLOAD_ENCODING})
     return UserSettings(settings).as_primitives()
-
-def get_user_api_keys_dict(uname):
-    apikeys = get_user_api_keys(uname)
-    apikeys_dict = dict((apikey['key_name'], apikey) for apikey in apikeys)
-    return apikeys_dict
-
-def get_user_api_keys(uname):
-    apikeys = STORAGE.apikey.stream_search(f"uname:{uname}", as_obj=False)
-    return apikeys
 
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
