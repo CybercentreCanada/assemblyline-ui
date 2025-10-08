@@ -90,10 +90,17 @@ def get_service_delta_for_source(changed_source: dict, service_data: dict, opera
     updated_delta = recursive_update(original_service_delta, new_service_delta)
 
     # If all sources have been removed, ensure the delta reflects that
-    if len(current_sources) == 0:
-        if 'update_config' not in updated_delta:
-            updated_delta['update_config'] = {}
-        updated_delta['update_config']['sources'] = []
+    if operation == Operation.Removed:
+        if len(current_sources) == 0:
+            if 'update_config' not in updated_delta:
+                updated_delta['update_config'] = {}
+            updated_delta['update_config']['sources'] = []
+        else:
+            # Ensure source is removed from the delta if it was part of it
+            updated_delta['update_config']['sources'] = [
+                src for src in updated_delta['update_config']['sources']
+                if src['name'] != changed_source['name']
+            ]
 
     updated_delta['update_config']['sources'] = preprocess_sources(updated_delta['update_config']['sources'])
 
@@ -784,9 +791,19 @@ def set_signature_source_status(service, name, **_):
 
         service_delta = STORAGE.service_delta.get(service, as_obj=False)
         if service_delta.get('update_config') is None:
-            service_delta['update_config'] = {"sources": new_sources}
+            # Initialize the update config if it doesn't exist with the new source
+            service_delta['update_config'] = {"sources": [{'name': name, 'enabled': enabled}]}
         else:
-            service_delta['update_config']['sources'] = new_sources
+            update_applied = False
+            for source in service_delta['update_config'].get('sources', []):
+                # Check to see if the source is already part of the delta
+                if name == source['name']:
+                    source['enabled'] = enabled
+                    update_applied = True
+                    break
+
+            if not update_applied:
+                service_delta['update_config']['sources'].append({'name': name, 'enabled': enabled})
 
         success = STORAGE.service_delta.save(service, service_delta)
 
