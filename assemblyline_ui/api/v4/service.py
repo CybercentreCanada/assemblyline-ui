@@ -856,7 +856,7 @@ def set_service(servicename, **_):
 
     removed_sources = {}
     # Check sources, especially to remove old sources
-    if delta.get("update_config", {}).get("sources", None) is not None and data.get("update_config", {}).get("sources", None) is not None:
+    if delta.get("update_config", {}).get("sources", None) is not None and data.get("update_config"):
         d_srcs = preprocess_sources(data.get("update_config", {}).get("sources", []))
 
         c_srcs = current_service.get("update_config", {}).get("sources", [])
