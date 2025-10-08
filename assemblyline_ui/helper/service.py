@@ -7,11 +7,11 @@ from assemblyline.odm.models.user_settings import (
     DEFAULT_SUBMISSION_PROFILE_SETTINGS,
     UserSettings,
 )
+
 from assemblyline_ui.config import (
     CLASSIFICATION,
     SERVICE_LIST,
     SUBMISSION_PROFILES,
-    config,
 )
 
 # Get the list of fields relating to the models

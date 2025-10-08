@@ -1,14 +1,19 @@
 import json
-import pytest
 import random
 
-from conftest import get_api_data, APIError
-
+import pytest
 from assemblyline.odm.models.service import UpdateSource
 from assemblyline.odm.models.signature import Signature
+from assemblyline.odm.random_data import (
+    create_services,
+    create_signatures,
+    create_users,
+    wipe_services,
+    wipe_signatures,
+    wipe_users,
+)
 from assemblyline.odm.randomizer import random_model_obj
-from assemblyline.odm.random_data import create_users, wipe_users, create_signatures, \
-    wipe_signatures, create_services, wipe_services
+from conftest import APIError, get_api_data
 
 
 @pytest.fixture(scope="module")
@@ -319,12 +324,13 @@ def test_set_signature_source(datastore, login_session):
 
     new_source = random_model_obj(UpdateSource).as_primitives()
     new_source['name'] = original_source['name']
+    new_source['configuration'] = {}
 
     resp = get_api_data(session, f"{host}/api/v4/signature/sources/{service_data['name']}/{original_source['name']}/",
                         data=json.dumps(new_source), method="POST")
     assert resp['success']
 
-    datastore.service.commit()
+    datastore.service_delta.commit()
     new_service_data = datastore.get_service_with_delta(service_data['name'], as_obj=False)
     found = False
     for source in new_service_data['update_config']['sources']:
@@ -333,11 +339,10 @@ def test_set_signature_source(datastore, login_session):
         if source['name'] == original_source['name']:
             found = True
             assert original_source != source
-            if source.get('private_key', None) and source['private_key'].endswith("\n"):
-                assert source['private_key'] != new_source['private_key']
-                assert all(source[k] == new_source[k] for k in source.keys() if k != 'private_key')
-            else:
-                assert source == new_source
+            if source.get('private_key') and source['private_key'].endswith("\n"):
+                # Private keys should always end with a newline when stored
+                new_source['private_key'] = new_source['private_key'] + "\n"
+            assert source == new_source
             break
 
     assert found
