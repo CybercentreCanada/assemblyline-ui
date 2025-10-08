@@ -1,13 +1,16 @@
 import base64
 import hashlib
 import re
-import requests
 
+import requests
 from authlib.integrations.flask_client import FlaskOAuth2App
-from assemblyline.odm.models.config import OAuthProvider
-from assemblyline.odm.models.user import load_roles, USER_TYPE_DEP
+
 from assemblyline.common.random_user import random_user
-from assemblyline_ui.config import config, CLASSIFICATION as cl_engine
+from assemblyline.odm.models.config import OAuthProvider
+from assemblyline.odm.models.user import load_roles
+from assemblyline_ui.config import CLASSIFICATION as cl_engine
+from assemblyline_ui.config import config
+from assemblyline_ui.security.utils import process_autoproperties
 
 VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + [chr(x + 97) for x in range(26)] + ["-"]
 
@@ -86,98 +89,9 @@ def parse_profile(profile: dict, provider: OAuthProvider):
     else:
         alternate = None
 
-    # Compute access, user_type, roles and classification using auto_properties
-    access = True
-    access_set = False
-    user_type = []
-    roles = []
-    groups = []
-    remove_roles = set()
-    quotas = {}
-    classification = cl_engine.UNRESTRICTED
-    if provider.auto_properties:
-        for auto_prop in provider.auto_properties:
-            if auto_prop.type == "access" and not access_set:
-                # Set default access value for access pattern
-                access = auto_prop.value[0].lower() != "true"
-                access_set = True
+    # Generate user details based off auto-properties configuration
+    access, user_type, roles, groups, remove_roles, quotas, classification = process_autoproperties(provider.auto_properties, profile, cl_engine.UNRESTRICTED)
 
-            # Get values for field
-            field_data = profile.get(auto_prop.field, None)
-            if not isinstance(field_data, list):
-                field_data = [field_data]
-
-            # Analyse field values
-            for value in field_data:
-                # If there is no value, no need to do any tests
-                if value is None:
-                    continue
-
-                # Check access
-                if auto_prop.type == "access":
-                    if re.match(auto_prop.pattern, value) is not None:
-                        access = auto_prop.value[0].lower() == "true"
-                        break
-
-                # Append user type from matching patterns
-                elif auto_prop.type == "type":
-                    if re.match(auto_prop.pattern, value):
-                        user_type.extend(auto_prop.value)
-                        break
-
-                # Append roles from matching patterns
-                elif auto_prop.type == "role":
-                    if re.match(auto_prop.pattern, value):
-                        for ap_val in auto_prop.value:
-                            # Did we just put an account type in the roles field?
-                            if ap_val in USER_TYPE_DEP:
-                                # Support of legacy configurations
-                                user_type.append(ap_val)
-                                roles = list(set(roles).union(USER_TYPE_DEP[ap_val]))
-                            else:
-                                roles.append(ap_val)
-                        break
-
-                # Remove roles from matching patterns
-                elif auto_prop.type == "remove_role":
-                    if re.match(auto_prop.pattern, value):
-                        for ap_val in auto_prop.value:
-                            remove_roles.add(ap_val)
-                        break
-
-                # Compute classification from matching patterns
-                elif auto_prop.type == "classification":
-                    if re.match(auto_prop.pattern, value):
-                        for ap_val in auto_prop.value:
-                            classification = cl_engine.build_user_classification(classification, ap_val)
-                        break
-
-                # Append groups from matching patterns
-                elif auto_prop.type == "group":
-                    group_match = re.match(auto_prop.pattern, value)
-                    if group_match:
-                        for group_value in auto_prop.value:
-                            for index, gm_value in enumerate(group_match.groups()):
-                                group_value = group_value.replace(f"${index+1}", gm_value)
-                            groups.append(group_value)
-
-                # Append multiple groups from a single matching pattern
-                elif auto_prop.type == "multi_group":
-                    all_matches = re.findall(auto_prop.pattern, value)
-                    for group_match in all_matches:
-                        for group_value in auto_prop.value:
-                            if not isinstance(group_match, tuple):
-                                group_match = (group_match)
-                            for index, gm_value in enumerate(group_match):
-                                group_value = group_value.replace(f"${index+1}", gm_value)
-                            if group_value not in groups:
-                                groups.append(group_value)
-
-                # Set API and Submission quotas
-                elif auto_prop.type in ['api_quota', 'api_daily_quota', 'submission_quota',
-                                        'submission_async_quota', 'submission_daily_quota']:
-                    if re.match(auto_prop.pattern, value):
-                        quotas[auto_prop.type] = int(auto_prop.value[0])
 
     # if not user type was assigned
     if not user_type:
