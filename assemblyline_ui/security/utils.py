@@ -1,7 +1,9 @@
+import json
 import re
 
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import USER_TYPE_DEP
+
 from assemblyline_ui.config import CLASSIFICATION as Classification
 
 
@@ -15,9 +17,11 @@ def process_autoproperties(auto_properties, profile_data, default_classification
     remove_roles = set()
     quotas = {}
     classification = Classification.UNRESTRICTED
+    organization = None
+    default_metadata = {}
 
     if not auto_properties:
-        return access, user_type, roles, groups, remove_roles, quotas, default_classification
+        return access, user_type, roles, organization, groups, remove_roles, quotas, default_classification, default_metadata
 
     for auto_prop in auto_properties:
         if auto_prop.type == "access" and not access_set:
@@ -97,10 +101,26 @@ def process_autoproperties(auto_properties, profile_data, default_classification
                         if group_value not in groups:
                             groups.append(group_value)
 
+            elif auto_prop.type == "organization":
+                org_match = re.match(auto_prop.pattern, value)
+                if org_match:
+                    org_value = auto_prop.value[0]
+                    for index, gm_value in enumerate(org_match.groups()):
+                        org_value = org_value.replace(f"${index+1}", gm_value)
+                    organization = org_value
+
+            elif auto_prop.type == "default_metadata":
+                metadata_match = re.match(auto_prop.pattern, value)
+                if metadata_match:
+                    for metadata_value in auto_prop.value:
+                        for index, gm_value in enumerate(metadata_match.groups()):
+                            metadata_value = metadata_value.replace(f"${index+1}", gm_value)
+                        default_metadata.update(json.loads(metadata_value))
+
             # Set API and Submission quotas
             elif auto_prop.type in ['api_quota', 'api_daily_quota', 'submission_quota',
                                     'submission_async_quota', 'submission_daily_quota']:
                 if re.match(auto_prop.pattern, value):
                     quotas[auto_prop.type] = int(auto_prop.value[0])
 
-    return access, user_type, roles, groups, remove_roles, quotas, Classification.max_classification(classification, default_classification)
+    return access, user_type, roles, organization, groups, remove_roles, quotas, Classification.max_classification(classification, default_classification), default_metadata

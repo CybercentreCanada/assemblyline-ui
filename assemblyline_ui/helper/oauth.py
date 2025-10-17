@@ -3,11 +3,11 @@ import hashlib
 import re
 
 import requests
-from authlib.integrations.flask_client import FlaskOAuth2App
-
 from assemblyline.common.random_user import random_user
 from assemblyline.odm.models.config import OAuthProvider
 from assemblyline.odm.models.user import load_roles
+from authlib.integrations.flask_client import FlaskOAuth2App
+
 from assemblyline_ui.config import CLASSIFICATION as cl_engine
 from assemblyline_ui.config import config
 from assemblyline_ui.security.utils import process_autoproperties
@@ -90,7 +90,7 @@ def parse_profile(profile: dict, provider: OAuthProvider):
         alternate = None
 
     # Generate user details based off auto-properties configuration
-    access, user_type, roles, groups, remove_roles, quotas, classification = process_autoproperties(provider.auto_properties, profile, cl_engine.UNRESTRICTED)
+    access, user_type, roles, organization, groups, remove_roles, quotas, classification, default_metadata = process_autoproperties(provider.auto_properties, profile, cl_engine.UNRESTRICTED)
 
 
     # if not user type was assigned
@@ -121,6 +121,8 @@ def parse_profile(profile: dict, provider: OAuthProvider):
         identity_id=profile_identifiers['identity_id'],
         password="__NO_PASSWORD__",
         avatar=profile.get('picture', alternate),
+        organization=organization,
+        default_metadata=default_metadata,
         **quotas
     )
 

@@ -6,9 +6,9 @@ import time
 import elasticapm
 import ldap
 import ldap.filter
-
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import load_roles
+
 from assemblyline_ui.config import CLASSIFICATION, config
 from assemblyline_ui.helper.user import (
     get_default_user_quotas,
@@ -148,7 +148,7 @@ class BasicLDAPWrapper(object):
                 details['groups'] = self.get_group_list(user, dn, ldap_server=ldap_server)
 
                 # Generate user details based off auto-properties configuration
-                access, user_type, roles, groups, remove_roles, quotas, classification = process_autoproperties(config.auth.ldap.auto_properties, details, self.get_user_classification(details['groups']))
+                access, user_type, roles, organization, groups, remove_roles, quotas, classification, default_metadata = process_autoproperties(config.auth.ldap.auto_properties, details, self.get_user_classification(details['groups']))
 
                 # if not user type was assigned
                 if not user_type:
@@ -169,7 +169,7 @@ class BasicLDAPWrapper(object):
                 cache_entry = {"password": password_digest, "expiry": cur_time + self.CACHE_SEC_LEN,
                                "connection": ldap_server, "details": details, "cached": False,
                                "classification": classification, "type": user_type, 'roles': roles, 'dn': dn,
-                               'access': access, 'groups': groups}
+                               'access': access, 'groups': groups, 'organization': organization, 'default_metadata': default_metadata}
                 cache_entry.update(quotas)
                 self.cache[user] = cache_entry
                 return cache_entry
@@ -234,7 +234,8 @@ def validate_ldapuser(username, password, storage):
                     password="__NO_PASSWORD__",
                     type=ldap_info['type'],
                     roles=ldap_info['roles'],
-                    dn=ldap_info['dn']
+                    dn=ldap_info['dn'],
+                    organization=ldap_info['organization'],
                 )
 
                 # Get the dynamic classification info
@@ -250,6 +251,13 @@ def validate_ldapuser(username, password, storage):
                 # Save the updated user
                 cur_user.update(data)
                 storage.user.save(username, get_default_user_quotas(cur_user))
+
+                # Update user settings
+                if storage.user_settings.exists(username):
+                    storage.user_settings.update(username, [(storage.user_settings.UPDATE_SET, 'default_metadata', ldap_info['default_metadata'])])
+                else:
+                    storage.user_settings.save(username, {'default_metadata': ldap_info['default_metadata']})
+
 
             if cur_user:
                 return username
