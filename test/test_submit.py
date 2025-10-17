@@ -491,7 +491,8 @@ def test_submit_default_metadata(datastore, login_session):
     byte_str = get_random_phrase(wmin=30, wmax=75).encode()
     data = {
         'base64': base64.b64encode(byte_str).decode('ascii'),
-        'metadata': {'test': 'test_submit_base64_nameless'}
+        'metadata': {'test': 'test_submit_base64_nameless'},
+        'submission_profile': 'static'
     }
 
     resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))

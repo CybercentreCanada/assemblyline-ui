@@ -21,7 +21,7 @@ def process_autoproperties(auto_properties, profile_data, default_classification
     default_metadata = {}
 
     if not auto_properties:
-        return access, user_type, roles, groups, remove_roles, quotas, default_classification
+        return access, user_type, roles, organization, groups, remove_roles, quotas, default_classification, default_metadata
 
     for auto_prop in auto_properties:
         if auto_prop.type == "access" and not access_set:
