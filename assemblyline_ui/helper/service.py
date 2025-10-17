@@ -7,11 +7,11 @@ from assemblyline.odm.models.user_settings import (
     DEFAULT_SUBMISSION_PROFILE_SETTINGS,
     UserSettings,
 )
+
 from assemblyline_ui.config import (
     CLASSIFICATION,
     SERVICE_LIST,
     SUBMISSION_PROFILES,
-    config,
 )
 
 # Get the list of fields relating to the models
@@ -19,22 +19,29 @@ USER_SETTINGS_FIELDS = list(UserSettings.fields().keys())
 SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
 
 
-def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
+def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED,
+                                    organization=None):
     out = {}
 
+    default_submission_profile_settings = deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS)
+    # Check to see if organization is recognized by the classification engine
+    if organization and (CLASSIFICATION.groups_aliases.get(organization) or CLASSIFICATION.dynamic_groups):
+        # If so, set the default classification to REL TO <organization>
+        default_submission_profile_settings['classification'] = f"{CLASSIFICATION.UNRESTRICTED}//REL TO {organization}"
+
     if 'default' in user_default_values:
-        out['default'] = recursive_update(
-            deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
+        out['default'] = deepcopy(recursive_update(
+            default_submission_profile_settings,
             user_default_values['default']
-        )
+        ))
         if not out['default']["services"].get("selected"):
                 # Provide the default service selection
                 out['default']["services"]["selected"] = DEFAULT_SRV_SEL
 
     for profile in SUBMISSION_PROFILES.values():
         if CLASSIFICATION.is_accessible(classification, profile.classification):
-            profile_values = recursive_update(deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS),
-                                              profile.params.as_primitives(strip_null=True))
+            profile_values = deepcopy(recursive_update(default_submission_profile_settings,
+                                              profile.params.as_primitives(strip_null=True)))
             out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
             if not out[profile.name]["services"].get("selected"):
                 # Provide the default service selection
