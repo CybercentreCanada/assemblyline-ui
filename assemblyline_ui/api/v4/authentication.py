@@ -9,14 +9,6 @@ from urllib.parse import urlparse
 
 import jwt
 import pyqrcode
-from authlib.integrations.base_client import OAuthError
-from authlib.integrations.flask_client import FlaskOAuth2App, OAuth
-from authlib.integrations.requests_client import OAuth2Session
-from flask import current_app, redirect, request
-from flask import session as flask_session
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from werkzeug.exceptions import BadRequest, UnsupportedMediaType
-
 from assemblyline.common.comms import send_reset_email, send_signup_email
 from assemblyline.common.security import (
     check_password_requirements,
@@ -28,6 +20,14 @@ from assemblyline.common.security import (
 )
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import ROLES, User, load_roles, load_roles_form_acls
+from authlib.integrations.base_client import OAuthError
+from authlib.integrations.flask_client import FlaskOAuth2App, OAuth
+from authlib.integrations.requests_client import OAuth2Session
+from flask import current_app, redirect, request
+from flask import session as flask_session
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import (
     AUDIT_LOG,
@@ -686,10 +686,10 @@ def oauth_validate(**_):
 
                 # Parse received groups
                 if groups:
-                    if oauth_provider_config.user_groups_data_field:
+                    if oauth_provider_config.user_groups_data_field and isinstance(groups, dict):
                         groups = groups[oauth_provider_config.user_groups_data_field]
 
-                    if oauth_provider_config.user_groups_name_field:
+                    if oauth_provider_config.user_groups_name_field and isinstance(groups, list):
                         groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
 
                     user_data["groups"] = groups
@@ -741,6 +741,7 @@ def oauth_validate(**_):
                     if (not cur_user and oauth_provider_config.auto_create) or (
                         cur_user and oauth_provider_config.auto_sync
                     ):
+                        default_metadata = data.pop('default_metadata', {})
 
                         # Update the current user
                         cur_user.update(data)
@@ -750,6 +751,12 @@ def oauth_validate(**_):
                             avatar = fetch_avatar(oauth_avatar, provider, oauth_provider_config)
                             if avatar:
                                 STORAGE.user_avatar.save(username, avatar)
+
+                        # Update user settings
+                        if STORAGE.user_settings.exists(username):
+                            STORAGE.user_settings.update(username, [(STORAGE.user_settings.UPDATE_SET, 'default_metadata', default_metadata)])
+                        else:
+                            STORAGE.user_settings.save(username, {'default_metadata': default_metadata})
 
                         # Save updated user
                         STORAGE.user.save(username, get_default_user_quotas(cur_user))
