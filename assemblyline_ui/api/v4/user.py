@@ -1,6 +1,5 @@
+from copy import deepcopy
 from typing import List
-
-from flask import request, session
 
 from assemblyline.common.comms import send_activated_email, send_authorize_email
 from assemblyline.common.isotime import now_as_iso
@@ -21,6 +20,8 @@ from assemblyline.odm.models.user import (
     load_roles,
 )
 from assemblyline.odm.models.user_favorites import Favorite
+from flask import request, session
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.federated_lookup import filtered_tag_names
 from assemblyline_ui.config import (
@@ -178,11 +179,13 @@ def who_am_i(**kwargs):
     user_data = {
         k: v for k, v in kwargs['user'].items()
         if k in ["agrees_with_tos", "classification", "email", "groups", "is_active", "name",
-                 "roles", "type", "uname", "api_daily_quota", "submission_daily_quota"]}
+                 "roles", "type", "uname", "api_daily_quota", "submission_daily_quota", "organization"]}
 
     user_data['avatar'] = STORAGE.user_avatar.get(kwargs['user']['uname'])
     user_data['username'] = user_data.pop('uname')
     user_data['is_admin'] = "administration" in user_data['roles']
+    if user_data.get('organization'):
+        user_data.setdefault('groups', []).append(user_data.pop('organization'))
 
     # Force quotas to be part of the session so they could be trapped by the UI
     if user_data['api_daily_quota'] != 0:
@@ -274,7 +277,6 @@ def who_am_i(**kwargs):
             "max_dtl": config.submission.max_dtl,
             "max_file_size": config.submission.max_file_size,
             "file_sources": file_sources,
-            "metadata": UI_METADATA_VALIDATION,
             "profiles": submission_profiles,
             "verdicts": {
                 "info": config.submission.verdicts.info,
@@ -345,6 +347,17 @@ def who_am_i(**kwargs):
     }
     user_data['indexes'] = list_all_fields(user_data)
     user_data['settings'] = load_user_settings(kwargs['user'])
+
+    # Set any specific metadata defaults from the user settings
+    user_metadata_validation = deepcopy(UI_METADATA_VALIDATION)
+    for m_key, m_value in user_data['settings'].get('default_metadata', {}).items():
+        for section in ['submit', 'archive']:
+            if m_key in user_metadata_validation[section]:
+                # Only set the default value if the field exists and is valid
+                user_metadata_validation[section][m_key]['default'] = m_value
+
+    user_data['configuration']['submission']['metadata'] = user_metadata_validation
+
 
     msg = UI_MESSAGING.get('system_message')
     if msg:
@@ -1191,7 +1204,7 @@ def get_remaining_quotas(username, **kwargs):
     if username != user['uname']:
         if ROLES.administration not in user['roles']:
             raise AccessDeniedException("You are not allowed to view settings for another user then yourself.")
-        
+
         user = STORAGE.user.get(username, as_obj=False)
         if not user:
             return make_api_response({}, "User %s does not exists" % username, 404)
