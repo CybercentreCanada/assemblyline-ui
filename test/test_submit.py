@@ -7,9 +7,6 @@ import tempfile
 import time
 
 import pytest
-from assemblyline_core.dispatching.dispatcher import SubmissionTask
-from conftest import APIError, get_api_data
-
 from assemblyline.common import forge
 from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP
@@ -24,6 +21,8 @@ from assemblyline.odm.random_data import (
 )
 from assemblyline.odm.randomizer import get_random_phrase, random_minimal_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_core.dispatching.dispatcher import SubmissionTask
+from conftest import APIError, get_api_data
 
 config = forge.get_config()
 sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.host,
@@ -477,3 +476,33 @@ def test_submit_submission_profile(datastore, login_session, scheduler, submissi
     if not submission_customize:
         # Restore original roles for later tests
         datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
+
+
+def test_submit_default_metadata(datastore, login_session):
+    _, session, host = login_session
+
+    # Set some default metadata for the user
+    default_metadata = {
+        'default_key1': 'default_value1',
+        'default_key2': 'default_value2'
+    }
+    datastore.user_settings.save('admin', {'default_metadata': default_metadata})
+
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    data = {
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'metadata': {'test': 'test_submit_base64_nameless'}
+    }
+
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Ensure that the submission metadata contains both the default metadata and the submission provided metadata
+    assert resp['metadata'] == default_metadata | data['metadata']
+    assert len(resp['metadata']) == 3
+
+    # Users should be able to override default metadata values by specifying them in the submission metadata
+    data['metadata']['default_key1'] = 'overridden_value1'
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    assert resp['metadata'] == default_metadata | data['metadata']
+    assert resp['metadata']['default_key1'] == 'overridden_value1'
