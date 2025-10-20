@@ -198,7 +198,9 @@ def init_submission(request: Request, user: Dict, endpoint: str):
             s_params['ttl'] = config.submission.max_dtl
 
     # Get the metadata (use the user's default metadata as a base)
-    metadata = STORAGE.user_settings.get(user['uname'], as_obj=False).get('default_metadata', {})
+    metadata = {}
+    if STORAGE.user_settings.exists(user['uname']):
+        metadata = STORAGE.user_settings.get(user['uname'], as_obj=False).get('default_metadata', {})
     submitted_metadata = flatten(data.get('metadata', {}))
     metadata.update(submitted_metadata)
 
