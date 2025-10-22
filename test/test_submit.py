@@ -320,6 +320,7 @@ def test_submit_plaintext(datastore, login_session, scheduler):
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
+
 # noinspection PyUnusedLocal
 def test_submit_plaintext_nameless(datastore, login_session, scheduler):
     _, session, host = login_session
@@ -477,3 +478,32 @@ def test_submit_submission_profile(datastore, login_session, scheduler, submissi
     if not submission_customize:
         # Restore original roles for later tests
         datastore.user.update('admin', [(datastore.user.UPDATE_APPEND, 'type', 'admin'),])
+
+
+# noinspection PyUnusedLocal
+def test_submit_service_parameter(datastore, login_session, scheduler):
+    _, session, host = login_session
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    data = {}
+    data["base64"] = base64.b64encode(byte_str).decode("ascii")
+    data["submission_profile"] = "static"
+    data["params"] = {"services": {"selected": ["Extract"]}, "service_spec": {"Extract": {"password": "test_password"}}}
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    datastore.submission.commit()
+    submission = datastore.submission.get(resp["sid"])
+    submission_params = submission["params"]
+
+    assert "Extract" in submission_params["service_spec"]
+    assert submission_params["service_spec"]["Extract"]["password"] == "test_password"
+
+    # check that empty string password still gets stored in database
+    data["params"] = {"services": {"selected": ["Extract"]}, "service_spec": {"Extract": {"password": ""}}}
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    datastore.submission.commit()
+    submission = datastore.submission.get(resp["sid"])
+    submission_params = submission["params"]
+
+    assert "Extract" in submission_params["service_spec"]
+    assert submission_params["service_spec"]["Extract"]["password"] == ""
