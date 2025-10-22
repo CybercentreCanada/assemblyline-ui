@@ -1,4 +1,5 @@
 import random
+import time
 
 import pytest
 import requests
@@ -799,3 +800,77 @@ def test_access_control_submit_hash_classification(
         },
     }
     assert data == expected
+
+
+@pytest.fixture()
+def http_server():
+    """A very slow http server that responds with an empty hash search eventially"""
+    from threading import Thread
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+
+    class RequestHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            time.sleep(60)
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            # self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(b'{"api_response": []}')
+
+    with ThreadingHTTPServer(('localhost', 0), RequestHandler) as server:
+        Thread(target=server.serve_forever, daemon=True).start()
+        yield f'http://localhost:{server.server_port}'
+
+
+@pytest.fixture()
+def http_config(http_server):
+    """generate test configuration for a very simple http server."""
+    hash_search.external_sources = [
+        ExternalSource({"name": "malware_bazaar", "url": http_server}),
+        ExternalSource({"name": "virustotal", "url": http_server}),
+    ]
+    original_tags = hash_search.all_supported_tags
+    t = federated_lookup._Tags()
+    t._all_supported_tags = {
+        "malware_bazaar": {
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+        },
+        "virustotal": {
+            "sha256": CLASSIFICATION.UNRESTRICTED,
+        },
+    }
+    # ensure local cache is always fresh for tests
+    hash_search.all_supported_tags = t.all_supported_tags
+    try:
+        yield
+    finally:
+        hash_search.all_supported_tags = original_tags
+
+
+def test_external_timeout(http_config):
+    """Ensure that the hash search handles **transport** timeouts properly.
+
+    Given an external lookup for both Malware Bazaar and Virustoal is configured
+        But the host they are direted to will always take at least a minute to respond
+        And a real http connection is used rather than mocks to ensure transport code is being tested
+
+    When a user requests a lookup of a given hash
+        External sources are specified
+        A max timeout is set by the user that is shorter than the time the external host will take
+
+    The user should recieve a response within the timeout they requested with a timeout error specified
+    """
+    timeout_result = hash_search.get_external_details(
+        user={
+            'classification': 'U'
+        },
+        source=hash_search.external_sources[0],
+        hash_type='sha256',
+        file_hash='a' * 64,
+        hash_classification='U',
+        timeout=0.25,
+        request_timeout=0.5,
+        limit=500,
+    )
+
+    assert timeout_result['error'] == 'Transport timeout'
