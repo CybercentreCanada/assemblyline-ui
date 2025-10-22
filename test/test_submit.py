@@ -69,7 +69,7 @@ def test_resubmit(datastore, filestore, archivestore, login_session, scheduler, 
         assert f['sha256'] in submission_files
         assert filestore.exists(f['sha256'])
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
@@ -100,10 +100,8 @@ def test_resubmit_profile(datastore, login_session, scheduler, copy_sid):
 
     assert set(resp['params']['services']['selected']) == default_selected_services
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
-
-    # Re-submit a submission with a profile selected (classification of submission should be kept)
 
 
 # noinspection PyUnusedLocal
@@ -120,7 +118,7 @@ def test_resubmit_dynamic(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
     assert 'Dynamic Analysis' in resp['params']['services']['selected']
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -144,7 +142,7 @@ def test_submit_hash(datastore, login_session, scheduler, hash, filestore):
         assert f['sha256'] == fileinfo['sha256']
         assert f['name'] == data['name']
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
@@ -162,7 +160,7 @@ def test_submit_url(datastore, login_session, scheduler):
     for f in resp['files']:
         assert f['name'] == data['url']  # The name is overwritten for URIs
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
@@ -181,7 +179,7 @@ def test_submit_defanged_url(datastore, login_session, scheduler):
         # The name is overwritten for URIs
         assert f['name'] == 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md'
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -211,7 +209,7 @@ def test_submit_binary(datastore, login_session, scheduler):
             assert f['sha256'] == sha256
             assert f['name'] == json_data['name']
 
-        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
         assert msg.submission.sid == resp['sid']
 
     finally:
@@ -287,7 +285,7 @@ def test_submit_binary_nameless(datastore, login_session, scheduler):
             assert f['sha256'] == sha256
             assert f['name'] == os.path.basename(temp_path)
 
-        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
         assert msg.submission.sid == resp['sid']
 
     finally:
@@ -316,7 +314,7 @@ def test_submit_plaintext(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
         assert f['name'] == data['name']
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -337,7 +335,7 @@ def test_submit_plaintext_nameless(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
         assert f['name'] == sha256
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 
@@ -359,7 +357,7 @@ def test_submit_base64(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
         assert f['name'] == data['name']
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 # noinspection PyUnusedLocal
@@ -379,7 +377,7 @@ def test_submit_base64_nameless(datastore, login_session, scheduler):
         assert f['sha256'] == sha256
         assert f['name'] == sha256
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, **sq.pop(blocking=False))
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
 @pytest.mark.parametrize("submission_customize", [True, False], ids=["submission_customize_enabled", "submission_customize_disabled"])
@@ -508,7 +506,7 @@ def test_submit_default_metadata(datastore, login_session):
 
     assert resp['metadata'] == default_metadata | data['metadata']
     assert resp['metadata']['default_key1'] == 'overridden_value1'
-    
+
 # noinspection PyUnusedLocal
 def test_submit_service_parameter(datastore, login_session, scheduler):
     _, session, host = login_session

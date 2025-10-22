@@ -82,6 +82,8 @@ class ForbiddenLocation(Exception):
 
 def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: dict) -> dict:
     validated_profile = profile.params.as_primitives(strip_null=True)
+    # Preserve the original updates for later comparison
+    original_updates = deepcopy(updates)
 
     updates.setdefault("services", {})
     updates["services"].setdefault("selected", [])
@@ -119,6 +121,12 @@ def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: di
                 (svr['name'] in excluded_svrs or svr['category'] in excluded_svrs):
 
                 raise PermissionError(f"User isn't allowed to select the {svr['name']} service of \"{svr['category']}\" in \"{profile.display_name}\" profile")
+
+    # Check if the updates contain any empty lists for selected or excluded services and if this was the intent of the user
+    if updates['services']['selected'] == [] and 'selected' not in original_updates.get('services', {}):
+        updates['services'].pop('selected')
+    if updates['services']['excluded'] == [] and 'excluded' not in original_updates.get('services', {}):
+        updates['services'].pop('excluded')
 
     return recursive_update(validated_profile, strip_nulls(updates))
 
