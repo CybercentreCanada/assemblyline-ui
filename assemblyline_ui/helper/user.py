@@ -259,7 +259,7 @@ def save_user_account(username: str, data: dict, user: dict):
     # The quota defaults get set on profile fetch so we need to handle them separately
     # if no value is set on the database side, don't count the default as an explicit value
     for quota_key, quota_default in QUOTA_FIELDS:
-        if current[quota_key] is None:
+        if current.get(quota_key) is None:
             if data.get(quota_key, quota_default) == quota_default:
                 data.pop(quota_key)
                 continue
