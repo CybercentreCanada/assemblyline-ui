@@ -1,15 +1,16 @@
 from typing import Optional
 
-from flask import session as flask_session
-
 from assemblyline.common.dict_utils import get_recursive_delta
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.config import SubmissionProfile
 from assemblyline.odm.models.user import ROLES, User, load_roles
 from assemblyline.odm.models.user_settings import (
+    DEFAULT_SUBMISSION_PROFILE_SETTINGS,
     DEFAULT_USER_PROFILE_SETTINGS,
     UserSettings,
 )
+from flask import session as flask_session
+
 from assemblyline_ui.config import (
     ASYNC_SUBMISSION_TRACKER,
     DAILY_QUOTA_TRACKER,
@@ -351,7 +352,8 @@ def load_user_settings(user):
     settings['service_spec'] = get_default_service_spec(srv_list, user_classfication)
     settings['services'] = get_default_service_list(srv_list, user_classfication)
     settings['submission_profiles'] = get_default_submission_profiles(settings['submission_profiles'],
-                                                                      user_classfication)
+                                                                      user_classfication,
+                                                                      user.get('organization'))
 
 
     # Check if the user has a preferred submission profile
@@ -403,7 +405,7 @@ def save_user_settings(user, data):
                 submission_profiles[name] = user_params
         else:
             # Calculate what the profiles updates are based on default profile settings and the user-submitted changes
-            profile_updates = get_recursive_delta(DEFAULT_USER_PROFILE_SETTINGS, user_params)
+            profile_updates = get_recursive_delta(DEFAULT_SUBMISSION_PROFILE_SETTINGS, user_params)
 
             # Apply changes to the profile relative to what's allowed to be changed based on configuration
             submission_profiles[name] = apply_changes_to_profile(profile_config, profile_updates, user)

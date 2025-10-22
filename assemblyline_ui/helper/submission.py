@@ -13,8 +13,6 @@ from typing import Dict, List
 from urllib.parse import urlparse
 
 import requests
-from flask import Request
-
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import (
@@ -32,6 +30,8 @@ from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.user_settings import DEFAULT_SUBMISSION_PROFILE_SETTINGS
+from flask import Request
+
 from assemblyline_ui.config import (
     ARCHIVESTORE,
     CLASSIFICATION,
@@ -197,8 +197,12 @@ def init_submission(request: Request, user: Dict, endpoint: str):
         else:
             s_params['ttl'] = config.submission.max_dtl
 
-    # Get the metadata
-    metadata = flatten(data.get('metadata', {}))
+    # Get the metadata (use the user's default metadata as a base)
+    metadata = {}
+    if STORAGE.user_settings.exists(user['uname']):
+        metadata = STORAGE.user_settings.get(user['uname'], as_obj=False).get('default_metadata', {})
+    submitted_metadata = flatten(data.get('metadata', {}))
+    metadata.update(submitted_metadata)
 
     if endpoint == "ui":
         # If this was submitted through the UI, then the file is in the cachestore
@@ -499,6 +503,10 @@ def update_submission_parameters(data: dict, user: dict, user_submission_profile
         'submitter': user['uname'],
         'ttl': int(s_params.get('ttl', config.submission.dtl))
     })
+
+    # Append organization to groups if not already present
+    if user.get('organization') and user['organization'] not in s_params['groups']:
+        s_params['groups'].append(user['organization'])
 
     # Apply the changes to the submission parameters based on the profile and user roles
     s_params = recursive_update(s_params, data.get("params", {}))
