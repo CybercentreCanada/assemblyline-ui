@@ -293,15 +293,20 @@ def get_dynamic_classification(current_c12n, user_info):
     if Classification.dynamic_groups:
         email = user_info.get('email', None)
         groups = user_info.get('groups', [])
+        organization = user_info.get('organization', None)
 
         if Classification.dynamic_groups_type in ['email', 'all'] and email:
             dyn_group = email.upper().split('@')[1]
             new_c12n = Classification.build_user_classification(
                 new_c12n, f"{Classification.UNRESTRICTED}//REL {dyn_group}")
 
-        if Classification.dynamic_groups_type in ['group', 'all'] and groups:
-            new_c12n = Classification.build_user_classification(
-                new_c12n, f"{Classification.UNRESTRICTED}//REL {', '.join(groups)}")
+        if Classification.dynamic_groups_type in ['group', 'all']:
+            if groups:
+                new_c12n = Classification.build_user_classification(
+                    new_c12n, f"{Classification.UNRESTRICTED}//REL {', '.join(groups)}")
+            if organization:
+                new_c12n = Classification.build_user_classification(
+                    new_c12n, f"{Classification.UNRESTRICTED}//REL TO {organization}")
 
     return new_c12n
 
