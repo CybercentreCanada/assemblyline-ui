@@ -689,7 +689,8 @@ def oauth_validate(**_):
                     if oauth_provider_config.user_groups_data_field and isinstance(groups, dict):
                         groups = groups[oauth_provider_config.user_groups_data_field]
 
-                    if oauth_provider_config.user_groups_name_field and isinstance(groups, list):
+                    if oauth_provider_config.user_groups_name_field and isinstance(groups, list) and isinstance(
+                        groups[0], dict):
                         groups = [x[oauth_provider_config.user_groups_name_field] for x in groups]
 
                     user_data["groups"] = groups
