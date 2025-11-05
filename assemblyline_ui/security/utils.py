@@ -107,6 +107,11 @@ def process_autoproperties(auto_properties, profile_data, default_classification
                     org_value = auto_prop.value[0]
                     for index, gm_value in enumerate(org_match.groups()):
                         org_value = org_value.replace(f"${index+1}", gm_value)
+
+                    if Classification.dynamic_groups and Classification.dynamic_groups_type in ['groups', 'all']:
+                        # Ensure organization is uppercase if dynamic groups are enabled
+                        org_value = org_value.upper()
+
                     organization = org_value
 
             elif auto_prop.type == "default_metadata":
