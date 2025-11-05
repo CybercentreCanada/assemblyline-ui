@@ -394,7 +394,7 @@ class Enricher():
                     self._add(
                         f"ids_alerts_{results['alert_severity']}",
                         name=results["rule_msg"],
-                        name_description=results["rule_category"],
+                        name_description=results.get("rule_category", "UNKNOWN"),
                         value=f"{k}: {v}")
 
         # AI results
