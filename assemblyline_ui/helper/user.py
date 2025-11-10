@@ -90,11 +90,14 @@ def increase_daily_submission_quota(user) -> Optional[str]:
             daily_quota = config.ui.default_quotas.daily_submissions
 
         if daily_quota != 0:
-            current_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
-            flask_session['remaining_quota_submission'] = max(daily_quota - current_daily_quota, 0)
-            if current_daily_quota > daily_quota:
-                LOGGER.info(f"User {quota_user} exceeded their daily submission quota of {daily_quota}.")
-                return f"You've exceeded your daily maximum submission quota of {daily_quota}"
+            current_daily_quota = DAILY_QUOTA_TRACKER.get_submission(quota_user)
+            if current_daily_quota >= daily_quota:
+                LOGGER.info(f"User {quota_user} reached their daily submission quota of {daily_quota}.")
+
+                return f"You've reached your daily maximum submission quota of {daily_quota}"
+            else:
+                new_daily_quota = DAILY_QUOTA_TRACKER.increment_submission(quota_user)
+                flask_session["remaining_quota_submission"] = max(daily_quota - new_daily_quota, 0)
 
     return None
 
@@ -121,13 +124,11 @@ def check_async_submission_quota(user) -> Optional[str]:
             return daily_submission_quota_error
 
         if max_quota != 0 and not ASYNC_SUBMISSION_TRACKER.begin(quota_user, max_quota):
-            LOGGER.info(f"User {quota_user} exceeded their async submission quota of {max_quota}.")
-
             # Decrease the daily quota as we have increase it in the increase_daily_submission_quota call
             # but the user is out of concurrent async submission quotas
             release_daily_submission_quota(user)
-
-            return f"You've exceeded your maximum concurrent async submission quota of {max_quota}"
+            LOGGER.info(f"User {quota_user} exceeded their async submission quota of {max_quota}.")
+            return f"You've exceeded your maximum async concurrent submission quota of {max_quota}"
 
     return None
 
@@ -135,6 +136,8 @@ def check_async_submission_quota(user) -> Optional[str]:
 def check_submission_quota(user) -> Optional[str]:
     if config.ui.enforce_quota:
         quota_user = user['uname']
+
+        # get max concurrent submission quota
         max_quota = user.get('submission_quota')
         if max_quota is None:
             max_quota = config.ui.default_quotas.concurrent_submissions
@@ -143,13 +146,13 @@ def check_submission_quota(user) -> Optional[str]:
         if daily_submission_quota_error:
             return daily_submission_quota_error
 
+        # if a user do have a max_quota set and number of concurrent queues are <= max quota
         if max_quota != 0 and not SUBMISSION_TRACKER.begin(quota_user, max_quota):
-            LOGGER.info(f"User {quota_user} exceeded their submission quota of {max_quota}.")
 
             # Decrease the daily quota as we have increase it in the increase_daily_submission_quota call
             # but the user is out of concurrent submission quotas
             release_daily_submission_quota(user)
-
+            LOGGER.info(f"User {quota_user} exceeded their concurrent submission quota of {max_quota}.")
             return f"You've exceeded your maximum concurrent submission quota of {max_quota}"
 
     return None
@@ -316,14 +319,17 @@ def get_default_user_settings(user: dict) -> dict:
     settings.update({"default_zip_password": DEFAULT_ZIP_PASSWORD, "download_encoding": DOWNLOAD_ENCODING})
     return UserSettings(settings).as_primitives()
 
+
 def get_user_api_keys_dict(uname):
     apikeys = get_user_api_keys(uname)
     apikeys_dict = dict((apikey['key_name'], apikey) for apikey in apikeys)
     return apikeys_dict
 
+
 def get_user_api_keys(uname):
     apikeys = STORAGE.apikey.stream_search(f"uname:{uname}", as_obj=False)
     return apikeys
+
 
 def load_user_settings(user):
     default_settings = get_default_user_settings(user)
