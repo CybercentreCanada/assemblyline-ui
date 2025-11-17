@@ -1,4 +1,5 @@
 
+from ipaddress import ip_address, ip_network
 from sys import exc_info
 from traceback import format_tb
 
@@ -36,13 +37,71 @@ def handle_401(e):
     else:
         msg = str(e)
 
-    data = {
-        "oauth_providers": [name for name, p in config.auth.oauth.providers.items()
-                            if p['client_id']] if config.auth.oauth.enabled else [],
-        "allow_userpass_login": config.auth.ldap.enabled or config.auth.internal.enabled,
-        "allow_signup": config.auth.internal.enabled and config.auth.internal.signup.enabled,
-        "allow_saml_login": config.auth.saml.enabled,
-    }
+    ip = ip_address(session.get("ip", request.remote_addr))
+    data = {}
+
+    # Check which OAuth providers are available based on IP filters
+    for name, provider in config.auth.oauth.providers.items():
+        if not provider.client_id:
+            LOGGER.warning("OAuth provider '%s' is enabled but has no client ID set.", name)
+            continue
+
+        if provider.ip_filter:
+            # Check if the IP is allowed by the filter
+            for cidr in provider.ip_filter:
+                if ip in ip_network(cidr):
+                    # IP is allowed, user is allowed
+                    data.setdefault("oauth_providers", []).append(name)
+        else:
+            # No filter applied means allow all IPs
+            data.setdefault("oauth_providers", []).append(name)
+
+    # Check if userpass login using intenal or ldap is allowed
+    userpass_allowed = False
+    if config.auth.internal.enabled:
+        if config.auth.internal.ip_filter:
+            # Check if the IP is allowed by the filter
+            for cidr in config.auth.internal.ip_filter:
+                if ip in ip_network(cidr):
+                    # User's IP is allowed
+                    userpass_allowed = True
+                    break
+        else:
+            # No filter applied means allow all IPs
+            userpass_allowed = True
+    elif config.auth.ldap.enabled:
+        if config.auth.ldap.ip_filter:
+            # Check if the IP is allowed by the filter
+            for cidr in config.auth.ldap.ip_filter:
+                if ip in ip_network(cidr):
+                    # User's IP is allowed
+                    userpass_allowed = True
+                    break
+        else:
+            # No filter applied means allow all IPs
+            userpass_allowed = True
+
+    data.setdefault("allow_userpass_login", userpass_allowed)
+
+    # Check if signup is allowed
+    data["allow_signup"] = config.auth.internal.enabled and config.auth.internal.signup.enabled and userpass_allowed
+
+    # Check if SAML login is allowed
+    saml_allowed = False
+    if config.auth.saml.enabled:
+        if config.auth.saml.ip_filter:
+            # Check if the IP is allowed by the filter
+            for cidr in config.auth.saml.ip_filter:
+                if ip in ip_network(cidr):
+                    # User's IP is allowed
+                    saml_allowed = True
+                    break
+        else:
+            # No filter applied means allow all IPs
+            saml_allowed = True
+
+    data["allow_saml_login"] = saml_allowed
+
     session.clear()
     res = make_api_response(data, msg, 401)
     res.set_cookie('XSRF-TOKEN', '', max_age=0)
