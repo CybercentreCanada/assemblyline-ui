@@ -1,6 +1,9 @@
+from ipaddress import ip_address, ip_network
 from typing import Any, Optional
 
 from assemblyline.odm.models.user import ROLES, TYPES
+from flask import request, session
+
 from assemblyline_ui.config import config, get_token_store
 from assemblyline_ui.http_exceptions import AuthenticationException
 
@@ -9,6 +12,11 @@ def validate_saml_user(username: str, saml_token_id: str):
     # This function identifies the user via a saved saml_token_id in redis
     if not config.auth.saml.enabled and saml_token_id:
         raise AuthenticationException("SAML login is disabled")
+
+    # Check if user is allowed to use SAML auth from its IP
+    ip = ip_address(session.get("ip", request.remote_addr))
+    if config.auth.saml.ip_filter and not any(ip in ip_network(cidr) for cidr in config.auth.saml.ip_filter):
+        raise AuthenticationException(f"Access from IP {ip} is not allowed for SAML login")
 
     if config.auth.saml.enabled and saml_token_id:
         if get_token_store(username, 'saml').exist(saml_token_id):

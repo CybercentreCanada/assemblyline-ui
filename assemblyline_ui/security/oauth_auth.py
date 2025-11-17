@@ -1,11 +1,13 @@
+from copy import copy
+from ipaddress import ip_address, ip_network
+
 import elasticapm
 import jwt
 import requests
-
-from copy import copy
-
 from assemblyline.odm.models.user import load_roles_form_acls
-from assemblyline_ui.config import config, get_token_store, STORAGE, CACHE, LOGGER
+from flask import request, session
+
+from assemblyline_ui.config import CACHE, STORAGE, config, get_token_store
 from assemblyline_ui.helper.oauth import get_profile_identifiers
 from assemblyline_ui.http_exceptions import AuthenticationException
 
@@ -57,6 +59,11 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
 
         if not oauth_provider_config.jwks_uri:
             raise AuthenticationException(f"oAuth provider '{oauth_provider}' does not have a jwks_uri configured.")
+
+        # Check if user is allowed to use this OAuth provider from its IP
+        ip = ip_address(session.get("ip", request.remote_addr))
+        if oauth_provider_config.ip_filter and not any(ip in ip_network(cidr) for cidr in oauth_provider_config.ip_filter):
+            raise AuthenticationException(f"Access from IP {ip} is not allowed for oAuth provider: {oauth_provider}")
 
         # Gather provider valid audiences
         audiences = copy(oauth_provider_config.external_token_alternate_audiences)

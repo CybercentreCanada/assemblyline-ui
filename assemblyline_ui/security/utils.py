@@ -108,7 +108,7 @@ def process_autoproperties(auto_properties, profile_data, default_classification
                     for index, gm_value in enumerate(org_match.groups()):
                         org_value = org_value.replace(f"${index+1}", gm_value)
 
-                    if Classification.dynamic_groups and Classification.dynamic_groups_type in ['groups', 'all']:
+                    if Classification.dynamic_groups and Classification.dynamic_groups_type in ['group', 'all']:
                         # Ensure organization is uppercase if dynamic groups are enabled
                         org_value = org_value.upper()
 
