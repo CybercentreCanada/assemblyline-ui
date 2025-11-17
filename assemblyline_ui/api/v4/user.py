@@ -287,6 +287,7 @@ def who_am_i(**kwargs):
         },
         "system": {
             "organisation": config.system.organisation,
+            "support_link": config.system.support_link,
             "type": config.system.type,
             "version": VERSION
         },
