@@ -5,12 +5,17 @@ import os
 import random
 import tempfile
 import time
+from typing import Optional, Any, Iterable
+from collections import defaultdict
 
 import pytest
+from assemblyline.datastore.helper import AssemblylineDatastore
+from assemblyline.odm.models.submission import Submission
+from assemblyline.odm.models.user import User
 
 from assemblyline.common import forge
 from assemblyline.datastore.collection import Index
-from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP
+from assemblyline.odm.models.config import DEFAULT_SRV_SEL, HASH_PATTERN_MAP, Config
 from assemblyline.odm.models.service import Service
 from assemblyline.odm.random_data import (
     create_services,
@@ -22,7 +27,6 @@ from assemblyline.odm.random_data import (
 )
 from assemblyline.odm.randomizer import get_random_phrase, random_minimal_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
-from assemblyline_core.dispatching.dispatcher import SubmissionTask
 from conftest import APIError, get_api_data
 
 config = forge.get_config()
@@ -31,11 +35,26 @@ sq = NamedQueue('dispatch-submission-queue', host=config.core.redis.persistent.h
 submission = None
 
 
+class TemporaryFileData:
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+
 class SubmissionTask:
     """Dispatcher internal model for submissions"""
 
-    def __init__(self, submission, completed_queue, scheduler, datastore: AssemblylineDatastore, results=None,
-                 file_infos=None, file_tree=None, errors: Optional[Iterable[str]] = None):
+    def __init__(
+        self,
+        submission,
+        completed_queue,
+        scheduler,
+        datastore: AssemblylineDatastore,
+        config: Config,
+        results=None,
+        file_infos=None,
+        file_tree=None,
+        errors: Optional[Iterable[str]] = None,
+    ):
         self.submission: Submission = Submission(submission)
         submitter: Optional[User] = datastore.user.get_if_exists(self.submission.params.submitter)
         self.service_access_control: Optional[str] = None
@@ -43,6 +62,7 @@ class SubmissionTask:
             self.service_access_control = submitter.classification.value
 
         self.completed_queue = None
+
         if completed_queue:
             self.completed_queue = str(completed_queue)
 
@@ -81,9 +101,31 @@ class SubmissionTask:
                     recurse_tree(file_data['children'], depth + 1)
 
             recurse_tree(file_tree, 0)
+            sorted_file_depth = [(k, v) for k, v in sorted(self.file_depth.items(), key=lambda fd: fd[1])]
+        else:
+            sorted_file_depth = [(self.submission.files[0].sha256, 0)]
+
+        for sha256, depth in sorted_file_depth:
+            # populate temporary data to root level files
+            if depth == 0:
+                # Apply initial data parameter
+                temp_key_config = dict(config.submission.default_temporary_keys)
+                temp_key_config.update(config.submission.temporary_keys)
+                temporary_data = TemporaryFileData(sha256, config=temp_key_config)
+                self.temporary_data[sha256] = temporary_data
+                if self.submission.params.initial_data:
+                    try:
+                        for key, value in dict(json.loads(self.submission.params.initial_data)).items():
+                            if len(str(value)) > config.submission.max_temp_data_length:
+                                continue
+                            temporary_data.set_value(key, value)
+
+                    except (ValueError, TypeError):
+                        pass
 
         if results is not None:
             rescan = scheduler.expand_categories(self.submission.params.services.rescan)
+            result_keys = list(results.keys())
 
             # Replay the process of routing files for dispatcher internal state.
             for k, result in results.items():
@@ -98,24 +140,35 @@ class SubmissionTask:
                     self.forbid_for_children(sha256, service_name)
 
             # Replay the process of receiving results for dispatcher internal state
-            for k, result in results.items():
-                sha256, service, _ = k.split('.', 2)
-                if service not in rescan:
-                    extracted = result['response']['extracted']
-                    children: list[str] = [r['sha256'] for r in extracted]
-                    self.register_children(sha256, children)
-                    children_detail: list[tuple[str, str]] = [(r['sha256'], r['parent_relation']) for r in extracted]
-                    self.service_results[(sha256, service)] = ResultSummary(
-                        key=k, drop=result['drop_file'], score=result['result']['score'],
-                        children=children_detail, partial=result.get('partial', False))
+            # iterate through result based on file depth
+            for sha256, depth in sorted_file_depth:
+                results_to_process = list(filter(lambda k: sha256 in k, result_keys))
+                for result_key in results_to_process:
+                    result = results[result_key]
+                    sha256, service, _ = result_key.split(".", 2)
 
-                tags = Result(result).scored_tag_dict()
-                for key, tag in tags.items():
-                    if key in self.file_tags[sha256].keys():
-                        # Sum score of already known tags
-                        self.file_tags[sha256][key]['score'] += tag['score']
-                    else:
-                        self.file_tags[sha256][key] = tag
+                    if service not in rescan:
+                        extracted = result["response"]["extracted"]
+                        children: list[str] = [r["sha256"] for r in extracted]
+                        self.register_children(sha256, children)
+                        children_detail: list[tuple[str, str]] = [
+                            (r["sha256"], r["parent_relation"]) for r in extracted
+                        ]
+                        self.service_results[(sha256, service)] = ResultSummary(
+                            key=result_key,
+                            drop=result["drop_file"],
+                            score=result["result"]["score"],
+                            children=children_detail,
+                            partial=result.get("partial", False),
+                        )
+
+                    tags = Result(result).scored_tag_dict()
+                    for key, tag in tags.items():
+                        if key in self.file_tags[sha256].keys():
+                            # Sum score of already known tags
+                            self.file_tags[sha256][key]["score"] += tag["score"]
+                        else:
+                            self.file_tags[sha256][key] = tag
 
         if errors is not None:
             for e in errors:
@@ -126,131 +179,6 @@ class SubmissionTask:
     def sid(self) -> str:
         """Shortcut to read submission SID"""
         return self.submission.sid
-
-    def trace(self, event_type: str, sha256: Optional[str] = None,
-              service: Optional[str] = None, message: Optional[str] = None) -> None:
-        if self.submission.params.trace:
-            self.submission.tracing_events.append(TraceEvent({
-                'event_type': event_type,
-                'service': service,
-                'file': sha256,
-                'message': message,
-            }))
-
-    def forbid_for_children(self, sha256: str, service_name: str):
-        """Mark that children of a given file should not be routed to a service."""
-        try:
-            self._forbidden_services[sha256].add(service_name)
-        except KeyError:
-            self._forbidden_services[sha256] = {service_name}
-
-    def register_children(self, parent: str, children: list[str]):
-        """
-        Note which files extracted other files.
-        _parent_map is for dynamic recursion prevention
-        temporary_data is for cascading the temp data to children
-        """
-        parent_temp = self.temporary_data[parent]
-        for child in children:
-            if child not in self.temporary_data:
-                self.temporary_data[child] = parent_temp.new_file(child)
-            try:
-                self._parent_map[child].add(parent)
-            except KeyError:
-                self._parent_map[child] = {parent}
-
-    def all_ancestors(self, sha256: str) -> list[str]:
-        """Collect all the known ancestors of the given file within this submission."""
-        visited = set()
-        to_visit = [sha256]
-        while len(to_visit) > 0:
-            current = to_visit.pop()
-            for parent in self._parent_map.get(current, []):
-                if parent not in visited:
-                    visited.add(parent)
-                    to_visit.append(parent)
-        return list(visited)
-
-    def find_recursion_excluded_services(self, sha256: str) -> list[str]:
-        """
-        Return a list of services that should be excluded for the given file.
-
-        Note that this is computed dynamically from the parent map every time it is
-        called. This is to account for out of order result collection in unusual
-        circumstances like replay.
-        """
-        return list(set().union(*[
-            self._forbidden_services.get(parent, set())
-            for parent in self.all_ancestors(sha256)
-        ]))
-
-    def set_monitoring_entry(self, sha256: str, service_name: str, values: dict[str, Optional[str]]):
-        """A service with monitoring has dispatched, keep track of the conditions."""
-        self.monitoring[(sha256, service_name)] = MonitorTask(
-            service=service_name,
-            sha=sha256,
-            values=values,
-        )
-
-    def partial_result(self, sha256, service_name) -> bool:
-        """Note that a partial result has been recieved. If a dispatch was requested process that now."""
-        try:
-            entry = self.monitoring[(sha256, service_name)]
-        except KeyError:
-            return False
-
-        if entry.dispatch_needed:
-            self.redispatch_service(sha256, service_name)
-            return True
-        return False
-
-    def clear_monitoring_entry(self, sha256, service_name):
-        """A service has completed normally. If the service is monitoring clear out the record."""
-        # We have an incoming non-partial result, flush out any partial monitoring
-        self.monitoring.pop((sha256, service_name), None)
-        # If there is a partial result for this service flush that as well so we accept this new result
-        result = self.service_results.get((sha256, service_name))
-        if result and result.partial:
-            self.service_results.pop((sha256, service_name), None)
-
-    def temporary_data_changed(self, key: str) -> list[str]:
-        """Check all of the monitored tasks on that key for changes. Redispatch as needed."""
-        changed = []
-        for (sha256, service), entry in self.monitoring.items():
-            # Check if this key is actually being monitored by this entry
-            if key not in entry.values:
-                continue
-
-            # Get whatever values (if any) were provided on the previous dispatch of this service
-            value = self.temporary_data[sha256].read_key(key)
-            dispatched_value = entry.values.get(key)
-
-            if type(value) is not type(dispatched_value) or value != dispatched_value:
-                result = self.service_results.get((sha256, service))
-                if not result:
-                    # If the value has changed since the last dispatch but results haven't come in yet
-                    # mark this service to be disptached later. This will only happen if the service
-                    # returns partial results, if there are full results the entry will be cleared instead.
-                    entry.dispatch_needed = True
-                else:
-                    # If there are results and there is a monitoring entry, the result was partial
-                    # so redispatch it immediately. If there are not partial results the monitoring
-                    # entry will have been cleared.
-                    self.redispatch_service(sha256, service)
-                    changed.append(sha256)
-        return changed
-
-    def redispatch_service(self, sha256, service_name):
-        # Clear the result if its partial or an error
-        result = self.service_results.get((sha256, service_name))
-        if result and not result.partial:
-            return
-        self.service_results.pop((sha256, service_name), None)
-        self.service_errors.pop((sha256, service_name), None)
-        self.service_attempts[(sha256, service_name)] = 1
-
-        # Try to get the service to run again by reseting the schedule for that service
-        self.file_schedules.pop(sha256, None)
 
 
 @pytest.fixture(scope="module")
@@ -298,6 +226,7 @@ def test_resubmit(datastore, filestore, archivestore, login_session, scheduler, 
 # noinspection PyUnusedLocal
 @pytest.mark.parametrize("copy_sid", [True, False])
 def test_resubmit_profile(datastore, login_session, scheduler, copy_sid):
+    # Re-submit a submission with a profile selected (classification of submission should be kept)
     _, session, host = login_session
 
     sq.delete()
@@ -652,7 +581,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler, submissi
     for key, value in submission_profile_data.items():
         if key == "services":
             # Ensure selected services are confined to the set of service categories present in the test
-            assert selected_service_categories.issubset(set(submission['params']['services']['selected']))
+            assert selected_service_categories.issubset(set(submission['params']['services']['selected'])), f"{selected_service_categories} <= {set(submission['params']['services']['selected'])}"
 
             # Ensure Dynamic Analysis services are not selected
             assert submission_profile_data['services']['excluded'] == value['excluded'] == ['Dynamic Analysis']
@@ -677,7 +606,7 @@ def test_submit_submission_profile(datastore, login_session, scheduler, submissi
     data['params'] = {'services': {'selected': ['Dynamic Analysis']}}
     if not submission_customize:
         # Users without submission customization enabled cannot select services from the "Dynamic Analysis" category
-        with pytest.raises(APIError, match='User isn\'t allowed to select the \w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
+        with pytest.raises(APIError, match='User isn\'t allowed to select the \\w+ service of "Dynamic Analysis" in "Static Analysis" profile'):
             get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
     else:
         # Users with submission customization enabled can select services from any category they'd like
