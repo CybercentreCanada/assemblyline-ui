@@ -13,6 +13,23 @@ from typing import Dict, List
 from urllib.parse import urlparse
 
 import requests
+from flask import Request
+
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    CLASSIFICATION,
+    FILESTORE,
+    IDENTIFY,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRAFFIC,
+    TEMP_SUBMIT_DIR,
+    config,
+    metadata_validator,
+)
+from assemblyline_ui.helper.service import ui_to_submission_params
+
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import (
@@ -30,22 +47,6 @@ from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.user_settings import DEFAULT_SUBMISSION_PROFILE_SETTINGS
-from flask import Request
-
-from assemblyline_ui.config import (
-    ARCHIVESTORE,
-    CLASSIFICATION,
-    FILESTORE,
-    IDENTIFY,
-    SERVICE_LIST,
-    STORAGE,
-    SUBMISSION_PROFILES,
-    SUBMISSION_TRAFFIC,
-    TEMP_SUBMIT_DIR,
-    config,
-    metadata_validator,
-)
-from assemblyline_ui.helper.service import ui_to_submission_params
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -70,8 +71,8 @@ except socket.gaierror:
 # download functions
 class FileTooBigException(Exception):
     def __init__(self, file_size, *args):
-        super().__init__(msg=f"File too big to be scanned ({file_size} > {config.submission.max_file_size}).", *args)
-    pass
+        super().__init__(f"File too big to be scanned ({file_size} > {config.submission.max_file_size}).", *args)
+
 
 class InvalidUrlException(Exception):
     pass
@@ -79,6 +80,7 @@ class InvalidUrlException(Exception):
 
 class ForbiddenLocation(Exception):
     pass
+
 
 def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: dict) -> dict:
     validated_profile = profile.params.as_primitives(strip_null=True)
