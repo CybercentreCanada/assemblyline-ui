@@ -122,9 +122,6 @@ def test_add_user(datastore, login_session):
 
     u.uname = "TEST_ADD"
 
-    # do not add apikeys from this endpoint.
-    u.apikeys = {}
-
     resp = get_api_data(session, f"{host}/api/v4/user/{u.uname}/", method="PUT", data=json.dumps(u.as_primitives()))
     assert resp['success']
 
