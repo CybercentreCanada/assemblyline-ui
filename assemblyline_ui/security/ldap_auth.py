@@ -38,11 +38,6 @@ class BasicLDAPWrapper(object):
         self.group_lookup_with_uid = ldap_config.group_lookup_with_uid
         self.bind_user = ldap_config.bind_user
         self.bind_pass = ldap_config.bind_pass
-        self.admin_dn = ldap_config.admin_dn
-        self.sm_dn = ldap_config.signature_manager_dn
-        self.si_dn = ldap_config.signature_importer_dn
-
-        self.classification_mappings = ldap_config.classification_mappings
 
         self.cache = {}
         self.get_obj_cache = {}
@@ -62,38 +57,6 @@ class BasicLDAPWrapper(object):
         group_list = [x[0] for x in self.get_object(self.group_lookup % group_user, ldap_server)["ldap"]]
         group_list.append(dn)
         return group_list
-
-    def get_user_types(self, group_dn_list):
-        user_type = []
-
-        if self.admin_dn in group_dn_list:
-            user_type.append('admin')
-        elif self.sm_dn in group_dn_list:
-            user_type.append('signature_manager')
-        else:
-            user_type.append('user')
-
-        if self.si_dn in group_dn_list:
-            user_type.append('signature_importer')
-
-        return user_type
-
-    def get_user_classification(self, group_dn_list):
-        """
-        Extend the users classification information with the configured group information
-
-        NB: This is not fully implemented at this point
-
-        :param group_dn_list: list of DNs the user is member of
-        :return:
-        """
-
-        ret = CLASSIFICATION.UNRESTRICTED
-        for group_dn in group_dn_list:
-            if group_dn in self.classification_mappings:
-                ret = CLASSIFICATION.build_user_classification(ret, self.classification_mappings[group_dn])
-
-        return ret
 
     def get_object(self, ldap_object, ldap_server=None):
         cur_time = int(time.time())
@@ -148,14 +111,14 @@ class BasicLDAPWrapper(object):
                 details['groups'] = self.get_group_list(user, dn, ldap_server=ldap_server)
 
                 # Generate user details based off auto-properties configuration
-                access, user_type, roles, organization, groups, remove_roles, quotas, classification, default_metadata = process_autoproperties(config.auth.ldap.auto_properties, details, self.get_user_classification(details['groups']))
+                access, user_type, roles, organization, groups, remove_roles, quotas, classification, default_metadata = process_autoproperties(config.auth.ldap.auto_properties, details, CLASSIFICATION.UNRESTRICTED)
 
                 # if not user type was assigned
                 if not user_type:
                     # if also no roles were assigned
                     if not roles:
                         # Set the default user type
-                        user_type = self.get_user_types(details['groups'])
+                        user_type = ['user']
                     else:
                         # Because roles were assigned set user type to custom
                         user_type = ['custom']
