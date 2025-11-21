@@ -2,11 +2,8 @@ import json
 import random
 
 import pytest
-from assemblyline_ui.helper.user import load_user_settings
-from assemblyline.common.security import verify_password
-from conftest import APIError, get_api_data
-
 from assemblyline.common.forge import get_classification
+from assemblyline.common.security import verify_password
 from assemblyline.odm.models.apikey import Apikey, get_apikey_id
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
@@ -17,6 +14,8 @@ from assemblyline.odm.models.user_settings import (
 )
 from assemblyline.odm.random_data import create_users, wipe_users
 from assemblyline.odm.randomizer import random_model_obj
+from assemblyline_ui.helper.user import load_user_settings
+from conftest import APIError, get_api_data
 
 CLASSIFICATION = get_classification()
 AVATAR = "AVATAR!"
@@ -296,7 +295,7 @@ def test_set_user(datastore, login_session):
     datastore.user.commit()
 
     new_user = datastore.user.get(username, as_obj=False)
-    for k in ['apikeys', 'otp_sk', 'password', 'security_tokens']:
+    for k in ['otp_sk', 'password', 'security_tokens']:
         u.pop(k)
         new_user.pop(k)
 
@@ -400,7 +399,7 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         if 'submission_customize' not in user['roles']:
             user['roles'].append('submission_customize')
     else:
-        # Users that aren't allow to customize submissions shouldn't be able to customize 
+        # Users that aren't allow to customize submissions shouldn't be able to customize
         # submission profiles parameters if the configuration doesn't allow it
         datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'submission_customize')])
         if 'submission_customize' in user['roles']:
