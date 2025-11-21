@@ -13,23 +13,6 @@ from typing import Dict, List
 from urllib.parse import urlparse
 
 import requests
-from flask import Request
-
-from assemblyline_ui.config import (
-    ARCHIVESTORE,
-    CLASSIFICATION,
-    FILESTORE,
-    IDENTIFY,
-    SERVICE_LIST,
-    STORAGE,
-    SUBMISSION_PROFILES,
-    SUBMISSION_TRAFFIC,
-    TEMP_SUBMIT_DIR,
-    config,
-    metadata_validator,
-)
-from assemblyline_ui.helper.service import ui_to_submission_params
-
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.codec import decode_file
 from assemblyline.common.dict_utils import (
@@ -47,6 +30,22 @@ from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.user_settings import DEFAULT_SUBMISSION_PROFILE_SETTINGS
+from flask import Request
+
+from assemblyline_ui.config import (
+    ARCHIVESTORE,
+    CLASSIFICATION,
+    FILESTORE,
+    IDENTIFY,
+    SERVICE_LIST,
+    STORAGE,
+    SUBMISSION_PROFILES,
+    SUBMISSION_TRAFFIC,
+    TEMP_SUBMIT_DIR,
+    config,
+    metadata_validator,
+)
+from assemblyline_ui.helper.service import ui_to_submission_params
 
 # Baseline fetch methods
 FETCH_METHODS = set(list(HASH_PATTERN_MAP.keys()) + ['url'])
@@ -380,21 +379,11 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
             # No external sources specified and the file being asked for doesn't exist in the system
             raise FileNotFoundError(f"{method.upper()} does not exist in Assemblyline")
         else:
-            if method == "sha256":
-                # Legacy support: Merge the sources from `sha256_sources` + `file_sources` that support SHA256 fetching
-                available_sources = [x for x in config.submission.sha256_sources
-                                    if CLASSIFICATION.is_accessible(user['classification'], x.classification) and
-                                    x.name in default_external_sources] + \
-                                    [x for x in config.submission.file_sources
-                                    if "sha256" in x.hash_types and
-                                    CLASSIFICATION.is_accessible(user['classification'], x.classification)
-                                    and x.name in default_external_sources]
-            else:
-                # Otherwise go based on the `file_sources` configuration
-                available_sources = [x for x in config.submission.file_sources
-                                    if method in x.hash_types and
-                                    CLASSIFICATION.is_accessible(user['classification'], x.classification)
-                                    and x.name in default_external_sources]
+            # Gather the list of available sources for this fetch method
+            available_sources = [x for x in config.submission.file_sources
+                                if method in x.hash_types and
+                                CLASSIFICATION.is_accessible(user['classification'], x.classification)
+                                and x.name in default_external_sources]
 
             for source in available_sources:
                 # Building final URL and data block
