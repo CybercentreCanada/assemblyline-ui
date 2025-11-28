@@ -64,7 +64,7 @@ def assistant_conversation(**kwargs):
 
     # Ensure AI integration with Assemblyline is not abused by enforcing the presence of a system message
     first_message = messages[0]
-    if first_message['role'] != 'system' and first_message['content'] != AI_AGENT.config.ui.ai_backends.function_params.assistant.system_message:
+    if first_message['role'] != 'system' or first_message['content'] != AI_AGENT.config.ui.ai_backends.function_params.assistant.system_message:
         # First message must be a system prompt to ensure proper context
         # Sanitize the rest of the conversation to ensure there isn't anything overriding the system prompt
         messages = [{
