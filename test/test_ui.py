@@ -2,7 +2,6 @@ import hashlib
 import json
 import math
 import random
-from datetime import datetime
 from io import BytesIO
 
 import pytest
@@ -18,6 +17,7 @@ from assemblyline.odm.random_data import (
 )
 from assemblyline.odm.randomizer import get_random_phrase
 from conftest import APIError, get_api_data
+from dateutil import parser
 
 
 @pytest.fixture(scope="module")
@@ -141,7 +141,7 @@ def test_ui_bundle_submission(datastore, login_session):
     assert imported_submission['results'] is not None
 
     # Check that the expiry timestamp has been extended
-    assert datetime.fromisoformat(imported_submission['expiry_ts']) > datetime.fromisoformat(submission['expiry_ts'])
+    assert parser.parse(imported_submission['expiry_ts']) > parser.parse(submission['expiry_ts'])
 
 
 def test_ui_submission_parameter(datastore, login_session):
