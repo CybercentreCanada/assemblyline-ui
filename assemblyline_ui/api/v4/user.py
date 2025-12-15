@@ -198,7 +198,7 @@ def who_am_i(**kwargs):
     # System configuration
     user_data['c12nDef'] = classification_definition
     user_data['classification_aliases'] = {k: v for k, v in CLASSIFICATION_ALIASES.items().items()
-                                           if k in user_data['classification'] or user_data['is_admin']}
+                                           if k in user_data['classification'] or user_data['is_admin'] or CLASSIFICATION.is_accessible(user_data['classification'], CLASSIFICATION.RESTRICTED)}
 
     # create tag-to-source lookup mapping
     external_source_tags = {}
