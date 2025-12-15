@@ -4,8 +4,6 @@ import re
 import subprocess
 import tempfile
 
-from flask import request
-
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
@@ -15,6 +13,8 @@ from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.user_settings import ENCODINGS as FILE_DOWNLOAD_ENCODINGS
+from flask import request
+
 from assemblyline_ui.api.base import (
     api_login,
     make_api_response,
@@ -48,6 +48,27 @@ file_api._doc = "Perform operations on files"
 API_MAX_SIZE = 1 * 1024 * 1024
 
 
+def retrieve_file_content(file_obj: dict) -> bytes:
+    """ Retrieve file content from filestore or archivestore based on availability and file metadata."""
+    data = None
+    try:
+        if file_obj.get('from_archive'):
+            # Try to download from archive first
+            if ARCHIVESTORE is not None and ARCHIVESTORE.exists(file_obj['sha256']):
+                data = ARCHIVESTORE.get(file_obj['sha256'])
+
+            # If for some reason the file is not in archive, try filestore
+            elif FILESTORE.exists(file_obj['sha256']):
+                data = FILESTORE.get(file_obj['sha256'])
+
+        elif FILESTORE.exists(file_obj['sha256']):
+            # Try to download from filestore
+            data = FILESTORE.get(file_obj['sha256'])
+    except FileStoreException:
+        pass
+
+    return data
+
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
 @api_login(require_role=[ROLES.file_detail])
 def get_file_ascii(sha256, **kwargs):
@@ -71,30 +92,23 @@ def get_file_ascii(sha256, **kwargs):
     """
 
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = None
+    if ROLES.archive_download in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
 
-    if not file_obj or not FILESTORE.exists(sha256):
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
+
+    if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        try:
-            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
-        except (FileStoreException, TypeError):
-            data = None
-
-        # Try to download from archive
-        if not data and \
-                ARCHIVESTORE is not None and \
-                ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles'] and \
-                ARCHIVESTORE.exists(sha256):
-            try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
-                data = None
-
+        data = retrieve_file_content(file_obj)
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
+        else:
+            # Trim data to API max size
+            data = data[:API_MAX_SIZE]
 
         return make_api_response({
             "content": data.translate(FILTER_ASCII).decode(),
@@ -129,7 +143,12 @@ def download_file(sha256, **kwargs):
     <THE FILE BINARY ENCODED IN SPECIFIED FORMAT>
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = None
+    if ROLES.archive_download in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
@@ -145,7 +164,7 @@ def download_file(sha256, **kwargs):
         submission = {}
         file_metadata = {}
         if sid is not None:
-            submission = STORAGE.submission.get(sid, as_obj=False)
+            submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
             if submission is None:
                 submission = {}
 
@@ -185,20 +204,21 @@ def download_file(sha256, **kwargs):
             _, download_path = tempfile.mkstemp()
 
         try:
+            downloaded_from = None
             try:
-                downloaded_from = FILESTORE.download(sha256, download_path)
-            except FileStoreException:
-                downloaded_from = None
+                if file_obj.get('from_archive'):
+                    # Try to download from archive first
+                    if ARCHIVESTORE is not None and ARCHIVESTORE.exists(sha256):
+                        downloaded_from = ARCHIVESTORE.download(sha256, download_path)
 
-            # Try to download from archive
-            if not downloaded_from and \
-                    ARCHIVESTORE is not None and \
-                    ARCHIVESTORE != FILESTORE and \
-                    ROLES.archive_download in user['roles']:
-                try:
-                    downloaded_from = ARCHIVESTORE.download(sha256, download_path)
-                except FileStoreException:
-                    downloaded_from = None
+                    # If for some reason the file is not in archive, try filestore
+                    elif FILESTORE.exists(sha256):
+                        downloaded_from = FILESTORE.download(sha256, download_path)
+                else:
+                    # Try to download from filestore
+                    downloaded_from = FILESTORE.download(sha256, download_path)
+            except FileStoreException:
+                pass
 
             if not downloaded_from:
                 return make_api_response({}, "The file was not found in the system.", 404)
@@ -379,7 +399,12 @@ def summarize_code_snippet(sha256, **kwargs):
         ai_summary = CACHE.get(cache_key)
 
     if not ai_summary:
-        file_obj = STORAGE.file.get(sha256, as_obj=False)
+        index_type = None
+        if ROLES.archive_download in user['roles']:
+            # User is allowed to access archive, so we check both hot and archive
+            index_type = Index.HOT_AND_ARCHIVE
+
+        file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
         if not file_obj:
             return make_api_response({}, "The file was not found in the system.", 404)
@@ -392,22 +417,7 @@ def summarize_code_snippet(sha256, **kwargs):
         #     return make_api_response({}, "This file is too big to be seen through this API.", 403)
 
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-            try:
-                data = FILESTORE.get(sha256)
-            except (FileStoreException, TypeError):
-                data = None
-
-            # Try to download from archive
-            if not data and \
-                    ARCHIVESTORE is not None and \
-                    ARCHIVESTORE != FILESTORE and \
-                    ROLES.archive_download in user['roles'] and \
-                    ARCHIVESTORE.exists(sha256):
-                try:
-                    data = ARCHIVESTORE.get(sha256)
-                except FileStoreException:
-                    data = None
-
+            data = retrieve_file_content(file_obj)
             if not data:
                 return make_api_response({}, "The file was not found in the system.", 404)
 
@@ -450,33 +460,30 @@ def get_file_hex(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = None
+    if ROLES.archive_download in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     bytes_only = request.args.get('bytes_only', 'false').lower() in ['true', '']
     length = int(request.args.get('length', '16'))
 
-    if not file_obj or not FILESTORE.exists(sha256):
+    if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
+        data = retrieve_file_content(file_obj)
         try:
             data = FILESTORE.get(sha256)[:API_MAX_SIZE]
         except FileStoreException:
             data = None
 
-        # Try to download from archive
-        if not data and \
-                ARCHIVESTORE is not None and \
-                ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles'] and \
-                ARCHIVESTORE.exists(sha256):
-            try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
-                data = None
-
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
+        else:
+            # Trim data to API max size
+            data = data[:API_MAX_SIZE]
 
         if bytes_only:
             return make_api_response({
@@ -514,7 +521,11 @@ def get_file_image_datastream(sha256, **kwargs):
     data:image/png;base64,...
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = None
+    if ROLES.archive_download in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
@@ -523,22 +534,7 @@ def get_file_image_datastream(sha256, **kwargs):
         return make_api_response({}, "This file is not allowed to be downloaded as a datastream.", 403)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        try:
-            data = FILESTORE.get(sha256)
-        except (FileStoreException, TypeError):
-            data = None
-
-        # Try to download from archive
-        if not data and \
-                ARCHIVESTORE is not None and \
-                ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles'] and \
-                ARCHIVESTORE.exists(sha256):
-            try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
-                data = None
-
+        data = retrieve_file_content(file_obj)
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
 
@@ -570,30 +566,23 @@ def get_file_strings(sha256, **kwargs):
     """
     user = kwargs['user']
     hlen = request.args.get('len', "6")
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = None
+    if ROLES.archive_download in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
 
-    if not file_obj or not FILESTORE.exists(sha256):
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
+
+    if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        try:
-            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
-        except (FileStoreException, TypeError):
-            data = None
-
-        # Try to download from archive
-        if not data and \
-                ARCHIVESTORE is not None and \
-                ARCHIVESTORE != FILESTORE and \
-                ROLES.archive_download in user['roles'] and \
-                ARCHIVESTORE.exists(sha256):
-            try:
-                data = ARCHIVESTORE.get(sha256)
-            except FileStoreException:
-                data = None
-
+        data = retrieve_file_content(file_obj)
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
+        else:
+            # Trim data to API max size
+            data = data[:API_MAX_SIZE]
 
         # Ascii strings (we use decode with replace on to create delimiters)
         pattern = "[\x20-\x7e]{%s,}" % hlen
@@ -741,11 +730,9 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-
+    index_type = None
     if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
         index_type = Index.ARCHIVE
-    else:
-        index_type = None
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 

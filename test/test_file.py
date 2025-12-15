@@ -1,26 +1,26 @@
 import random
+from base64 import b64decode
+from io import BytesIO
 
 import pytest
-
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.tagging import tag_list_to_dict
 from assemblyline.odm.models.file import File
 from assemblyline.odm.models.result import Result
-from assemblyline.odm.randomizer import random_model_obj
 from assemblyline.odm.random_data import create_users, wipe_users
-
-from conftest import get_api_data
+from assemblyline.odm.randomizer import random_model_obj
 from cart import unpack_stream
-from io import BytesIO
+from conftest import get_api_data
 
 NUM_FILES = 10
 test_file = None
 file_res_list = []
+file_list = []
 
 
 @pytest.fixture(scope="module")
 def datastore(datastore_connection, filestore):
-    global test_file, file_res_list
+    global test_file, file_res_list, file_list
     ds = datastore_connection
     try:
         create_users(ds)
@@ -30,6 +30,7 @@ def datastore(datastore_connection, filestore):
             if test_file is None:
                 test_file = f
                 test_file.from_archive = False
+            file_list.append(f.as_primitives())
             ds.file.save(f.sha256, f)
 
             filestore.put(f.sha256, f.sha256)
@@ -40,6 +41,16 @@ def datastore(datastore_connection, filestore):
                 r.sha256 = f.sha256
                 file_res_list.append(r.build_key())
                 ds.result.save(r.build_key(), r)
+
+        # Add an image file for testing file_image_datastream
+        for from_archive in [True, False]:
+            f = random_model_obj(File)
+            f.from_archive = from_archive
+            f.type = 'image/png'
+            f.is_section_image = True
+            file_list.append(f.as_primitives())
+            ds.file.save(f.sha256, f)
+            filestore.put(f.sha256, f.sha256)
 
         ds.file.commit()
         ds.result.commit()
@@ -53,10 +64,11 @@ def datastore(datastore_connection, filestore):
 
 
 # noinspection PyUnusedLocal
-def test_download_cart(datastore, login_session):
+@pytest.mark.parametrize("from_archive", [True, False])
+def test_download_cart(datastore, login_session, from_archive):
     _, session, host = login_session
 
-    rand_hash = random.choice(file_res_list)[:64]
+    rand_hash = random.choice([file for file in file_list if file['from_archive'] == from_archive])['sha256']
     resp = get_api_data(session, f"{host}/api/v4/file/download/{rand_hash}/?encoding=cart", raw=True)
     assert resp.startswith(b'CART')
 
@@ -69,19 +81,21 @@ def test_download_cart(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_download_raw(datastore, login_session):
+@pytest.mark.parametrize("from_archive", [True, False])
+def test_download_raw(datastore, login_session, from_archive):
     _, session, host = login_session
 
-    rand_hash = random.choice(file_res_list)[:64]
+    rand_hash = random.choice([file for file in file_list if file['from_archive'] == from_archive])['sha256']
     resp = get_api_data(session, f"{host}/api/v4/file/download/{rand_hash}/?encoding=raw", raw=True)
     assert resp.decode() == rand_hash
 
 
 # noinspection PyUnusedLocal
-def test_ascii(datastore, login_session):
+@pytest.mark.parametrize("from_archive", [True, False])
+def test_ascii(datastore, login_session, from_archive):
     _, session, host = login_session
 
-    rand_hash = random.choice(file_res_list)[:64]
+    rand_hash = random.choice([file for file in file_list if file['from_archive'] == from_archive])['sha256']
     resp = get_api_data(session, f"{host}/api/v4/file/ascii/{rand_hash}/")
     assert resp == {"content": rand_hash, "truncated": False}
 
@@ -97,11 +111,20 @@ def test_children(datastore, login_session):
         assert 'name' in child and 'sha256' in child and len(child) == 2
 
 
-# noinspection PyUnusedLocal
-def test_hex(datastore, login_session):
+@pytest.mark.parametrize("from_archive", [True, False])
+def test_file_image_datastream(datastore, login_session, from_archive):
     _, session, host = login_session
 
-    rand_hash = random.choice(file_res_list)[:64]
+    rand_hash = random.choice([file for file in file_list if file['from_archive'] == from_archive and file['type'].startswith('image')])['sha256']
+    resp = get_api_data(session, f"{host}/api/v4/file/image/{rand_hash}/")
+    assert b64decode(resp.replace('data:image/png;base64,', '')).decode() == rand_hash
+
+# noinspection PyUnusedLocal
+@pytest.mark.parametrize("from_archive", [True, False])
+def test_hex(datastore, login_session, from_archive):
+    _, session, host = login_session
+
+    rand_hash = random.choice([file for file in file_list if file['from_archive'] == from_archive])['sha256']
     resp = get_api_data(session, f"{host}/api/v4/file/hex/{rand_hash}/")
     assert resp["content"].startswith("00000000:") and len(resp["content"]) == 311
 
@@ -153,9 +176,10 @@ def test_score(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_strings(datastore, login_session):
+@pytest.mark.parametrize("from_archive", [True, False])
+def test_strings(datastore, login_session, from_archive):
     _, session, host = login_session
 
-    rand_hash = random.choice(file_res_list)[:64]
+    rand_hash = random.choice([file for file in file_list if file['from_archive'] == from_archive])['sha256']
     resp = get_api_data(session, f"{host}/api/v4/file/strings/{rand_hash}/")
     assert resp == {"content": rand_hash, "truncated": False}
