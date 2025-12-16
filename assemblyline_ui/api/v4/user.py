@@ -345,7 +345,7 @@ def who_am_i(**kwargs):
             "types": [t for t in USER_TYPES if t != 'custom']
         }
     }
-    user_data['indexes'] = list_all_fields(user_data)
+    user_data['indexes'] = list_all_fields(user_data, include_description=True)
     user_data['settings'] = load_user_settings(kwargs['user'])
 
     # Set any specific metadata defaults from the user settings
