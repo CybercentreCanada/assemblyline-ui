@@ -474,10 +474,6 @@ def get_file_hex(sha256, **kwargs):
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         data = retrieve_file_content(file_obj)
-        try:
-            data = FILESTORE.get(sha256)[:API_MAX_SIZE]
-        except FileStoreException:
-            data = None
 
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
