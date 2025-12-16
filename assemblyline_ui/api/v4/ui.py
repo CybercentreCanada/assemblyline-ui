@@ -3,16 +3,16 @@
 
 import os
 
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-from cart import get_metadata_only, is_cart
-from flask import request
-
 from assemblyline.common import forge
 from assemblyline.common.bundling import import_bundle
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from cart import get_metadata_only, is_cart
+from flask import request
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import (
     FILESTORE,
@@ -249,7 +249,8 @@ def start_ui_submission(ui_sid, **kwargs):
                     meta = get_metadata_only(submitted_file)
                     if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
                         try:
-                            submission = import_bundle(submitted_file, allow_incomplete=True, identify=IDENTIFY)
+                            submission = import_bundle(submitted_file, allow_incomplete=True, identify=IDENTIFY,
+                                                       dtl=ui_params.get('ttl'))
                         except Exception as e:
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})
