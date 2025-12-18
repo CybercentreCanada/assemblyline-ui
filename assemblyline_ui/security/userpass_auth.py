@@ -2,7 +2,7 @@ from ipaddress import ip_address, ip_network
 
 import elasticapm
 from assemblyline.common.security import verify_password
-from flask import request, session
+from flask import request
 
 from assemblyline_ui.config import config
 from assemblyline_ui.http_exceptions import AuthenticationException
@@ -14,7 +14,7 @@ def validate_userpass(username, password, storage):
     # You can overload this to pass username/password to an LDAP server for exemple
     if config.auth.internal.enabled and username and password:
         # Check if user is allowed to use internal auth from its IP
-        ip = ip_address(session.get("ip", request.remote_addr))
+        ip = ip_address(request.headers.get("X-Forwarded-For", request.remote_addr))
         if config.auth.internal.ip_filter and not any(ip in ip_network(cidr) for cidr in config.auth.internal.ip_filter):
             raise AuthenticationException(f"Access from IP {ip} is not allowed for username/password login")
 
