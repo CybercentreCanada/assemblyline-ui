@@ -37,7 +37,7 @@ def handle_401(e):
     else:
         msg = str(e)
 
-    ip = ip_address(session.get("ip", request.remote_addr))
+    ip = ip_address(request.headers.get("X-Forwarded-For", request.remote_addr))
     data = {}
 
     # Check which OAuth providers are available based on IP filters
