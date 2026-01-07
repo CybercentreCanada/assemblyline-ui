@@ -5,7 +5,7 @@ import elasticapm
 import jwt
 import requests
 from assemblyline.odm.models.user import load_roles_form_acls
-from flask import request, session
+from flask import request
 
 from assemblyline_ui.config import CACHE, STORAGE, config, get_token_store
 from assemblyline_ui.helper.oauth import get_profile_identifiers
@@ -61,7 +61,7 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False):
             raise AuthenticationException(f"oAuth provider '{oauth_provider}' does not have a jwks_uri configured.")
 
         # Check if user is allowed to use this OAuth provider from its IP
-        ip = ip_address(session.get("ip", request.remote_addr))
+        ip = ip_address(request.headers.get("X-Forwarded-For", request.remote_addr))
         if oauth_provider_config.ip_filter and not any(ip in ip_network(cidr) for cidr in oauth_provider_config.ip_filter):
             raise AuthenticationException(f"Access from IP {ip} is not allowed for oAuth provider: {oauth_provider}")
 
