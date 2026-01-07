@@ -33,7 +33,7 @@ def process_autoproperties(auto_properties, profile_data, default_classification
         field_data = profile_data.get(auto_prop.field, None)
         if not isinstance(field_data, list):
             field_data = [field_data]
-        field_data = [safe_str(x) for x in field_data]
+        field_data = [safe_str(x, force_str=True) for x in field_data]
 
         # Analyse field values
         for value in field_data:
