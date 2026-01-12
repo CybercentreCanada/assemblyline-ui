@@ -3,13 +3,13 @@ import shutil
 import tempfile
 from typing import Tuple, Union
 
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
-from flask import request
-
 from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
+from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from flask import request
+
 from assemblyline_ui.api.base import (
     Response,
     api_login,
@@ -35,6 +35,7 @@ from assemblyline_ui.helper.submission import (
 from assemblyline_ui.helper.user import (
     check_submission_quota,
     decrement_submission_quota,
+    load_user_settings,
 )
 
 SUB_API = 'submit'
@@ -127,8 +128,8 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
         # Preserve the classification of the original submission
         classification = submission_params['classification']
 
-        submission_profiles = (STORAGE.user_settings.get(user['uname'], as_obj=False) or {}).get('submission_profiles', {})
-        submission_params = update_submission_parameters(submission_params, user, submission_profiles)
+        user_settings = load_user_settings(user)
+        submission_params = update_submission_parameters(submission_params, user, user_settings)
         submission_params['description'] = f"{description_prefix} with {SUBMISSION_PROFILES[profile].display_name}"
         submission_params['classification'] = classification
 

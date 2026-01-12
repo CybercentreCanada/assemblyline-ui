@@ -317,6 +317,13 @@ def get_dynamic_classification(current_c12n, user_info):
 def get_default_user_settings(user: dict) -> dict:
     settings = DEFAULT_USER_PROFILE_SETTINGS
     settings.update({"default_zip_password": DEFAULT_ZIP_PASSWORD, "download_encoding": DOWNLOAD_ENCODING})
+
+    organization = user.get('organization', None)
+    # Check to see if organization is recognized by the classification engine
+    if organization and (Classification.groups_aliases.get(organization) or Classification.dynamic_groups):
+        # If so, set the default classification to REL TO <organization>
+        settings['default_classification'] = f"{Classification.UNRESTRICTED}//REL TO {organization}"
+
     return UserSettings(settings).as_primitives()
 
 
@@ -363,8 +370,7 @@ def load_user_settings(user):
     settings['service_spec'] = get_default_service_spec(srv_list, user_classfication)
     settings['services'] = get_default_service_list(srv_list, user_classfication)
     settings['submission_profiles'] = get_default_submission_profiles(settings['submission_profiles'],
-                                                                      user_classfication,
-                                                                      user.get('organization'))
+                                                                      user_classfication)
 
 
     # Check if the user has a preferred submission profile

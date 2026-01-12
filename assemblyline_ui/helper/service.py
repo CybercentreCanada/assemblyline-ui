@@ -19,15 +19,10 @@ USER_SETTINGS_FIELDS = list(UserSettings.fields().keys())
 SUBMISSION_PARAM_FIELDS = list(SubmissionParams.fields().keys())
 
 
-def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED,
-                                    organization=None):
+def get_default_submission_profiles(user_default_values={}, classification=CLASSIFICATION.UNRESTRICTED):
     out = {}
 
     default_submission_profile_settings = deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS)
-    # Check to see if organization is recognized by the classification engine
-    if organization and (CLASSIFICATION.groups_aliases.get(organization) or CLASSIFICATION.dynamic_groups):
-        # If so, set the default classification to REL TO <organization>
-        default_submission_profile_settings['classification'] = f"{CLASSIFICATION.UNRESTRICTED}//REL TO {organization}"
 
     if 'default' in user_default_values:
         out['default'] = deepcopy(recursive_update(
@@ -40,10 +35,6 @@ def get_default_submission_profiles(user_default_values={}, classification=CLASS
 
     for profile in SUBMISSION_PROFILES.values():
         default_submission_profile_settings = deepcopy(DEFAULT_SUBMISSION_PROFILE_SETTINGS)
-        # Check to see if organization is recognized by the classification engine
-        if organization and (CLASSIFICATION.groups_aliases.get(organization) or CLASSIFICATION.dynamic_groups):
-            # If so, set the default classification to REL TO <organization>
-            default_submission_profile_settings['classification'] = f"{CLASSIFICATION.UNRESTRICTED}//REL TO {organization}"
 
         if CLASSIFICATION.is_accessible(classification, profile.classification):
             profile_values = deepcopy(recursive_update(default_submission_profile_settings,

@@ -195,7 +195,7 @@ def init_submission(request: Request, user: Dict, endpoint: str):
         default_external_sources = data.get('params', {}).pop('default_external_sources', []) or default_external_sources
 
     # Validate submission parameters provided in data block
-    s_params = update_submission_parameters(data, user, user_settings.get('submission_profiles', {}))
+    s_params = update_submission_parameters(data, user, user_settings)
 
     # Check the validity of some parameters relative to system configurations
     if config.submission.max_dtl > 0:
@@ -482,7 +482,8 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
 
     return found, fileinfo, name
 
-def update_submission_parameters(data: dict, user: dict, user_submission_profiles: dict) -> dict:
+def update_submission_parameters(data: dict, user: dict, user_settings: dict) -> dict:
+    user_submission_profiles = user_settings.get('submission_profiles', {})
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))
     submission_customize = ROLES.submission_customize in user['roles']
 
