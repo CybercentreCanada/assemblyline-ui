@@ -7,6 +7,8 @@ from urllib.parse import quote
 
 import elasticapm
 import jwt
+from assemblyline.common.str_utils import safe_str
+from assemblyline.odm.models.user import ROLES
 from flask import (
     Blueprint,
     Response,
@@ -20,8 +22,6 @@ from flask import (
     session as flask_session,
 )
 
-from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.config import (
     AUDIT_LOG,
     AUDIT_LOGIN,
@@ -51,6 +51,12 @@ def make_subapi_blueprint(name, api_version=4):
     """ Create a flask Blueprint for a subapi in a standard way. """
     return Blueprint(name, name, url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
 
+def get_request_ip():
+    ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if "," in ip_addr:
+        # Extract the first IP in case of multiple proxies from X-Forwarded-For
+        ip_addr = ip_addr.split(",")[0].strip()
+    return ip_addr
 
 ####################################
 # API Helper func and decorators
@@ -69,7 +75,7 @@ class api_login(BaseSecurityRenderer):
         uname = request.environ.get('HTTP_X_USER', None)
 
         if apikey is not None and uname is not None:
-            ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+            ip = get_request_ip()
             with elasticapm.capture_span(name="auto_auth_check", span_type="authentication"):
                 try:
                     # TODO: apikey_handler is slow to verify the password (bcrypt's fault)
@@ -153,7 +159,7 @@ class api_login(BaseSecurityRenderer):
                 # Impersonate
                 authorization = request.environ.get("HTTP_AUTHORIZATION", None)
                 if authorization:
-                    ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+                    ip = get_request_ip()
                     impersonator = logged_in_uname
                     bearer_token = authorization.split(" ")[-1]
                     token_provider = request.environ.get("HTTP_X_TOKEN_PROVIDER", None)

@@ -3,11 +3,10 @@ import functools
 import logging
 import threading
 
-from flask import request, session
-from flask_socketio import Namespace, disconnect
-
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.hash import ExpiringHash
+from flask import request, session
+from flask_socketio import Namespace, disconnect
 
 classification = forge.get_classification()
 config = forge.get_config()
@@ -81,6 +80,11 @@ def get_request_id(request_p):
 
 def get_user_info(request_p, session_p):
     src_ip = request_p.headers.get("X-Forwarded-For", request_p.remote_addr)
+
+    if "," in src_ip:
+        # Extract the first IP in case of multiple proxies from X-Forwarded-For
+        src_ip = src_ip.split(",")[0].strip()
+
     sid = get_request_id(request_p)
     uname = None
     session_id = session_p.get("session_id", None)

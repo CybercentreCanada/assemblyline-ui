@@ -9,8 +9,8 @@ import ldap
 import ldap.filter
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import load_roles
-from flask import request
 
+from assemblyline_ui.api.base import get_request_ip
 from assemblyline_ui.config import CLASSIFICATION, config
 from assemblyline_ui.helper.user import (
     get_default_user_quotas,
@@ -213,7 +213,7 @@ def validate_ldapuser(username, password, storage):
         ldap_obj = BasicLDAPWrapper(config.auth.ldap)
 
         # Check if IP is allowed to use LDAP auth
-        ip = ip_address(request.headers.get("X-Forwarded-For", request.remote_addr))
+        ip = ip_address(get_request_ip())
         if config.auth.ldap.ip_filter and not any(ip in ip_network(cidr) for cidr in config.auth.ldap.ip_filter):
             raise AuthenticationException(f"Access from IP {ip} is not allowed for LDAP login")
 
