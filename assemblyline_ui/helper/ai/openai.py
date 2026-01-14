@@ -1,13 +1,12 @@
 import requests
 import yaml
-
+from assemblyline.common.str_utils import safe_str
+from assemblyline.odm.models.config import AIConnection, AIFunctionParameters
 from azure.identity import DefaultAzureCredential
 
-from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.models.config import AIFunctionParameters, AIConnection
 from assemblyline_ui.helper.ai.base import AIAgent, APIException, EmptyAIResponse
 
-ALLOWED_OPTIONS = ["temperature", "frequency_penalty", "presence_penalty", "top_p", "seed"]
+ALLOWED_OPTIONS = ["temperature", "frequency_penalty", "presence_penalty", "top_p", "seed", "reasoning_effort"]
 
 
 class OpenAIAgent(AIAgent):
