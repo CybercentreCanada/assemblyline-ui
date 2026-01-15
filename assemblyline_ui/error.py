@@ -6,7 +6,7 @@ from traceback import format_tb
 from flask import Blueprint, request, session
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, Unauthorized
 
-from assemblyline_ui.api.base import make_api_response
+from assemblyline_ui.api.base import get_request_ip, make_api_response
 from assemblyline_ui.config import AUDIT, AUDIT_LOG, LOGGER, config
 from assemblyline_ui.http_exceptions import (
     AccessDeniedException,
@@ -37,7 +37,7 @@ def handle_401(e):
     else:
         msg = str(e)
 
-    ip = ip_address(request.headers.get("X-Forwarded-For", request.remote_addr))
+    ip = ip_address(get_request_ip())
     data = {}
 
     # Check which OAuth providers are available based on IP filters
