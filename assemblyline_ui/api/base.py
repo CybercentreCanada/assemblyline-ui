@@ -34,7 +34,7 @@ from assemblyline_ui.config import (
     VERSION,
     config,
 )
-from assemblyline_ui.helper.user import login
+from assemblyline_ui.helper.user import get_request_ip, login
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.logger import log_with_traceback
 from assemblyline_ui.security.apikey_auth import validate_apikey
@@ -50,13 +50,6 @@ XSRF_ENABLED = True
 def make_subapi_blueprint(name, api_version=4):
     """ Create a flask Blueprint for a subapi in a standard way. """
     return Blueprint(name, name, url_prefix='/'.join([API_PREFIX, f"v{api_version}", name]))
-
-def get_request_ip():
-    ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr)
-    if "," in ip_addr:
-        # Extract the first IP in case of multiple proxies from X-Forwarded-For
-        ip_addr = ip_addr.split(",")[0].strip()
-    return ip_addr
 
 ####################################
 # API Helper func and decorators

@@ -10,11 +10,11 @@ import ldap.filter
 from assemblyline.common.str_utils import safe_str
 from assemblyline.odm.models.user import load_roles
 
-from assemblyline_ui.api.base import get_request_ip
 from assemblyline_ui.config import CLASSIFICATION, config
 from assemblyline_ui.helper.user import (
     get_default_user_quotas,
     get_dynamic_classification,
+    get_request_ip,
 )
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.utils import process_autoproperties
