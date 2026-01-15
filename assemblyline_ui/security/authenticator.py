@@ -1,8 +1,8 @@
+from assemblyline.odm.models.user import USER_ROLES
+from assemblyline.remote.datatypes.queues.named import NamedQueue
 from flask import abort, current_app, request
 from flask import session as flask_session
 
-from assemblyline.odm.models.user import USER_ROLES
-from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_ui.config import (
     AUDIT,
     AUDIT_KW_TARGET,
@@ -10,6 +10,7 @@ from assemblyline_ui.config import (
     FLASK_SESSIONS,
     config,
 )
+from assemblyline_ui.helper.user import get_request_ip
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser
@@ -89,8 +90,7 @@ class BaseSecurityRenderer(object):
             current_app.logger.debug(f'[{session_id}] session_id not found in redis')
             abort(401, "Session expired")
 
-        if config.ui.validate_session_ip and \
-                request.headers.get("X-Forwarded-For", request.remote_addr) != session.get('ip', None):
+        if config.ui.validate_session_ip and get_request_ip() != session.get('ip', None):
             current_app.logger.debug(f'[{session_id}] X-Forwarded-For does not match session IP '
                                      f'{request.headers.get("X-Forwarded-For", None)} != {session.get("ip", None)}')
             abort(401, "Invalid source IP for this session")

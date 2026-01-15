@@ -2,9 +2,9 @@ from ipaddress import ip_address, ip_network
 from typing import Any, Optional
 
 from assemblyline.odm.models.user import ROLES, TYPES
-from flask import request
 
 from assemblyline_ui.config import config, get_token_store
+from assemblyline_ui.helper.user import get_request_ip
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 
@@ -14,7 +14,7 @@ def validate_saml_user(username: str, saml_token_id: str):
         raise AuthenticationException("SAML login is disabled")
 
     # Check if user is allowed to use SAML auth from its IP
-    ip = ip_address(request.headers.get("X-Forwarded-For", request.remote_addr))
+    ip = ip_address(get_request_ip())
     if config.auth.saml.ip_filter and not any(ip in ip_network(cidr) for cidr in config.auth.saml.ip_filter):
         raise AuthenticationException(f"Access from IP {ip} is not allowed for SAML login")
 
