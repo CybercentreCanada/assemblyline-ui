@@ -3,7 +3,6 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from flask import abort, current_app, request
 from flask import session as flask_session
 
-from assemblyline_ui.api.base import get_request_ip
 from assemblyline_ui.config import (
     AUDIT,
     AUDIT_KW_TARGET,
@@ -11,6 +10,7 @@ from assemblyline_ui.config import (
     FLASK_SESSIONS,
     config,
 )
+from assemblyline_ui.helper.user import get_request_ip
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.apikey_auth import validate_apikey
 from assemblyline_ui.security.ldap_auth import validate_ldapuser

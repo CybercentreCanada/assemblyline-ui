@@ -9,6 +9,7 @@ from assemblyline.odm.models.user_settings import (
     DEFAULT_USER_PROFILE_SETTINGS,
     UserSettings,
 )
+from flask import request
 from flask import session as flask_session
 
 from assemblyline_ui.config import (
@@ -182,6 +183,13 @@ def decrement_submission_quota(user):
             SUBMISSION_TRACKER.end(quota_user)
 
         release_daily_submission_quota(user)
+
+def get_request_ip():
+    ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if "," in ip_addr:
+        # Extract the first IP in case of multiple proxies from X-Forwarded-For
+        ip_addr = ip_addr.split(",")[0].strip()
+    return ip_addr
 
 
 def login(uname, roles_limit, user=None):
