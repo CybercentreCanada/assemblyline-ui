@@ -3,8 +3,8 @@ from typing import Any, Optional
 
 from assemblyline.odm.models.user import ROLES, TYPES
 
-from assemblyline_ui.api.base import get_request_ip
 from assemblyline_ui.config import config, get_token_store
+from assemblyline_ui.helper.user import get_request_ip
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 

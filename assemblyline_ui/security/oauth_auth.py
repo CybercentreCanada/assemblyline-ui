@@ -6,9 +6,9 @@ import jwt
 import requests
 from assemblyline.odm.models.user import load_roles_form_acls
 
-from assemblyline_ui.api.base import get_request_ip
 from assemblyline_ui.config import CACHE, STORAGE, config, get_token_store
 from assemblyline_ui.helper.oauth import get_profile_identifiers
+from assemblyline_ui.helper.user import get_request_ip
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 

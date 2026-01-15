@@ -3,8 +3,8 @@ from ipaddress import ip_address, ip_network
 import elasticapm
 from assemblyline.common.security import verify_password
 
-from assemblyline_ui.api.base import get_request_ip
 from assemblyline_ui.config import config
+from assemblyline_ui.helper.user import get_request_ip
 from assemblyline_ui.http_exceptions import AuthenticationException
 
 

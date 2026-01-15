@@ -30,7 +30,6 @@ from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from assemblyline_ui.api.base import (
     api_login,
-    get_request_ip,
     make_api_response,
     make_subapi_blueprint,
 )
@@ -52,6 +51,7 @@ from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import (
     get_default_user_quotas,
     get_dynamic_classification,
+    get_request_ip,
 )
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
