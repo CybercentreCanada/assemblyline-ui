@@ -250,7 +250,7 @@ def start_ui_submission(ui_sid, **kwargs):
                     if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
                         try:
                             submission = import_bundle(submitted_file, allow_incomplete=True, identify=IDENTIFY,
-                                                       dtl=ui_params.get('ttl'))
+                                                       dtl=ui_params.get('ui_params', {}).get('ttl'))
                         except Exception as e:
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})

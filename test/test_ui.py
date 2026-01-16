@@ -129,8 +129,10 @@ def test_ui_bundle_submission(datastore, login_session):
     with open(bundle_path, "rb") as f:
         ui_id, data = upload_file_flowjs(session, host, data=f.read())
 
-    ui_params = get_api_data(session, f"{host}/api/v4/user/settings/admin/")['submission_profiles']['static']
-    ui_params['filename'] = f'{sid}.al_bundle'
+    ui_params = {
+        'ui_params': get_api_data(session, f"{host}/api/v4/user/settings/admin/")['submission_profiles']['static'],
+        'filename': f'{sid}.al_bundle'
+    }
     resp = get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(ui_params))
     assert resp['started']
 
