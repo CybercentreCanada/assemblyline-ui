@@ -3,14 +3,14 @@ import hashlib
 import re
 from urllib.parse import unquote
 
+from assemblyline.common.isotime import now_as_iso
+from assemblyline.datastore.exceptions import VersionConflictException
+from assemblyline.odm.models.user import ROLES
+from assemblyline_core.safelist_client import InvalidSafehash, SafelistClient
 from flask import request
 
-from assemblyline.common.isotime import now_as_iso
-from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE
-from assemblyline_core.safelist_client import SafelistClient, InvalidSafehash
 
 SUB_API = 'safelist'
 safelist_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -86,7 +86,7 @@ def add_or_update_hash(**kwargs):
 
 
 @safelist_api.route("/add_update_many/", methods=["POST", "PUT"])
-@api_login(audit=False, allow_readonly=False, require_role=[ROLES.safelist_manage])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.administration])
 def add_update_many_hashes(**_):
     """
     Add or Update a list of the safe hashes

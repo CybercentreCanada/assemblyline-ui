@@ -3,14 +3,14 @@ import hashlib
 import re
 from urllib.parse import unquote
 
-from flask import request
-
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.datastore.exceptions import VersionConflictException
 from assemblyline.odm.models.user import ROLES
+from assemblyline_core.badlist_client import BadlistClient, InvalidBadhash
+from flask import request
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE
-from assemblyline_core.badlist_client import BadlistClient, InvalidBadhash
 
 SUB_API = 'badlist'
 badlist_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -96,7 +96,7 @@ def add_or_update_hash(**kwargs):
 
 
 @badlist_api.route("/add_update_many/", methods=["POST", "PUT"])
-@api_login(audit=False, allow_readonly=False, require_role=[ROLES.badlist_manage])
+@api_login(audit=False, allow_readonly=False, require_role=[ROLES.administration])
 def add_update_many_hashes(**_):
     """
     Add or Update a list of the bad hashes
