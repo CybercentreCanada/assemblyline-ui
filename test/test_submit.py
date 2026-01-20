@@ -5,6 +5,7 @@ import os
 import random
 import tempfile
 import time
+from io import BytesIO
 
 import pytest
 from assemblyline.common import forge
@@ -22,6 +23,7 @@ from assemblyline.odm.random_data import (
 from assemblyline.odm.randomizer import get_random_phrase, random_minimal_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_core.dispatching.dispatcher import SubmissionTask
+from cart.cart import pack_stream
 from conftest import APIError, get_api_data
 
 config = forge.get_config()
@@ -121,6 +123,32 @@ def test_resubmit_dynamic(datastore, login_session, scheduler):
     msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
     assert msg.submission.sid == resp['sid']
 
+
+@pytest.mark.parametrize("metadata", [None, {"al": {"type": "test/file"}}], ids=["no_metadata", "with_metadata"])
+def test_submit_cart(datastore, login_session, scheduler, metadata):
+    _, session, host = login_session
+
+    sq.delete()
+
+    # Create a cart from an existing submission
+    temp_file = None
+    file_content = b"Hello world!"
+    sha256 = hashlib.sha256(file_content).hexdigest()
+    with tempfile.NamedTemporaryFile(delete=False) as output_file:
+        temp_file = output_file.name
+        with BytesIO(file_content) as input_stream:
+            pack_stream(input_stream, output_file, optional_header=metadata)
+        output_file.flush()
+
+    with open(temp_file, "rb") as f:
+        resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", files={"bin": f}, data={"json": json.dumps({
+            "name": "test.cart",
+            "sha256": sha256,
+            "metadata": {"test": "test_submit_cart"} if metadata is None else metadata["al"]
+        })}, headers={})
+
+    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
+    assert msg.submission.sid == resp["sid"]
 
 # noinspection PyUnusedLocal
 @pytest.mark.parametrize("hash", list(HASH_PATTERN_MAP.keys()))
