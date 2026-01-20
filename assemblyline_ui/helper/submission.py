@@ -274,6 +274,11 @@ def init_submission(request: Request, user: Dict, endpoint: str):
 
     # Check if this is a cart file to be decoded
     extracted_path, fileinfo, al_meta = decode_file(out_file, fileinfo, IDENTIFY)
+
+    # If CaRT metadata was found, ensure the data is flattened for easier processing
+    if al_meta:
+        al_meta = flatten(al_meta)
+
     if extracted_path:
         try:
             # Remove the old out_file
