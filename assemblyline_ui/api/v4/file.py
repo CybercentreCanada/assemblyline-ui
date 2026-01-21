@@ -578,7 +578,7 @@ def get_file_strings(sha256, **kwargs):
             return make_api_response({}, "This file was not found in the system.", 404)
         else:
             # Trim data to API max size
-            data = data[:API_MAX_SIZE]
+            data = data
 
         # Ascii strings (we use decode with replace on to create delimiters)
         pattern = "[\x20-\x7e]{%s,}" % hlen
@@ -587,9 +587,11 @@ def get_file_strings(sha256, **kwargs):
         # UTF-16 strings
         string_list += re.findall(pattern, data.decode("utf-16", errors="replace"))
 
+        # Remove lines from the output
+        output_strings = "\n".join(set(string_list))[:API_MAX_SIZE]
         return make_api_response({
-            "content": "\n".join(string_list),
-            "truncated": file_obj['size'] > API_MAX_SIZE
+            "content": output_strings,
+            "truncated": len(output_strings) > API_MAX_SIZE
         })
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
