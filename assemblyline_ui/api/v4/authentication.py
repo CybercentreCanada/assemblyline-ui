@@ -28,7 +28,11 @@ from flask import session as flask_session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.api.base import (
+    api_login,
+    make_api_response,
+    make_subapi_blueprint,
+)
 from assemblyline_ui.config import (
     AUDIT_LOG,
     AUDIT_LOGIN,
@@ -47,6 +51,7 @@ from assemblyline_ui.helper.oauth import fetch_avatar, parse_profile
 from assemblyline_ui.helper.user import (
     get_default_user_quotas,
     get_dynamic_classification,
+    get_request_ip,
 )
 from assemblyline_ui.http_exceptions import AuthenticationException
 from assemblyline_ui.security.authenticator import default_authenticator
@@ -352,7 +357,7 @@ def login(**_):
         }
 
         logged_in_uname = None
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        ip = get_request_ip()
         try:
             logged_in_uname, roles_limit = default_authenticator(auth, request, flask_session, STORAGE)
             xsrf_token = generate_random_secret()
