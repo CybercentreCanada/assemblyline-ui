@@ -576,9 +576,6 @@ def get_file_strings(sha256, **kwargs):
         data = retrieve_file_content(file_obj)
         if not data:
             return make_api_response({}, "This file was not found in the system.", 404)
-        else:
-            # Trim data to API max size
-            data = data
 
         # Ascii strings (we use decode with replace on to create delimiters)
         pattern = "[\x20-\x7e]{%s,}" % hlen
