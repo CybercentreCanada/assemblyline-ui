@@ -70,8 +70,8 @@ except socket.gaierror:
 # download functions
 class FileTooBigException(Exception):
     def __init__(self, file_size, *args):
-        super().__init__(msg=f"File too big to be scanned ({file_size} > {config.submission.max_file_size}).", *args)
-    pass
+        super().__init__(f"File too big to be scanned ({file_size} > {config.submission.max_file_size}).", *args)
+
 
 class InvalidUrlException(Exception):
     pass
@@ -79,6 +79,7 @@ class InvalidUrlException(Exception):
 
 class ForbiddenLocation(Exception):
     pass
+
 
 def apply_changes_to_profile(profile: SubmissionProfile, updates: dict, user: dict) -> dict:
     validated_profile = profile.params.as_primitives(strip_null=True)
@@ -378,21 +379,11 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
             # No external sources specified and the file being asked for doesn't exist in the system
             raise FileNotFoundError(f"{method.upper()} does not exist in Assemblyline")
         else:
-            if method == "sha256":
-                # Legacy support: Merge the sources from `sha256_sources` + `file_sources` that support SHA256 fetching
-                available_sources = [x for x in config.submission.sha256_sources
-                                    if CLASSIFICATION.is_accessible(user['classification'], x.classification) and
-                                    x.name in default_external_sources] + \
-                                    [x for x in config.submission.file_sources
-                                    if "sha256" in x.hash_types and
-                                    CLASSIFICATION.is_accessible(user['classification'], x.classification)
-                                    and x.name in default_external_sources]
-            else:
-                # Otherwise go based on the `file_sources` configuration
-                available_sources = [x for x in config.submission.file_sources
-                                    if method in x.hash_types and
-                                    CLASSIFICATION.is_accessible(user['classification'], x.classification)
-                                    and x.name in default_external_sources]
+            # Gather the list of available sources for this fetch method
+            available_sources = [x for x in config.submission.file_sources
+                                if method in x.hash_types and
+                                CLASSIFICATION.is_accessible(user['classification'], x.classification)
+                                and x.name in default_external_sources]
 
             for source in available_sources:
                 # Building final URL and data block
