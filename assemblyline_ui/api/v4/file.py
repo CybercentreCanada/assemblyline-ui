@@ -584,7 +584,6 @@ def get_file_strings(sha256, **kwargs):
         # UTF-16 strings
         string_list += re.findall(pattern, data.decode("utf-16", errors="replace"))
 
-        # Remove lines from the output
         output_strings = "\n".join(set(string_list))
         return make_api_response({
             "content": output_strings[:API_MAX_SIZE],
