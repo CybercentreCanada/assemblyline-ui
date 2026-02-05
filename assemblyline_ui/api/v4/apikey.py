@@ -166,7 +166,7 @@ def get_user_apikey(uname, **kwargs):
        ]
     """
     if kwargs['user']['uname'] != uname and ROLES.administration not in kwargs['user']['roles']:
-        make_api_response("", err=f"You do not have the permission to fetch API Keys for user {uname}", status_code=400)
+        return make_api_response("", err=f"You do not have the permission to fetch API Keys for user {uname}", status_code=400)
     else:
         apikeys = STORAGE.apikey.stream_search(f"uname:{uname}", as_obj=False)
         return make_api_response([key for key in apikeys])
