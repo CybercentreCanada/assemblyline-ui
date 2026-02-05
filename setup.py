@@ -50,7 +50,7 @@ setup(
         'Authlib>=1.3.1',
         'fido2<1.0.0',
         'PyJWT',
-        'gunicorn',
+        'gunicorn==24.1.1',
         'gevent',
         'xmlsec==1.3.14',
         'lxml==5.3.2'
