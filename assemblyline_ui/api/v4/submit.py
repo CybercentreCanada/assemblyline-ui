@@ -392,6 +392,7 @@ def submit(**kwargs):
         return make_api_response("", quota_error, 503)
 
     submit_result = None
+    out_file = None
     try:
         try:
             # Initialize submission validation process
@@ -438,13 +439,15 @@ def submit(**kwargs):
             decrement_submission_quota(user)
 
         # Cleanup files on disk
-        try:
-            # noinspection PyUnboundLocalVariable
-            os.unlink(out_file)
-        except Exception:
-            pass
+        if out_file:
+            try:
+                # noinspection PyUnboundLocalVariable
+                os.unlink(out_file)
+            except Exception:
+                pass
 
-        try:
-            shutil.rmtree(os.path.dirname(out_file), ignore_errors=True)
-        except Exception:
-            pass
+            try:
+                if not os.path.samefile(os.path.dirname(out_file), '/tmp'):
+                    shutil.rmtree(os.path.dirname(out_file), ignore_errors=True)
+            except Exception:
+                pass
