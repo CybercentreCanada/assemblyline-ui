@@ -223,6 +223,7 @@ def start_ui_submission(ui_sid, **kwargs):
     ui_params = request.json
     submit_result = None
     submitted_file = None
+    target_dir = None
 
     try:
         # Download the file from the cache

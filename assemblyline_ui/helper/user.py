@@ -193,10 +193,8 @@ def get_request_ip():
 
 
 def login(uname, roles_limit, user=None):
-    apikeys = {}
     if user is None:
         user = STORAGE.user.get(uname, as_obj=False)
-        apikeys = get_user_api_keys_dict(uname)
 
     if not user:
         raise AuthenticationException("User %s does not exists" % uname)
@@ -212,7 +210,6 @@ def login(uname, roles_limit, user=None):
     user['allow_2fa'] = config.auth.allow_2fa
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_security_tokens'] = config.auth.allow_security_tokens
-    user['apikeys'] = list(apikeys.keys())
     user['c12n_enforcing'] = Classification.enforce
     user['has_password'] = user.pop('password', "") != ""
     user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
