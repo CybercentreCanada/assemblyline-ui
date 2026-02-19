@@ -364,8 +364,8 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     and "uri" in fileinfo["uri_info"]
                 ):
                     # Set a description if one hasn't been already set
-                    s_params['description']= s_params.get('description',
-                                                          f"Inspection of URL: {fileinfo['uri_info']['uri']}")
+                    s_params['description'] = s_params.get('description',
+                                                           f"Inspection of URL: {fileinfo['uri_info']['uri']}")
 
     if not found:
         # File doesn't exist in our system, therefore it has to be retrieved
@@ -382,7 +382,8 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
             found = True
         elif not default_external_sources:
             # No external sources specified and the file being asked for doesn't exist in the system
-            raise FileNotFoundError(f"{method.upper()} does not exist in Assemblyline")
+            raise FileNotFoundError(f"{method.upper()} does not exist in Assemblyline "
+                                    "and no external sources are available.")
         else:
             # Gather the list of available sources for this fetch method
             available_sources = [x for x in config.submission.file_sources
@@ -475,8 +476,8 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     # A source suited for the task was found, skip the rest
                     break
 
-
     return found, fileinfo, name
+
 
 def update_submission_parameters(data: dict, user: dict, user_submission_profiles: dict) -> dict:
     s_profile = SUBMISSION_PROFILES.get(data.get('submission_profile'))

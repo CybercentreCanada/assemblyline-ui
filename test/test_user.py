@@ -383,9 +383,24 @@ def test_set_user_favorites(datastore, login_session):
     assert favs == user_favs
 
 
+SET_USER_SETTINGS_VALUES = [
+    (allow, admin)
+    for allow in [True, False]
+    for admin in [True, False]
+]
+
+SET_USER_SETTINGS_IDS = [
+    f"submission_customize={allow},admin={admin}"
+    for allow in [True, False]
+    for admin in [True, False]
+]
+EXPECTED_ERROR = "User isn't allowed to modify the \"ignore_recursion_prevention\"" \
+                 " parameters of Static Analysis profile"
+
+
 # noinspection PyUnusedLocal
-@pytest.mark.parametrize("allow_submission_customize", [True, False], ids=["submission_customize=true", "submission_customize=false"])
-def test_set_user_settings(datastore, login_session, allow_submission_customize):
+@pytest.mark.parametrize("allow_submission_customize,admin", SET_USER_SETTINGS_VALUES, ids=SET_USER_SETTINGS_IDS)
+def test_set_user_settings(datastore, login_session, allow_submission_customize, admin):
     _, session, host = login_session
     username = random.choice(user_list)
     user = datastore.user.get(username, as_obj=False)
@@ -401,6 +416,17 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'submission_customize')])
         if 'submission_customize' in user['roles']:
             user['roles'].remove('submission_customize')
+
+    # Same as above but for full administration permissions
+    if admin:
+        datastore.user.update(username, [(datastore.user.UPDATE_APPEND, 'roles', 'administration')])
+        if 'submission_customize' not in user['roles']:
+            user['roles'].append('administration')
+    else:
+        datastore.user.update(username, [(datastore.user.UPDATE_REMOVE, 'roles', 'administration')])
+        if 'administration' in user['roles']:
+            user['roles'].remove('administration')
+
     datastore.user.commit()
 
     uset = load_user_settings(user)
@@ -424,7 +450,7 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
     # Change a parameter that is defined restricted within the profile configuration
     uset['submission_profiles']['static']["ignore_recursion_prevention"] = True
 
-    if allow_submission_customize:
+    if allow_submission_customize or admin:
         # User is allowed to customize their submission profiles as they see fit
         resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))
         assert resp['success']
@@ -438,7 +464,6 @@ def test_set_user_settings(datastore, login_session, allow_submission_customize)
         assert new_profile_setttings['priority'] == requested_profile_settings['priority']
         assert new_profile_setttings['service_spec'] == requested_profile_settings['service_spec']
     else:
-        with pytest.raises(APIError,
-                           match="User isn't allowed to modify the \"ignore_recursion_prevention\" parameters of Static Analysis profile"):
+        with pytest.raises(APIError, match=EXPECTED_ERROR):
             # User isn't allowed to customize their submission profiles, API should return an exception
             resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/", method="POST", data=json.dumps(uset))

@@ -298,28 +298,51 @@ def test_submit_cart(datastore, login_session, scheduler, metadata):
         msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
         assert msg.submission.sid == resp["sid"]
 
+
 # noinspection PyUnusedLocal
 @pytest.mark.parametrize("hash", list(HASH_PATTERN_MAP.keys()))
 def test_submit_hash(datastore, login_session, scheduler, hash, filestore):
     _, session, host = login_session
 
+    # Clean up some of the trailing data from previous tests that can scramble this one
     sq.delete()
-    # Look for any file where the hash of that file is set
-    fileinfo = get_api_data(session, f"{host}/api/v4/search/file/?query=*&fl=sha256,{hash}&rows=1")['items'][0]
+    datastore.file.commit()
 
-    data = {
-        hash: fileinfo[hash],
-        'name': 'random_hash.txt',
-        'metadata': {'test': 'test_submit_hash'}
-    }
-    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
-    assert isinstance(resp['sid'], str)
-    for f in resp['files']:
-        assert f['sha256'] == fileinfo['sha256']
-        assert f['name'] == data['name']
+    # Look for any file where the hash of that file is set. Some of the responses from this search will
+    # and some won't, so we'll try all of them and skip the ones that don't apply
+    fileinfo_list = get_api_data(session, f"{host}/api/v4/search/file/?query=*&fl=sha256,{hash}&rows=1000")['items']
+    submissions_done = 0
 
-    msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
-    assert msg.submission.sid == resp['sid']
+    for fileinfo in fileinfo_list:
+        # Occasionally a file will be missing a hash (probably residuals from other tests?)
+        if fileinfo[hash] is None:
+            continue
+
+        # Fail early and for clear reasons when this test would fail inside the api call
+        assert filestore.exists(fileinfo['sha256'])
+        assert datastore.file.exists(fileinfo['sha256'])
+        assert len(datastore.file.search(hash + ':"' + fileinfo[hash] + '"')['items']) > 0
+
+        # Send the API call
+        data = {
+            hash: fileinfo[hash],
+            'name': 'random_hash.txt',
+            'metadata': {'test': 'test_submit_hash'}
+        }
+        resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+        assert isinstance(resp['sid'], str)
+        for f in resp['files']:
+            assert f['sha256'] == fileinfo['sha256']
+            assert f['name'] == data['name']
+
+        # Capture the message to the dispatcher that API should have created and verify it
+        msg = SubmissionTask(scheduler=scheduler, datastore=datastore, config=config, **sq.pop(blocking=False))
+        assert msg.submission.sid == resp['sid']
+        submissions_done += 1
+
+    # Make sure at least some of the files were something we could submit
+    assert submissions_done > 0
+
 
 # noinspection PyUnusedLocal
 def test_submit_url(datastore, login_session, scheduler):

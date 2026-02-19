@@ -201,6 +201,8 @@ def ingest_single_file(**kwargs):
     if quota_error:
         return make_api_response("", quota_error, 503)
 
+    out_file = None
+
     try:
         try:
             # Initialize submission validation process
@@ -299,13 +301,15 @@ def ingest_single_file(**kwargs):
             decrement_submission_ingest_quota(user)
 
         # Cleanup files on disk
-        try:
-            # noinspection PyUnboundLocalVariable
-            os.unlink(out_file)
-        except Exception:
-            pass
+        if out_file:
+            try:
+                # noinspection PyUnboundLocalVariable
+                os.unlink(out_file)
+            except Exception:
+                pass
 
-        try:
-            shutil.rmtree(os.path.dirname(out_file), ignore_errors=True)
-        except Exception:
-            pass
+            try:
+                if not os.path.samefile(os.path.dirname(out_file), '/tmp'):
+                    shutil.rmtree(os.path.dirname(out_file), ignore_errors=True)
+            except Exception:
+                pass
