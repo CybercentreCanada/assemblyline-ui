@@ -20,7 +20,7 @@ from assemblyline.common.security import (
 )
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.models.user import ROLES, User, load_roles, load_roles_form_acls
-from authlib.integrations.base_client import OAuthError
+from authlib.integrations.base_client import MismatchingStateError, OAuthError
 from authlib.integrations.flask_client import FlaskOAuth2App, OAuth
 from authlib.integrations.requests_client import OAuth2Session
 from flask import current_app, redirect, request
@@ -787,6 +787,9 @@ def oauth_validate(**_):
                 else:
                     return make_api_response({"err_code": 5}, err="Invalid oAuth token provided", status_code=401)
 
+            except MismatchingStateError:
+                return make_api_response({"err_code": 1},
+                                         err="An error occurred during authentication. Please try again.", status_code=500)
             except OAuthError as err:
                 return make_api_response({"err_code": 1}, err=str(err), status_code=401)
 
