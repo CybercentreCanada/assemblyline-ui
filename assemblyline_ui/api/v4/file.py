@@ -586,7 +586,7 @@ def get_file_strings(sha256, **kwargs):
 
         # Generate output and de-dup strings while preserving order
         output_strings = []
-        character_count = 0
+        character_count = -1
         truncated = False
         for string in string_list:
             # Check if string already exists in collection
