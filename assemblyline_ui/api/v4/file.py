@@ -584,11 +584,27 @@ def get_file_strings(sha256, **kwargs):
         # UTF-16 strings
         string_list += re.findall(pattern, data.decode("utf-16", errors="replace"))
 
-        # Remove lines from the output
-        output_strings = "\n".join(set(string_list))
+        # Generate output and de-dup strings while preserving order
+        output_strings = []
+        character_count = -1
+        truncated = False
+        for string in string_list:
+            # Check if string already exists in collection
+            if string in output_strings:
+                continue
+
+            if character_count + len(string) >= API_MAX_SIZE:
+                # Break early and don't include any partial strings in output
+                truncated = True
+                break
+            else:
+                # Keep track of the number of characters we are adding to the output to avoid returning too much data
+                character_count += len(string) + 1
+                output_strings.append(string)
+
         return make_api_response({
-            "content": output_strings[:API_MAX_SIZE],
-            "truncated": len(output_strings) > API_MAX_SIZE
+            "content": "\n".join(output_strings),
+            "truncated": truncated
         })
     else:
         return make_api_response({}, "You are not allowed to view this file.", 403)
