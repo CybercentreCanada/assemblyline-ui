@@ -788,6 +788,7 @@ def oauth_validate(**_):
                     return make_api_response({"err_code": 5}, err="Invalid oAuth token provided", status_code=401)
 
             except MismatchingStateError:
+                LOGGER.error(f"MismatchingStateError: {request.args.get('state', request.form.get('state', None))} not in {list(flask_session.keys())}")
                 return make_api_response({"err_code": 1},
                                          err="An error occurred during authentication. Please try again.", status_code=500)
             except OAuthError as err:
