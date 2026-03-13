@@ -51,7 +51,7 @@ def get_default_submission_profiles(user_default_values={}, classification=CLASS
             out[profile.name] = recursive_update(profile_values, user_default_values.get(profile.name, {}))
             if not out[profile.name]["services"].get("selected"):
                 # Provide the default service selection
-                out[profile.name]["services"]["selected"] = DEFAULT_SRV_SEL
+                out[profile.name]["services"]["selected"] = profile.params.services.selected
 
     return out
 
