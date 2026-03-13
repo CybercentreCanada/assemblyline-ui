@@ -92,6 +92,63 @@ def test_apikey(datastore, login_session, is_active):
         datastore.user.commit()
 
 
+def test_auto_auth_check_caching(mocker):
+    """Test that auto_auth_check caches successful validations."""
+    from flask import Flask
+    from assemblyline_ui.api.base import api_login
+
+    mock_verify = mocker.patch('assemblyline_ui.security.apikey_auth.verify_password', return_value=True)
+
+    class MockKey:
+        password = "hashed"
+        acl = ["R", "W"]
+        roles = []
+
+    class MockUser:
+        uname = "admin"
+        type = "user"
+        roles = []
+        is_active = True
+
+    class MockStorage:
+        user = type('UserStorage', (), {
+            'get': lambda self, username: MockUser()
+        })()
+        apikey = type('ApiKeyStorage', (), {
+            'get': lambda self, key_id: MockKey()
+        })()
+
+    class MockCache:
+        def __init__(self):
+            self.cache = set()
+
+        def exists(self, key):
+            return key in self.cache
+
+        def add(self, key):
+            self.cache.add(key)
+
+    mocker.patch('assemblyline_ui.api.base.STORAGE', MockStorage())
+    mock_cache = MockCache()
+    mocker.patch('assemblyline_ui.api.base.APIKEY_CACHE', mock_cache)
+
+    app = Flask(__name__)
+    auth = api_login()
+
+    with app.test_request_context('/', headers={'X-USER': 'admin', 'X-APIKEY': 'test:password'}):
+        result1 = auth.auto_auth_check()
+        assert result1 == ("admin", ["R", "W"])
+        assert mock_verify.call_count == 1
+
+        result2 = auth.auto_auth_check()
+        assert result2 == ("admin", ["R", "W"])
+        assert mock_verify.call_count == 1
+
+        result3 = auth.auto_auth_check()
+        assert result3 == ("admin", ["R", "W"])
+        assert mock_verify.call_count == 1
+
+
 
 # noinspection PyUnusedLocal
 def test_otp(datastore, login_session):

@@ -137,6 +137,7 @@ def get_reset_queue(key):
 def get_signup_queue(key):
     return ExpiringSet(f"signup_id_{key}", host=redis, ttl=60 * 15)
 
+APIKEY_CACHE = ExpiringSet("validated_apikeys", host=redis, ttl=60 * 5)
 
 # End of Configuration
 #################################################################

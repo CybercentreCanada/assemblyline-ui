@@ -23,6 +23,7 @@ from flask import (
 )
 
 from assemblyline_ui.config import (
+    APIKEY_CACHE,
     AUDIT_LOG,
     AUDIT_LOGIN,
     CLASSIFICATION,
@@ -64,29 +65,34 @@ class api_login(BaseSecurityRenderer):
         self.count_toward_quota = count_toward_quota
 
     def auto_auth_check(self):
+        """
+        Authenticate a user via API key headers (X-APIKEY, X-USER).
+        Caches successful authentications for performance.
+        """
         apikey = request.environ.get('HTTP_X_APIKEY', None)
         uname = request.environ.get('HTTP_X_USER', None)
 
         if apikey is not None and uname is not None:
             ip = get_request_ip()
+            cache_key = hashlib.sha256(f"{uname}:{apikey}".encode()).hexdigest()
+            cached = APIKEY_CACHE.exists(cache_key)
+
             with elasticapm.capture_span(name="auto_auth_check", span_type="authentication"):
                 try:
-                    # TODO: apikey_handler is slow to verify the password (bcrypt's fault)
-                    #       We could fix this by saving the hash of the combinaison of the
-                    #       APIkey and the username in an ExpiringSet and looking it up for
-                    #       sub-sequent calls...
-                    validated_user, roles_limit = validate_apikey(uname, apikey, STORAGE)
+                    validated_user, roles_limit = validate_apikey(uname, apikey, STORAGE, skip_verification=cached)
                 except AuthenticationException as ae:
                     login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
                     login_logger.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{str(ae)}]")
                     abort(401, str(ae))
                     return
 
-                if validated_user:
+            if validated_user:
+                if not cached:
+                    APIKEY_CACHE.add(cache_key)
                     login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
                     login_logger.info(f"Login successful. (U:{uname} - IP:{ip})")
 
-                    return validated_user, roles_limit
+                return validated_user, roles_limit
 
         return None, None
 
