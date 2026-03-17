@@ -593,6 +593,9 @@ def oauth_validate(**_):
     if config.auth.oauth.enabled:
         oauth: OAuth = current_app.extensions.get("authlib.integrations.flask_client")
         provider: FlaskOAuth2App = oauth.create_client(oauth_provider)
+        if f"_state_{oauth_provider}_{request.values.get('state', '')}" not in flask_session:
+            # Key from session cookie is missing, log what's currently in the session for debugging
+            LOGGER.warning(f"State value {request.values.get('state', '')} not found in flask session for provider {oauth_provider}: {list(flask_session.items())}")
 
         if provider:
             # noinspection PyBroadException
