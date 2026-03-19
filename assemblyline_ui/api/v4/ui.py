@@ -258,7 +258,7 @@ def start_ui_submission(ui_sid, **kwargs):
 
             # Submit to dispatcher
             try:
-            # Initialize submission validation process
+                # Initialize submission validation process
                 _, _, _, _, s_params, metadata = init_submission(request, user, endpoint="ui")
                 s_params['quota_item'] = True
                 allow_description_overwrite = False
