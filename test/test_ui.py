@@ -213,3 +213,29 @@ def test_ui_submission_parameter(datastore, login_session):
     submission_params = submission["params"]
 
     assert submission_params["initial_data"] == json.dumps({"password": [""]})
+
+def test_ui_filetype_override(datastore, login_session):
+    _, session, host = login_session
+    ui_id, data = upload_file_flowjs(session, host)
+
+    submission_parameter = get_api_data(session, f"{host}/api/v4/user/settings/admin/")["submission_profiles"]["static"]
+    submission_parameter["filename"] = "test.txt"
+    # test UI submitted password for Extract are stored in submission correctly
+    extract_spec = {
+        "name": "Extract",
+        "params": [{"default": "", "hide": False, "name": "password", "type": "str", "value": "test"}],
+    }
+    submission_parameter["ui_params"] = {"service_spec": [extract_spec]}
+
+    # Submit with invalid filetype override and verify that it fails with the expected error message
+    submission_parameter["ui_params"]["filetype_override"] = "pdf"
+    with pytest.raises(APIError, match="Filetype override 'pdf' is not a recognized file type in the system"):
+        get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(submission_parameter))
+
+    # Submit with a valid filetype override and verify that it is stored in the submission parameters
+    submission_parameter["ui_params"]["filetype_override"] = "document/pdf"
+    resp = get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(submission_parameter))
+    submission = datastore.submission.get(resp["sid"])
+    submission_params = submission["params"]
+    # Assert that the submission was created successfully and that the filetype override is stored in the submission parameters
+    assert submission_params["filetype_override"] == "document/pdf"
