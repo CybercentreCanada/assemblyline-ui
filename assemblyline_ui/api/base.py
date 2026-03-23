@@ -75,7 +75,7 @@ class api_login(BaseSecurityRenderer):
         if apikey is not None and uname is not None:
             ip = get_request_ip()
             cache_key = hashlib.sha256(f"{uname}:{apikey}".encode()).hexdigest()
-            cached = APIKEY_CACHE.exists(cache_key)
+            cached = APIKEY_CACHE.exist(cache_key)
 
             with elasticapm.capture_span(name="auto_auth_check", span_type="authentication"):
                 try:

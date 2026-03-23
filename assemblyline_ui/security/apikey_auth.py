@@ -35,7 +35,7 @@ def validate_apikey(
         raise AuthenticationException("This user is not allowed to use API Keys")
 
     if not user_data.is_active:
-        raise AuthenticationException("The owner of this API Key is not active.")
+        raise AuthenticationException("This owner of this API Key is not active.")
 
     try:
         key_name, apikey_password = apikey.split(":", 1)

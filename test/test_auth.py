@@ -1,6 +1,8 @@
 import base64
+import hashlib
 import json
 import os
+import warnings
 
 import pytest
 import requests
@@ -92,61 +94,96 @@ def test_apikey(datastore, login_session, is_active):
         datastore.user.commit()
 
 
-def test_auto_auth_check_caching(mocker):
-    """Test that auto_auth_check caches successful validations."""
-    from flask import Flask
-    from assemblyline_ui.api.base import api_login
+def _get_cache_key(username: str, apikey: str) -> str:
+    return hashlib.sha256(f"{username}:{apikey}".encode()).hexdigest()
 
-    mock_verify = mocker.patch('assemblyline_ui.security.apikey_auth.verify_password', return_value=True)
 
-    class MockKey:
-        password = "hashed"
-        acl = ["R", "W"]
-        roles = []
+def test_apikey_caching(datastore, host):
+    from assemblyline_ui.config import APIKEY_CACHE
 
-    class MockUser:
-        uname = "admin"
-        type = "user"
-        roles = []
-        is_active = True
+    caching_enabled = APIKEY_CACHE.__class__.__name__ != "DummyCache"
 
-    class MockStorage:
-        user = type('UserStorage', (), {
-            'get': lambda self, username: MockUser()
-        })()
-        apikey = type('ApiKeyStorage', (), {
-            'get': lambda self, key_id: MockKey()
-        })()
+    apikey = datastore.apikey.get(get_apikey_id(DEV_APIKEY_NAME, "admin"))
+    password = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
+    apikey_str = f"{apikey.key_name}:{password}"
+    cache_key = _get_cache_key("admin", apikey_str)
 
-    class MockCache:
-        def __init__(self):
-            self.cache = set()
+    if caching_enabled:
+        APIKEY_CACHE.remove(cache_key)
 
-        def exists(self, key):
-            return key in self.cache
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": apikey_str}
 
-        def add(self, key):
-            self.cache.add(key)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+    assert resp.status_code == 200
 
-    mocker.patch('assemblyline_ui.api.base.STORAGE', MockStorage())
-    mock_cache = MockCache()
-    mocker.patch('assemblyline_ui.api.base.APIKEY_CACHE', mock_cache)
+    if caching_enabled:
+        assert APIKEY_CACHE.exist(cache_key), "API key should be cached after successful auth"
+        APIKEY_CACHE.remove(cache_key)
+    else:
+        assert not APIKEY_CACHE.exist(cache_key), "API key should NOT be cached when caching is disabled"
 
-    app = Flask(__name__)
-    auth = api_login()
 
-    with app.test_request_context('/', headers={'X-USER': 'admin', 'X-APIKEY': 'test:password'}):
-        result1 = auth.auto_auth_check()
-        assert result1 == ("admin", ["R", "W"])
-        assert mock_verify.call_count == 1
+def test_apikey_failed_auth_not_cached(datastore, host):
+    from assemblyline_ui.config import APIKEY_CACHE
 
-        result2 = auth.auto_auth_check()
-        assert result2 == ("admin", ["R", "W"])
-        assert mock_verify.call_count == 1
+    caching_enabled = APIKEY_CACHE.__class__.__name__ != "DummyCache"
 
-        result3 = auth.auto_auth_check()
-        assert result3 == ("admin", ["R", "W"])
-        assert mock_verify.call_count == 1
+    cache_key = _get_cache_key("admin", "invalid:wrongpassword")
+
+    if caching_enabled:
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": "invalid:wrongpassword"}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+    assert resp.status_code == 401
+
+    assert not APIKEY_CACHE.exist(cache_key), "Failed auth should not be cached"
+
+
+def test_apikey_caching_repeated_requests(datastore, host):
+    from assemblyline_ui.config import APIKEY_CACHE
+
+    caching_enabled = APIKEY_CACHE.__class__.__name__ != "DummyCache"
+
+    apikey = datastore.apikey.get(get_apikey_id(DEV_APIKEY_NAME, "admin"))
+    password = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
+    apikey_str = f"{apikey.key_name}:{password}"
+    cache_key = _get_cache_key("admin", apikey_str)
+
+    if caching_enabled:
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": apikey_str}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for i in range(3):
+            resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+            assert resp.status_code == 200, f"Request {i+1} should succeed"
+
+    if caching_enabled:
+        assert APIKEY_CACHE.exist(cache_key), "API key should remain cached"
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": apikey_str}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+    assert resp.status_code == 200
+
+    if caching_enabled:
+        assert APIKEY_CACHE.exist(cache_key), "API key should be cached after successful auth"
+        APIKEY_CACHE.remove(cache_key)
 
 
 
