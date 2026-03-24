@@ -1,6 +1,8 @@
 import base64
+import hashlib
 import json
 import os
+import warnings
 
 import pytest
 import requests
@@ -90,6 +92,98 @@ def test_apikey(datastore, login_session, is_active):
         # Restore user account active status for the rest of tests
         datastore.user.update("admin", [(datastore.user.UPDATE_SET, 'is_active', True)])
         datastore.user.commit()
+
+
+def _get_cache_key(username: str, apikey: str) -> str:
+    return hashlib.sha256(f"{username}:{apikey}".encode()).hexdigest()
+
+
+def test_apikey_caching(datastore, host):
+    from assemblyline_ui.config import APIKEY_CACHE
+
+    caching_enabled = APIKEY_CACHE.__class__.__name__ != "DummyCache"
+
+    apikey = datastore.apikey.get(get_apikey_id(DEV_APIKEY_NAME, "admin"))
+    password = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
+    apikey_str = f"{apikey.key_name}:{password}"
+    cache_key = _get_cache_key("admin", apikey_str)
+
+    if caching_enabled:
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": apikey_str}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+    assert resp.status_code == 200
+
+    if caching_enabled:
+        assert APIKEY_CACHE.exist(cache_key), "API key should be cached after successful auth"
+        APIKEY_CACHE.remove(cache_key)
+    else:
+        assert not APIKEY_CACHE.exist(cache_key), "API key should NOT be cached when caching is disabled"
+
+
+def test_apikey_failed_auth_not_cached(datastore, host):
+    from assemblyline_ui.config import APIKEY_CACHE
+
+    caching_enabled = APIKEY_CACHE.__class__.__name__ != "DummyCache"
+
+    cache_key = _get_cache_key("admin", "invalid:wrongpassword")
+
+    if caching_enabled:
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": "invalid:wrongpassword"}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+    assert resp.status_code == 401
+
+    assert not APIKEY_CACHE.exist(cache_key), "Failed auth should not be cached"
+
+
+def test_apikey_caching_repeated_requests(datastore, host):
+    from assemblyline_ui.config import APIKEY_CACHE
+
+    caching_enabled = APIKEY_CACHE.__class__.__name__ != "DummyCache"
+
+    apikey = datastore.apikey.get(get_apikey_id(DEV_APIKEY_NAME, "admin"))
+    password = os.getenv("DEV_ADMIN_PASS", "admin") or "admin"
+    apikey_str = f"{apikey.key_name}:{password}"
+    cache_key = _get_cache_key("admin", apikey_str)
+
+    if caching_enabled:
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": apikey_str}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for i in range(3):
+            resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+            assert resp.status_code == 200, f"Request {i+1} should succeed"
+
+    if caching_enabled:
+        assert APIKEY_CACHE.exist(cache_key), "API key should remain cached"
+        APIKEY_CACHE.remove(cache_key)
+
+    session = requests.Session()
+    headers = {"X-USER": "admin", "X-APIKEY": apikey_str}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        resp = session.get(f"{host}/api/v4/user/whoami/", headers=headers, verify=False)
+    assert resp.status_code == 200
+
+    if caching_enabled:
+        assert APIKEY_CACHE.exist(cache_key), "API key should be cached after successful auth"
+        APIKEY_CACHE.remove(cache_key)
 
 
 
