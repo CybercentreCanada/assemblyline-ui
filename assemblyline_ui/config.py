@@ -1,7 +1,8 @@
 import logging
 import os
-import requests
+import re
 
+import requests
 from assemblyline.common import forge
 from assemblyline.common import log as al_log
 from assemblyline.common.archiving import ArchiveManager
@@ -12,8 +13,8 @@ from assemblyline.datastore.helper import AssemblylineDatastore, MetadataValidat
 from assemblyline.filestore import FileStore
 from assemblyline.odm.models.config import (
     METADATA_FIELDTYPE_MAP,
-    OAuthProvider,
     OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP,
+    OAuthProvider,
 )
 from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.cache import Cache
@@ -23,6 +24,7 @@ from assemblyline.remote.datatypes.queues.comms import CommsQueue
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.set import ExpiringSet
 from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
+
 from assemblyline_ui.helper.ai import get_ai_agent
 from assemblyline_ui.helper.ai.base import AIAgentPool
 from assemblyline_ui.helper.discover import get_apps_list
@@ -146,6 +148,9 @@ def get_signup_queue(key):
 config.logging.log_to_console = config.logging.log_to_console or DEBUG
 al_log.init_logging("ui", config=config)
 
+magic_custom = re.compile(r'[ \t]+custom:[ \t]+([\w\/]+)')
+yara_custom = re.compile(r'[ \t]+type[ \t]+=[ \t]+["]?([\w\/]+)["]?')
+
 AUDIT_KW_TARGET = ["sid",
                    "sha256",
                    "copy_sid",
@@ -212,6 +217,16 @@ ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
 SUBMISSION_PROFILES = {profile.name: profile for profile in config.submission.profiles}
+RECOGNIZED_TYPES = set(IDENTIFY.trusted_mimes.values())
+RECOGNIZED_TYPES = RECOGNIZED_TYPES.union(set([x['al_type'] for x in IDENTIFY.magic_patterns]))
+
+with open(IDENTIFY.magic_file.split(":")[0]) as fh:
+    for values in magic_custom.findall(fh.read()):
+        RECOGNIZED_TYPES.add(values)
+
+with open(IDENTIFY.yara_file) as fh:
+    for values in yara_custom.findall(fh.read()):
+        RECOGNIZED_TYPES.add(values)
 
 # End global
 #################################################################

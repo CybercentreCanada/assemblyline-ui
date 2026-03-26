@@ -37,6 +37,8 @@ from assemblyline_ui.config import (
     CLASSIFICATION,
     FILESTORE,
     IDENTIFY,
+    LOGGER,
+    RECOGNIZED_TYPES,
     SERVICE_LIST,
     STORAGE,
     SUBMISSION_PROFILES,
@@ -205,6 +207,16 @@ def init_submission(request: Request, user: Dict, endpoint: str):
             s_params['ttl'] = min(s_params['ttl'], config.submission.max_dtl)
         else:
             s_params['ttl'] = config.submission.max_dtl
+
+    # Check to see if the user is electing to override the file type for analysis
+    if s_params.get('filetype_override'):
+        # If the override type isn't recognized as a valid file type in the system, raise an exception
+        if s_params['filetype_override'] not in RECOGNIZED_TYPES:
+            raise Exception(f"Filetype override '{s_params['filetype_override']}' is not a recognized file type in the system")
+
+        # Log a warning if the override file type doesn't match the identified file type of the submitted file
+        if fileinfo and s_params['filetype_override'] != fileinfo['type']:
+            LOGGER.warning(f"Filetype override '{s_params['filetype_override']}' doesn't match the identified file type of '{fileinfo['type']}'")
 
     # Get the metadata (use the user's default metadata as a base)
     metadata = {}

@@ -5,9 +5,6 @@ import os
 import tempfile
 
 import pytest
-from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
-from conftest import APIError, get_api_data
-
 from assemblyline.common import forge
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.config import DEFAULT_SUBMISSION_PROFILES, HASH_PATTERN_MAP
@@ -20,6 +17,8 @@ from assemblyline.odm.random_data import (
 )
 from assemblyline.odm.randomizer import get_random_phrase, random_model_obj
 from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
+from conftest import APIError, get_api_data
 
 NUM_FILES = 4
 TEST_QUEUE = "my_queue"
@@ -437,3 +436,30 @@ def test_ingest_submission_parameter(datastore, login_session, scheduler):
 
     assert "Extract" in submission_params["service_spec"]
     assert submission_params["service_spec"]["Extract"]["password"] == ""
+
+def test_ingest_filetype_override(datastore, login_session, scheduler):
+    _, session, host = login_session
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    data = {
+        'name': 'test.txt',
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'submission_profile': 'static',
+        'metadata': {"test": "test_submit_base64_nameless"},
+        'params': {
+            'filetype_override': 'pdf'
+        }
+    }
+
+    # Submit with invalid filetype override and verify that it fails with the expected error message
+    with pytest.raises(APIError, match="Filetype override 'pdf' is not a recognized file type in the system"):
+        get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+
+    # Submit with a valid filetype override and verify that it is stored in the submission parameters
+    data["params"]["filetype_override"] = "document/pdf"
+    get_api_data(session, f"{host}/api/v4/ingest/", method="POST", data=json.dumps(data))
+    msg = Submission(iq.pop(blocking=False))
+    submission_params = msg["params"]
+    datastore.submission.commit()
+
+    # Assert that the submission was created successfully and that the filetype override is stored in the submission parameters
+    assert submission_params["filetype_override"] == "document/pdf"

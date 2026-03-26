@@ -733,3 +733,28 @@ def test_submit_service_parameter(datastore, login_session, scheduler):
 
     assert "Extract" in submission_params["service_spec"]
     assert submission_params["service_spec"]["Extract"]["password"] == ""
+
+def test_submit_filetype_override(datastore, login_session, scheduler):
+    _, session, host = login_session
+    byte_str = get_random_phrase(wmin=30, wmax=75).encode()
+    data = {
+        'name': 'test.txt',
+        'base64': base64.b64encode(byte_str).decode('ascii'),
+        'submission_profile': 'static',
+        "params": {
+            "filetype_override": "pdf"
+        }
+    }
+
+    # Submit with invalid filetype override and verify that it fails with the expected error message
+    with pytest.raises(APIError, match="Filetype override 'pdf' is not a recognized file type in the system"):
+        get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+
+    # Submit with a valid filetype override and verify that it is stored in the submission parameters
+    data["params"]["filetype_override"] = "document/pdf"
+    resp = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps(data))
+    datastore.submission.commit()
+
+    # Assert that the submission was created successfully and that the filetype override is stored in the submission parameters
+    submission = datastore.submission.get(resp["sid"], as_obj=False)
+    assert submission["params"]["filetype_override"] == "document/pdf"
