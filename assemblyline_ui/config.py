@@ -139,6 +139,17 @@ def get_reset_queue(key):
 def get_signup_queue(key):
     return ExpiringSet(f"signup_id_{key}", host=redis, ttl=60 * 15)
 
+class DummyCache:
+    def exist(self, key: str) -> bool:
+        return False
+    def add(self, key: str) -> None:
+        pass
+
+
+if config.ui.apikey_cache_seconds:
+    APIKEY_CACHE = ExpiringSet("validated_apikeys", host=redis, ttl=config.ui.apikey_cache_seconds)
+else:
+    APIKEY_CACHE = DummyCache()
 
 # End of Configuration
 #################################################################
