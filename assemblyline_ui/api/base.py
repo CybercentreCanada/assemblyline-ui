@@ -103,7 +103,7 @@ class api_login(BaseSecurityRenderer):
         if session.get("roles_limit", []) is None and self.check_xsrf_token and \
                 session.get('xsrf_token', "") != request.environ.get('HTTP_X_XSRF_TOKEN',
                                                                      request.args.get("XSRF_TOKEN", "")):
-            abort(403, "Invalid XSRF token")
+            abort(401, "Invalid XSRF token")
 
     @elasticapm.capture_span(span_type='authentication')
     def parse_al_obo_token(self, bearer_token, roles_limit, impersonator):
@@ -148,7 +148,7 @@ class api_login(BaseSecurityRenderer):
                     if kwargs['user'].get('authenticated', False):
                         return func(*args, **kwargs)
                     else:
-                        abort(403, "Invalid pre-authenticated user")
+                        abort(401, "Invalid pre-authenticated user")
 
                 self.test_readonly("API")
                 logged_in_uname, roles_limit = self.get_logged_in_user()
@@ -169,7 +169,7 @@ class api_login(BaseSecurityRenderer):
                                 bearer_token, token_provider, return_user=True)
                         except AuthenticationException as e:
                             LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
-                            abort(403, str(e))
+                            abort(401, str(e))
 
                         # Combine role limits
                         if roles_limit:
@@ -182,7 +182,7 @@ class api_login(BaseSecurityRenderer):
                             user, roles_limit = self.parse_al_obo_token(bearer_token, roles_limit, impersonator)
                         except AuthenticationException as e:
                             LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
-                            abort(403, str(e))
+                            abort(401, str(e))
 
                     # Intersect impersonator and user classifications
                     impersonator_user = STORAGE.user.get(impersonator, as_obj=False)
@@ -220,7 +220,7 @@ class api_login(BaseSecurityRenderer):
                             and not kwargs[self.username_key] == "__workflow__" \
                             and not kwargs[self.username_key].lower() == "__current__" \
                             and ROLES.administration not in user['roles']:
-                        return make_api_response({}, "Your username does not match requested username", 403)
+                        return make_api_response({}, "Your username does not match requested username", 401)
 
                 self.audit_if_required(args, kwargs, logged_in_uname, user, func, impersonator=impersonator)
 
