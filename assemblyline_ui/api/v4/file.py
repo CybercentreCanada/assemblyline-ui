@@ -409,8 +409,8 @@ def summarize_code_snippet(sha256, **kwargs):
         if not file_obj:
             return make_api_response({}, "The file was not found in the system.", 404)
 
-        if not file_obj['type'].startswith("code/"):
-            return make_api_response({}, "This is not code, you cannot summarize it.", 406)
+        if not file_obj['type'].startswith("code/") and file_obj['type'] != "text/plain":
+            return make_api_response({}, "This doesn't seem to be code or plaintext, you cannot summarize it.", 406)
 
         # TODO: We should calculate the tokens here
         # if file_obj['size'] > API_MAX_SIZE:
