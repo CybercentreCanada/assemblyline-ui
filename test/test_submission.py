@@ -90,6 +90,20 @@ def test_get_submission_full(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
+def test_get_submission_full(datastore, login_session):
+    _, session, host = login_session
+
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    resp = get_api_data(session, f"{host}/api/v4/submission/full/{submission['sid']}/", params={"get_full_tree": "true"})
+    assert resp['sid'] == submission['sid']
+    assert resp['params']['description'] == submission['params']['description']
+    assert isinstance(resp['file_tree'], dict)
+    
+    # Verify that the submission has truncated false for all entries to verify this is the full tree.
+    for k, v in resp['file_tree'].items():
+        assert v.get("truncated", True) is False
+
+# noinspection PyUnusedLocal
 def test_get_submission_report(datastore, login_session):
     _, session, host = login_session
 
@@ -104,6 +118,20 @@ def test_get_submission_report(datastore, login_session):
     assert isinstance(resp['heuristics'], dict)
     assert isinstance(resp['tags'], dict)
     assert isinstance(resp['promoted_sections'], list)
+    
+# noinspection PyUnusedLocal
+def test_get_submission_report(datastore, login_session):
+    _, session, host = login_session
+
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    resp = get_api_data(session, f"{host}/api/v4/submission/report/{submission['sid']}/", params={"get_full_tree": "true"})
+    assert resp['sid'] == submission['sid']
+    assert resp['params']['description'] == submission['params']['description']
+    assert isinstance(resp['file_tree'], dict)
+    
+        # Verify that the submission has truncated false for all entries to verify this is the full tree.
+    for k, v in resp['file_tree'].items():
+        assert v.get("truncated", True) is False
 
 
 # noinspection PyUnusedLocal
@@ -129,6 +157,25 @@ def test_get_submission_tree(datastore, login_session):
 
     for k in resp['tree']:
         assert len(k) == 64
+        
+# noinspection PyUnusedLocal
+def test_get_submission_tree_get_full_tree(datastore, login_session):
+    # READY to test now that I found params.
+    _, session, host = login_session
+
+    submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
+    resp = get_api_data(session, f"{host}/api/v4/submission/tree/{submission['sid']}/", params={"get_full_tree": "true"})
+    assert isinstance(resp, dict)
+    assert "classification" in resp
+    assert "filtered" in resp
+    assert "tree" in resp
+
+    for k in resp['tree']:
+        assert len(k) == 64
+    
+    # Verify that the submission has truncated false for all entries to verify this is the full tree.
+    for k, v in resp['tree'].items():
+        assert v.get("truncated", True) is False
 
 
 # noinspection PyUnusedLocal
