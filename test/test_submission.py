@@ -90,7 +90,7 @@ def test_get_submission_full(datastore, login_session):
 
 
 # noinspection PyUnusedLocal
-def test_get_submission_full(datastore, login_session):
+def test_get_submission_full_get_full_tree(datastore, login_session):
     _, session, host = login_session
 
     submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
@@ -120,7 +120,7 @@ def test_get_submission_report(datastore, login_session):
     assert isinstance(resp['promoted_sections'], list)
     
 # noinspection PyUnusedLocal
-def test_get_submission_report(datastore, login_session):
+def test_get_submission_report_get_full_tree(datastore, login_session):
     _, session, host = login_session
 
     submission = random.choice(datastore.submission.search("id:*", rows=NUM_SUBMISSIONS, as_obj=False)['items'])
