@@ -229,7 +229,6 @@ def get_file_submission_results(sid, sha256, **kwargs):
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
-
 @submission_api.route("/tree/<sid>/", methods=["GET"])
 @api_login(require_role=[ROLES.submission_view])
 def get_file_tree(sid, **kwargs):
@@ -241,8 +240,8 @@ def get_file_tree(sid, **kwargs):
     Variables:
     sid         => Submission ID to get the tree for
 
-    Arguments:
-    None
+    Arguments (optional):
+    get_full_tree => Boolean value requesting to guarantee to get a full tree with no truncation (default is false).
 
     Data Block:
     None
@@ -260,6 +259,7 @@ def get_file_tree(sid, **kwargs):
 
     """
     user = kwargs['user']
+    get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
     data = STORAGE.submission.get(sid, as_obj=False)
     if data is None:
@@ -268,7 +268,8 @@ def get_file_tree(sid, **kwargs):
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
         return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
                                                                  cl_engine=Classification,
-                                                                 user_classification=user['classification']))
+                                                                 user_classification=user['classification'],
+                                                                 get_full_tree=get_full_tree))
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
@@ -285,8 +286,8 @@ def get_full_results(sid, **kwargs):
     Variables:
     sid         => Submission ID to get the full results for
 
-    Arguments:
-    None
+    Arguments (optional):
+    get_full_tree => Boolean value requesting to guarantee to get a full tree with no truncation (default is false).
 
     Data Block:
     None
@@ -416,10 +417,12 @@ def get_full_results(sid, **kwargs):
     if data and user and Classification.is_accessible(user['classification'], data['classification']):
         res_keys = data.get("results", [])
         err_keys = data.get("errors", [])
+        get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
         data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
                                                             cl_engine=Classification,
-                                                            user_classification=user['classification'])['tree']
+                                                            user_classification=user['classification'],
+                                                            get_full_tree=get_full_tree)['tree']
         data['file_infos'], data['missing_file_keys'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
         data.update(get_results(res_keys))
         data.update(get_errors(err_keys))
@@ -915,8 +918,8 @@ def get_report(submission_id, **kwargs):
     Variables:
     submission_id   ->   ID of the submission to create the report for
 
-    Arguments:
-    None
+    Arguments (optional):
+    get_full_tree => Boolean value requesting to guarantee to get a full tree with no truncation (default is false).
 
     Data Block:
     None
@@ -931,6 +934,8 @@ def get_report(submission_id, **kwargs):
 
     submission['important_files'] = set()
     submission['report_filtered'] = False
+    
+    get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
     if user and Classification.is_accessible(user['classification'], submission['classification']):
         if submission['state'] != 'completed':
@@ -938,7 +943,8 @@ def get_report(submission_id, **kwargs):
                                          f"Submission ID {submission_id} is incomplete.", 425)
 
         tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
-                                               cl_engine=Classification, user_classification=user['classification'])
+                                               cl_engine=Classification, user_classification=user['classification'], 
+                                               get_full_tree=get_full_tree)
         submission['file_tree'] = tree['tree']
         submission['classification'] = Classification.max_classification(submission['classification'],
                                                                          tree['classification'])
