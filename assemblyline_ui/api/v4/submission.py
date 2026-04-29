@@ -229,6 +229,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
     else:
         return make_api_response("", "You are not allowed to view the data of this submission", 403)
 
+
 @submission_api.route("/tree/<sid>/", methods=["GET"])
 @api_login(require_role=[ROLES.submission_view])
 def get_file_tree(sid, **kwargs):
@@ -765,8 +766,10 @@ def is_submission_completed(sid, **kwargs):
     Result example:
     True/False
     """
+    user = kwargs['user']
     data = STORAGE.submission.get(sid, as_obj=False)
-    if data is None:
+    if data is None or not user or not Classification.is_accessible(user['classification'], data['classification']):
+        # Always return 404 if the user is not allowed to see it to avoid information leak
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
     return make_api_response(data["state"] == "completed")
@@ -934,7 +937,7 @@ def get_report(submission_id, **kwargs):
 
     submission['important_files'] = set()
     submission['report_filtered'] = False
-    
+
     get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
     if user and Classification.is_accessible(user['classification'], submission['classification']):
@@ -943,7 +946,7 @@ def get_report(submission_id, **kwargs):
                                          f"Submission ID {submission_id} is incomplete.", 425)
 
         tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
-                                               cl_engine=Classification, user_classification=user['classification'], 
+                                               cl_engine=Classification, user_classification=user['classification'],
                                                get_full_tree=get_full_tree)
         submission['file_tree'] = tree['tree']
         submission['classification'] = Classification.max_classification(submission['classification'],
