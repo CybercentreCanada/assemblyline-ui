@@ -230,3 +230,32 @@ def test_user_otp(datastore, login_user_session):
     # None admin user should not be able to use the unset_otp endpoint
     with pytest.raises(APIError):
         get_api_data(session, f"{host}/api/v4/auth/unset_otp/name-not-exist/")
+
+
+def test_reset_link_no_email_enumeration(datastore, host):
+    # The goal of this test is to make sure that the get_reset_link endpoint does not allow for email enumeration,
+    # meaning it should return the same response regardless of whether the email exists in the system or not. This is
+    # important for security reasons, as allowing email enumeration can help attackers identify valid accounts.
+    session = requests.Session()
+
+    valid_resp = get_api_data(
+        session, f"{host}/api/v4/auth/get_reset_link/",
+        method="POST",
+        data=json.dumps({"email": "admin@assemblyline.cyber.gc.ca"})
+    )
+
+    invalid_resp = get_api_data(
+        session, f"{host}/api/v4/auth/get_reset_link/",
+        method="POST",
+        data=json.dumps({"email": "nonexistent@example.com"})
+    )
+
+    empty_resp = get_api_data(
+        session, f"{host}/api/v4/auth/get_reset_link/",
+        method="POST",
+        data=json.dumps({"email": ""})
+    )
+
+    assert valid_resp == {"success": True}
+    assert invalid_resp == {"success": True}
+    assert empty_resp == {"success": True}

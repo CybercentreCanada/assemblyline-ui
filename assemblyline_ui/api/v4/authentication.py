@@ -276,11 +276,10 @@ def get_reset_link(**_):
         try:
             send_reset_email(email, key)
             get_reset_queue(key).add(email)
-            return make_api_response({"success": True})
         except Exception:
-            make_api_response({"success": False}, "The system failed to send the password reset link.", 400)
+            LOGGER.error("Failed to send password reset email")
 
-    return make_api_response({"success": False}, "We have no record of this email address in our system.", 400)
+    return make_api_response({"success": True})
 
 
 # noinspection PyBroadException,PyPropertyAccess
