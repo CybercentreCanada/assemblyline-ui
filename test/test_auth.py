@@ -39,10 +39,12 @@ def test_internal_login(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/auth/logout/")
     assert resp.get("success", False) is True
 
+
 def test_ldap_login(host):
     # Assert that login via LDAP works
     session = requests.Session()
-    data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'ldap_user', 'password': 'ldap_password'})
+    data = get_api_data(session, f"{host}/api/v4/auth/login/",
+                        params={'user': 'ldap_user', 'password': 'ldap_password'})
 
     assert data['username'] == 'ldap_user'
 
@@ -60,6 +62,7 @@ def test_ldap_login(host):
 #     data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'saml_user', 'saml_token_id': 'saml_password'})
 
 #     assert data['username'] == 'saml_user'
+
 
 @pytest.mark.parametrize("is_active", [True, False], ids=["account_enabled", "account_disabled"])
 def test_apikey(datastore, login_session, is_active):
@@ -186,8 +189,61 @@ def test_apikey_caching_repeated_requests(datastore, host):
         APIKEY_CACHE.remove(cache_key)
 
 
+@pytest.mark.parametrize("malicious_email,should_block", [
+    ("*@assemblyline.cyber.gc.ca", True),
+    ("admin?@assemblyline.cyber.gc.ca", True),
+    ("admin/@assemblyline.cyber.gc.ca", True),
+    ("admin@assemblyline.cyber.gc.ca", False),
+    ("user.name+tag@assemblyline.cyber.gc.ca", False),
+], ids=[
+    "wildcard_star_blocked",
+    "wildcard_question_blocked",
+    "slash_blocked",
+    "normal_email_allowed",
+    "special_safe_chars_allowed",
+])
+def test_safe_email_validation(malicious_email, should_block):
+    """Verify _is_safe_email blocks Lucene metacharacters that pass is_valid_email."""
+    from assemblyline_ui.api.v4.authentication import _is_safe_lucene_email
+    from assemblyline.common.net import is_valid_email
 
-# noinspection PyUnusedLocal
+    if should_block:
+        # These pass structural validation but contain Lucene metacharacters
+        assert is_valid_email(malicious_email), f"{malicious_email} should be structurally valid"
+        assert not _is_safe_lucene_email(
+            malicious_email), f"{malicious_email} should be blocked by _is_safe_lucene_email"
+    else:
+        assert _is_safe_lucene_email(malicious_email), f"{malicious_email} should be allowed"
+
+
+@pytest.mark.parametrize("malicious_email", [
+    "*@assemblyline.cyber.gc.ca",
+    "admin?@assemblyline.cyber.gc.ca",
+], ids=[
+    "wildcard_at_domain",
+    "single_char_wildcard",
+])
+def test_signup_rejects_lucene_injection(datastore, host, malicious_email):
+    """Verify that signup rejects emails with Lucene wildcards before the query runs.
+
+    These payloads pass is_valid_email (structurally valid) but contain Lucene
+    metacharacters. Without _is_safe_email, they would reach STORAGE.user.search.
+    """
+    session = requests.Session()
+
+    with pytest.raises(APIError, match="Invalid email address"):
+        get_api_data(
+            session, f"{host}/api/v4/auth/signup/",
+            method="POST",
+            data=json.dumps({
+                "user": "testlucene",
+                "password": "TestPass123!@#",
+                "password_confirm": "TestPass123!@#",
+                "email": malicious_email,
+            })
+        )
+
+
 def test_otp(datastore, login_session):
     _, session, host = login_session
 
@@ -221,7 +277,6 @@ def test_otp(datastore, login_session):
     assert resp.get("success") is False
 
 
-# noinspection PyUnusedLocal
 def test_user_otp(datastore, login_user_session):
     user_info, session, host = login_user_session
     username = "user"
