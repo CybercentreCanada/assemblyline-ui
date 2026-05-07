@@ -787,7 +787,7 @@ def get_file_results(sha256, **kwargs):
         for i in alternates:
             if i['response']['service_name'] not in output["alternates"]:
                 output["alternates"][i['response']['service_name']] = []
-            i['response']['service_version'] = i['id'].split(".", 3)[2].replace("_", ".")
+            i['response']['service_version'] = i['id'].split(".", 3)[2].replace("_", ".").lstrip("v")
             output["alternates"][i['response']['service_name']].append(i)
 
         output['errors'] = []
