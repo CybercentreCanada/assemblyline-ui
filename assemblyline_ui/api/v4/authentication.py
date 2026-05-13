@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 import jwt
 import pyqrcode
 from assemblyline.common.comms import send_reset_email, send_signup_email
+from assemblyline.common.net import is_valid_email
 from assemblyline.common.security import (
     check_password_requirements,
     generate_random_secret,
@@ -58,6 +59,17 @@ from assemblyline_ui.security.authenticator import default_authenticator
 from assemblyline_ui.security.saml_auth import get_attribute, get_roles, get_types
 
 SCOPES = {"r": ["R"], "w": ["W"], "rw": ["R", "W"], "c": ["C"]}
+_SAFE_LUCENE_EMAIL_RE = re.compile(
+    r"^[a-zA-Z0-9.!#$%&'+=^_`|~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+
+def _is_safe_lucene_email(email: str) -> bool:
+    """Validate that an email is safe for use in datastore queries.
+
+    Rejects Lucene metacharacters (*, ?, {, }, [, ], (, ), ", \\, :, /, ~, ^)
+    that could be used for query injection while accepting normal email addresses.
+    """
+    return bool(_SAFE_LUCENE_EMAIL_RE.match(email)) and is_valid_email(email)
 
 
 SUB_API = "auth"
@@ -270,7 +282,7 @@ def get_reset_link(**_):
         data = request.values
 
     email = data.get("email", None)
-    if email and STORAGE.user.search(f"email:{email.lower()}").get("total", 0) == 1:
+    if email and _is_safe_lucene_email(email) and STORAGE.user.search(f"email:{email.lower()}").get("total", 0) == 1:
         key = hashlib.sha256(get_random_password(length=512).encode("utf-8")).hexdigest()
         # noinspection PyBroadException
         try:
@@ -704,7 +716,7 @@ def oauth_validate(**_):
                     data = parse_profile(user_data, oauth_provider_config)
                     has_access = data.pop("access", False)
 
-                    if data["email"] is None:
+                    if data["email"] is None or not _is_safe_lucene_email(data["email"]):
                         return make_api_response(
                             {"err_code": 4}, err="Could not find an email address for the user", status_code=403
                         )
@@ -856,6 +868,8 @@ def reset_pwd(**_):
             reset_queue.delete()
             if members:
                 email = members[0]
+                if not _is_safe_lucene_email(email):
+                    raise ValueError("Invalid email format in reset queue")
                 res = STORAGE.user.search(f"email:{email}", fl="*")
                 if res.get("total", 0) == 1:
                     user = res["items"][0]
@@ -960,8 +974,11 @@ def signup(**_):
     if not uname or not password or not password_confirm or not email:
         return make_api_response({"success": False}, "Not enough information to proceed with user creation", 400)
 
+    if not _is_safe_lucene_email(email):
+        return make_api_response({"success": False}, "Invalid email address", 422)
+
     if STORAGE.user.exists(uname) or len(uname) < 3:
-        return make_api_response({"success": False}, "There is already a user registered with this name", 460)
+        return make_api_response({"success": False}, "There is already a user registered with this name", 409)
     else:
         for c in uname:
             if not 97 <= ord(c) <= 122 and not ord(c) == 45:
@@ -980,7 +997,7 @@ def signup(**_):
         return make_api_response({"success": False}, error_msg, 469)
 
     if STORAGE.user.search(f"email:{email.lower()}").get("total", 0) != 0:
-        return make_api_response({"success": False}, "There is already a user registered with this email address", 466)
+        return make_api_response({"success": False}, "There is already a user registered with this email address", 409)
 
     # Normalize email address
     email = email.lower()
@@ -995,7 +1012,7 @@ def signup(**_):
         extra = ""
         if config.ui.email:
             extra = f". Contact {config.ui.email} for more information."
-        return make_api_response({"success": False}, f"Invalid email address{extra}", 466)
+        return make_api_response({"success": False}, f"Invalid email address{extra}", 422)
 
     password = get_password_hash(password)
     key = hashlib.sha256(get_random_password(length=512).encode("utf-8")).hexdigest()
