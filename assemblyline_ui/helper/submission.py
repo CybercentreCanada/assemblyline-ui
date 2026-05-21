@@ -468,7 +468,10 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     # Applying the source used to the metadata
                     if source.metadata:
                         # If a source has it's own metadata configuration, merge it with user's metadata
-                        metadata.update(source.metadata)
+                        for key, value in source.metadata.items():
+                            # Ensure we're not overwriting any existing metadata fields set by the user if there's a collision in field names
+                            if key not in metadata:
+                                metadata[key] = value
                     else:
                         # Otherwise default to just providing the original source information
                         metadata['original_source'] = source.name
