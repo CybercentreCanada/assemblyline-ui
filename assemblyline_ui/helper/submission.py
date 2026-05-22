@@ -268,7 +268,7 @@ def init_submission(request: Request, user: Dict, endpoint: str):
     else:
         # Get metadata validation configuration
         strict = s_params.get('type') in config.submission.metadata.strict_schemes
-        scheme = config.submission.metadata.ingest.get('_default', {})
+        scheme = config.submission.metadata.ingest.get('_default', {}).copy()
         scheme.update(config.submission.metadata.ingest.get(s_params.get('type'), {}))
 
     # If an error is returned as part of validation, raise it back to user
@@ -468,7 +468,10 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                     # Applying the source used to the metadata
                     if source.metadata:
                         # If a source has it's own metadata configuration, merge it with user's metadata
-                        metadata.update(source.metadata)
+                        for key, value in source.metadata.items():
+                            # Ensure we're not overwriting any existing metadata fields set by the user if there's a collision in field names
+                            if key not in metadata:
+                                metadata[key] = value
                     else:
                         # Otherwise default to just providing the original source information
                         metadata['original_source'] = source.name
@@ -520,6 +523,10 @@ def update_submission_parameters(data: dict, user: dict, user_submission_profile
         'submitter': user['uname'],
         'ttl': int(s_params.get('ttl', config.submission.dtl))
     })
+
+    # If ingestion type is specified at the root-level instead of within the parameters, ensure it's added to the parameters for metadata validation
+    if data.get('type'):
+        s_params['type'] = data['type']
 
     # Append organization to groups if not already present
     if user.get('organization') and user['organization'] not in s_params['groups']:
