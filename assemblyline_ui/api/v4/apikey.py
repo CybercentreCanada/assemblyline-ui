@@ -27,9 +27,9 @@ SCOPES = {
 }
 
 
-
 SUB_API = 'apikey'
 apikey_api = make_subapi_blueprint(SUB_API, api_version=4)
+apikey_api._doc = "View and manage Apikeys"
 
 
 @apikey_api.route("/list/", methods=["GET"])
