@@ -16,7 +16,7 @@ JSON_SECTIONS = [
     "PROCESS_TREE",
     "SANDBOX",
     "TABLE",
-    "TIMELINE"
+    "TIMELINE",
     "URL",
 ]
 
