@@ -3,7 +3,7 @@ from flask import request
 
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE
+from assemblyline_ui.config import STORAGE, CLASSIFICATION, LOGGER
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -35,10 +35,32 @@ def get_error(error_key, **kwargs):
     user = kwargs['user']
     data = STORAGE.error.get(error_key, as_obj=False)
 
-    if user and data:
-        return make_api_response(data)
-    else:
-        return make_api_response("", "You are not allowed to see this error...", 403)
+    if not user or not data:
+        return make_api_response("", "The error was not found", 404)
+
+    sha256 = error_key[:64]
+    file_info = STORAGE.file.get(sha256, as_obj=False)
+    if not file_info:
+        LOGGER.error(f"File {sha256} referenced by error {error_key} does not exist in the system")
+        return make_api_response("", "The error was not found", 404)
+
+    if not CLASSIFICATION.is_accessible(user['classification'], file_info['classification']):
+        return make_api_response("", "The error was not found", 404)
+
+    service_name = error_key.split('.')[1] if '.' in error_key else None
+    if not service_name:
+        LOGGER.error(f"Error key {error_key} does not have a service name in it")
+        return make_api_response("", "The error was not found", 404)
+
+    service = STORAGE.get_service_with_delta(service_name, as_obj=False)
+    if not service:
+        LOGGER.error(f"Service {service_name} referenced by error {error_key} does not exist in the system")
+        return make_api_response("", "The error was not found", 404)
+
+    if not CLASSIFICATION.is_accessible(user['classification'], service['classification']):
+        return make_api_response("", "The error was not found", 404)
+
+    return make_api_response(data)
 
 
 @error_api.route("/list/", methods=["GET"])

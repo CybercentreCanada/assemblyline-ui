@@ -43,21 +43,60 @@ def get_multiple_service_results(**kwargs):
         errors = e.partial_output
     results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False)
 
+    required_file_hashes = list(set([x[:64] for x in results.keys()]) | set([x[:64] for x in errors.keys()]))
     try:
-        file_infos = STORAGE.file.multiget(list(set([x[:64] for x in results.keys()])),
-                                           as_dictionary=True, as_obj=False)
+        file_infos = STORAGE.file.multiget(required_file_hashes, as_dictionary=True, as_obj=False)
     except MultiKeyError as e:
         LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
         file_infos = e.partial_output
 
     for r_key in list(results.keys()):
+        file_classification = file_infos.get(r_key[:64], {}).get('classification')
+        if file_classification is None:
+            LOGGER.error(f"File {r_key[:64]} referenced by result {r_key} does not exist in the system")
+            del results[r_key]
+            continue
+
         r_value = format_result(user['classification'], results[r_key],
-                                file_infos.get(r_key[:64], {}).get('classification', CLASSIFICATION.UNRESTRICTED),
+                                file_classification,
                                 build_hierarchy=True)
         if not r_value:
             del results[r_key]
         else:
             results[r_key] = r_value
+
+    error_service_names = list(set(k.split('.')[1] for k in errors.keys() if '.' in k))
+    error_services = {}
+    for svc_name in error_service_names:
+        svc = STORAGE.get_service_with_delta(svc_name, as_obj=False)
+        if svc:
+            error_services[svc_name] = svc
+
+    for e_key in list(errors.keys()):
+        file_classification = file_infos.get(e_key[:64], {}).get('classification')
+        if file_classification is None:
+            LOGGER.error(f"File {e_key[:64]} referenced by error {e_key} does not exist in the system")
+            del errors[e_key]
+            continue
+
+        if not CLASSIFICATION.is_accessible(user['classification'], file_classification):
+            del errors[e_key]
+            continue
+
+        svc_name = e_key.split('.')[1] if '.' in e_key else None
+        if not svc_name:
+            LOGGER.error(f"Error key {e_key} does not have a service name in it")
+            del errors[e_key]
+            continue
+
+        svc = error_services.get(svc_name)
+        if not svc:
+            LOGGER.error(f"Service {svc_name} referenced by error {e_key} does not exist in the system")
+            del errors[e_key]
+            continue
+
+        if not CLASSIFICATION.is_accessible(user['classification'], svc['classification']):
+            del errors[e_key]
 
     out = {"error": errors, "result": results}
 
@@ -66,7 +105,7 @@ def get_multiple_service_results(**kwargs):
 
 @result_api.route("/error/<path:cache_key>/", methods=["GET"])
 @api_login(require_role=[ROLES.submission_view])
-def get_service_error(cache_key, **_):
+def get_service_error(cache_key, **kwargs):
     """
     Get the content off a given service error cache key.
 
@@ -90,8 +129,32 @@ def get_service_error(cache_key, **_):
          "status": "FAIL"}                   # Status
      "sha256": "123456...123456"}         # SHA256 of the files in error
     """
+    user = kwargs['user']
+
     data = STORAGE.error.get(cache_key, as_obj=False)
     if data is None:
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
+    sha256 = cache_key[:64]
+    file_info = STORAGE.file.get(sha256, as_obj=False)
+    if not file_info:
+        LOGGER.error(f"File {sha256} referenced by error {cache_key} does not exist in the system")
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
+    if not CLASSIFICATION.is_accessible(user['classification'], file_info['classification']):
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
+    service_name = cache_key.split('.')[1] if '.' in cache_key else None
+    if not service_name:
+        LOGGER.error(f"Cache key {cache_key} does not have a service name in it")
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
+    service = STORAGE.get_service_with_delta(service_name, as_obj=False)
+    if not service:
+        LOGGER.error(f"Service {service_name} referenced by error {cache_key} does not exist in the system")
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
+    if not CLASSIFICATION.is_accessible(user['classification'], service['classification']):
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
     return make_api_response(data)
