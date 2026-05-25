@@ -1,9 +1,8 @@
 import os
 import shutil
 
+from assemblyline.common.constants import notification_queue_name
 from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
-from flask import request
-
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
@@ -27,6 +26,8 @@ from assemblyline_ui.helper.user import (
     decrement_submission_ingest_quota,
 )
 
+from flask import request
+
 SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
 ingest_api._doc = "Ingest files for large volume processing"
@@ -49,7 +50,7 @@ DEFAULT_INGEST_PARAMS = {
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
 @api_login(allow_readonly=False, require_role=[ROLES.submission_create])
-def get_message(notification_queue, **kwargs):
+def get_message(notification_queue, user, **kwargs):
     """
     Get one message on the specified notification queue
 
@@ -65,11 +66,11 @@ def get_message(notification_queue, **kwargs):
     Result example:
     {}          # A message
     """
-    u = NamedQueue("nq-%s" % notification_queue,
-                   host=config.core.redis.persistent.host,
-                   port=config.core.redis.persistent.port)
+    queue = NamedQueue(notification_queue_name(user['uname'], notification_queue),
+                       host=config.core.redis.persistent.host,
+                       port=config.core.redis.persistent.port)
 
-    msg = u.pop(blocking=False)
+    msg = queue.pop(blocking=False)
 
     return make_api_response(msg)
 
@@ -77,7 +78,7 @@ def get_message(notification_queue, **kwargs):
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message_list/<notification_queue>/", methods=["GET"])
 @api_login(allow_readonly=False, require_role=[ROLES.submission_create])
-def get_all_messages(notification_queue, **kwargs):
+def get_all_messages(notification_queue, user, **kwargs):
     """
     Get all messages on the specified notification queue
 
@@ -98,12 +99,12 @@ def get_all_messages(notification_queue, **kwargs):
     # Default page_size will return all the messages within the queue
     page_size = int(request.args.get("page_size", -1))
 
-    u = NamedQueue("nq-%s" % notification_queue,
-                   host=config.core.redis.persistent.host,
-                   port=config.core.redis.persistent.port)
+    queue = NamedQueue(notification_queue_name(user['uname'], notification_queue),
+                       host=config.core.redis.persistent.host,
+                       port=config.core.redis.persistent.port)
 
-    while True and len(resp_list) != page_size:
-        msg = u.pop(blocking=False)
+    while len(resp_list) != page_size:
+        msg = queue.pop(blocking=False)
 
         if msg is None:
             break
