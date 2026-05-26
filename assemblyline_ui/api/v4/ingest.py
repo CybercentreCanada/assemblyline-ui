@@ -1,7 +1,8 @@
 import os
 import shutil
+import string
 
-from assemblyline.common.constants import notification_queue_name
+from assemblyline.common.constants import notification_queue_name, NOTIFICATION_QUEUE_PREFIX
 from assemblyline_core.ingester.constants import INGEST_QUEUE_NAME
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
@@ -47,6 +48,15 @@ DEFAULT_INGEST_PARAMS = {
     "type": "INGEST"
 }
 
+
+def is_safe_queue_name(name: str) -> bool:
+    """Check if a queue name collides with the new namespaced format."""
+    if '-' not in name:
+        return True
+    possible_username, _, _ = name.partition('-')
+    return not all(c.isupper() and c in string.hexdigits for c in possible_username)
+
+
 # noinspection PyUnusedLocal
 @ingest_api.route("/get_message/<notification_queue>/", methods=["GET"])
 @api_login(allow_readonly=False, require_role=[ROLES.submission_create])
@@ -66,6 +76,15 @@ def get_message(notification_queue, user, **kwargs):
     Result example:
     {}          # A message
     """
+    # TODO remove this on major release 4.8+
+    if is_safe_queue_name(notification_queue):
+        queue = NamedQueue(NOTIFICATION_QUEUE_PREFIX + notification_queue,
+                           host=config.core.redis.persistent.host,
+                           port=config.core.redis.persistent.port)
+        msg = queue.pop(blocking=False)
+        if msg:
+            return make_api_response(msg)
+
     queue = NamedQueue(notification_queue_name(user['uname'], notification_queue),
                        host=config.core.redis.persistent.host,
                        port=config.core.redis.persistent.port)
@@ -99,16 +118,25 @@ def get_all_messages(notification_queue, user, **kwargs):
     # Default page_size will return all the messages within the queue
     page_size = int(request.args.get("page_size", -1))
 
+    # TODO remove this on major release 4.8+
+    if is_safe_queue_name(notification_queue):
+        queue = NamedQueue(NOTIFICATION_QUEUE_PREFIX + notification_queue,
+                           host=config.core.redis.persistent.host,
+                           port=config.core.redis.persistent.port)
+        while len(resp_list) != page_size:
+            msg = queue.pop(blocking=False)
+            if msg is None:
+                break
+            resp_list.append(msg)
+
     queue = NamedQueue(notification_queue_name(user['uname'], notification_queue),
                        host=config.core.redis.persistent.host,
                        port=config.core.redis.persistent.port)
 
     while len(resp_list) != page_size:
         msg = queue.pop(blocking=False)
-
         if msg is None:
             break
-
         resp_list.append(msg)
 
     return make_api_response(resp_list)
