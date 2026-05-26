@@ -6,6 +6,7 @@ import tempfile
 
 import pytest
 from assemblyline.common import forge
+from assemblyline.common.constants import notification_queue_name
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.config import DEFAULT_SUBMISSION_PROFILES, HASH_PATTERN_MAP
 from assemblyline.odm.models.file import File
@@ -23,7 +24,7 @@ from conftest import APIError, get_api_data
 NUM_FILES = 4
 TEST_QUEUE = "my_queue"
 config = forge.get_config()
-nq = NamedQueue(f"nq-{TEST_QUEUE}", host=config.core.redis.persistent.host,
+nq = NamedQueue(notification_queue_name('admin', TEST_QUEUE), host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
 iq = NamedQueue(INGEST_QUEUE_NAME, host=config.core.redis.persistent.host,
                 port=config.core.redis.persistent.port)
