@@ -524,8 +524,9 @@ def update_submission_parameters(data: dict, user: dict, user_submission_profile
         'ttl': int(s_params.get('ttl', config.submission.dtl))
     })
 
-    # If ingestion type is specified at the root-level instead of within the parameters, ensure it's added to the parameters for metadata validation
-    if data.get('type'):
+    # If the ingestion type isn't placed properly in the request data (ie. at the root-level instead of inside `params`)
+    # Then correct it here to ensure it's applied properly for the rest of the submission process
+    if data.get('type') and 'type' not in s_params:
         s_params['type'] = data['type']
 
     # Append organization to groups if not already present
