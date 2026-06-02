@@ -1,0 +1,13 @@
+FROM cccs/assemblyline_dev:4.7.1
+
+# Install MCP SDK
+RUN pip install --no-cache-dir mcp uvicorn starlette
+
+# Copy test files and MCP client (context is test/)
+COPY test_mcp_server.py /opt/test_mcp_server.py
+COPY test_mcp_agent.py /opt/test_mcp_agent.py
+COPY mcp_client.py /opt/mcp_client.py
+COPY run_mcp_tests.sh /opt/run_mcp_tests.sh
+RUN chmod +x /opt/run_mcp_tests.sh
+
+CMD ["/opt/run_mcp_tests.sh"]

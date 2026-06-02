@@ -75,3 +75,28 @@ submission:
 
 ui:
   enforce_quota: false
+  ai_backends:
+    enabled: true
+    api_connections: []
+    mcp_servers:
+      - name: test
+        url: "http://mcp_server:8081/sse"
+        transport: sse
+        timeout: 30
+    agent_profiles:
+      - name: analyst
+        description: "Test analyst agent"
+        system_message: "You are a test analyst assistant."
+        mcp_servers:
+          - test
+        max_iterations: 10
+        max_tokens: 1024
+      - name: triage
+        description: "Read-only triage agent"
+        system_message: "You read data only. No submissions."
+        mcp_servers:
+          - test
+        excluded_tools:
+          - submit_url
+        max_iterations: 5
+        max_tokens: 512

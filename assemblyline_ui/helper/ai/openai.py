@@ -1,3 +1,4 @@
+import json
 import requests
 import yaml
 from assemblyline.common.str_utils import safe_str
@@ -17,7 +18,8 @@ class OpenAIAgent(AIAgent):
         if config.use_fic and "openai.azure.com" in config.chat_url:
             try:
                 credentials = DefaultAzureCredential()
-                aad_token = credentials.get_token('https://cognitiveservices.azure.com/.default').token
+                scope = config.fic_scope if hasattr(config, 'fic_scope') and config.fic_scope else 'https://cognitiveservices.azure.com/.default'
+                aad_token = credentials.get_token(scope).token
                 self.config.headers['Authorization'] = f"Bearer {aad_token}"
             except Exception as e:
                 logger.error(f"Could not properly initialize OpenAI Agent using Federated Identity token: {e}")
@@ -136,3 +138,92 @@ class OpenAIAgent(AIAgent):
         data.update(self.params.code.options)
 
         return self._call_ai_backend(data, "summarize code snippet", with_trace=with_trace)
+
+    async def agentic_conversation(self, messages, tools_openai, mcp_registry, agent_profile,
+                                   user=None, lang="english"):
+        """Run an agentic conversation loop with MCP tool calling.
+
+        The LLM decides which tools to call; we execute them via MCP and feed
+        results back until the LLM produces a final text response.
+        """
+        max_iterations = agent_profile.max_iterations
+        options = {k: v for k, v in (agent_profile.options or {}).items() if k in ALLOWED_OPTIONS}
+        self.logger.info(f"Agentic loop starting: model={self.config.model_name}, "
+                        f"max_iterations={max_iterations}, tools={len(tools_openai)}")
+
+        for iteration in range(max_iterations):
+            data = {
+                "max_tokens": agent_profile.max_tokens,
+                "messages": messages,
+                "model": self.config.model_name,
+                "stream": False,
+            }
+            if tools_openai:
+                data["tools"] = tools_openai
+                data["tool_choice"] = "auto"
+            data.update(options)
+
+            try:
+                resp = self.session.post(self.config.chat_url, json=data)
+            except Exception as e:
+                self.logger.error(f"Agentic API call failed on iteration {iteration}: {e}")
+                raise APIException(f"Agentic call failed on iteration {iteration}: {e}")
+
+            if not resp.ok:
+                msg_data = resp.json()
+                msg = msg_data.get('error', {}).get('message', None) or msg_data
+                self.logger.error(f"Agentic API call denied on iteration {iteration}: {msg}")
+                raise APIException(f"Agentic call denied on iteration {iteration}: {msg}")
+
+            choices = resp.json().get('choices', [])
+            if not choices:
+                self.logger.error(f"Empty response from AI on iteration {iteration}")
+                raise EmptyAIResponse("No response from AI during agentic loop")
+
+            message = choices[0]['message']
+            finish_reason = choices[0].get('finish_reason', 'stop')
+
+            tool_calls = message.get('tool_calls')
+            if tool_calls and finish_reason == 'tool_calls':
+                # Append assistant message with tool_calls
+                messages.append({
+                    'role': 'assistant',
+                    'content': message.get('content'),
+                    'tool_calls': tool_calls,
+                })
+
+                # Execute each tool via MCP
+                for tool_call in tool_calls:
+                    func = tool_call.get('function', {})
+                    tool_name = func.get('name', '')
+                    try:
+                        tool_args = json.loads(func.get('arguments', '{}'))
+                    except json.JSONDecodeError:
+                        self.logger.warning(f"Failed to parse tool arguments for {tool_name}, using empty args")
+                        tool_args = {}
+
+                    self.logger.info(f"Agentic tool call [{iteration}]: {tool_name}({tool_args})")
+
+                    tool_result = mcp_registry.execute_tool(tool_name, tool_args)
+
+                    messages.append({
+                        'role': 'tool',
+                        'tool_call_id': tool_call.get('id', ''),
+                        'content': tool_result,
+                    })
+
+                continue
+
+            # No tool calls — final response
+            content = message.get('content', '')
+            messages.append({'role': 'assistant', 'content': content})
+            self.logger.info(f"Agentic loop completed after {iteration + 1} iteration(s)")
+            return {'trace': messages, 'truncated': finish_reason == 'length'}
+
+        # Exhausted iterations
+        self.logger.warning(f"Agentic loop exhausted max_iterations={max_iterations}")
+        messages.append({
+            'role': 'assistant',
+            'content': '[Agent reached maximum iteration limit. Returning partial results.]'
+        })
+        return {'trace': messages, 'truncated': True}

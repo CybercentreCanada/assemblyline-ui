@@ -290,7 +290,8 @@ def who_am_i(**kwargs):
         },
         "ui": {
             "ai": {
-                "enabled": AI_AGENT.has_backends()
+                "enabled": AI_AGENT.has_backends(),
+                "agent_profiles": AI_AGENT.get_agent_profile_list() if AI_AGENT.has_agent_profiles() else []
             },
             "alerting_meta": {
                 "important": config.ui.alerting_meta.important,

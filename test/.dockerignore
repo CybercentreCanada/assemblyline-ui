@@ -1,0 +1,11 @@
+.git
+.idea
+venv
+env
+pipelines
+docs
+pip-log.txt
+.tox
+.coverage
+.cache
+*.log

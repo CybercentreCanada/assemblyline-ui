@@ -1,0 +1,4 @@
+FROM cccs/assemblyline_dev:4.7.1
+
+# Install MCP SDK for the test MCP server and agentic framework
+RUN pip install --no-cache-dir mcp uvicorn starlette

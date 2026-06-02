@@ -1,7 +1,7 @@
 from typing import List
 from assemblyline.common import forge
 from assemblyline.common.log import PrintLogger
-from assemblyline.odm.models.config import AIFunctionParameters, Config, AIConnection
+from assemblyline.odm.models.config import AIAgentProfile, AIFunctionParameters, Config, AIConnection
 from assemblyline.odm.models.service import Service
 
 
@@ -45,6 +45,9 @@ class AIAgent():
     def summarize_code_snippet(self, code, lang="english", with_trace=False):
         raise UnimplementedException("Method not implemented yet")
 
+    def agentic_conversation(self, messages, tools_openai, mcp_registry, agent_profile, user=None, lang="english"):
+        raise UnimplementedException("Agentic conversations not supported by this backend")
+
     def set_system_prompts(self, system_prompt, scoring_prompt, classification_prompt,
                            services_prompt, indices_prompt, definition_prompt):
         self.system_prompt = system_prompt
@@ -83,6 +86,18 @@ class AIAgentPool():
 
         # Load backends
         self.api_backends: List[AIAgent] = api_backends
+
+        # Load MCP tool registry and agent profiles from config
+        self.mcp_registry = None
+        self.agent_profiles: dict[str, AIAgentProfile] = {}
+        self._mcp_initialized = False
+
+        if config.ui.ai_backends.mcp_servers:
+            from assemblyline_ui.helper.ai.mcp_client import MCPToolRegistry
+            self.mcp_registry = MCPToolRegistry(config.ui.ai_backends.mcp_servers)
+
+        for profile in config.ui.ai_backends.agent_profiles:
+            self.agent_profiles[profile.name] = profile
 
     def has_backends(self):
         return len(self.api_backends) != 0
@@ -142,6 +157,92 @@ class AIAgentPool():
             raise last_error
 
         raise EmptyAIResponse("Could not find any AI backend to answer the question")
+
+    def has_agent_profiles(self):
+        return len(self.agent_profiles) != 0
+
+    def get_agent_profile_list(self):
+        """Return list of available agent profiles (name + description, for UI display)."""
+        return [{'name': p.name, 'description': p.description} for p in self.agent_profiles.values()]
+
+    async def ensure_mcp_initialized(self):
+        """Initialize MCP connections if not already done. Called lazily on first agentic request."""
+        if self.mcp_registry and not self._mcp_initialized:
+            self.logger.info("Initializing MCP connections (first agentic request)")
+            self.mcp_registry.initialize()
+            self._mcp_initialized = True
+            self.logger.info(f"MCP initialized: {len(self.mcp_registry.get_all_tool_names())} tools available")
+
+    async def agentic_conversation(self, agent_name, messages, user=None, lang="english"):
+        """Run an agentic conversation with MCP tool calling using a named agent profile."""
+        username = user.get('uname', 'unknown') if user else 'unknown'
+        self.logger.info(f"Agentic conversation started: agent='{agent_name}', user='{username}'")
+
+        profile = self.agent_profiles.get(agent_name)
+        if not profile:
+            self.logger.warning(f"Unknown agent profile requested: '{agent_name}'")
+            raise APIException(f"Unknown agent profile: {agent_name}")
+
+        if not self.mcp_registry:
+            self.logger.error("Agentic conversation requested but no MCP servers configured")
+            raise APIException("No MCP servers configured for agentic workflows")
+
+        # Ensure MCP connections are up
+        await self.ensure_mcp_initialized()
+
+        # Resolve which tools this agent can see
+        tool_names = self.mcp_registry.filter_tools(
+            server_names=profile.mcp_servers,
+            include=profile.tools if profile.tools else None,
+            exclude=profile.excluded_tools if profile.excluded_tools else None,
+        )
+
+        if not tool_names:
+            self.logger.error(f"No tools available for agent '{agent_name}' after filtering "
+                             f"(servers={profile.mcp_servers}, include={profile.tools}, "
+                             f"exclude={profile.excluded_tools})")
+            raise APIException(f"No tools available for agent '{agent_name}'. "
+                               f"Check MCP server connectivity and profile configuration.")
+
+        self.logger.info(f"Agent '{agent_name}': {len(tool_names)} tools available: {tool_names}")
+
+        # Convert to OpenAI format
+        tools_openai = self.mcp_registry.to_openai_tools(tool_names)
+
+        # Inject system message
+        system_content = "\n\n".join([
+            profile.system_message,
+            self.system_prompt if hasattr(self, 'system_prompt') else '',
+        ]).strip()
+
+        if messages and messages[0].get('role') == 'system':
+            messages[0]['content'] = system_content
+        else:
+            messages.insert(0, {'role': 'system', 'content': system_content})
+
+        # Try each backend
+        last_error = None
+        for backend in self.api_backends:
+            try:
+                return await backend.agentic_conversation(
+                    messages=messages,
+                    tools_openai=tools_openai,
+                    mcp_registry=self.mcp_registry,
+                    agent_profile=profile,
+                    user=user,
+                    lang=lang,
+                )
+            except (APIException, UnimplementedException) as e:
+                self.logger.debug(f"Backend {type(backend).__name__} failed for agentic conversation: {e}")
+                last_error = e
+                continue
+
+        if last_error:
+            self.logger.error(f"All backends failed for agentic conversation: {last_error}")
+            raise last_error
+
+        self.logger.error("No AI backend available for agentic workflows")
+        raise EmptyAIResponse("No AI backend available for agentic workflows")
 
     def _build_scoring_prompt(self):
         scoring = f"""Assemblyline uses a scoring mechanism where any scores below

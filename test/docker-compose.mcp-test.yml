@@ -1,0 +1,111 @@
+# docker-compose for MCP agent framework end-to-end tests.
+# Works on ARM (via platform: linux/amd64 emulation) and natively on amd64 CI runners.
+#
+# Usage:
+#   docker compose -f test/docker-compose.mcp-test.yml up --build --abort-on-container-exit
+#
+services:
+  # ── Infrastructure ──────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    platform: linux/amd64
+    environment:
+      - xpack.security.enabled=true
+      - discovery.type=single-node
+      - logger.level=WARN
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ELASTIC_PASSWORD=devpass
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -u elastic:devpass --silent --fail localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    environment:
+      MINIO_ROOT_USER: al_storage_key
+      MINIO_ROOT_PASSWORD: "Ch@ngeTh!sPa33w0rd"
+    ports:
+      - "9000:9000"
+    command: server /data
+
+  # ── Test MCP Server ─────────────────────────────────────
+  # Simulates an AL MCP server with dummy tools
+  mcp_server:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile.mcp-test
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    volumes:
+      - ../..:/opt/alv4/
+    command: python3 /opt/alv4/assemblyline-ui/test/test_mcp_server.py
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail http://localhost:8081/sse || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── AL UI ───────────────────────────────────────────────
+  # Runs the Assemblyline UI with our MCP agent code
+  al_ui:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile.mcp-test
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./config/:/etc/assemblyline/
+      - ../..:/opt/alv4/
+    working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
+    command: python3 app.py
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      mcp_server:
+        condition: service_healthy
+
+  # ── Test Runner ─────────────────────────────────────────
+  # Runs the end-to-end MCP agent tests against the live stack
+  test_runner:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile.mcp-test
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    volumes:
+      - ../..:/opt/alv4/
+    working_dir: /opt/alv4/assemblyline-ui/
+    environment:
+      - MCP_SERVER_URL=http://mcp_server:8081/sse
+      - AL_UI_URL=http://al_ui:5000
+    command: python3 /opt/alv4/assemblyline-ui/test/test_mcp_agent.py
+    depends_on:
+      al_ui:
+        condition: service_started
+      mcp_server:
+        condition: service_healthy
