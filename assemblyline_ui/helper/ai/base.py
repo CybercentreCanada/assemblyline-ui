@@ -1,7 +1,7 @@
 from typing import List
 from assemblyline.common import forge
 from assemblyline.common.log import PrintLogger
-from assemblyline.odm.models.config import AIFunctionParameters, Config, AIConnection
+from assemblyline.odm.models.config import AIAgentProfile, AIFunctionParameters, Config, AIConnection
 from assemblyline.odm.models.service import Service
 
 
@@ -45,6 +45,9 @@ class AIAgent():
     def summarize_code_snippet(self, code, lang="english", with_trace=False):
         raise UnimplementedException("Method not implemented yet")
 
+    def agentic_conversation(self, messages, tools_openai, tool_registry, agent_profile, user=None, lang="english"):
+        raise UnimplementedException("Agentic conversations not supported by this backend")
+
     def set_system_prompts(self, system_prompt, scoring_prompt, classification_prompt,
                            services_prompt, indices_prompt, definition_prompt):
         self.system_prompt = system_prompt
@@ -57,7 +60,8 @@ class AIAgent():
 
 class AIAgentPool():
     def __init__(self, config: Config, api_backends: List[AIAgent] = [],
-                 logger=None, ds=None, classification=None) -> None:
+                 logger=None, ds=None, classification=None, filestore=None,
+                 identify=None) -> None:
         # Load pool dependencies
         self.logger = logger or PrintLogger()
         self.config = config
@@ -83,6 +87,21 @@ class AIAgentPool():
 
         # Load backends
         self.api_backends: List[AIAgent] = api_backends
+
+        # Load tool registry and agent profiles from config
+        self.tool_registry = None
+        self.agent_profiles: dict[str, AIAgentProfile] = {}
+        if config.ui.ai_backends.tools or config.ui.ai_backends.agent_profiles:
+            from assemblyline_ui.helper.ai.tools import ToolRegistry
+            self.tool_registry = ToolRegistry(
+                tool_definitions=config.ui.ai_backends.tools,
+                ds=self.ds,
+                filestore=filestore,
+                identify=identify,
+                config=config,
+            )
+            for profile in config.ui.ai_backends.agent_profiles:
+                self.agent_profiles[profile.name] = profile
 
     def has_backends(self):
         return len(self.api_backends) != 0
@@ -142,6 +161,72 @@ class AIAgentPool():
             raise last_error
 
         raise EmptyAIResponse("Could not find any AI backend to answer the question")
+
+    def has_agent_profiles(self):
+        return len(self.agent_profiles) != 0
+
+    def get_agent_profile_list(self):
+        """Return list of available agent profiles (name + description only, for UI display)."""
+        return [{'name': p.name, 'description': p.description} for p in self.agent_profiles.values()]
+
+    def agentic_conversation(self, agent_name, messages, user=None, lang="english"):
+        """Run an agentic conversation with tool calling using a named agent profile.
+
+        Args:
+            agent_name: Name of the agent profile to use
+            messages: Conversation message history
+            user: Current user dict for access control in tool calls
+            lang: Response language
+
+        Returns:
+            dict with 'trace' (full message history) and 'truncated' flag
+        """
+        profile = self.agent_profiles.get(agent_name)
+        if not profile:
+            raise APIException(f"Unknown agent profile: {agent_name}")
+
+        if not self.tool_registry:
+            raise APIException("No tools configured for agentic workflows")
+
+        # Build OpenAI-format tool definitions for this agent's tools
+        tools_openai = self.tool_registry.to_openai_tools(profile.tools)
+
+        # Inject system message if not present or if it needs to be overridden
+        if messages and messages[0].get('role') == 'system':
+            # Prepend the agent's system message plus AL context
+            messages[0]['content'] = "\n\n".join([
+                profile.system_message,
+                self.system_prompt if hasattr(self, 'system_prompt') else '',
+            ]).strip()
+        else:
+            messages.insert(0, {
+                'role': 'system',
+                'content': "\n\n".join([
+                    profile.system_message,
+                    self.system_prompt if hasattr(self, 'system_prompt') else '',
+                ]).strip(),
+            })
+
+        # Try each backend
+        last_error = None
+        for backend in self.api_backends:
+            try:
+                return backend.agentic_conversation(
+                    messages=messages,
+                    tools_openai=tools_openai,
+                    tool_registry=self.tool_registry,
+                    agent_profile=profile,
+                    user=user,
+                    lang=lang,
+                )
+            except (APIException, UnimplementedException) as e:
+                last_error = e
+                continue
+
+        if last_error:
+            raise last_error
+
+        raise EmptyAIResponse("No AI backend available for agentic workflows")
 
     def _build_scoring_prompt(self):
         scoring = f"""Assemblyline uses a scoring mechanism where any scores below

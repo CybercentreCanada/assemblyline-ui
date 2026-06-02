@@ -6,13 +6,14 @@ from assemblyline_ui.helper.ai.cohere import CohereAgent
 from assemblyline_ui.helper.ai.openai import OpenAIAgent
 
 
-def get_ai_agent(config: Config, logger: Logger, ds, classification):
+def get_ai_agent(config: Config, logger: Logger, ds, classification, filestore=None, identify=None):
     backends = []
     if config.ui.ai_backends.enabled:
         for api_connection in config.ui.ai_backends.api_connections:
             backends.append(_init_ai_agent(api_connection, config.ui.ai_backends.function_params, logger=logger))
 
-    return AIAgentPool(config, api_backends=backends, logger=logger, ds=ds, classification=classification)
+    return AIAgentPool(config, api_backends=backends, logger=logger, ds=ds,
+                       classification=classification, filestore=filestore, identify=identify)
 
 
 def _init_ai_agent(config: AIConnection, function_params: AIFunctionParameters, logger):

@@ -1,3 +1,4 @@
+import json
 import requests
 import yaml
 from assemblyline.common.str_utils import safe_str
@@ -136,3 +137,94 @@ class OpenAIAgent(AIAgent):
         data.update(self.params.code.options)
 
         return self._call_ai_backend(data, "summarize code snippet", with_trace=with_trace)
+
+    def agentic_conversation(self, messages, tools_openai, tool_registry, agent_profile, user=None, lang="english"):
+        """Run an agentic conversation loop with tool calling.
+
+        Args:
+            messages: Conversation message history
+            tools_openai: Tool definitions in OpenAI function-calling format
+            tool_registry: ToolRegistry instance for executing tool calls
+            agent_profile: AIAgentProfile with max_iterations, max_tokens, options
+            user: Current user dict for access control
+            lang: Response language
+
+        Returns:
+            dict with 'trace' (full message history) and 'truncated' flag
+        """
+        max_iterations = agent_profile.max_iterations
+        options = {k: v for k, v in (agent_profile.options or {}).items() if k in ALLOWED_OPTIONS}
+
+        for iteration in range(max_iterations):
+            # Build request with tools
+            data = {
+                "max_tokens": agent_profile.max_tokens,
+                "messages": messages,
+                "model": self.config.model_name,
+                "stream": False,
+            }
+            if tools_openai:
+                data["tools"] = tools_openai
+                data["tool_choice"] = "auto"
+            data.update(options)
+
+            # Call the LLM
+            try:
+                resp = self.session.post(self.config.chat_url, json=data)
+            except Exception as e:
+                raise APIException(f"Agentic call failed on iteration {iteration}: {e}")
+
+            if not resp.ok:
+                msg_data = resp.json()
+                msg = msg_data.get('error', {}).get('message', None) or msg_data
+                raise APIException(f"Agentic call denied on iteration {iteration}: {msg}")
+
+            choices = resp.json().get('choices', [])
+            if not choices:
+                raise EmptyAIResponse("No response from AI during agentic loop")
+
+            message = choices[0]['message']
+            finish_reason = choices[0].get('finish_reason', 'stop')
+
+            # If the LLM wants to call tools, execute them and continue
+            tool_calls = message.get('tool_calls')
+            if tool_calls and finish_reason == 'tool_calls':
+                # Append the assistant message with tool_calls to the trace
+                messages.append({
+                    'role': 'assistant',
+                    'content': message.get('content'),
+                    'tool_calls': tool_calls,
+                })
+
+                # Execute each tool call and append results
+                for tool_call in tool_calls:
+                    func = tool_call.get('function', {})
+                    tool_name = func.get('name', '')
+                    try:
+                        tool_args = json.loads(func.get('arguments', '{}'))
+                    except json.JSONDecodeError:
+                        tool_args = {}
+
+                    self.logger.info(f"Agentic tool call [{iteration}]: {tool_name}({tool_args})")
+
+                    tool_result = tool_registry.execute_tool(tool_name, tool_args, user=user)
+
+                    messages.append({
+                        'role': 'tool',
+                        'tool_call_id': tool_call.get('id', ''),
+                        'content': tool_result,
+                    })
+
+                continue  # Next iteration — let LLM process tool results
+
+            # No tool calls — final response
+            content = message.get('content', '')
+            messages.append({'role': 'assistant', 'content': content})
+            return {'trace': messages, 'truncated': finish_reason == 'length'}
+
+        # Exhausted iterations — return what we have
+        messages.append({
+            'role': 'assistant',
+            'content': '[Agent reached maximum iteration limit. Returning partial results.]'
+        })
+        return {'trace': messages, 'truncated': True}

@@ -221,9 +221,9 @@ else:
     ARCHIVESTORE = None
 STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
 CACHE: Cache = Cache(prefix="flask_cache", host=redis, ttl=24 * 60 * 60)
-AI_AGENT: AIAgentPool = get_ai_agent(config, LOGGER, STORAGE, CLASSIFICATION)
 metadata_validator = MetadataValidator(STORAGE, METADATA_SUGGESTIONS)
 IDENTIFY: Identify = forge.get_identify(config=config, datastore=STORAGE, use_cache=True)
+AI_AGENT: AIAgentPool = get_ai_agent(config, LOGGER, STORAGE, CLASSIFICATION, filestore=FILESTORE, identify=IDENTIFY)
 ARCHIVE_MANAGER: ArchiveManager = ArchiveManager(
     config=config, datastore=STORAGE, filestore=FILESTORE, identify=IDENTIFY)
 SERVICE_LIST = forge.CachedObject(STORAGE.list_all_services, kwargs=dict(as_obj=False, full=True))
