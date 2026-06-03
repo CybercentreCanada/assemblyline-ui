@@ -57,11 +57,17 @@ def assistant_chat(**kwargs):
     """
     user = kwargs["user"]
     body = request.json
+    lang = request.args.get("lang", "english")
 
     messages = body.get("messages", [])
     run_id = body.get("runId", str(uuid.uuid4()))
 
     user_message = _extract_user_message(messages)
+    prompt = (
+        f"Please respond in {lang}.\n\n{user_message}"
+        if lang.lower() != "english"
+        else user_message
+    )
 
     # Capture headers now while request context is active.
     # Extract XSRF token from the cookie (double-submit pattern) since
@@ -80,7 +86,7 @@ def assistant_chat(**kwargs):
 
     # Audit
     AUDIT_LOG.info(
-        f"{user['uname']} [{user['classification']}] :: assistant_chat(content={user_message})"
+        f"{user['uname']} [{user['classification']}] :: assistant_chat(lang={lang}, content={user_message})"
     )
 
     def generate():
@@ -143,13 +149,13 @@ def assistant_chat(**kwargs):
                 if mcp:
                     async with mcp:
                         await AI_AGENT.run(
-                            user_message,
+                            prompt,
                             toolsets=[mcp],
                             event_stream_handler=_handle_events,
                         )
                 else:
                     await AI_AGENT.run(
-                        user_message,
+                        prompt,
                         event_stream_handler=_handle_events,
                     )
 
