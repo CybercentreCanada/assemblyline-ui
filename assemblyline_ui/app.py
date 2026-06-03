@@ -44,6 +44,7 @@ from assemblyline_ui.api.v4.webauthn import webauthn_api
 from assemblyline_ui.api.v4.workflow import workflow_api
 from assemblyline_ui.error import errors
 from assemblyline_ui.healthz import healthz
+from assemblyline_ui.helper.ai import has_backends as _ai_has_backends
 
 AL_UNSECURED_UI = os.environ.get('AL_UNSECURED_UI', 'false').lower() == 'true'
 THREADED = os.environ.get('THREADED', 'true').lower() == 'true'
@@ -111,7 +112,7 @@ app.register_blueprint(apiv4)
 app.register_blueprint(alert_api)
 if config.config.datastore.archive.enabled:
     app.register_blueprint(archive_api)
-if config.AI_AGENT.has_backends():
+if _ai_has_backends():
     app.register_blueprint(assistant_api)
 app.register_blueprint(apikey_api)
 app.register_blueprint(auth_api)

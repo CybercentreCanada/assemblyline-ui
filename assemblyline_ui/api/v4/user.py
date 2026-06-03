@@ -25,7 +25,6 @@ from flask import request, session
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.api.v4.federated_lookup import filtered_tag_names
 from assemblyline_ui.config import (
-    AI_AGENT,
     APPS_LIST,
     CLASSIFICATION,
     CLASSIFICATION_ALIASES,
@@ -38,6 +37,7 @@ from assemblyline_ui.config import (
     VERSION,
     config,
 )
+from assemblyline_ui.helper.ai import has_backends as _ai_has_backends
 from assemblyline_ui.helper.search import list_all_fields
 from assemblyline_ui.helper.service import (
     ui_to_submission_params,
@@ -289,9 +289,7 @@ def who_am_i(**kwargs):
             "version": VERSION
         },
         "ui": {
-            "ai": {
-                "enabled": AI_AGENT.has_backends()
-            },
+            "ai": {"enabled": _ai_has_backends()},
             "alerting_meta": {
                 "important": config.ui.alerting_meta.important,
                 "subject": config.ui.alerting_meta.subject,

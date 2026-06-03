@@ -1,16 +1,19 @@
 import time
 
-from assemblyline_core.dispatching.client import DispatchClient
-from flask import request
-from werkzeug.exceptions import BadRequest
-
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import MultiKeyError, SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.events import EventSender
+from assemblyline_core.dispatching.client import DispatchClient
+from flask import request
+from werkzeug.exceptions import BadRequest
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import AI_AGENT, CACHE, FILESTORE, LOGGER, STORAGE, config
+from assemblyline_ui.config import CACHE, FILESTORE, LOGGER, STORAGE, config
 from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.helper.ai import detailed_al_submission as _ai_detail
+from assemblyline_ui.helper.ai import has_backends as _ai_has_backends
+from assemblyline_ui.helper.ai import summarized_al_submission as _ai_summarize
 from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
 from assemblyline_ui.helper.submission import get_or_create_summary
@@ -519,7 +522,7 @@ def get_ai_summary(sid, **kwargs):
 
 
     """
-    if not AI_AGENT.has_backends():
+    if not _ai_has_backends():
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
@@ -556,9 +559,9 @@ def get_ai_summary(sid, **kwargs):
 
         try:
             if detailed:
-                ai_summary = AI_AGENT.detailed_al_submission(data, lang=lang, with_trace=with_trace)
+                ai_summary = _ai_detail(data, lang=lang, with_trace=with_trace)
             else:
-                ai_summary = AI_AGENT.summarized_al_submission(data, lang=lang, with_trace=with_trace)
+                ai_summary = _ai_summarize(data, lang=lang, with_trace=with_trace)
 
             # Save to cache
             CACHE.set(cache_key, ai_summary)

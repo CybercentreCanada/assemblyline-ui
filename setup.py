@@ -43,6 +43,8 @@ setup(
         'assemblyline-core',
         'werkzeug',
         'flask<3.0.0',
+        'pydantic-ai[mcp]',
+        'openai',
         'pyqrcode',
         'markdown',
         'python-ldap',

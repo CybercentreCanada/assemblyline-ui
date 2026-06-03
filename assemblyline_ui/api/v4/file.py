@@ -22,7 +22,6 @@ from assemblyline_ui.api.base import (
     stream_file_response,
 )
 from assemblyline_ui.config import (
-    AI_AGENT,
     ALLOW_RAW_DOWNLOADS,
     ALLOW_ZIP_DOWNLOADS,
     ARCHIVESTORE,
@@ -32,7 +31,9 @@ from assemblyline_ui.config import (
     config,
 )
 from assemblyline_ui.config import CLASSIFICATION as Classification
-from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
+from assemblyline_ui.helper.ai import has_backends as _ai_has_backends
+from assemblyline_ui.helper.ai import summarize_code_snippet as _ai_code_summary
+from assemblyline_ui.helper.ai import summarized_al_submission as _ai_summarize
 from assemblyline_ui.helper.result import format_result
 from assemblyline_ui.helper.user import load_user_settings
 
@@ -311,7 +312,7 @@ def summarized_results(sha256, **kwargs):
       "truncated": false
     }
     """
-    if not AI_AGENT.has_backends():
+    if not _ai_has_backends():
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     archive_only = request.args.get('archive_only', 'false').lower() in ['true', '']
@@ -345,11 +346,9 @@ def summarized_results(sha256, **kwargs):
             return make_api_response("", "The file was not found in the system.", 404)
 
         try:
-            ai_summary = AI_AGENT.summarized_al_submission(data, lang=lang, with_trace=with_trace)
-
-            # Save to cache
+            ai_summary = _ai_summarize(data, lang=lang, with_trace=with_trace)
             CACHE.set(cache_key, ai_summary)
-        except (APIException, EmptyAIResponse) as e:
+        except Exception as e:
             return make_api_response("", str(e), 400)
 
     return make_api_response(ai_summary)
@@ -382,7 +381,7 @@ def summarize_code_snippet(sha256, **kwargs):
       "truncated": false
     }
     """
-    if not AI_AGENT.has_backends():
+    if not _ai_has_backends():
         return make_api_response({}, "AI Support is disabled on this system.", 400)
 
     no_cache = request.args.get('no_cache', 'false').lower() in ['true', '']
@@ -422,11 +421,9 @@ def summarize_code_snippet(sha256, **kwargs):
                 return make_api_response({}, "The file was not found in the system.", 404)
 
             try:
-                ai_summary = AI_AGENT.summarize_code_snippet(data, lang=lang, with_trace=with_trace)
-
-                # Save to cache
+                ai_summary = _ai_code_summary(data, lang=lang, with_trace=with_trace)
                 CACHE.set(cache_key, ai_summary)
-            except (APIException, EmptyAIResponse) as e:
+            except Exception as e:
                 return make_api_response("", str(e), 400)
         else:
             return make_api_response({}, "You are not allowed to view this file.", 403)
