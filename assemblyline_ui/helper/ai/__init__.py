@@ -21,7 +21,7 @@ MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", None)
 def _get_ai_backends():
     # Lazy import to avoid circular dependency: assemblyline_ui.config imports build_agent from here.
     from assemblyline_ui.config import config  # noqa: PLC0415
-    return config.ai_backends
+    return config.ui.ai_backends.function_params
 
 
 def _build_system_prompt(template: str, lang: str = "english", extra_context: str = "") -> str:

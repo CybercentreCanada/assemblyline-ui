@@ -41,6 +41,29 @@ def _extract_user_message(messages: list) -> str:
     return "Hello"
 
 
+def _build_message_history(messages: list):
+    """Convert AG-UI message history (excluding the last message) to pydantic-ai ModelMessage format."""
+    from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
+
+    def _text(msg: dict) -> str:
+        for part in msg.get("parts", []):
+            if part.get("type") == "text" and part.get("content"):
+                return part["content"]
+        return msg.get("content", "")
+
+    history = []
+    for msg in messages[:-1]:
+        role = msg.get("role")
+        text = _text(msg)
+        if not text:
+            continue
+        if role == "user":
+            history.append(ModelRequest(parts=[UserPromptPart(text)]))
+        elif role == "assistant":
+            history.append(ModelResponse(parts=[TextPart(content=text)]))
+    return history
+
+
 @assistant_api.route("/chat", methods=["POST"])
 @api_login(require_role=[ROLES.assistant_use], check_xsrf_token=False)
 def assistant_chat(**kwargs):
@@ -145,17 +168,20 @@ def assistant_chat(**kwargs):
                             emitted_any_text[0] = True
 
             async def _async_run():
+                message_history = _build_message_history(messages)
                 mcp = build_mcp_server(headers=fwd_headers)
                 if mcp:
                     async with mcp:
                         await AI_AGENT.run(
                             prompt,
+                            message_history=message_history,
                             toolsets=[mcp],
                             event_stream_handler=_handle_events,
                         )
                 else:
                     await AI_AGENT.run(
                         prompt,
+                        message_history=message_history,
                         event_stream_handler=_handle_events,
                     )
 
