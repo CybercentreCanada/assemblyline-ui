@@ -1,6 +1,5 @@
-
-import os
 import requests
+import urllib
 
 from flask import abort, make_response, request
 
@@ -52,7 +51,7 @@ def proxy(server, path, **kwargs):
             headers[header_cfg.name] = header_cfg.value
 
     # Create URL
-    url = os.path.join(srv_config.url, path)
+    url = urllib.parse.urljoin(srv_config.url, path)
 
     # Load up params if any
     params = "&".join([f"{k}={v}" for k, v in request.args.items()])
