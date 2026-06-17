@@ -700,14 +700,16 @@ def get_summary(sid, **kwargs):
                     output['heuristics'][cat].append((heur_id, item['name']))
 
         # Process tags
+        tag_types = config.submission.tag_types
+        behavior_tags, attribution_tags, ioc_tags = frozenset(tag_types.behavior), frozenset(tag_types.attribution), frozenset(tag_types.ioc)
         for t in tags:
             summary_type = None
 
-            if t["type"] in config.submission.tag_types.behavior:
+            if t["type"] in behavior_tags:
                 summary_type = 'behavior'
-            elif t["type"] in config.submission.tag_types.attribution:
+            elif t["type"] in attribution_tags:
                 summary_type = 'attribution'
-            elif t["type"] in config.submission.tag_types.ioc:
+            elif t["type"] in ioc_tags:
                 summary_type = 'ioc'
 
             if t['value'] == "" or summary_type is None:
@@ -1020,14 +1022,16 @@ def get_report(submission_id, **kwargs):
                     submission['important_files'].add(sha256)
 
         # Process tags
+        tag_types = config.submission.tag_types
+        behavior_tags, attribution_tags, ioc_tags = frozenset(tag_types.behavior), frozenset(tag_types.attribution), frozenset(tag_types.ioc)
         for t in tags:
             summary_type = None
 
-            if t["type"] in config.submission.tag_types.behavior:
+            if t["type"] in behavior_tags:
                 summary_type = 'behaviors'
-            elif t["type"] in config.submission.tag_types.attribution:
+            elif t["type"] in attribution_tags:
                 summary_type = 'attributions'
-            elif t["type"] in config.submission.tag_types.ioc:
+            elif t["type"] in ioc_tags:
                 summary_type = 'indicators_of_compromise'
 
             if t['value'] == "" or summary_type is None:
