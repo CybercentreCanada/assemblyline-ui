@@ -53,7 +53,7 @@ setup(
         'gunicorn==24.1.1',
         'gevent',
         'xmlsec==1.3.14',
-        'lxml==5.3.2'
+        'lxml==6.1.0'
     ],
     extras_require={
         'test': [
