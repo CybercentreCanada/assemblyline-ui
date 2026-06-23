@@ -4,7 +4,7 @@ import re
 import subprocess
 import tempfile
 
-from assemblyline.common.codec import encode_file
+from assemblyline.common.codec import encode_file_into
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
 from assemblyline.common.str_utils import safe_str
@@ -154,106 +154,86 @@ def download_file(sha256, **kwargs):
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
 
-    if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        params = load_user_settings(user)
+    if not user or not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({}, "The file was not found in the system.", 404)
 
-        name = request.args.get('name', sha256) or sha256
-        name = os.path.basename(name)
-        name = safe_str(name)
+    params = load_user_settings(user)
 
-        sid = request.args.get('sid', None) or None
-        submission = {}
-        file_metadata = {}
-        if sid is not None:
-            submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
-            if submission is None:
-                submission = {}
+    name = request.args.get('name', sha256) or sha256
+    name = os.path.basename(name)
+    name = safe_str(name)
 
-            if Classification.is_accessible(user['classification'], submission['classification']):
-                file_metadata.update(unflatten(submission['metadata']))
+    sid = request.args.get('sid', None) or None
+    submission = {}
+    file_metadata = {}
+    if sid is not None:
+        submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
+        if submission is None:
+            submission = {}
 
-        if Classification.enforce:
-            submission_classification = submission.get('classification', file_obj['classification'])
-            file_metadata['classification'] = Classification.max_classification(submission_classification,
-                                                                                file_obj['classification'])
+        if Classification.is_accessible(user['classification'], submission['classification']):
+            file_metadata.update(unflatten(submission['metadata']))
 
-        encoding = request.args.get('encoding', params['download_encoding'])
-        password = request.args.get('password', params['default_zip_password'])
+    if Classification.enforce:
+        submission_classification = submission.get('classification', file_obj['classification'])
+        file_metadata['classification'] = Classification.max_classification(submission_classification,
+                                                                            file_obj['classification'])
 
-        if encoding not in FILE_DOWNLOAD_ENCODINGS:
-            return make_api_response(
-                {},
-                f"{encoding.upper()} is not in the valid encoding types: {FILE_DOWNLOAD_ENCODINGS}", 403)
+    encoding = request.args.get('encoding', params['download_encoding'])
+    password = request.args.get('password', params['default_zip_password'])
 
-        if encoding == "raw" and not ALLOW_RAW_DOWNLOADS:
-            return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
+    if encoding not in FILE_DOWNLOAD_ENCODINGS:
+        return make_api_response(
+            {},
+            f"{encoding.upper()} is not in the valid encoding types: {FILE_DOWNLOAD_ENCODINGS}", 403)
 
-        if encoding == "zip":
-            if not ALLOW_ZIP_DOWNLOADS:
-                return make_api_response({}, "PROTECTED file download has been disabled by administrators.", 403)
-            elif not password or not password.strip():
-                return make_api_response({}, "No password given or retrieved from user's settings.", 403)
-            elif len(password) > 128 or any(ord(c) < 0x20 for c in password):
-                return make_api_response({}, "Invalid password for protected file download.", 400)
+    if encoding == "raw" and not ALLOW_RAW_DOWNLOADS:
+        return make_api_response({}, "RAW file download has been disabled by administrators.", 403)
 
-        download_dir = None
-        target_path = None
+    if encoding == "zip":
+        if not ALLOW_ZIP_DOWNLOADS:
+            return make_api_response({}, "PROTECTED file download has been disabled by administrators.", 403)
+        elif not password or not password.strip():
+            return make_api_response({}, "No password given or retrieved from user's settings.", 403)
+        elif len(password) > 128 or any(ord(c) < 0x20 for c in password):
+            return make_api_response({}, "Invalid password for protected file download.", 400)
 
-        # Create a temporary download location
-        if encoding == 'zip':
-            download_dir = tempfile.mkdtemp()
-            download_path = os.path.join(download_dir, sha256)
-        else:
-            _, download_path = tempfile.mkstemp()
-
+    with tempfile.NamedTemporaryFile() as download_temp:
+        downloaded_from = None
         try:
-            downloaded_from = None
-            try:
-                if file_obj.get('from_archive'):
-                    # Try to download from archive first
-                    if ARCHIVESTORE is not None and ARCHIVESTORE.exists(sha256):
-                        downloaded_from = ARCHIVESTORE.download(sha256, download_path)
+            if file_obj.get('from_archive'):
+                # Try to download from archive first
+                if ARCHIVESTORE is not None and ARCHIVESTORE.exists(sha256):
+                    downloaded_from = ARCHIVESTORE.download(sha256, download_temp.name)
 
-                    # If for some reason the file is not in archive, try filestore
-                    elif FILESTORE.exists(sha256):
-                        downloaded_from = FILESTORE.download(sha256, download_path)
-                else:
-                    # Try to download from filestore
-                    downloaded_from = FILESTORE.download(sha256, download_path)
-            except FileStoreException:
-                pass
+                # If for some reason the file is not in archive, try filestore
+                elif FILESTORE.exists(sha256):
+                    downloaded_from = FILESTORE.download(sha256, download_temp.name)
+            else:
+                # Try to download from filestore
+                downloaded_from = FILESTORE.download(sha256, download_temp.name)
+        except FileStoreException:
+            pass
 
-            if not downloaded_from:
-                return make_api_response({}, "The file was not found in the system.", 404)
+        if not downloaded_from:
+            return make_api_response({}, "The file was not found in the system.", 404)
 
-            # Encode file
-            if encoding == 'raw':
-                target_path = download_path
-            elif encoding == 'zip':
-                name += '.zip'
-                target_path = os.path.join(download_dir, sha256 + '.zip')
+        # Encode file
+        if encoding == 'raw':
+            stream_length = os.path.getsize(download_temp.name)
+            return stream_file_response(open(download_temp.name, 'rb'), name, stream_length)
+
+        with tempfile.NamedTemporaryFile(suffix='.zip') as target_temp:
+            if encoding == 'zip':
                 subprocess.run(
-                    ['zip', '-j', '--password', password, target_path, '--', download_path],
+                    ['zip', '-j', '--password', password, target_temp.name, '--', download_temp.name],
                     capture_output=True, check=True,
                 )
             else:
-                target_path, name = encode_file(download_path, name, file_metadata)
+                if not encode_file_into(download_temp.name, name, target_temp, file_metadata):
+                    target_temp = download_temp
 
-            return stream_file_response(open(target_path, 'rb'), name, os.path.getsize(target_path))
-
-        finally:
-            # Cleanup
-            if target_path:
-                if os.path.exists(target_path):
-                    os.unlink(target_path)
-            if download_path:
-                if os.path.exists(download_path):
-                    os.unlink(download_path)
-            if download_dir:
-                if os.path.exists(download_dir):
-                    os.rmdir(download_dir)
-    else:
-        return make_api_response({}, "You are not allowed to download this file.", 403)
+            return stream_file_response(open(target_temp.name, 'rb'), name, os.path.getsize(target_temp.name))
 
 
 @file_api.route("/filestore/<sha256>/", methods=["DELETE"])
