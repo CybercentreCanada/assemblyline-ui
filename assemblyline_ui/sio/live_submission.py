@@ -84,7 +84,7 @@ class LiveSubmissionNamespace(SecureNamespace):
                     self.namespace, user_info['display'], queue_id)
 
         if not validate_reply_queue_name(queue_id, prefix="D", suffix="WQ"):
-            LOGGER.error("User [%s] requested invalid reply queue %s", {user_info['display']}, queue_id)
+            LOGGER.error("User [%s] requested invalid reply queue %s", user_info['display'], queue_id)
             return
 
         with self.connections_lock:
