@@ -1,4 +1,5 @@
 
+from assemblyline.remote.datatypes import validate_reply_queue_name
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification
 from assemblyline.remote.datatypes.queues.named import NamedQueue
@@ -36,6 +37,9 @@ def get_message(wq_id, **_):
      "msg": ""           # Message
     }
     """
+    if not validate_reply_queue_name(wq_id, prefix="D", suffix="WQ"):
+        return make_api_response("", "invalid watch queue", 400)
+
     msg = NamedQueue(wq_id).pop(blocking=False)
 
     if msg is None:
@@ -76,6 +80,9 @@ def get_messages(wq_id, **_):
     Result example:
     []            # List of messages
     """
+    if not validate_reply_queue_name(wq_id, prefix="D", suffix="WQ"):
+        return make_api_response("", "invalid watch queue", 400)
+
     resp_list = []
     u = NamedQueue(wq_id)
 

@@ -4,6 +4,7 @@ import logging
 import threading
 
 from assemblyline.common import forge
+from assemblyline.odm.models.user import load_roles
 from assemblyline.remote.datatypes.hash import ExpiringHash
 from flask import request, session
 from flask_socketio import Namespace, disconnect
@@ -101,17 +102,21 @@ def get_user_info(request_p, session_p):
             uname = current_session['username']
 
     user_classification = None
-    if uname:
-        user = datastore.user.get(uname, as_obj=False)
-        if user:
-            user_classification = user.get('classification', None)
-    else:
+    if not uname:
         raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
+
+    user = datastore.user.get(uname, as_obj=False)
+    if not user:
+        raise RuntimeError("User deleted with live connections")
+
+    user_classification = user['classification']
+    user_roles = load_roles(user['type'], user['roles'])
 
     return {
         'uname': uname,
         'display': f"{uname}({sid[:4]})",
         'classification': user_classification,
+        'roles': user_roles,
         'ip': src_ip,
         'sid': sid
     }

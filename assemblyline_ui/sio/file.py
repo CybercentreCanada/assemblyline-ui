@@ -48,7 +48,7 @@ class FileCommentNamespace(SecureNamespace):
                 self.background_task = self.socketio.start_background_task(
                     target=self.comments_change, user_info=user_info)
 
-    @ authenticated_only
+    @authenticated_only
     def on_comments_change(self, data, user_info):
         q = CommsQueue('file_comments', private=True)
         sha256 = dict(data).get('sha256', None)

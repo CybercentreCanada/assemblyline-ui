@@ -1,6 +1,7 @@
 from flask_socketio import join_room
 from assemblyline.common.forge import get_hauntedhouse_client
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.sio.base import LOGGER, datastore, classification, config, SecureNamespace, authenticated_only
 
 
@@ -22,7 +23,7 @@ class RetrohuntNamespace(SecureNamespace):
             for message in haunted_house_client.search_status(search_key):
                 if search_key not in self.watch_socket:
                     break
-                
+
                 self.socketio.emit('status', message, room=search_key, namespace=self.namespace)
                 # LOGGER.info("SocketIO:%s - %s - Max retry reach for queue: %s",
                 #             self.namespace, user_info['display'], queue_id)
@@ -38,6 +39,11 @@ class RetrohuntNamespace(SecureNamespace):
     @authenticated_only
     def on_listen(self, data, user_info):
         search_key = data['key']
+
+        if ROLES.retrohunt_view not in user_info['roles']:
+            LOGGER.warning("SocketIO:%s - %s - User denied access to retrohunt streaming.",
+                           self.namespace, user_info['display'])
+            return
 
         doc = datastore.retrohunt.get(search_key, as_obj=False)
         if not doc or not classification.is_accessible(user_info['classification'], doc['classification']):

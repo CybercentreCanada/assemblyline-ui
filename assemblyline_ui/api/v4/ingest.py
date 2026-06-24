@@ -48,13 +48,25 @@ DEFAULT_INGEST_PARAMS = {
     "type": "INGEST"
 }
 
+# TODO probably remove this on major release 4.8+ (check for references other than the below)
+HEX_UPPER = set(string.hexdigits.upper())
+
 
 def is_safe_queue_name(name: str) -> bool:
-    """Check if a queue name collides with the new namespaced format."""
-    if '-' not in name:
+    """Check if a queue name collides with the new namespaced format.
+
+    Returns False for any name whose first '-'-separated segment could be the
+    upper-case hex encoding of a username (even-length, non-empty, all chars
+    in 0-9A-F). The legacy un-namespaced lookup must never touch such keys, as
+    they may belong to another user.
+
+    # TODO probably remove this on major release 4.8+ (check for references other than the below)
+    """
+    possible_username, sep, _ = name.partition('-')
+    if not sep or not possible_username:
         return True
-    possible_username, _, _ = name.partition('-')
-    return not all(c.isupper() and c in string.hexdigits for c in possible_username)
+    # There is a possible name, is it uppercase hex though?
+    return not (len(possible_username) % 2 == 0 and set(possible_username) <= HEX_UPPER)
 
 
 # noinspection PyUnusedLocal
