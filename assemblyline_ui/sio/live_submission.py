@@ -2,6 +2,7 @@
 from flask_socketio import join_room
 
 from assemblyline.remote.datatypes import validate_reply_queue_name
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.sio.base import SecureNamespace, LOGGER, authenticated_only
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 
@@ -80,12 +81,17 @@ class LiveSubmissionNamespace(SecureNamespace):
     def on_listen(self, data, user_info):
         queue_id = data['wq_id']
 
-        LOGGER.info("SocketIO:%s - %s - Listening event received for queue: %s",
-                    self.namespace, user_info['display'], queue_id)
+        if ROLES.submission_view not in user_info['roles']:
+            LOGGER.warning("SocketIO:%s - %s - User denied access to submission streaming.",
+                           self.namespace, user_info['display'])
+            return
 
         if not validate_reply_queue_name(queue_id, prefix="D", suffix="WQ"):
             LOGGER.error("User [%s] requested invalid reply queue %s", {user_info['display']}, queue_id)
             return
+
+        LOGGER.info("SocketIO:%s - %s - Listening event received for queue: %s",
+                    self.namespace, user_info['display'], queue_id)
 
         with self.connections_lock:
             self.watch_queues[queue_id] = user_info['sid']
