@@ -4,6 +4,7 @@ import socketio
 import socketio.exceptions
 import time
 
+from assemblyline.remote.datatypes import reply_queue_name
 from conftest import get_api_data
 
 from assemblyline.common.uid import get_random_id
@@ -109,7 +110,7 @@ def test_alert_namespace(datastore, sio):
 
 # noinspection PyUnusedLocal
 def test_live_namespace(datastore, sio):
-    wq_data = {'wq_id': get_random_id()}
+    wq_data = {'wq_id': reply_queue_name(prefix="D", suffix="WQ")}
     wq = NamedQueue(wq_data['wq_id'], private=True)
 
     start_msg = {'status_code': 200, 'msg': "Start listening..."}

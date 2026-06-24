@@ -29,7 +29,7 @@ class SubmissionMonitoringNamespace(SecureNamespace):
                 submission = msg['msg']
                 msg_type = msg['msg_type']
 
-                sub_classification = submission.get('classification')
+                sub_classification = submission.get('params', {}).get('classification')
                 if sub_classification is None:
                     continue
                 if not classification.is_accessible(user_info['classification'], sub_classification):
