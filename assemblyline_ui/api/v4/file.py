@@ -189,8 +189,10 @@ def download_file(sha256, **kwargs):
         if encoding == "zip":
             if not ALLOW_ZIP_DOWNLOADS:
                 return make_api_response({}, "PROTECTED file download has been disabled by administrators.", 403)
-            elif not password:
+            elif not password or not password.strip():
                 return make_api_response({}, "No password given or retrieved from user's settings.", 403)
+            elif len(password) > 128 or any(ord(c) < 0x20 for c in password):
+                return make_api_response({}, "Invalid password for protected file download.", 400)
 
         download_dir = None
         target_path = None
@@ -198,7 +200,7 @@ def download_file(sha256, **kwargs):
         # Create a temporary download location
         if encoding == 'zip':
             download_dir = tempfile.mkdtemp()
-            download_path = os.path.join(download_dir, name)
+            download_path = os.path.join(download_dir, sha256)
         else:
             _, download_path = tempfile.mkstemp()
 
@@ -227,8 +229,11 @@ def download_file(sha256, **kwargs):
                 target_path = download_path
             elif encoding == 'zip':
                 name += '.zip'
-                target_path = os.path.join(download_dir, name)
-                subprocess.run(['zip', '-j', '--password', password, target_path, download_path], capture_output=True)
+                target_path = os.path.join(download_dir, sha256 + '.zip')
+                subprocess.run(
+                    ['zip', '-j', '--password', password, target_path, '--', download_path],
+                    capture_output=True, check=True,
+                )
             else:
                 target_path, name = encode_file(download_path, name, file_metadata)
 
@@ -839,7 +844,7 @@ def get_file_results(sha256, **kwargs):
                     index = next((i for i, x in enumerate(output["tags"][t['type']])
                                   if x[0] == t_item[0] and x[1] == t_item[1]), None)
 
-                    if index == None:
+                    if index is None:
                         output["tags"][t['type']].append(t_item)
                     else:
                         existing = output["tags"][t['type']][index]
