@@ -69,6 +69,7 @@ def retrieve_file_content(file_obj: dict) -> bytes:
 
     return data
 
+
 @file_api.route("/ascii/<sha256>/", methods=["GET"])
 @api_login(require_role=[ROLES.file_detail])
 def get_file_ascii(sha256, **kwargs):
@@ -164,12 +165,10 @@ def download_file(sha256, **kwargs):
         submission = {}
         file_metadata = {}
         if sid is not None:
-            submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
-            if submission is None:
-                submission = {}
-
-            if Classification.is_accessible(user['classification'], submission['classification']):
-                file_metadata.update(unflatten(submission['metadata']))
+            s = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
+            if s and Classification.is_accessible(user['classification'], s['classification']):
+                submission = s
+                file_metadata.update(unflatten(s['metadata']))
 
         if Classification.enforce:
             submission_classification = submission.get('classification', file_obj['classification'])
@@ -247,7 +246,7 @@ def download_file(sha256, **kwargs):
                 if os.path.exists(download_dir):
                     os.rmdir(download_dir)
     else:
-        return make_api_response({}, "You are not allowed to download this file.", 403)
+        return make_api_response({}, "The file was not found in the system.", 404)
 
 
 @file_api.route("/filestore/<sha256>/", methods=["DELETE"])
