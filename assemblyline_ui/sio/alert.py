@@ -3,6 +3,7 @@ import logging
 
 from flask_socketio import emit, join_room
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.sio.base import LOGGER, SecureNamespace, authenticated_only
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
@@ -27,16 +28,21 @@ class AlertMonitoringNamespace(SecureNamespace):
 
                 alert = msg['msg']
                 msg_type = msg['msg_type']
-                if classification.is_accessible(user_info['classification'],
-                                                alert.get('classification', classification.UNRESTRICTED)):
-                    self.socketio.emit(msg_type, alert, room=sid, namespace=self.namespace)
-                    LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
-                                f"Sending {msg_type} event for alert matching ID: {alert['alert_id']}")
 
-                    if AUDIT:
-                        AUDIT_LOG.info(
-                            f"{user_info['uname']} [{user_info['classification']}]"
-                            f" :: AlertMonitoringNamespace.get_alert(alert_id={alert['alert_id']})")
+                alert_cl = alert.get('classification')
+                if alert_cl is None:
+                    continue
+                if not classification.is_accessible(user_info['classification'], alert_cl):
+                    continue
+
+                self.socketio.emit(msg_type, alert, room=sid, namespace=self.namespace)
+                LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
+                            f"Sending {msg_type} event for alert matching ID: {alert['alert_id']}")
+
+                if AUDIT:
+                    AUDIT_LOG.info(
+                        f"{user_info['uname']} [{user_info['classification']}]"
+                        f" :: AlertMonitoringNamespace.get_alert(alert_id={alert['alert_id']})")
 
         except Exception:
             LOGGER.exception(f"SocketIO:{self.namespace} - {user_info['display']}")
@@ -45,6 +51,12 @@ class AlertMonitoringNamespace(SecureNamespace):
 
     @authenticated_only
     def on_alert(self, data, user_info):
+
+        if ROLES.alert_view not in user_info['roles']:
+            LOGGER.warning("SocketIO:%s - %s - User denied access to alert streaming.",
+                           self.namespace, user_info['display'])
+            return
+
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring alerts...")
 
         join_room(user_info['sid'])

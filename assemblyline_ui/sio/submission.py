@@ -3,6 +3,7 @@ import logging
 
 from flask_socketio import emit, join_room
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.sio.base import LOGGER, SecureNamespace, authenticated_only
 from assemblyline.common import forge
 from assemblyline.remote.datatypes.queues.comms import CommsQueue
@@ -27,16 +28,20 @@ class SubmissionMonitoringNamespace(SecureNamespace):
 
                 submission = msg['msg']
                 msg_type = msg['msg_type']
-                if classification.is_accessible(user_info['classification'],
-                                                submission.get('classification', classification.UNRESTRICTED)):
-                    self.socketio.emit(msg_type, submission, room=sid, namespace=self.namespace)
-                    LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - "
-                                f"Sending {msg_type} event for submission matching ID: {submission['sid']}")
 
-                    if AUDIT:
-                        AUDIT_LOG.info(
-                            f"{user_info['uname']} [{user_info['classification']}]"
-                            f" :: SubmissionMonitoringNamespace.get_submission(sid={submission['sid']})")
+                sub_classification = submission.get('params', {}).get('classification')
+                if sub_classification is None:
+                    continue
+                if not classification.is_accessible(user_info['classification'], sub_classification):
+                    continue
+
+                self.socketio.emit(msg_type, submission, room=sid, namespace=self.namespace)
+                LOGGER.info("SocketIO:%s - %s - Sending %s event for submission matching ID: %s",
+                            self.namespace, user_info['display'], msg_type, submission['sid'])
+
+                if AUDIT:
+                    AUDIT_LOG.info("%s [%s] :: SubmissionMonitoringNamespace.get_submission(sid=%s)",
+                                   user_info['uname'], user_info['classification'], submission['sid'])
 
         except Exception:
             LOGGER.exception(f"SocketIO:{self.namespace} - {user_info['display']}")
@@ -45,7 +50,14 @@ class SubmissionMonitoringNamespace(SecureNamespace):
 
     @authenticated_only
     def on_monitor(self, data, user_info):
-        LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring submissions...")
+
+        if ROLES.submission_view not in user_info['roles']:
+            LOGGER.warning("SocketIO:%s - %s - User denied access to submission streaming.",
+                           self.namespace, user_info['display'])
+            return
+
+        LOGGER.info("SocketIO:%s - %s - User as started monitoring submissions...",
+                    self.namespace, user_info['display'])
 
         join_room(user_info['sid'])
         self.socketio.start_background_task(target=self.monitor_submissions, user_info=user_info)
