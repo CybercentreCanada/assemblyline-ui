@@ -13,11 +13,11 @@ from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classifica
 SUB_API = 'alert'
 
 alert_api = make_subapi_blueprint(SUB_API, api_version=4)
-alert_api._doc = "Perform operations on alerts"
+alert_api._doc = "Perform operations on alerts"  # type: ignore
 
 
 def get_alert_update_ops(user: dict, status: str | None = None, priority: str | None = None,
-                         labels: list | None = None, labels_removed: list | None = None) -> list:
+                         labels: list | set | None = None, labels_removed: list | set | None = None) -> list:
     """Build the set of operations needed to apply a change to the alert collection."""
     labels = labels or []
     labels_removed = labels_removed or []
@@ -91,7 +91,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
 
 @alert_api.route("/<alert_id>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view])
-def get_alert(alert_id, *_, user, **__):
+def get_alert(alert_id, *_, user: dict, **__):
     """
     Get the alert details for a given alert key
 
@@ -450,24 +450,27 @@ def run_workflow(alert_id, **kwargs):
     Result example:
     { "success": true }
     """
-    user = kwargs['user']
-    try:
-        labels = set(request.json.get('labels', []))
-        priority = request.json.get('priority')
-        priority = priority.upper() if priority else None
-        if priority not in PRIORITIES:
-            raise ValueError(f"Priority {priority} not in priorities")
-        status = request.json.get('status')
-        status = status.upper() if status else None
-        if status not in STATUSES:
-            raise ValueError(f"Status '{status}' not in statuses")
-    except ValueError as e:
-        return make_api_response({"success": False}, err=str(e), status_code=400)
+    # TODO This endpoint has never worked, always delivering either a 400 or 500 error.
+    #      Proposing we remove it entirely in a future release.
+    return make_api_response({}, err="Internal Server Error", status_code=500)
+    # user = kwargs['user']
+    # try:
+    #     labels = set(request.json.get('labels', []))
+    #     priority = request.json.get('priority')
+    #     priority = priority.upper() if priority else None
+    #     if priority not in PRIORITIES:
+    #         raise ValueError(f"Priority {priority} not in priorities")
+    #     status = request.json.get('status')
+    #     status = status.upper() if status else None
+    #     if status not in STATUSES:
+    #         raise ValueError(f"Status '{status}' not in statuses")
+    # except ValueError as e:
+    #     return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    operations = get_alert_update_ops(user, labels=labels, priority=priority, status=status)
-    return make_api_response({
-        "success": STORAGE.alert.update(alert_id, operations, access_control=user['access_control'])
-    })
+    # operations = get_alert_update_ops(user, labels=labels, priority=priority, status=status)
+    # return make_api_response({
+    #     "success": STORAGE.alert.update(alert_id, operations, access_control=user['access_control'])
+    # })
 
 
 @alert_api.route("/all/batch/", methods=["POST"])
@@ -561,11 +564,8 @@ def add_labels(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     cur_label = set(alert.get('label', []))
     label_diff = labels.difference(labels.intersection(cur_label))
@@ -653,11 +653,8 @@ def remove_labels(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     cur_label = set(alert.get('label', []))
     # Check to see if any of the labels being proposed to be removed exists
@@ -749,13 +746,8 @@ def change_priority(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     if priority != alert.get('priority', None):
         return make_api_response({
@@ -847,13 +839,8 @@ def change_status(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     if status != alert.get('status', None):
         return make_api_response({
@@ -938,13 +925,8 @@ def take_ownership(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response({"success": False}, "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     current_owner = alert.get('owner', None)
     if current_owner is None:
@@ -952,7 +934,7 @@ def take_ownership(alert_id, **kwargs):
             "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_SET, 'owner', user['uname'])])})
     else:
         return make_api_response({"success": False},
-                                 err="Alert is already owned by %s" % current_owner,
+                                 err=f"Alert is already owned by {current_owner}",
                                  status_code=403)
 
 
@@ -1079,12 +1061,8 @@ def set_verdict(alert_id, verdict, **kwargs):
 
     document = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not document:
+    if not document or not Classification.is_accessible(user['classification'], document['classification']):
         return make_api_response({"success": False}, f"There are no alert with id: {alert_id}", 404)
-
-    if not Classification.is_accessible(user['classification'], document['classification']):
-        return make_api_response({"success": False}, "You are not allowed to give verdict on alert with "
-                                                     f"ID: {alert_id}", 403)
 
     resp = STORAGE.alert.update_by_query(f"sid:{document['sid']}", [
         ('REMOVE', f'verdict.{verdict}', user['uname']),
