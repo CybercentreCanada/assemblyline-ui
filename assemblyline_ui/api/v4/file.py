@@ -7,7 +7,7 @@ import tempfile
 from assemblyline.common.codec import encode_file
 from assemblyline.common.dict_utils import unflatten
 from assemblyline.common.hexdump import dump, hexdump
-from assemblyline.common.str_utils import safe_str
+from assemblyline.common.str_utils import dotdump_utf8, safe_str
 from assemblyline.common.threading import APMAwareThreadPoolExecutor
 from assemblyline.datastore.collection import Index
 from assemblyline.filestore import FileStoreException
@@ -38,8 +38,6 @@ from assemblyline_ui.helper.user import load_user_settings
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 MAX_CONCURRENT_VECTORS = 5
-
-FILTER_ASCII = b''.join([bytes([x]) if x in range(32, 127) or x in [9, 10, 13] else b'.' for x in range(256)])
 
 SUB_API = 'file'
 file_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -74,7 +72,10 @@ def retrieve_file_content(file_obj: dict) -> bytes:
 @api_login(require_role=[ROLES.file_detail])
 def get_file_ascii(sha256, **kwargs):
     """
-    Return the ascii values for a file where ascii chars are replaced by DOTs.
+    Return a UTF-8 rendering of the file where bytes that are not part of a
+    valid printable UTF-8 sequence (or tab/LF/CR) are replaced by DOTs. Valid
+    UTF-8 multi-byte characters (e.g. accented letters, CJK characters, emoji)
+    are preserved instead of being shown as dots.
 
     Variables:
     sha256       => A resource locator for the file (sha256)
@@ -87,7 +88,7 @@ def get_file_ascii(sha256, **kwargs):
 
     Result example:
     {
-      "content": <THE ASCII FILE>,
+      "content": <THE UTF-8 RENDERED FILE>,
       "truncated": false
     }
     """
@@ -112,7 +113,7 @@ def get_file_ascii(sha256, **kwargs):
             data = data[:API_MAX_SIZE]
 
         return make_api_response({
-            "content": data.translate(FILTER_ASCII).decode(),
+            "content": dotdump_utf8(data),
             "truncated": file_obj['size'] > API_MAX_SIZE
         })
     else:
