@@ -2,11 +2,10 @@
 # UI ONLY APIs
 
 import os
+import tempfile
 
 from assemblyline.common import forge
 from assemblyline.common.bundling import import_bundle
-from assemblyline.common.str_utils import safe_str
-from assemblyline.common.uid import get_random_id
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
@@ -63,10 +62,7 @@ def flowjs_check_chunk(**kwargs):
 
     Arguments (REQUIRED):
     flowChunkNumber      => Current chunk number
-    flowFilename         => Original filename
-    flowTotalChunks      => Total number of chunks
     flowIdentifier       => File unique identifier
-    flowCurrentChunkSize => Size of the current chunk
 
     Data Block:
     None
@@ -75,19 +71,11 @@ def flowjs_check_chunk(**kwargs):
     {'exists': True}     #Does the chunk exists on the server?
     """
 
-    flow_chunk_number = request.args.get("flowChunkNumber", None)
-    flow_chunk_size = request.args.get("flowChunkSize", None)
-    flow_total_size = request.args.get("flowTotalSize", None)
-    flow_filename = request.args.get("flowFilename", None)
-    flow_total_chunks = request.args.get("flowTotalChunks", None)
-    flow_identifier = request.args.get("flowIdentifier", None)
-    flow_current_chunk_size = request.args.get("flowCurrentChunkSize", None)
-
-    if not flow_chunk_number or not flow_identifier or not flow_current_chunk_size or not flow_filename \
-            or not flow_total_chunks or not flow_chunk_size or not flow_total_size:
-        return make_api_response("", "Required arguments missing. flowChunkNumber, flowIdentifier, "
-                                     "flowCurrentChunkSize, flowChunkSize and flowTotalSize "
-                                     "should always be present.", 412)
+    try:
+        flow_chunk_number = request.args["flowChunkNumber"]
+        flow_identifier = request.args["flowIdentifier"]
+    except KeyError as e:
+        return make_api_response("", f"Required argument missing: {e}", 412)
 
     filename = get_cache_name(flow_identifier, flow_chunk_number)
     with forge.get_cachestore("flowjs", config) as cache:
@@ -111,18 +99,26 @@ def flowjs_upload_chunk(**kwargs):
     Variables:
     None
 
-    Arguments (REQUIRED):
-    flowChunkNumber      => Current chunk number
-    flowChunkSize        => Usual size of the chunks
-    flowCurrentChunkSize => Size of the current chunk
-    flowTotalSize        => Total size for the file
-    flowIdentifier       => File unique identifier
-    flowFilename         => Original filename
-    flowRelativePath     => Relative path of the file on the client
-    flowTotalChunks      => Total number of chunks
+    Data Block (REQUIRED):
 
-    Data Block:
-    None
+    --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Randomly generated boundary for this http request
+    Content-Disposition: form-data; name="flowChunkNumber"      <-- Current chunk number
+
+    1
+    --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
+    Content-Disposition: form-data; name="flowIdentifier"       <-- File unique identifier
+
+    00000000-0000-0000-0000-000000000000_000000000_testfile.txt
+    --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
+    Content-Disposition: form-data; name="flowTotalChunks"      <-- Total number of chunks
+
+    10
+    --0b34a3c50d3c02dd804a172329a0b2aa
+    Content-Disposition: form-data; name="file"; filename="testfile.txt" <-- File part
+    Content-Type: application/octet-stream
+
+    <BINARY DATA OF THE FILE TO UPLOAD... DOES NOT NEED TO BE ENCODED>
+    --0b34a3c50d3c02dd804a172329a0b2aa--                        <-- End of HTTP transmission
 
     Result example:
     {
@@ -131,21 +127,14 @@ def flowjs_upload_chunk(**kwargs):
      }
     """
 
-    flow_chunk_number = request.form.get("flowChunkNumber", None)
-    flow_chunk_size = request.form.get("flowChunkSize", None)
-    flow_current_chunk_size = request.form.get("flowCurrentChunkSize", None)
-    flow_total_size = request.form.get("flowTotalSize", None)
-    flow_identifier = request.form.get("flowIdentifier", None)
-    flow_filename = safe_str(request.form.get("flowFilename", None))
-    flow_relative_path = request.form.get("flowRelativePath", None)
-    flow_total_chunks = request.form.get("flowTotalChunks", None)
-    completed = True
+    try:
+        flow_chunk_number = request.form["flowChunkNumber"]
+        flow_identifier = request.form["flowIdentifier"]
+        flow_total_chunks = request.form["flowTotalChunks"]
+    except KeyError as e:
+        return make_api_response("", f"Required argument missing: {e}", 412)
 
-    if not flow_chunk_number or not flow_chunk_size or not flow_current_chunk_size or not flow_total_size \
-            or not flow_identifier or not flow_filename or not flow_relative_path or not flow_total_chunks:
-        return make_api_response("", "Required arguments missing. flowChunkNumber, flowChunkSize, "
-                                     "flowCurrentChunkSize, flowTotalSize, flowIdentifier, flowFilename, "
-                                     "flowRelativePath and flowTotalChunks should always be present.", 412)
+    completed = True
 
     filename = get_cache_name(flow_identifier, flow_chunk_number)
 
@@ -163,28 +152,22 @@ def flowjs_upload_chunk(**kwargs):
         if completed:
             # Reconstruct the file
             ui_sid = get_cache_name(flow_identifier)
-            target_file = os.path.join(TEMP_DIR, ui_sid)
-            try:
-                os.makedirs(TEMP_DIR)
-            except Exception:
-                pass
 
-            try:
-                os.unlink(target_file)
-            except Exception:
-                pass
+            with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
+                # Iterate through the chunks in order to reconstruct the file
+                for chunk in range(int(flow_total_chunks)):
+                    chunk_name = get_cache_name(flow_identifier, chunk+1)
 
-            for chunk in range(int(flow_total_chunks)):
-                chunk_name = get_cache_name(flow_identifier, chunk+1)
-                with open(target_file, "ab") as t:
-                    t.write(cache.get(chunk_name))
-                cache.delete(chunk_name)
+                    # Write chunks to temporary file
+                    target_file.write(cache.get(chunk_name))
 
-            # Save the reconstructed file
-            with open(target_file, "rb") as t:
-                cache.save(ui_sid, t.read())
+                    # Delete the chunk from the cache
+                    cache.delete(chunk_name)
 
-            os.unlink(target_file)
+                # Once the file is reconstructed, save it to the cache with the original identifier
+                target_file.flush()
+                target_file.seek(0)
+                cache.save(ui_sid, target_file.read())
 
     return make_api_response({'success': True, 'completed': completed})
 
@@ -223,35 +206,33 @@ def start_ui_submission(ui_sid, **kwargs):
     ui_params = request.json
     submit_result = None
     submitted_file = None
-    target_dir = None
 
-    try:
-        # Download the file from the cache
-        with forge.get_cachestore("flowjs", config) as cache:
-            ui_sid = get_cache_name(ui_sid)
-            fname = ui_params.pop('filename', ui_sid)
-            if cache.exists(ui_sid):
-                target_dir = os.path.join(TEMP_DIR, ui_sid)
-                os.makedirs(target_dir, exist_ok=True)
+    # Download the file from the cache
+    with forge.get_cachestore("flowjs", config) as cache:
+        ui_sid = get_cache_name(ui_sid)
+        fname = ui_params.pop('filename', ui_sid)
+        if not cache.exists(ui_sid):
+            # No file was found for the given ID, return an error
+            return make_api_response({"started": False, "sid": None}, "No files where found for ID %s. "
+                                                                        "Try again..." % ui_sid, 404)
+        else:
+            with tempfile.NamedTemporaryFile(dir=TEMP_DIR, delete=False) as temp_file:
+                # Save the reconstructed file to disk, reset pointer, and pass it to the submission client
+                temp_file.write(cache.get(ui_sid))
+                temp_file.flush()
 
-                target_file = os.path.join(target_dir, get_random_id())
+                # Record the submitted file path for cleanup in case of an error
+                submitted_file = temp_file.name
 
-                if os.path.exists(target_file):
-                    os.unlink(target_file)
-
-                # Save the reconstructed file
-                cache.download(ui_sid, target_file)
-                submitted_file = target_file
-
-        # Submit the file
-        if submitted_file is not None:
-            with open(submitted_file, 'rb') as fh:
-                if is_cart(fh.read(256)):
+                # Check if the file is a CART bundle
+                temp_file.seek(0)
+                if is_cart(temp_file.read(256)):
                     meta = get_metadata_only(submitted_file)
                     if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
                         try:
-                            submission = import_bundle(submitted_file, allow_incomplete=True, identify=IDENTIFY,
-                                                       dtl=ui_params.get('ui_params', {}).get('ttl'))
+                            submission = import_bundle(submitted_file, allow_incomplete=True,
+                                                        identify=IDENTIFY,
+                                                        dtl=ui_params.get('ui_params', {}).get('ttl'))
                         except Exception as e:
                             return make_api_response("", err=str(e), status_code=400)
                         return make_api_response({"started": True, "sid": submission['sid']})
@@ -274,6 +255,7 @@ def start_ui_submission(ui_sid, **kwargs):
             except (ValueError, KeyError) as e:
                 return make_api_response("", err=str(e), status_code=400)
 
+            # Attempt to submit the file to the dispatcher
             try:
                 submit_result = SubmissionClient(
                     datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY
@@ -283,22 +265,14 @@ def start_ui_submission(ui_sid, **kwargs):
                     allow_description_overwrite=allow_description_overwrite
                 )
                 submission_received(submission_obj)
+                return make_api_response({"started": True, "sid": submit_result.sid})
             except SubmissionException as e:
                 return make_api_response("", err=str(e), status_code=400)
+            finally:
+                if submit_result is None:
+                    # We had an error during the submission, release the quotas for the user
+                    decrement_submission_quota(user)
 
-            return make_api_response({"started": True, "sid": submit_result.sid})
-        else:
-            return make_api_response({"started": False, "sid": None}, "No files where found for ID %s. "
-                                                                      "Try again..." % ui_sid, 404)
-    finally:
-        if submit_result is None:
-            # We had an error during the submission, release the quotas for the user
-            decrement_submission_quota(user)
-
-        # Remove file
-        if os.path.exists(submitted_file):
-            os.unlink(submitted_file)
-
-        # Remove dir
-        if os.path.exists(target_dir) and os.path.isdir(target_dir):
-            os.rmdir(target_dir)
+                if submitted_file and os.path.exists(submitted_file):
+                    # Clean up the temporary file
+                    os.remove(submitted_file)
