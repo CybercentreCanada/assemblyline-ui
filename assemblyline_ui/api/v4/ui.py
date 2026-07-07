@@ -208,14 +208,17 @@ def start_ui_submission(ui_sid, **kwargs):
     submitted_file = None
 
     # Download the file from the cache
+
     with forge.get_cachestore("flowjs", config) as cache:
         ui_sid = get_cache_name(ui_sid)
         fname = ui_params.pop('filename', ui_sid)
         if not cache.exists(ui_sid):
-            # No file was found for the given ID, return an error
+            # No file was found for the given ID, return an error and decrement the submission quota for the user
+            decrement_submission_quota(user)
             return make_api_response({"started": False, "sid": None}, "No files where found for ID %s. "
                                                                         "Try again..." % ui_sid, 404)
-        else:
+        # Submit to dispatcher
+        try:
             with tempfile.NamedTemporaryFile(dir=TEMP_DIR, delete=False) as temp_file:
                 # Save the reconstructed file to disk, reset pointer, and pass it to the submission client
                 temp_file.write(cache.get(ui_sid))
@@ -229,50 +232,44 @@ def start_ui_submission(ui_sid, **kwargs):
                 if is_cart(temp_file.read(256)):
                     meta = get_metadata_only(submitted_file)
                     if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
-                        try:
-                            submission = import_bundle(submitted_file, allow_incomplete=True,
-                                                        identify=IDENTIFY,
-                                                        dtl=ui_params.get('ui_params', {}).get('ttl'))
-                        except Exception as e:
-                            return make_api_response("", err=str(e), status_code=400)
+                        # Import the submission bundle and return the submission ID
+                        submission = import_bundle(submitted_file, allow_incomplete=True,
+                                                identify=IDENTIFY,dtl=ui_params.get('ui_params', {}).get('ttl'))
                         return make_api_response({"started": True, "sid": submission['sid']})
 
-            # Submit to dispatcher
-            try:
-                # Initialize submission validation process
-                _, _, _, _, s_params, metadata = init_submission(request, user, endpoint="ui")
-                s_params['quota_item'] = True
-                allow_description_overwrite = False
-                if not s_params.get("description"):
-                    # If no custom description is specified, create one based on filename
-                    s_params["description"] = f"Inspection of file: {fname}"
-                    allow_description_overwrite = True
-                submission_obj = Submission({
-                    "files": [],
-                    "metadata": metadata,
-                    "params": s_params
-                })
-            except (ValueError, KeyError) as e:
-                return make_api_response("", err=str(e), status_code=400)
+            # Initialize submission validation process
+            _, _, _, _, s_params, metadata = init_submission(request, user, endpoint="ui")
+            s_params['quota_item'] = True
+            allow_description_overwrite = False
+            if not s_params.get("description"):
+                # If no custom description is specified, create one based on filename
+                s_params["description"] = f"Inspection of file: {fname}"
+                allow_description_overwrite = True
+            submission_obj = Submission({
+                "files": [],
+                "metadata": metadata,
+                "params": s_params
+            })
 
             # Attempt to submit the file to the dispatcher
-            try:
-                submit_result = SubmissionClient(
-                    datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY
-                ).submit(
-                    submission_obj,
-                    local_files=[(fname, submitted_file)],
-                    allow_description_overwrite=allow_description_overwrite
-                )
-                submission_received(submission_obj)
-                return make_api_response({"started": True, "sid": submit_result.sid})
-            except SubmissionException as e:
-                return make_api_response("", err=str(e), status_code=400)
-            finally:
-                if submit_result is None:
-                    # We had an error during the submission, release the quotas for the user
-                    decrement_submission_quota(user)
+            submit_result = SubmissionClient(
+                datastore=STORAGE, filestore=FILESTORE, config=config, identify=IDENTIFY
+            ).submit(
+                submission_obj,
+                local_files=[(fname, submitted_file)],
+                allow_description_overwrite=allow_description_overwrite
+            )
+            submission_received(submission_obj)
+            return make_api_response({"started": True, "sid": submit_result.sid})
+        except Exception as e:
+            # If an error occurs during submission, return an error response
+            return make_api_response("", err=str(e), status_code=400)
+        finally:
+            # Perform cleanup actions regardless of whether submission was successful or not
+            if submit_result is None:
+                # We had an error during the submission, release the quotas for the user
+                decrement_submission_quota(user)
 
-                if submitted_file and os.path.exists(submitted_file):
-                    # Clean up the temporary file
-                    os.remove(submitted_file)
+            if submitted_file and os.path.exists(submitted_file):
+                # Clean up the temporary file
+                os.remove(submitted_file)
