@@ -167,8 +167,7 @@ def flowjs_upload_chunk(**kwargs):
                     chunk = cache.get(chunk_name)
                     if not chunk:
                         # If a chunk is missing, mark the upload as incomplete
-                        return make_api_response({'success': True, 'completed': False},
-                                                 f"Missing chunk {chunk_name} when reconstructing file", 500)
+                        return make_api_response("", f"Missing chunk {chunk_name} when reconstructing file", 500)
                     target_file.write(chunk)
                     # Delete the chunk from the cache
                     cache.delete(chunk_name)
