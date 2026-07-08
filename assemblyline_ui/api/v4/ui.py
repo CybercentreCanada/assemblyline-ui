@@ -134,13 +134,18 @@ def flowjs_upload_chunk(**kwargs):
     except KeyError as e:
         return make_api_response("", f"Required argument missing: {e}", 412)
 
-    completed = True
-
-    filename = get_cache_name(flow_identifier, flow_chunk_number)
-
     with forge.get_cachestore("flowjs", config) as cache:
+        # Write the chunk to the cache
         file_obj = request.files['file']
-        cache.save(filename, file_obj.stream.read())
+        chunk_name = get_cache_name(flow_identifier, flow_chunk_number)
+        cache.save(chunk_name, file_obj.stream.read())
+
+        if flow_chunk_number != flow_total_chunks:
+            # Haven't completed uploading the file yet, return early
+            return make_api_response({'success': True, 'completed': False})
+
+        # Check if all chunks have been received, assume complete until proven otherwise
+        completed = True
 
         # Test in reverse order to fail fast
         for chunk in range(int(flow_total_chunks), 0, -1):
@@ -150,7 +155,7 @@ def flowjs_upload_chunk(**kwargs):
                 break
 
         if completed:
-            # Reconstruct the file
+            # Attempt file reconstruction and save to cache with the original identifier
             ui_sid = get_cache_name(flow_identifier)
 
             with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
@@ -159,8 +164,12 @@ def flowjs_upload_chunk(**kwargs):
                     chunk_name = get_cache_name(flow_identifier, chunk+1)
 
                     # Write chunks to temporary file
-                    target_file.write(cache.get(chunk_name))
-
+                    chunk = cache.get(chunk_name)
+                    if not chunk:
+                        # If a chunk is missing, mark the upload as incomplete
+                        return make_api_response({'success': True, 'completed': False},
+                                                 f"Missing chunk {chunk_name} when reconstructing file", 500)
+                    target_file.write(chunk)
                     # Delete the chunk from the cache
                     cache.delete(chunk_name)
 
