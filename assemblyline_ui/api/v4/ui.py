@@ -128,11 +128,13 @@ def flowjs_upload_chunk(**kwargs):
     """
 
     try:
-        flow_chunk_number = request.form["flowChunkNumber"]
+        flow_chunk_number = int(request.form["flowChunkNumber"])
         flow_identifier = request.form["flowIdentifier"]
-        flow_total_chunks = request.form["flowTotalChunks"]
+        flow_total_chunks = int(request.form["flowTotalChunks"])
     except KeyError as e:
         return make_api_response("", f"Required argument missing: {e}", 412)
+    except ValueError as e:
+        return make_api_response("", f"Invalid argument type: {e}", 412)
 
     # Evaluate if the chunk number is valid, if not return an error
     if flow_chunk_number == 0 or flow_chunk_number > flow_total_chunks:
@@ -157,18 +159,12 @@ def flowjs_upload_chunk(**kwargs):
         if completed:
             # Attempt file reconstruction and save to cache with the original identifier
             ui_sid = get_cache_name(flow_identifier)
-
             with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
                 # Iterate through the chunks in order to reconstruct the file
                 for chunk in range(int(flow_total_chunks)):
                     chunk_name = get_cache_name(flow_identifier, chunk+1)
-
                     # Write chunks to temporary file
-                    chunk = cache.get(chunk_name)
-                    if not chunk:
-                        # If a chunk is missing, mark the upload as incomplete
-                        return make_api_response("", f"Missing chunk {chunk_name} when reconstructing file", 500)
-                    target_file.write(chunk)
+                    target_file.write(cache.get(chunk_name))
                     # Delete the chunk from the cache
                     cache.delete(chunk_name)
 
