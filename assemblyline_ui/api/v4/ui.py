@@ -8,7 +8,7 @@ from assemblyline.common import forge
 from assemblyline.common.bundling import import_bundle
 from assemblyline.odm.messages.submission import Submission
 from assemblyline.odm.models.user import ROLES
-from assemblyline_core.submission_client import SubmissionClient, SubmissionException
+from assemblyline_core.submission_client import SubmissionClient
 from cart import get_metadata_only, is_cart
 from flask import request
 
@@ -227,22 +227,18 @@ def start_ui_submission(ui_sid, **kwargs):
                                                                         "Try again..." % ui_sid, 404)
         # Submit to dispatcher
         try:
-            with tempfile.NamedTemporaryFile(dir=TEMP_DIR, delete=False) as temp_file:
-                # Save the reconstructed file to disk, reset pointer, and pass it to the submission client
-                temp_file.write(cache.get(ui_sid))
-                temp_file.flush()
+            # Save uploaded file to a temporary file for processing
+            submitted_file = tempfile.NamedTemporaryFile(dir=TEMP_DIR).name
+            cache.download(ui_sid, submitted_file)
 
-                # Record the submitted file path for cleanup in case of an error
-                submitted_file = temp_file.name
-
-                # Check if the file is a CART bundle
-                temp_file.seek(0)
+            # Check if the file is a CART bundle
+            with open(submitted_file, "rb") as temp_file:
                 if is_cart(temp_file.read(256)):
                     meta = get_metadata_only(submitted_file)
                     if meta.get('al', {}).get('type', 'unknown') == 'archive/bundle/al':
                         # Import the submission bundle and return the submission ID
-                        submission = import_bundle(submitted_file, allow_incomplete=True,
-                                                identify=IDENTIFY,dtl=ui_params.get('ui_params', {}).get('ttl'))
+                        submission = import_bundle(submitted_file, allow_incomplete=True, identify=IDENTIFY,
+                                                   dtl=ui_params.get('ui_params', {}).get('ttl'))
                         return make_api_response({"started": True, "sid": submission['sid']})
 
             # Initialize submission validation process
