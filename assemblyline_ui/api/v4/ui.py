@@ -134,15 +134,15 @@ def flowjs_upload_chunk(**kwargs):
     except KeyError as e:
         return make_api_response("", f"Required argument missing: {e}", 412)
 
+    # Evaluate if the chunk number is valid, if not return an error
+    if flow_chunk_number == 0 or flow_chunk_number > flow_total_chunks:
+        return make_api_response("", "Invalid chunk number", 412)
+
     with forge.get_cachestore("flowjs", config) as cache:
         # Write the chunk to the cache
         file_obj = request.files['file']
         chunk_name = get_cache_name(flow_identifier, flow_chunk_number)
         cache.save(chunk_name, file_obj.stream.read())
-
-        if flow_chunk_number != flow_total_chunks:
-            # Haven't completed uploading the file yet, return early
-            return make_api_response({'success': True, 'completed': False})
 
         # Check if all chunks have been received, assume complete until proven otherwise
         completed = True
