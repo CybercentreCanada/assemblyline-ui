@@ -47,6 +47,7 @@ def upload_file_flowjs(session, host, data=None):
     chunk_size = math.ceil(len(data) / total_chunk)
     ui_id = get_random_id()
 
+    # Purposefully shuffle the chunk order to ensure that the server is able to handle out of order chunks
     chunk_parts = list(range(total_chunk))
     random.shuffle(chunk_parts)
     for x in chunk_parts:
