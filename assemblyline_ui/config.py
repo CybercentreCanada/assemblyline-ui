@@ -73,6 +73,11 @@ BUNDLING_DIR = "/var/lib/assemblyline/bundling"
 TEMP_DIR = "/var/lib/assemblyline/flowjs/"
 TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
 
+# Initialize all temporary directories used by the UI (mostly for testing purposes since Dockerfile creates them)
+for temp_dir in [TEMP_DIR, TEMP_SUBMIT_DIR, BUNDLING_DIR]:
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir, exist_ok=True)
+
 redis_persistent = get_client(config.core.redis.persistent.host, config.core.redis.persistent.port, False)
 redis = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpersistent.port, False)
 

@@ -47,9 +47,10 @@ def upload_file_flowjs(session, host, data=None):
     chunk_size = math.ceil(len(data) / total_chunk)
     ui_id = get_random_id()
 
-    counter = 0
-    while True:
-        x = counter % total_chunk
+    # Purposefully shuffle the chunk order to ensure that the server is able to handle out of order chunks
+    chunk_parts = list(range(total_chunk))
+    random.shuffle(chunk_parts)
+    for x in chunk_parts:
         try:
             params = {
                 "flowChunkNumber": f"{x + 1}",
@@ -61,8 +62,6 @@ def upload_file_flowjs(session, host, data=None):
                 "flowCurrentChunkSize": f"{chunk_size}",
             }
             resp = get_api_data(session, f"{host}/api/v4/ui/flowjs/", params=params)
-            if resp["exist"]:
-                counter += 1
         except APIError as e:
             if (
                 str(e) == "Chunk does not exist, please send it!"
