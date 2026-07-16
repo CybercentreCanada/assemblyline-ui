@@ -57,11 +57,11 @@ def delete_submission(sid, **kwargs):
     submission = STORAGE.submission.get(sid, as_obj=False)
 
     if not submission:
-        return make_api_response("", f"There are not submission with sid: {sid}", 404)
+        return make_api_response("", f"There is no submission with sid: {sid}", 404)
 
     permission_check = submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']
     if not (Classification.is_accessible(user['classification'], submission['classification']) and permission_check):
-        return make_api_response("", f"There are not submission with sid: {sid}", 404)
+        return make_api_response("", f"There is no submission with sid: {sid}", 404)
 
     if submission['state'] != "completed":
         # Tell dispatcher to cancel submission if it is ongoing
