@@ -113,18 +113,13 @@ def get_ontology_for_alert(alert_id, **kwargs):
 
     # Get alert from ID
     alert = STORAGE.alert.get(alert_id, as_obj=False)
-    if not alert:
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
         return make_api_response("", f"There is no alert with this ID: {alert_id}", 404)
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", f"You are not allowed get ontology files for this alert: {alert_id}", 403)
 
     # Get related submission
     submission = STORAGE.submission.get(alert['sid'], as_obj=False)
-    if not submission:
+    if not submission or not Classification.is_accessible(user['classification'], submission['classification']):
         return make_api_response("", f"The submission related to the alert is missing: {alert_id}", 404)
-    if not Classification.is_accessible(user['classification'], submission['classification']):
-        return make_api_response(
-            "", f"Your are not allowed get ontology files for the submission related to this alert: {alert_id}", 403)
 
     # Get all the results keys
     keys = [k for k in submission['results'] if not k.endswith(".e")]
@@ -211,10 +206,8 @@ def get_ontology_for_submission(sid, **kwargs):
 
     # Get submission for sid
     submission = STORAGE.submission.get(sid, as_obj=False)
-    if not submission:
+    if not submission or not Classification.is_accessible(user['classification'], submission['classification']):
         return make_api_response("", f"There is no submission with sid: {sid}", 404)
-    if not Classification.is_accessible(user['classification'], submission['classification']):
-        return make_api_response("", f"Your are not allowed get ontology files for this submission: {sid}", 403)
 
     # Get all the results keys
     keys = [k for k in submission['results'] if not k.endswith(".e")]
@@ -301,10 +294,8 @@ def get_ontology_for_file(sha256, **kwargs):
 
     # Get file data for hash
     file_data = STORAGE.file.get(sha256, as_obj=False)
-    if not file_data:
+    if not file_data or not Classification.is_accessible(user['classification'], file_data['classification']):
         return make_api_response("", f"There is no file with this hash: {sha256}", 404)
-    if not Classification.is_accessible(user['classification'], file_data['classification']):
-        return make_api_response("", f"Your are not allowed get ontology files for this hash: {sha256}", 403)
 
     # Generate the queries to get the results
     query = f"sha256:{sha256} AND response.supplementary.description:ontology"
