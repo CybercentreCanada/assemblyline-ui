@@ -33,10 +33,11 @@ SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
 ingest_api._doc = "Ingest files for large volume processing"
 
-ingest = NamedQueue(
+ingest: NamedQueue[dict] = NamedQueue(
     INGEST_QUEUE_NAME,
     host=config.core.redis.persistent.host,
-    port=config.core.redis.persistent.port)
+    port=config.core.redis.persistent.port
+)
 MAX_SIZE = config.submission.max_file_size
 
 DEFAULT_INGEST_PARAMS = {
@@ -249,13 +250,12 @@ def ingest_single_file(**kwargs):
             # Initialize submission validation process
             data, out_file, name, fileinfo, s_params, metadata = init_submission(request, user, endpoint="ingest")
         except FileTooBigException as e:
-            LOGGER.warning(f"[{user['uname']}] {e}")
+            LOGGER.warning("[%s] %s", user['uname'], e)
             return make_api_response({}, str(e), 413)
         except FileNotFoundError as e:
             return make_api_response({}, str(e), 404)
         except (PermissionError, Exception) as e:
             return make_api_response({}, str(e), 400)
-
 
         # Get notification queue parameters
         notification_queue = data.get('notification_queue', None)
@@ -266,7 +266,6 @@ def ingest_single_file(**kwargs):
         # Set any dangerous user settings to safe values (if wasn't set in request)
         for k, v in DEFAULT_INGEST_PARAMS.items():
             s_params.setdefault(k, v)
-
 
         # Determine where the file exists and whether or not we need to re-upload to hot storage
         if not STORAGE.file.exists(fileinfo['sha256']):

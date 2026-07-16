@@ -56,11 +56,8 @@ def archive_submission(sid, **kwargs):
     skip_hook = request.args.get('skip_hook', 'false').lower() in ['true', '']
     use_alternate_dtl = request.args.get('use_alternate_dtl', 'false').lower() in ['true', '']
     submission = STORAGE.submission.get_if_exists(sid, as_obj=False)
-    if not submission:
+    if not (submission and user and Classification.is_accessible(user['classification'], submission['classification'])):
         return make_api_response({"success": False}, f"The submission '{sid}' was not found in the system", 404)
-
-    if not user or not Classification.is_accessible(user['classification'], submission['classification']):
-        return make_api_response({"success": False}, f"The submission '{sid}' is not accessible by this user", 403)
 
     try:
         metadata = request.json
@@ -127,13 +124,10 @@ def get_comments(sha256, **kwargs):
         }]
     }
     """
-    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
-    if not file_obj:
-        return make_api_response({"success": False}, "The file was not found in the system.", 404)
-
     user = kwargs['user']
-    if not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response({"success": False}, "You are not allowed to make a reaction to this file...", 403)
+    file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
+    if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({"success": False}, "The file was not found in the system.", 404)
 
     try:
         comments = file_obj.get("comments", {})
@@ -210,11 +204,8 @@ def add_comment(sha256, **kwargs):
     while True:
         # Get the current file data
         file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
-        if not file_obj:
+        if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
             return make_api_response({"success": False}, "The file was not found in the system.", 404)
-
-        if not Classification.is_accessible(user['classification'], file_obj['classification']):
-            return make_api_response({"success": False}, "You are not allowed to add a comment to this file...", 403)
 
         # Add the comment to the file
         try:
@@ -223,7 +214,7 @@ def add_comment(sha256, **kwargs):
             STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
             break
         except VersionConflictException as vce:
-            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
+            LOGGER.info("Retrying saving comment due to version conflict: %s", vce)
 
     q = CommsQueue('file_comments', private=True)
     q.publish({'sha256': sha256})
@@ -257,6 +248,7 @@ def update_comment(sha256, cid, **kwargs):
     }
     """
     data = request.json
+    user = kwargs['user']
 
     text = data.get('text', None)
     if not isinstance(text, str):
@@ -265,14 +257,8 @@ def update_comment(sha256, cid, **kwargs):
     while True:
         try:
             file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
-            if not file_obj:
+            if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
                 return make_api_response({"success": False}, "The file was not found in the system.", 404)
-
-            user = kwargs['user']
-            if not Classification.is_accessible(user['classification'], file_obj['classification']):
-                return make_api_response(
-                    {"success": False},
-                    "You are not allowed to modify a comment on this file...", 403)
 
             file_obj.setdefault('comments', [])
             index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
@@ -288,7 +274,7 @@ def update_comment(sha256, cid, **kwargs):
             STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
             break
         except VersionConflictException as vce:
-            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
+            LOGGER.info("Retrying saving comment due to version conflict: %s", vce)
 
         except DataStoreException as e:
             return make_api_response({"success": False}, err=str(e), status_code=400)
@@ -323,6 +309,7 @@ def delete_comment(sha256, cid, **kwargs):
     }
     """
     data = request.json
+    user = kwargs['user']
 
     text = data.get('text', None)
     if not isinstance(text, str):
@@ -331,14 +318,8 @@ def delete_comment(sha256, cid, **kwargs):
     while True:
         try:
             file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
-            if not file_obj:
+            if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
                 return make_api_response({"success": False}, "The file was not found in the system.", 404)
-
-            user = kwargs['user']
-            if not Classification.is_accessible(user['classification'], file_obj['classification']):
-                return make_api_response(
-                    {"success": False},
-                    "You are not allowed to modify a comment on this file...", 403)
 
             file_obj.setdefault('comments', [])
             index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
@@ -352,7 +333,7 @@ def delete_comment(sha256, cid, **kwargs):
             STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
             break
         except VersionConflictException as vce:
-            LOGGER.info(f"Retrying saving comment due to version conflict: {str(vce)}")
+            LOGGER.info("Retrying saving comment due to version conflict: %s", vce)
 
         except DataStoreException as e:
             return make_api_response({"success": False}, err=str(e), status_code=400)
@@ -393,18 +374,16 @@ def toggle_reaction(sha256, cid, icon, **kwargs):
         }
     ]
     """
+    user = kwargs['user']
+
     while True:
         try:
             if icon not in REACTIONS_TYPES:
                 return make_api_response({"success": False}, err="Invalid text property", status_code=400)
 
             file_obj, version = STORAGE.file.get_if_exists(sha256, as_obj=False, version=True, index_type=Index.ARCHIVE)
-            if not file_obj:
+            if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
                 return make_api_response({"success": False}, "The file was not found in the system.", status_code=404)
-
-            user = kwargs['user']
-            if not Classification.is_accessible(user['classification'], file_obj['classification']):
-                return make_api_response("", "You are not allowed to make a reaction to this file...", 403)
 
             file_obj.setdefault('comments', [])
             c_index = next((i for i, c in enumerate(file_obj['comments']) if c.get('cid', None) == cid), None)
@@ -424,7 +403,7 @@ def toggle_reaction(sha256, cid, icon, **kwargs):
             STORAGE.file.save(sha256, file_obj, version=version, index_type=Index.ARCHIVE)
             break
         except VersionConflictException as vce:
-            LOGGER.info(f"Retrying saving reactions due to version conflict: {str(vce)}")
+            LOGGER.info("Retrying saving reactions due to version conflict: %s", vce)
 
         except DataStoreException as e:
             return make_api_response({"success": False}, err=str(e), status_code=400)
@@ -534,11 +513,8 @@ def set_labels(sha256, **kwargs):
 
     file_obj = STORAGE.file.get_if_exists(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
-    if not file_obj:
-        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response("", "You are not allowed to change this file's labels...", 403)
+    if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({"success": False}, err=f"File ID {sha256} not found", status_code=404)
 
     try:
         json_categories = {k: v for k, v in request.json.items() if k in LABEL_CATEGORIES}
@@ -560,7 +536,6 @@ def set_labels(sha256, **kwargs):
 
     STORAGE.file.update(sha256, update_data, index_type=Index.ARCHIVE)
     values = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
-
     return make_api_response(dict(labels=values['labels'], label_categories=values['label_categories']))
 
 
@@ -601,11 +576,8 @@ def add_labels(sha256, **kwargs):
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
-    if not file_obj:
-        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response("", "You are not allowed to add labels to this file...", 403)
+    if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({"success": False}, err=f"File ID {sha256} not found", status_code=404)
 
     update_data = []
     try:
@@ -661,11 +633,8 @@ def remove_labels(sha256, **kwargs):
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.ARCHIVE)
 
-    if not file_obj:
-        return make_api_response({"success": False}, err="File ID %s not found" % sha256, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], file_obj['classification']):
-        return make_api_response("", "You are not allowed to remove labels from this file...", 403)
+    if not file_obj or not Classification.is_accessible(user['classification'], file_obj['classification']):
+        return make_api_response({"success": False}, err=f"File ID {sha256} not found", status_code=404)
 
     update_data = []
     try:

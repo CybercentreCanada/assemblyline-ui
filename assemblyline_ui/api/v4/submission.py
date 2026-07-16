@@ -27,9 +27,11 @@ HEUR_RANK_MAP = {
     'malicious': 3
 }
 
-event_sender = EventSender('delete',
-                           host=config.core.redis.nonpersistent.host,
-                           port=config.core.redis.nonpersistent.port)
+event_sender: EventSender[str] = EventSender(
+    'delete',
+    host=config.core.redis.nonpersistent.host,
+    port=config.core.redis.nonpersistent.port
+)
 
 
 @submission_api.route("/<sid>/", methods=["DELETE"])
@@ -55,20 +57,20 @@ def delete_submission(sid, **kwargs):
     submission = STORAGE.submission.get(sid, as_obj=False)
 
     if not submission:
-        return make_api_response("", f"There are not submission with sid: {sid}", 404)
+        return make_api_response("", f"There is no submission with sid: {sid}", 404)
+
+    permission_check = submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']
+    if not (Classification.is_accessible(user['classification'], submission['classification']) and permission_check):
+        return make_api_response("", f"There is no submission with sid: {sid}", 404)
 
     if submission['state'] != "completed":
         # Tell dispatcher to cancel submission if it is ongoing
         DispatchClient(datastore=STORAGE).cancel_submission(sid)
 
-    if Classification.is_accessible(user['classification'], submission['classification']) \
-            and (submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']):
-        STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
-        STORAGE.submission.commit()
-        event_sender.send("submission", sid)
-        return make_api_response({"success": True})
-    else:
-        return make_api_response("", "Your are not allowed to delete this submission.", 403)
+    STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
+    STORAGE.submission.commit()
+    event_sender.send("submission", sid)
+    return make_api_response({"success": True})
 
 
 # noinspection PyBroadException
@@ -100,134 +102,131 @@ def get_file_submission_results(sid, sha256, **kwargs):
 
     # Check if submission exist
     data = STORAGE.submission.get(sid, as_obj=False)
-    if data is None:
-        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+    if not (data and user and Classification.is_accessible(user['classification'], data['classification'])):
+        return make_api_response("", f"Submission ID {sid} does not exists.", 404)
 
-    if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        # Prepare output
-        output = {
-            "classification": Classification.UNRESTRICTED,
-            "file_info": {},
-            "results": [],
-            "tags": {},
-            "errors": [],
-            "attack_matrix": {},
-            'heuristics': {},
-            "signatures": set()
-        }
+    # Prepare output
+    output = {
+        "classification": Classification.UNRESTRICTED,
+        "file_info": {},
+        "results": [],
+        "tags": {},
+        "errors": [],
+        "attack_matrix": {},
+        'heuristics': {},
+        "signatures": set()
+    }
 
-        # Extra keys - This is a live mode optimisation
-        res_keys = data.get("results", [])
-        err_keys = data.get("errors", [])
+    # Extra keys - This is a live mode optimisation
+    res_keys = data.get("results", [])
+    err_keys = data.get("errors", [])
 
-        if request.method == "POST" and data['state'] != "completed":
-            try:
-                req_data = request.json
-                extra_rkeys = req_data.get("extra_result_keys", [])
-                extra_ekeys = req_data.get("extra_error_keys", [])
-                # Load keys
-                res_keys.extend(extra_rkeys)
-                err_keys.extend(extra_ekeys)
-            except BadRequest:
-                pass
-
-        res_keys = list(set(res_keys))
-        err_keys = list(set(err_keys))
-
-        # Get File, results and errors
-        temp_file = STORAGE.file.get(sha256, as_obj=False)
-        if not temp_file:
-            output['file_info']['sha256'] = sha256
-            output['signatures'] = list(output['signatures'])
-            output['missing'] = True
-            return make_api_response(output, "The file you are trying to view is missing from the system", 404)
-        if not Classification.is_accessible(user['classification'], temp_file['classification']):
-            return make_api_response("", "You are not allowed to view the data of this file", 403)
-        output['file_info'] = temp_file
-        max_c12n = output['file_info']['classification']
-
-        temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
-                                                         cl_engine=Classification, as_obj=False).values())
-        results = []
-        for r in temp_results:
-            r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
-            if r:
-                max_c12n = Classification.max_classification(max_c12n, r['classification'])
-                results.append(r)
-        output['results'] = results
-
+    if request.method == "POST" and data['state'] != "completed":
         try:
-            output['errors'] = STORAGE.error.multiget([x for x in err_keys if x.startswith(sha256)],
-                                                      as_obj=False, as_dictionary=False)
-        except MultiKeyError as e:
-            LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
-            output['errors'] = e.partial_output
+            req_data = request.json
+            extra_rkeys = req_data.get("extra_result_keys", [])
+            extra_ekeys = req_data.get("extra_error_keys", [])
+            # Load keys
+            res_keys.extend(extra_rkeys)
+            err_keys.extend(extra_ekeys)
+        except BadRequest:
+            pass
 
-        output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
-                                                              user["access_control"])
+    res_keys = list(set(res_keys))
+    err_keys = list(set(err_keys))
 
-        done_heuristics = set()
-        for res in output['results']:
-            sorted_sections = sorted(res.get('result', {}).get('sections', []),
-                                     key=lambda i: i['heuristic']['score'] if i['heuristic'] is not None else 0,
-                                     reverse=True)
-            for sec in sorted_sections:
-                h_type = "info"
-                if sec.get('heuristic', False):
-                    # Get the heuristics data
-                    if sec['heuristic']['score'] >= config.submission.verdicts.malicious:
-                        h_type = "malicious"
-                    elif sec['heuristic']['score'] >= config.submission.verdicts.suspicious:
-                        h_type = "suspicious"
-                    elif sec['heuristic']['score'] >= config.submission.verdicts.info:
-                        h_type = "info"
-                    else:
-                        h_type = "safe"
-
-                    if sec['heuristic']['heur_id'] not in done_heuristics:
-                        item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
-                        output['heuristics'].setdefault(h_type, [])
-                        output['heuristics'][h_type].append(item)
-                        done_heuristics.add(sec['heuristic']['heur_id'])
-
-                    # Process Attack matrix
-                    for attack in sec['heuristic'].get('attack', []):
-                        attack_id = attack['attack_id']
-                        for cat in attack['categories']:
-                            output['attack_matrix'].setdefault(cat, [])
-                            item = (attack_id, attack['pattern'], h_type)
-                            if item not in output['attack_matrix'][cat]:
-                                output['attack_matrix'][cat].append(item)
-
-                    # Process Signatures
-                    for signature in sec['heuristic'].get('signature', []):
-                        sig = (signature['name'], h_type, signature.get('safe', False))
-                        if sig not in output['signatures']:
-                            output['signatures'].add(sig)
-
-                # Process tags
-                for t in sec['tags']:
-                    output["tags"].setdefault(t['type'], {})
-                    current_htype, _, _ = output["tags"][t['type']].get(t['value'], (None, None, None))
-                    tag_htype = h_type
-                    if current_htype:
-                        if 'malicious' in (current_htype, h_type):
-                            tag_htype = 'malicious'
-                        elif 'suspicious' in (current_htype, h_type):
-                            tag_htype = 'suspicious'
-                        else:
-                            tag_htype = 'info'
-                    output["tags"][t['type']][t['value']] = (tag_htype, t['safelisted'], sec['classification'])
-
-        for t_type in output["tags"]:
-            output["tags"][t_type] = [(k, v[0], v[1], v[2]) for k, v in output['tags'][t_type].items()]
-
+    # Get File, results and errors
+    temp_file = STORAGE.file.get(sha256, as_obj=False)
+    if not temp_file:
+        output['file_info']['sha256'] = sha256
         output['signatures'] = list(output['signatures'])
+        output['missing'] = True
+        return make_api_response(output, "The file you are trying to view is missing from the system", 404)
+    if not Classification.is_accessible(user['classification'], temp_file['classification']):
+        return make_api_response("", "You are not allowed to view the data of this file", 403)
+    output['file_info'] = temp_file
+    max_c12n = output['file_info']['classification']
 
-        output['classification'] = max_c12n
-        return make_api_response(output)
-    else:
-        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+    temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
+                                                     cl_engine=Classification, as_obj=False).values())
+    results = []
+    for r in temp_results:
+        r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
+        if r:
+            max_c12n = Classification.max_classification(max_c12n, r['classification'])
+            results.append(r)
+    output['results'] = results
+
+    try:
+        output['errors'] = STORAGE.error.multiget([x for x in err_keys if x.startswith(sha256)],
+                                                  as_obj=False, as_dictionary=False)
+    except MultiKeyError as e:
+        LOGGER.warning("Trying to get multiple errors but some are missing: %s", str(e.keys))
+        output['errors'] = e.partial_output
+
+    output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
+                                                          user["access_control"])
+
+    done_heuristics = set()
+    for res in output['results']:
+        sorted_sections = sorted(res.get('result', {}).get('sections', []),
+                                 key=lambda i: i['heuristic']['score'] if i['heuristic'] is not None else 0,
+                                 reverse=True)
+        for sec in sorted_sections:
+            h_type = "info"
+            if sec.get('heuristic', False):
+                # Get the heuristics data
+                if sec['heuristic']['score'] >= config.submission.verdicts.malicious:
+                    h_type = "malicious"
+                elif sec['heuristic']['score'] >= config.submission.verdicts.suspicious:
+                    h_type = "suspicious"
+                elif sec['heuristic']['score'] >= config.submission.verdicts.info:
+                    h_type = "info"
+                else:
+                    h_type = "safe"
+
+                if sec['heuristic']['heur_id'] not in done_heuristics:
+                    item = (sec['heuristic']['heur_id'], sec['heuristic']['name'])
+                    output['heuristics'].setdefault(h_type, [])
+                    output['heuristics'][h_type].append(item)
+                    done_heuristics.add(sec['heuristic']['heur_id'])
+
+                # Process Attack matrix
+                for attack in sec['heuristic'].get('attack', []):
+                    attack_id = attack['attack_id']
+                    for cat in attack['categories']:
+                        output['attack_matrix'].setdefault(cat, [])
+                        item = (attack_id, attack['pattern'], h_type)
+                        if item not in output['attack_matrix'][cat]:
+                            output['attack_matrix'][cat].append(item)
+
+                # Process Signatures
+                for signature in sec['heuristic'].get('signature', []):
+                    sig = (signature['name'], h_type, signature.get('safe', False))
+                    if sig not in output['signatures']:
+                        output['signatures'].add(sig)
+
+            # Process tags
+            for t in sec['tags']:
+                output["tags"].setdefault(t['type'], {})
+                current_htype, _, _ = output["tags"][t['type']].get(t['value'], (None, None, None))
+                tag_htype = h_type
+                if current_htype:
+                    if 'malicious' in (current_htype, h_type):
+                        tag_htype = 'malicious'
+                    elif 'suspicious' in (current_htype, h_type):
+                        tag_htype = 'suspicious'
+                    else:
+                        tag_htype = 'info'
+                output["tags"][t['type']][t['value']] = (tag_htype, t['safelisted'], sec['classification'])
+
+    for t_type in output["tags"]:
+        output["tags"][t_type] = [(k, v[0], v[1], v[2]) for k, v in output['tags'][t_type].items()]
+
+    output['signatures'] = list(output['signatures'])
+
+    output['classification'] = max_c12n
+    return make_api_response(output)
 
 
 @submission_api.route("/tree/<sid>/", methods=["GET"])
@@ -263,16 +262,13 @@ def get_file_tree(sid, **kwargs):
     get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
     data = STORAGE.submission.get(sid, as_obj=False)
-    if data is None:
-        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+    if not (data and user and Classification.is_accessible(user['classification'], data['classification'])):
+        return make_api_response("", f"Submission ID {sid} does not exists.", 404)
 
-    if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
-                                                                 cl_engine=Classification,
-                                                                 user_classification=user['classification'],
-                                                                 get_full_tree=get_full_tree))
-    else:
-        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+    return make_api_response(STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
+                                                             cl_engine=Classification,
+                                                             user_classification=user['classification'],
+                                                             get_full_tree=get_full_tree))
 
 
 @submission_api.route("/full/<sid>/", methods=["GET"])
@@ -371,7 +367,7 @@ def get_full_results(sid, **kwargs):
             try:
                 err.update(STORAGE.error.multiget(keys, as_obj=False))
             except MultiKeyError as e:
-                LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
+                LOGGER.warning("Trying to get multiple errors but some are missing: %s", str(e.keys))
                 err.update(e.partial_output)
                 missing.extend(e.keys)
             keys = [x for x in keys if x not in err and x not in missing]
@@ -392,7 +388,7 @@ def get_full_results(sid, **kwargs):
             try:
                 infos.update(STORAGE.file.multiget(keys, as_obj=False))
             except MultiKeyError as e:
-                LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
+                LOGGER.warning("Trying to get multiple files but some are missing: %s", str(e.keys))
                 infos.update(e.partial_output)
                 missing.extend(e.keys)
             keys = [x for x in keys if x not in infos and x not in missing]
@@ -412,31 +408,28 @@ def get_full_results(sid, **kwargs):
 
     user = kwargs['user']
     data = STORAGE.submission.get(sid, as_obj=False)
-    if data is None:
-        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+    if not (data and user and Classification.is_accessible(user['classification'], data['classification'])):
+        return make_api_response("", f"Submission ID {sid} does not exists.", 404)
 
-    if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        res_keys = data.get("results", [])
-        err_keys = data.get("errors", [])
-        get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
+    res_keys = data.get("results", [])
+    err_keys = data.get("errors", [])
+    get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
-        data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
-                                                            cl_engine=Classification,
-                                                            user_classification=user['classification'],
-                                                            get_full_tree=get_full_tree)['tree']
-        data['file_infos'], data['missing_file_keys'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
-        data.update(get_results(res_keys))
-        data.update(get_errors(err_keys))
+    data['file_tree'] = STORAGE.get_or_create_file_tree(data, config.submission.max_extraction_depth,
+                                                        cl_engine=Classification,
+                                                        user_classification=user['classification'],
+                                                        get_full_tree=get_full_tree)['tree']
+    data['file_infos'], data['missing_file_keys'] = get_file_infos(recursive_flatten_tree(data['file_tree']))
+    data.update(get_results(res_keys))
+    data.update(get_errors(err_keys))
 
-        for r in data['results'].values():
-            data['classification'] = Classification.max_classification(data['classification'], r['classification'])
+    for r in data['results'].values():
+        data['classification'] = Classification.max_classification(data['classification'], r['classification'])
 
-        for f in data['file_infos'].values():
-            data['classification'] = Classification.max_classification(data['classification'], f['classification'])
+    for f in data['file_infos'].values():
+        data['classification'] = Classification.max_classification(data['classification'], f['classification'])
 
-        return make_api_response(data)
-    else:
-        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+    return make_api_response(data)
 
 
 @submission_api.route("/<sid>/", methods=["GET"])
@@ -483,13 +476,9 @@ def get_submission(sid, **kwargs):
     """
     user = kwargs['user']
     data = STORAGE.submission.get(sid, as_obj=False)
-    if data is None:
-        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
-
-    if data and user and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(data)
-    else:
-        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+    if not (data and user and Classification.is_accessible(user['classification'], data['classification'])):
+        return make_api_response("", f"Submission ID {sid} does not exists.", 404)
+    return make_api_response(data)
 
 
 @submission_api.route("/ai/<sid>/", methods=["GET"])
@@ -543,7 +532,7 @@ def get_ai_summary(sid, **kwargs):
     cache_key = CACHE.create_key(sid, user['classification'], index_type,
                                  archive_only, detailed, lang, with_trace, "submission")
     ai_summary = None
-    if (not no_cache):
+    if not no_cache:
         # Get the summary from cache
         ai_summary = CACHE.get(cache_key)
 
@@ -552,7 +541,7 @@ def get_ai_summary(sid, **kwargs):
             sid, user_classification=user['classification'],
             cl_engine=Classification, index_type=index_type)
         if data is None:
-            return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+            return make_api_response("", f"Submission ID {sid} does not exists.", 404)
 
         try:
             if detailed:
@@ -621,130 +610,127 @@ def get_summary(sid, **kwargs):
     """
     user = kwargs['user']
     submission = STORAGE.submission.get(sid, as_obj=False)
-    if submission is None:
-        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+    if not (submission and user and Classification.is_accessible(user['classification'], submission['classification'])):
+        return make_api_response("", f"Submission ID {sid} does not exists.", 404)
 
-    if user and Classification.is_accessible(user['classification'], submission['classification']):
-        output = {
-            "map": {},
-            "tags": {
-                'behavior': {},
-                'attribution': {},
-                'ioc': {}
-            },
-            "attack_matrix": {},
-            "heuristics": {},
-            "classification": Classification.UNRESTRICTED,
-            "filtered": False
-        }
+    output = {
+        "map": {},
+        "tags": {
+            'behavior': {},
+            'attribution': {},
+            'ioc': {}
+        },
+        "attack_matrix": {},
+        "heuristics": {},
+        "classification": Classification.UNRESTRICTED,
+        "filtered": False
+    }
 
-        summary = get_or_create_summary(sid, submission["results"], user['classification'],
-                                        submission['state'] == "completed")
-        tags = summary['tags']
-        attack_matrix = summary['attack_matrix']
-        heuristics = summary['heuristics']
-        output['classification'] = summary['classification']
-        output['filtered'] = summary['filtered']
-        output['partial'] = summary['partial']
-        output['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
-        output['heuristic_name_map'] = summary['heuristic_name_map']
+    summary = get_or_create_summary(sid, submission["results"], user['classification'],
+                                    submission['state'] == "completed")
+    tags = summary['tags']
+    attack_matrix = summary['attack_matrix']
+    heuristics = summary['heuristics']
+    output['classification'] = summary['classification']
+    output['filtered'] = summary['filtered']
+    output['partial'] = summary['partial']
+    output['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
+    output['heuristic_name_map'] = summary['heuristic_name_map']
 
-        # Process attack matrix
-        for item in attack_matrix:
-            sha256 = item['key'][:64]
-            attack_id = item['attack_id']
+    # Process attack matrix
+    for item in attack_matrix:
+        sha256 = item['key'][:64]
+        attack_id = item['attack_id']
 
-            for cat in item['categories']:
-                key = f"attack_pattern__{attack_id}"
-                output['map'].setdefault(sha256, [])
-                output['map'].setdefault(key, [])
-
-                if sha256 not in output['map'][key]:
-                    output['map'][key].append(sha256)
-
-                if key not in output['map'][sha256]:
-                    output['map'][sha256].append(key)
-
-                output['attack_matrix'].setdefault(cat, [])
-                if (attack_id, item['name'], item['h_type']) not in output['attack_matrix'][cat]:
-                    output['attack_matrix'][cat].append((attack_id, item['name'], item['h_type']))
-
-        # Process heuristics
-        for cat, items in heuristics.items():
-            for item in items:
-                sha256 = item['key'][:64]
-                heur_id = item['heur_id']
-
-                key = f"heuristic__{heur_id}"
-                output['map'].setdefault(sha256, [])
-                output['map'].setdefault(key, [])
-
-                if sha256 not in output['map'][key]:
-                    output['map'][key].append(sha256)
-
-                if key not in output['map'][sha256]:
-                    output['map'][sha256].append(key)
-
-                for sig in item['signatures']:
-                    sig_key = f"heuristic.signature__{sig}"
-                    output['map'].setdefault(sig_key, [])
-
-                    if sha256 not in output['map'][sig_key]:
-                        output['map'][sig_key].append(sha256)
-
-                    if sig_key not in output['map'][sha256]:
-                        output['map'][sha256].append(sig_key)
-
-                output['heuristics'].setdefault(cat, [])
-                if (heur_id, item['name']) not in output['heuristics'][cat]:
-                    output['heuristics'][cat].append((heur_id, item['name']))
-
-        # Process tags
-        for t in tags:
-            summary_type = None
-
-            if t["type"] in config.submission.tag_types.behavior:
-                summary_type = 'behavior'
-            elif t["type"] in config.submission.tag_types.attribution:
-                summary_type = 'attribution'
-            elif t["type"] in config.submission.tag_types.ioc:
-                summary_type = 'ioc'
-
-            if t['value'] == "" or summary_type is None:
-                continue
-
-            sha256 = t["key"][:64]
-            tag_key = f"{t['type']}__{t['value']}"
-
-            # File map
-            output['map'].setdefault(tag_key, [])
-            if sha256 not in output['map'][tag_key]:
-                output['map'][tag_key].append(sha256)
-
-            # Tag map
+        for cat in item['categories']:
+            key = f"attack_pattern__{attack_id}"
             output['map'].setdefault(sha256, [])
-            if sha256 not in output['map'][sha256]:
-                output['map'][sha256].append(tag_key)
+            output['map'].setdefault(key, [])
 
-            # Tags
-            stype = output['tags'][summary_type]
-            current_htype = stype.setdefault(t['type'], {}).get(t['value'], None)
-            if not current_htype:
-                stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], t['classification'])
-            elif HEUR_RANK_MAP[current_htype[0]] < HEUR_RANK_MAP[t['h_type']]:
-                # When returning tag classification without context, the least restrictive should be used
-                current_clsf = current_htype[2]
-                min_clsf = Classification.min_classification(current_clsf, t['classification'])
-                stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], min_clsf)
+            if sha256 not in output['map'][key]:
+                output['map'][key].append(sha256)
 
-        for summary_type in output['tags']:
-            for t_type in output['tags'][summary_type]:
-                output['tags'][summary_type][t_type] = [(k, v[0], v[1], v[2])
-                                                        for k, v in output['tags'][summary_type][t_type].items()]
+            if key not in output['map'][sha256]:
+                output['map'][sha256].append(key)
 
-        return make_api_response(output)
-    else:
-        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+            output['attack_matrix'].setdefault(cat, [])
+            if (attack_id, item['name'], item['h_type']) not in output['attack_matrix'][cat]:
+                output['attack_matrix'][cat].append((attack_id, item['name'], item['h_type']))
+
+    # Process heuristics
+    for cat, items in heuristics.items():
+        for item in items:
+            sha256 = item['key'][:64]
+            heur_id = item['heur_id']
+
+            key = f"heuristic__{heur_id}"
+            output['map'].setdefault(sha256, [])
+            output['map'].setdefault(key, [])
+
+            if sha256 not in output['map'][key]:
+                output['map'][key].append(sha256)
+
+            if key not in output['map'][sha256]:
+                output['map'][sha256].append(key)
+
+            for sig in item['signatures']:
+                sig_key = f"heuristic.signature__{sig}"
+                output['map'].setdefault(sig_key, [])
+
+                if sha256 not in output['map'][sig_key]:
+                    output['map'][sig_key].append(sha256)
+
+                if sig_key not in output['map'][sha256]:
+                    output['map'][sha256].append(sig_key)
+
+            output['heuristics'].setdefault(cat, [])
+            if (heur_id, item['name']) not in output['heuristics'][cat]:
+                output['heuristics'][cat].append((heur_id, item['name']))
+
+    # Process tags
+    for t in tags:
+        summary_type = None
+
+        if t["type"] in config.submission.tag_types.behavior:
+            summary_type = 'behavior'
+        elif t["type"] in config.submission.tag_types.attribution:
+            summary_type = 'attribution'
+        elif t["type"] in config.submission.tag_types.ioc:
+            summary_type = 'ioc'
+
+        if t['value'] == "" or summary_type is None:
+            continue
+
+        sha256 = t["key"][:64]
+        tag_key = f"{t['type']}__{t['value']}"
+
+        # File map
+        output['map'].setdefault(tag_key, [])
+        if sha256 not in output['map'][tag_key]:
+            output['map'][tag_key].append(sha256)
+
+        # Tag map
+        output['map'].setdefault(sha256, [])
+        if sha256 not in output['map'][sha256]:
+            output['map'][sha256].append(tag_key)
+
+        # Tags
+        stype = output['tags'][summary_type]
+        current_htype = stype.setdefault(t['type'], {}).get(t['value'], None)
+        if not current_htype:
+            stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], t['classification'])
+        elif HEUR_RANK_MAP[current_htype[0]] < HEUR_RANK_MAP[t['h_type']]:
+            # When returning tag classification without context, the least restrictive should be used
+            current_clsf = current_htype[2]
+            min_clsf = Classification.min_classification(current_clsf, t['classification'])
+            stype[t['type']][t['value']] = (t['h_type'], t['safelisted'], min_clsf)
+
+    for summary_type in output['tags']:
+        for t_type in output['tags'][summary_type]:
+            output['tags'][summary_type][t_type] = [(k, v[0], v[1], v[2])
+                                                    for k, v in output['tags'][summary_type][t_type].items()]
+
+    return make_api_response(output)
 
 
 # noinspection PyUnusedLocal
@@ -768,9 +754,8 @@ def is_submission_completed(sid, **kwargs):
     """
     user = kwargs['user']
     data = STORAGE.submission.get(sid, as_obj=False)
-    if data is None or not user or not Classification.is_accessible(user['classification'], data['classification']):
-        # Always return 404 if the user is not allowed to see it to avoid information leak
-        return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+    if not data or not user or not Classification.is_accessible(user['classification'], data['classification']):
+        return make_api_response("", f"Submission ID {sid} does not exists.", 404)
 
     return make_api_response(data["state"] == "completed")
 
@@ -932,146 +917,143 @@ def get_report(submission_id, **kwargs):
     """
     user = kwargs['user']
     submission = STORAGE.submission.get(submission_id, as_obj=False)
-    if submission is None:
-        return make_api_response("", "Submission ID %s does not exists." % submission_id, 404)
+    if not (submission and user and Classification.is_accessible(user['classification'], submission['classification'])):
+        return make_api_response("", f"Submission ID {submission_id} does not exists.", 404)
 
     submission['important_files'] = set()
     submission['report_filtered'] = False
 
     get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
-    if user and Classification.is_accessible(user['classification'], submission['classification']):
-        if submission['state'] != 'completed':
-            return make_api_response("", f"It is too early to generate the report. "
-                                         f"Submission ID {submission_id} is incomplete.", 425)
+    if submission['state'] != 'completed':
+        return make_api_response("", "It is too early to generate the report. "
+                                     f"Submission ID {submission_id} is incomplete.", 425)
 
-        tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
-                                               cl_engine=Classification, user_classification=user['classification'],
-                                               get_full_tree=get_full_tree)
-        submission['file_tree'] = tree['tree']
-        submission['classification'] = Classification.max_classification(submission['classification'],
-                                                                         tree['classification'])
-        if tree['filtered']:
-            submission['report_filtered'] = True
+    tree = STORAGE.get_or_create_file_tree(submission, config.submission.max_extraction_depth,
+                                           cl_engine=Classification, user_classification=user['classification'],
+                                           get_full_tree=get_full_tree)
+    submission['file_tree'] = tree['tree']
+    submission['classification'] = Classification.max_classification(submission['classification'],
+                                                                     tree['classification'])
+    if tree['filtered']:
+        submission['report_filtered'] = True
 
-        errors = submission.pop('errors', None)
-        submission['params']['services']['errors'] = list(set([x.split('.')[1] for x in errors]))
+    errors = submission.pop('errors', None)
+    submission['params']['services']['errors'] = list(set([x.split('.')[1] for x in errors]))
 
-        def recurse_get_names(data):
-            output = {}
-            for key, val in data.items():
-                output.setdefault(key, [])
+    def recurse_get_names(data):
+        output = {}
+        for key, val in data.items():
+            output.setdefault(key, [])
 
-                for res_name in val['name']:
-                    output[key].append(res_name)
+            for res_name in val['name']:
+                output[key].append(res_name)
 
-                children = recurse_get_names(val['children'])
-                for c_key, c_names in children.items():
-                    output.setdefault(c_key, [])
-                    output[c_key].extend(c_names)
+            children = recurse_get_names(val['children'])
+            for c_key, c_names in children.items():
+                output.setdefault(c_key, [])
+                output[c_key].extend(c_names)
 
-            return output
+        return output
 
-        name_map = recurse_get_names(tree['tree'])
-        results = submission.pop('results', [])
-        summary = get_or_create_summary(submission_id, results, user['classification'],
-                                        submission['state'] == "completed")
-        tags = [t for t in summary['tags'] if not t['safelisted']]
+    name_map = recurse_get_names(tree['tree'])
+    results = submission.pop('results', [])
+    summary = get_or_create_summary(submission_id, results, user['classification'],
+                                    submission['state'] == "completed")
+    tags = [t for t in summary['tags'] if not t['safelisted']]
 
-        attack_matrix = summary['attack_matrix']
-        heuristics = summary['heuristics']
-        submission['classification'] = Classification.max_classification(submission['classification'],
-                                                                         summary['classification'])
-        if summary['filtered']:
-            submission['report_filtered'] = True
+    attack_matrix = summary['attack_matrix']
+    heuristics = summary['heuristics']
+    submission['classification'] = Classification.max_classification(submission['classification'],
+                                                                     summary['classification'])
+    if summary['filtered']:
+        submission['report_filtered'] = True
 
-        if summary['partial']:
-            submission['report_partial'] = True
+    if summary['partial']:
+        submission['report_partial'] = True
 
-        submission['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
-        submission['heuristic_name_map'] = summary['heuristic_name_map']
-        submission['attack_matrix'] = {}
-        submission['heuristics'] = {}
-        submission['tags'] = {}
-        submission['promoted_sections'] = []
+    submission['heuristic_sections'] = cleanup_heuristic_sections(summary['heuristic_sections'])
+    submission['heuristic_name_map'] = summary['heuristic_name_map']
+    submission['attack_matrix'] = {}
+    submission['heuristics'] = {}
+    submission['tags'] = {}
+    submission['promoted_sections'] = []
 
-        # Process attack matrix
-        for item in attack_matrix:
-            sha256 = item['key'][:64]
+    # Process attack matrix
+    for item in attack_matrix:
+        sha256 = item['key'][:64]
 
-            for cat in item['categories']:
+        for cat in item['categories']:
 
-                submission['attack_matrix'].setdefault(cat, {})
-                submission['attack_matrix'][cat].setdefault(item['name'], {'h_type': item['h_type'], 'files': []})
-                for name in name_map.get(sha256, [sha256]):
-                    if (name, sha256) not in submission['attack_matrix'][cat][item['name']]['files']:
-                        submission['attack_matrix'][cat][item['name']]['files'].append((name, sha256))
-                    submission['important_files'].add(sha256)
-
-        # Process heuristics
-        for h_type, items in heuristics.items():
-            submission['heuristics'].setdefault(h_type, {})
-            for item in items:
-                sha256 = item['key'][:64]
-                submission['heuristics'][h_type].setdefault(item['name'], [])
-                for name in name_map.get(sha256, [sha256]):
-                    if (name, sha256) not in submission['heuristics'][h_type][item['name']]:
-                        submission['heuristics'][h_type][item['name']].append((name, sha256))
-                    submission['important_files'].add(sha256)
-
-        # Process tags
-        for t in tags:
-            summary_type = None
-
-            if t["type"] in config.submission.tag_types.behavior:
-                summary_type = 'behaviors'
-            elif t["type"] in config.submission.tag_types.attribution:
-                summary_type = 'attributions'
-            elif t["type"] in config.submission.tag_types.ioc:
-                summary_type = 'indicators_of_compromise'
-
-            if t['value'] == "" or summary_type is None:
-                continue
-
-            sha256 = t["key"][:64]
-
-            # Tags
-            submission['tags'].setdefault(summary_type, {})
-            submission['tags'][summary_type].setdefault(t['type'], {})
-            submission['tags'][summary_type][t['type']].setdefault(t['value'], {'h_type': t['h_type'], 'files': []})
-            if HEUR_RANK_MAP[submission['tags'][summary_type][t['type']][t['value']]['h_type']] < \
-                    HEUR_RANK_MAP[t['h_type']]:
-                submission['tags'][summary_type][t['type']][t['value']]['h_type'] = t['h_type']
-
+            submission['attack_matrix'].setdefault(cat, {})
+            submission['attack_matrix'][cat].setdefault(item['name'], {'h_type': item['h_type'], 'files': []})
             for name in name_map.get(sha256, [sha256]):
-                if (name, sha256) not in submission['tags'][summary_type][t['type']][t['value']]['files']:
-                    submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
+                if (name, sha256) not in submission['attack_matrix'][cat][item['name']]['files']:
+                    submission['attack_matrix'][cat][item['name']]['files'].append((name, sha256))
                 submission['important_files'].add(sha256)
 
-        # Process important files
-        submitted_sha256 = submission['files'][0]['sha256']
-        submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
-        if submitted_sha256 in submission['important_files']:
-            submission['important_files'].remove(submitted_sha256)
+    # Process heuristics
+    for h_type, items in heuristics.items():
+        submission['heuristics'].setdefault(h_type, {})
+        for item in items:
+            sha256 = item['key'][:64]
+            submission['heuristics'][h_type].setdefault(item['name'], [])
+            for name in name_map.get(sha256, [sha256]):
+                if (name, sha256) not in submission['heuristics'][h_type][item['name']]:
+                    submission['heuristics'][h_type][item['name']].append((name, sha256))
+                submission['important_files'].add(sha256)
 
-        submission['important_files'] = list(submission['important_files'])
+    # Process tags
+    for t in tags:
+        summary_type = None
 
-        # Process promoted sections
-        keys = [x for x in list(results) if not x.endswith(".e") and x.startswith(submitted_sha256)]
-        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+        if t["type"] in config.submission.tag_types.behavior:
+            summary_type = 'behaviors'
+        elif t["type"] in config.submission.tag_types.attribution:
+            summary_type = 'attributions'
+        elif t["type"] in config.submission.tag_types.ioc:
+            summary_type = 'indicators_of_compromise'
 
-        for result in results:
-            formatted_result = format_result(user['classification'], result,
-                                             submission['classification'], build_hierarchy=True)
-            if formatted_result and Classification.is_accessible(user['classification'],
-                                                                 formatted_result['classification']):
-                for section in formatted_result['result'].get('sections'):
-                    if section.get('promote_to', None) is not None:
-                        submission['promoted_sections'].append(section)
+        if t['value'] == "" or summary_type is None:
+            continue
 
-        return make_api_response(submission)
-    else:
-        return make_api_response("", "You are not allowed to view the data of this submission", 403)
+        sha256 = t["key"][:64]
+
+        # Tags
+        submission['tags'].setdefault(summary_type, {})
+        submission['tags'][summary_type].setdefault(t['type'], {})
+        submission['tags'][summary_type][t['type']].setdefault(t['value'], {'h_type': t['h_type'], 'files': []})
+        if HEUR_RANK_MAP[submission['tags'][summary_type][t['type']][t['value']]['h_type']] < \
+                HEUR_RANK_MAP[t['h_type']]:
+            submission['tags'][summary_type][t['type']][t['value']]['h_type'] = t['h_type']
+
+        for name in name_map.get(sha256, [sha256]):
+            if (name, sha256) not in submission['tags'][summary_type][t['type']][t['value']]['files']:
+                submission['tags'][summary_type][t['type']][t['value']]['files'].append((name, sha256))
+            submission['important_files'].add(sha256)
+
+    # Process important files
+    submitted_sha256 = submission['files'][0]['sha256']
+    submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
+    if submitted_sha256 in submission['important_files']:
+        submission['important_files'].remove(submitted_sha256)
+
+    submission['important_files'] = list(submission['important_files'])
+
+    # Process promoted sections
+    keys = [x for x in list(results) if not x.endswith(".e") and x.startswith(submitted_sha256)]
+    results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+
+    for result in results:
+        formatted_result = format_result(user['classification'], result,
+                                         submission['classification'], build_hierarchy=True)
+        if formatted_result and Classification.is_accessible(user['classification'],
+                                                             formatted_result['classification']):
+            for section in formatted_result['result'].get('sections'):
+                if section.get('promote_to', None) is not None:
+                    submission['promoted_sections'].append(section)
+
+    return make_api_response(submission)
 
 
 @submission_api.route("/verdict/<submission_id>/<verdict>/", methods=["PUT"])
@@ -1105,12 +1087,8 @@ def set_verdict(submission_id, verdict, **kwargs):
 
     document = STORAGE.submission.get(submission_id, as_obj=False)
 
-    if not document:
+    if not document or not Classification.is_accessible(user['classification'], document['classification']):
         return make_api_response({"success": False}, f"There are no submission with id: {submission_id}", 404)
-
-    if not Classification.is_accessible(user['classification'], document['classification']):
-        return make_api_response({"success": False}, "You are not allowed to give verdict on submission with "
-                                                     f"ID: {submission_id}", 403)
 
     resp = STORAGE.submission.update(submission_id, [
         ('REMOVE', f'verdict.{verdict}', user['uname']),
