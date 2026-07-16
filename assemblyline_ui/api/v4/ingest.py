@@ -33,10 +33,11 @@ SUB_API = 'ingest'
 ingest_api = make_subapi_blueprint(SUB_API, api_version=4)
 ingest_api._doc = "Ingest files for large volume processing"
 
-ingest = NamedQueue(
+ingest: NamedQueue[dict] = NamedQueue(
     INGEST_QUEUE_NAME,
     host=config.core.redis.persistent.host,
-    port=config.core.redis.persistent.port)
+    port=config.core.redis.persistent.port
+)
 MAX_SIZE = config.submission.max_file_size
 
 DEFAULT_INGEST_PARAMS = {
