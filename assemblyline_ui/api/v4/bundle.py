@@ -2,10 +2,6 @@ import base64
 import binascii
 import os
 
-from assemblyline_core.submission_client import SubmissionException
-from cart import is_cart
-from flask import request
-
 from assemblyline.common.bundling import (
     BUNDLE_MAGIC,
     BundlingException,
@@ -17,7 +13,12 @@ from assemblyline.common.bundling import create_bundle as bundle_create
 from assemblyline.common.bundling import import_bundle as bundle_import
 from assemblyline.common.classification import InvalidClassification
 from assemblyline.common.uid import get_random_id
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
+from assemblyline_core.submission_client import SubmissionException
+from cart import is_cart
+from flask import request
+
 from assemblyline_ui.api.base import (
     api_login,
     make_api_response,
@@ -56,11 +57,21 @@ def create_bundle(sid, **kwargs):
     -- THE BUNDLE FILE BINARY --
     """
     user = kwargs['user']
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
     use_alert = request.args.get('use_alert', 'false').lower() in ['true', '']
     if use_alert:
         data = STORAGE.alert.get(sid, as_obj=False)
+
+        # Check if the user can see the associated submission for the alert if it's been archived
+        if data and not STORAGE.submission.exists(data['sid'], index_type=index_type):
+            # Render the operation as if the submission doesn't exist, since the user can't see it
+            data = None
     else:
-        data = STORAGE.submission.get(sid, as_obj=False)
+        data = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
 
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
         temp_target_file = None

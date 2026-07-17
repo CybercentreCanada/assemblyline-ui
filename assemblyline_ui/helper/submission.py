@@ -26,6 +26,7 @@ from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
@@ -245,9 +246,14 @@ def init_submission(request: Request, user: Dict, endpoint: str):
 
     if not fileinfo:
         fileinfo = IDENTIFY.fileinfo(out_file, skip_fuzzy_hashes=True, calculate_entropy=False)
-        if STORAGE.file.exists(fileinfo['sha256']):
+        index_type = Index.HOT
+        if ROLES.archive_view in user['roles']:
+            # User is allowed to access archive, so we check both hot and archive
+            index_type = Index.HOT_AND_ARCHIVE
+
+        if STORAGE.file.exists(fileinfo['sha256'], index_type=index_type):
             # Re-use existing file information
-            fileinfo = STORAGE.file.get(fileinfo['sha256'], as_obj=False)
+            fileinfo = STORAGE.file.get(fileinfo['sha256'], as_obj=False, index_type=index_type)
         elif endpoint == 'ingest':
             # If this is the ingest endpoint, then calculate the full file information
             fileinfo = IDENTIFY.fileinfo(out_file)

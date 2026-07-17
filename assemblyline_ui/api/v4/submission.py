@@ -1,15 +1,23 @@
 import time
 
-from assemblyline_core.dispatching.client import DispatchClient
-from flask import request
-from werkzeug.exceptions import BadRequest
-
 from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import MultiKeyError, SearchException
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.events import EventSender
+from assemblyline_core.dispatching.client import DispatchClient
+from flask import request
+from werkzeug.exceptions import BadRequest
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import AI_AGENT, CACHE, FILESTORE, LOGGER, STORAGE, config
+from assemblyline_ui.config import (
+    AI_AGENT,
+    ARCHIVESTORE,
+    CACHE,
+    FILESTORE,
+    LOGGER,
+    STORAGE,
+    config,
+)
 from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import cleanup_heuristic_sections, format_result
@@ -52,7 +60,12 @@ def delete_submission(sid, **kwargs):
     {success: true}
     """
     user = kwargs['user']
-    submission = STORAGE.submission.get(sid, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
 
     if not submission:
         return make_api_response("", f"There are not submission with sid: {sid}", 404)
@@ -63,7 +76,11 @@ def delete_submission(sid, **kwargs):
 
     if Classification.is_accessible(user['classification'], submission['classification']) \
             and (submission['params']['submitter'] == user['uname'] or ROLES.administration in user['roles']):
-        STORAGE.delete_submission_tree_bulk(sid, Classification, transport=FILESTORE)
+        transport = FILESTORE
+        if submission['from_archive'] and (ARCHIVESTORE and FILESTORE != ARCHIVESTORE):
+            # Check where the submission is stored to assign the appropriate transport for deletion
+            transport = ARCHIVESTORE
+        STORAGE.delete_submission_tree_bulk(sid, Classification, transport=transport)
         STORAGE.submission.commit()
         event_sender.send("submission", sid)
         return make_api_response({"success": True})
@@ -99,7 +116,12 @@ def get_file_submission_results(sid, sha256, **kwargs):
     user = kwargs['user']
 
     # Check if submission exist
-    data = STORAGE.submission.get(sid, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
@@ -135,7 +157,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         err_keys = list(set(err_keys))
 
         # Get File, results and errors
-        temp_file = STORAGE.file.get(sha256, as_obj=False)
+        temp_file = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
         if not temp_file:
             output['file_info']['sha256'] = sha256
             output['signatures'] = list(output['signatures'])
@@ -147,7 +169,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         max_c12n = output['file_info']['classification']
 
         temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
-                                                         cl_engine=Classification, as_obj=False).values())
+                                                         cl_engine=Classification, as_obj=False, index_type=index_type).values())
         results = []
         for r in temp_results:
             r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
@@ -262,7 +284,12 @@ def get_file_tree(sid, **kwargs):
     user = kwargs['user']
     get_full_tree = request.args.get('get_full_tree', 'false').lower() in ['true', '']
 
-    data = STORAGE.submission.get(sid, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
@@ -335,6 +362,12 @@ def get_full_results(sid, **kwargs):
     }
     """
     max_retry = 10
+    user = kwargs['user']
+
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
 
     def get_results(keys):
         out = {}
@@ -390,7 +423,7 @@ def get_full_results(sid, **kwargs):
             if retry:
                 time.sleep(2 ** (retry - 7))
             try:
-                infos.update(STORAGE.file.multiget(keys, as_obj=False))
+                infos.update(STORAGE.file.multiget(keys, as_obj=False, index_type=index_type))
             except MultiKeyError as e:
                 LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
                 infos.update(e.partial_output)
@@ -410,8 +443,7 @@ def get_full_results(sid, **kwargs):
 
         return list(set(sha256s))
 
-    user = kwargs['user']
-    data = STORAGE.submission.get(sid, as_obj=False)
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
@@ -482,7 +514,11 @@ def get_submission(sid, **kwargs):
     }
     """
     user = kwargs['user']
-    data = STORAGE.submission.get(sid, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if data is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
@@ -620,7 +656,11 @@ def get_summary(sid, **kwargs):
     }
     """
     user = kwargs['user']
-    submission = STORAGE.submission.get(sid, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if submission is None:
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
@@ -767,7 +807,8 @@ def is_submission_completed(sid, **kwargs):
     True/False
     """
     user = kwargs['user']
-    data = STORAGE.submission.get(sid, as_obj=False)
+    # This check should only be applied against submissions that haven't been archived
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=Index.HOT)
     if data is None or not user or not Classification.is_accessible(user['classification'], data['classification']):
         # Always return 404 if the user is not allowed to see it to avoid information leak
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
@@ -931,7 +972,12 @@ def get_report(submission_id, **kwargs):
     { <THE REPORT> }
     """
     user = kwargs['user']
-    submission = STORAGE.submission.get(submission_id, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    submission = STORAGE.submission.get(submission_id, as_obj=False, index_type=index_type)
     if submission is None:
         return make_api_response("", "Submission ID %s does not exists." % submission_id, 404)
 
@@ -1050,7 +1096,7 @@ def get_report(submission_id, **kwargs):
 
         # Process important files
         submitted_sha256 = submission['files'][0]['sha256']
-        submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False)
+        submission["file_info"] = STORAGE.file.get(submitted_sha256, as_obj=False, index_type=index_type)
         if submitted_sha256 in submission['important_files']:
             submission['important_files'].remove(submitted_sha256)
 
@@ -1058,7 +1104,7 @@ def get_report(submission_id, **kwargs):
 
         # Process promoted sections
         keys = [x for x in list(results) if not x.endswith(".e") and x.startswith(submitted_sha256)]
-        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False, index_type=index_type)
 
         for result in results:
             formatted_result = format_result(user['classification'], result,
@@ -1103,7 +1149,12 @@ def set_verdict(submission_id, verdict, **kwargs):
     if verdict not in ['malicious', 'non_malicious']:
         return make_api_response({"success": False}, f"'{verdict}' is not a valid verdict.", 400)
 
-    document = STORAGE.submission.get(submission_id, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    document = STORAGE.submission.get(submission_id, as_obj=False, index_type=index_type)
 
     if not document:
         return make_api_response({"success": False}, f"There are no submission with id: {submission_id}", 404)
@@ -1116,7 +1167,7 @@ def set_verdict(submission_id, verdict, **kwargs):
         ('REMOVE', f'verdict.{verdict}', user['uname']),
         ('APPEND', f'verdict.{verdict}', user['uname']),
         ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ])
+    ], index_type=Index.ARCHIVE if document['from_archive'] else Index.HOT)
 
     propagate_resp = STORAGE.alert.update_by_query(f"sid:{submission_id}", [
         ('REMOVE', f'verdict.{verdict}', user['uname']),
