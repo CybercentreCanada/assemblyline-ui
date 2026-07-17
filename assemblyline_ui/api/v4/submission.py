@@ -169,7 +169,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         max_c12n = output['file_info']['classification']
 
         temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
-                                                         cl_engine=Classification, as_obj=False, index_type=index_type).values())
+                                                         cl_engine=Classification, as_obj=False).values())
         results = []
         for r in temp_results:
             r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
