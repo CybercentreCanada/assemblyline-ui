@@ -61,7 +61,7 @@ def delete_submission(sid, **kwargs):
     """
     user = kwargs['user']
     index_type = Index.HOT
-    if ROLES.archive_view in user['roles']:
+    if ROLES.archive_manage in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
 
@@ -1150,7 +1150,7 @@ def set_verdict(submission_id, verdict, **kwargs):
         return make_api_response({"success": False}, f"'{verdict}' is not a valid verdict.", 400)
 
     index_type = Index.HOT
-    if ROLES.archive_view in user['roles']:
+    if ROLES.archive_manage in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
 
@@ -1167,7 +1167,7 @@ def set_verdict(submission_id, verdict, **kwargs):
         ('REMOVE', f'verdict.{verdict}', user['uname']),
         ('APPEND', f'verdict.{verdict}', user['uname']),
         ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ], index_type=Index.ARCHIVE if document['from_archive'] else Index.HOT)
+    ], index_type=index_type)
 
     propagate_resp = STORAGE.alert.update_by_query(f"sid:{submission_id}", [
         ('REMOVE', f'verdict.{verdict}', user['uname']),

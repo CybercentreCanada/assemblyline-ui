@@ -754,14 +754,16 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
+    archive_only = str(request.args.get('archive_only', 'false')).lower() in ['true', '']
+
+    # Assume the user can only access the hot index by default
     index_type = Index.HOT
-    if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
+    if archive_only and ROLES.archive_view in user['roles']:
+        # User only wants to access the archive and has the appropriate access, so we check only the archive
         index_type = Index.ARCHIVE
     elif ROLES.archive_view in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
-    else:
-        index_type = Index.HOT
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
