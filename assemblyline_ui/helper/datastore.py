@@ -14,7 +14,7 @@ class UIDatastore(AssemblylineDatastore):
             config = forge.get_config()
 
         super().__init__(ESStore(hosts=config.datastore.hosts,
-                                 archive_alternate_dtl=config.datastore.archive_alternate_dtl))
+                                 archive_alternate_dtl=config.core.archiver.alternate_dtl))
 
     @elasticapm.capture_span(span_type='datastore')
     def get_multiple_results(self, keys, cl_engine=forge.get_classification(), as_obj=False, index_type=None):
