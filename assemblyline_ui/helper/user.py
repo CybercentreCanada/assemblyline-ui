@@ -58,22 +58,24 @@ if config.auth.allow_extended_apikeys:
     PRIV_API_MAP['E'] = "EXTENDED"
 
 
-###########################
-# User Functions
+def safe_lucene_field_value(data) -> str:
+    return '"%s"' % str(data).replace('\\', '\\\\').replace('"', '\\"')
+
+
 def add_access_control(user):
     user.update(Classification.get_access_control_parts(user.get("classification", Classification.UNRESTRICTED),
                                                         user_classification=True))
 
-    gl2_query = " OR ".join(['__access_grp2__:__EMPTY__'] + ['__access_grp2__:"%s"' % x
+    gl2_query = " OR ".join(['__access_grp2__:__EMPTY__'] + ['__access_grp2__:%s' % safe_lucene_field_value(x)
                                                              for x in user["__access_grp2__"]])
     gl2_query = "(%s) AND " % gl2_query
 
-    gl1_query = " OR ".join(['__access_grp1__:__EMPTY__'] + ['__access_grp1__:"%s"' % x
+    gl1_query = " OR ".join(['__access_grp1__:__EMPTY__'] + ['__access_grp1__:%s' % safe_lucene_field_value(x)
                                                              for x in user["__access_grp1__"]])
     gl1_query = "(%s) AND " % gl1_query
 
     req = list(set(Classification.get_access_control_req()).difference(set(user["__access_req__"])))
-    req_query = " OR ".join(['__access_req__:"%s"' % r for r in req])
+    req_query = " OR ".join(['__access_req__:%s' % safe_lucene_field_value(r) for r in req])
     if req_query:
         req_query = "-(%s) AND " % req_query
 
@@ -183,6 +185,7 @@ def decrement_submission_quota(user):
             SUBMISSION_TRACKER.end(quota_user)
 
         release_daily_submission_quota(user)
+
 
 def get_request_ip():
     ip_addr = request.headers.get("X-Forwarded-For", request.remote_addr)
@@ -371,7 +374,6 @@ def load_user_settings(user):
                                                                       user_classfication,
                                                                       user.get('organization'))
 
-
     # Check if the user has a preferred submission profile
     if not settings.get('preferred_submission_profile'):
         # No preferred submission profile, set one based on the user's roles
@@ -393,7 +395,7 @@ def save_user_settings(user, data):
     user_settings = STORAGE.user_settings.get(username, as_obj=False) or {}
 
     classification = user.get("classification", None)
-    accessible_profiles = [name for name, profile in SUBMISSION_PROFILES.items() \
+    accessible_profiles = [name for name, profile in SUBMISSION_PROFILES.items()
                            if Classification.is_accessible(classification, profile.classification)]
 
     # Check for any changes to settings that aren't submission-related
