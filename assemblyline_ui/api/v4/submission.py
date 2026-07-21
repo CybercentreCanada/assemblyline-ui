@@ -169,7 +169,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         max_c12n = output['file_info']['classification']
 
         temp_results = list(STORAGE.get_multiple_results([x for x in res_keys if x.startswith(sha256)],
-                                                         cl_engine=Classification, as_obj=False).values())
+                                                         cl_engine=Classification, as_obj=False, index_type=index_type).values())
         results = []
         for r in temp_results:
             r = format_result(user['classification'], r, temp_file['classification'], build_hierarchy=True)
@@ -186,7 +186,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
             output['errors'] = e.partial_output
 
         output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
-                                                              user["access_control"])
+                                                              user["access_control"], index_type=index_type)
 
         done_heuristics = set()
         for res in output['results']:
@@ -376,7 +376,7 @@ def get_full_results(sid, **kwargs):
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            res.update(STORAGE.get_multiple_results(keys, Classification, as_obj=False))
+            res.update(STORAGE.get_multiple_results(keys, Classification, as_obj=False, index_type=index_type))
             keys = [x for x in keys if x not in res]
             retry += 1
 

@@ -37,12 +37,16 @@ def get_multiple_service_results(**kwargs):
     user = kwargs['user']
     data = request.json
 
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        index_type = Index.HOT_AND_ARCHIVE
+
     try:
         errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False)
     except MultiKeyError as e:
         LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
         errors = e.partial_output
-    results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False)
+    results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False, index_type=index_type)
 
     required_file_hashes = list(set([x[:64] for x in results.keys()]) | set([x[:64] for x in errors.keys()]))
     try:
@@ -210,13 +214,20 @@ def get_service_result(cache_key, **kwargs):
     }
     """
     user = kwargs['user']
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        index_type = Index.HOT_AND_ARCHIVE
 
-    data = STORAGE.get_single_result(cache_key, CLASSIFICATION, as_obj=False)
+    data = STORAGE.get_single_result(cache_key, CLASSIFICATION, as_obj=False, index_type=index_type)
 
     if data is None:
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
-    cur_file = STORAGE.file.get(cache_key[:64], as_obj=False, index_type=Index.HOT) or {}
+    cur_file = STORAGE.file.get(cache_key[:64], as_obj=False, index_type=index_type)
+    if not cur_file:
+        LOGGER.error(f"File {cache_key[:64]} referenced by result {cache_key} does not exist in the system")
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
     data = format_result(user['classification'],
                          data,
                          cur_file.get('classification', CLASSIFICATION.UNRESTRICTED),

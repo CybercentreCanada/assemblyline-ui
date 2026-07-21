@@ -1094,8 +1094,8 @@ def set_verdict(alert_id, verdict, **kwargs):
     resp = STORAGE.alert.update_by_query(f"sid:{document['sid']}", [
         ('REMOVE', f'verdict.{verdict}', user['uname']),
         ('APPEND', f'verdict.{verdict}', user['uname']),
-        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ])
+        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname']),
+    ], access_control=user['access_control'])
 
     # Only update the related submission if the user has the right role assignment and access to the document
     if ROLES.submission_manage in user['roles']:

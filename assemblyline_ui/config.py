@@ -27,6 +27,7 @@ from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 
 from assemblyline_ui.helper.ai import get_ai_agent
 from assemblyline_ui.helper.ai.base import AIAgentPool
+from assemblyline_ui.helper.datastore import UIDatastore
 from assemblyline_ui.helper.discover import get_apps_list
 
 
@@ -219,7 +220,7 @@ if config.datastore.archive.enabled:
     ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
 else:
     ARCHIVESTORE = None
-STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
+STORAGE: UIDatastore = UIDatastore(config)
 CACHE: Cache = Cache(prefix="flask_cache", host=redis, ttl=24 * 60 * 60)
 AI_AGENT: AIAgentPool = get_ai_agent(config, LOGGER, STORAGE, CLASSIFICATION)
 metadata_validator = MetadataValidator(STORAGE, METADATA_SUGGESTIONS)

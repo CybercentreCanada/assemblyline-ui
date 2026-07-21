@@ -785,10 +785,11 @@ def get_file_results(sha256, **kwargs):
         with APMAwareThreadPoolExecutor(4) as executor:
             res_ac = executor.submit(STORAGE.list_file_active_keys, sha256,
                                      user["access_control"], index_type=index_type)
-            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"])
-            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"])
+            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"], index_type=index_type)
+            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"], index_type=index_type)
             res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,
-                                       config.ui.statistics.submission, user["access_control"])
+                                       config.ui.statistics.submission, user["access_control"],
+                                       index_type=index_type)
 
         active_keys, alternates = res_ac.result()
         output['parents'] = res_parents.result()
@@ -963,7 +964,7 @@ def get_file_score(sha256, **kwargs):
         keys = []
         res = STORAGE.result.grouped_search("response.service_name", f"id:{sha256}*", fl="result.score,id",
                                             sort="created desc", access_control=user["access_control"],
-                                            rows=100, as_obj=False)
+                                            rows=100, as_obj=False, index_type=Index.HOT)
         for s in res['items']:
             for d in s['items']:
                 score += d['result']['score']
