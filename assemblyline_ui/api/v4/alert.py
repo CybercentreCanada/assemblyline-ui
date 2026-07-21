@@ -1097,10 +1097,14 @@ def set_verdict(alert_id, verdict, **kwargs):
         ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
     ])
 
-    STORAGE.submission.update(document['sid'], [
-        ('REMOVE', f'verdict.{verdict}', user['uname']),
-        ('APPEND', f'verdict.{verdict}', user['uname']),
-        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ], index_type=index_type)
+    # Only update the related submission if the user has the right role assignment and access to the document
+    if ROLES.submission_manage in user['roles']:
+        submission = STORAGE.submission.get(document['sid'], as_obj=False, index_type=index_type)
+        if submission and Classification.is_accessible(user['classification'], submission['classification']):
+            STORAGE.submission.update(document['sid'], [
+                ('REMOVE', f'verdict.{verdict}', user['uname']),
+                ('APPEND', f'verdict.{verdict}', user['uname']),
+                ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
+            ], index_type=index_type)
 
     return make_api_response({"success": resp != 0})

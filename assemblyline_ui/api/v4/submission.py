@@ -1169,10 +1169,12 @@ def set_verdict(submission_id, verdict, **kwargs):
         ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
     ], index_type=index_type)
 
-    propagate_resp = STORAGE.alert.update_by_query(f"sid:{submission_id}", [
-        ('REMOVE', f'verdict.{verdict}', user['uname']),
-        ('APPEND', f'verdict.{verdict}', user['uname']),
-        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ])
+    # Only update the related alert if the user has the right role assignment
+    if ROLES.alert_manage in user['roles']:
+        STORAGE.alert.update_by_query(f"sid:{submission_id}", [
+            ('REMOVE', f'verdict.{verdict}', user['uname']),
+            ('APPEND', f'verdict.{verdict}', user['uname']),
+            ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
+        ], access_control=user['access_control'])
 
-    return make_api_response({"success": resp and propagate_resp is not False})
+    return make_api_response({"success": resp != 0})
