@@ -1,14 +1,16 @@
 
-from flask import request
-
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.threading import APMAwareThreadPoolExecutor
+from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.alert import Event as AlertEvent
 from assemblyline.odm.models.user import ROLES
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
+from flask import request
+
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, config, CLASSIFICATION as Classification
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import STORAGE, config
 
 SUB_API = 'alert'
 
@@ -1072,6 +1074,10 @@ def set_verdict(alert_id, verdict, **kwargs):
     }
 
     user = kwargs['user']
+    index_type = Index.HOT
+    if ROLES.archive_manage in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
 
     if verdict not in ['malicious', 'non_malicious']:
         return make_api_response({"success": False}, f"'{verdict}' is not a valid verdict.", 400)
@@ -1088,13 +1094,17 @@ def set_verdict(alert_id, verdict, **kwargs):
     resp = STORAGE.alert.update_by_query(f"sid:{document['sid']}", [
         ('REMOVE', f'verdict.{verdict}', user['uname']),
         ('APPEND', f'verdict.{verdict}', user['uname']),
-        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ])
+        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname']),
+    ], access_control=user['access_control'])
 
-    STORAGE.submission.update(document['sid'], [
-        ('REMOVE', f'verdict.{verdict}', user['uname']),
-        ('APPEND', f'verdict.{verdict}', user['uname']),
-        ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
-    ])
+    # Only update the related submission if the user has the right role assignment and access to the document
+    if ROLES.submission_manage in user['roles']:
+        submission = STORAGE.submission.get(document['sid'], as_obj=False, index_type=index_type)
+        if submission and Classification.is_accessible(user['classification'], submission['classification']):
+            STORAGE.submission.update(document['sid'], [
+                ('REMOVE', f'verdict.{verdict}', user['uname']),
+                ('APPEND', f'verdict.{verdict}', user['uname']),
+                ('REMOVE', f'verdict.{reverse_verdict[verdict]}', user['uname'])
+            ], index_type=index_type)
 
     return make_api_response({"success": resp != 0})
