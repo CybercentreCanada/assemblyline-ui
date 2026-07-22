@@ -42,7 +42,7 @@ def get_multiple_service_results(**kwargs):
         index_type = Index.HOT_AND_ARCHIVE
 
     try:
-        errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False)
+        errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
         errors = e.partial_output
@@ -50,7 +50,7 @@ def get_multiple_service_results(**kwargs):
 
     required_file_hashes = list(set([x[:64] for x in results.keys()]) | set([x[:64] for x in errors.keys()]))
     try:
-        file_infos = STORAGE.file.multiget(required_file_hashes, as_dictionary=True, as_obj=False)
+        file_infos = STORAGE.file.multiget(required_file_hashes, as_dictionary=True, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
         file_infos = e.partial_output

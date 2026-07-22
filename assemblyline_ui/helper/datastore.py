@@ -3,6 +3,7 @@ import concurrent.futures
 
 import elasticapm
 from assemblyline.common import forge
+from assemblyline.datastore.collection import log
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.datastore.helper import AssemblylineDatastore
 from assemblyline.datastore.store import ESStore
@@ -24,7 +25,7 @@ class UIDatastore(AssemblylineDatastore):
         try:
             results.update(self.result.multiget(keys, as_dictionary=True, as_obj=as_obj, index_type=index_type))
         except MultiKeyError as e:
-            self.ds.log.warning(f"Trying to get multiple results but some are missing: {str(e.keys)}")
+            log.warning(f"Trying to get multiple results but some are missing: {str(e.keys)}")
             results.update(e.partial_output)
         return results
 
