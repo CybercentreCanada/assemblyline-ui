@@ -185,5 +185,12 @@ def fetch_avatar(url: str, provider: FlaskOAuth2App, provider_config: OAuthProvi
         return None
 
     with requests.get(url, allow_redirects=False, timeout=5, stream=True) as resp:
+        # Fail-fast on the declared size before reading anything
+        declared_size = resp.headers.get("content-length")
+        if declared_size and declared_size.isdigit() and int(declared_size) > MAX_AVATAR_SIZE:
+            LOGGER.warning(f"Avatar rejected, declared content-length {declared_size} "
+                           f"exceeds {MAX_AVATAR_SIZE} bytes: {url}")
+            return None
+
         content = resp.raw.read(MAX_AVATAR_SIZE + 1, decode_content=True)
         return _encode_avatar(url, resp, content)
