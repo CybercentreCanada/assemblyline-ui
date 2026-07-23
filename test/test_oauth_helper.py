@@ -106,7 +106,7 @@ def test_fetch_avatar_allows_allowlisted_host(provider_config, fake_network):
     assert avatar == "data:image/png;base64," + base64.b64encode(b"img-bytes").decode()
     url, kwargs = fake_network[0]
     assert kwargs.get("allow_redirects") is False
-    assert kwargs.get("timeout") == oauth_helper.AVATAR_TIMEOUT
+    assert kwargs.get("timeout") == 5
 
 
 def test_fetch_avatar_allows_gravatar_when_enabled(provider_config, fake_network, monkeypatch):
