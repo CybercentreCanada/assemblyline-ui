@@ -1,18 +1,20 @@
 import base64
 import hashlib
 import re
+from typing import Optional
+from urllib.parse import urlsplit
 
 import requests
 from assemblyline.common.random_user import random_user
 from assemblyline.odm.models.config import OAuthProvider
 from assemblyline.odm.models.user import load_roles
+from assemblyline_ui.config import CLASSIFICATION as cl_engine
+from assemblyline_ui.config import LOGGER, config
+from assemblyline_ui.security.utils import process_autoproperties
 from authlib.integrations.flask_client import FlaskOAuth2App
 
-from assemblyline_ui.config import CLASSIFICATION as cl_engine
-from assemblyline_ui.config import config
-from assemblyline_ui.security.utils import process_autoproperties
-
 VALID_CHARS = [str(x) for x in range(10)] + [chr(x + 65) for x in range(26)] + [chr(x + 97) for x in range(26)] + ["-"]
+MAX_AVATAR_SIZE = 5 * 1024 * 1024
 
 
 def reorder_name(name):
@@ -20,6 +22,7 @@ def reorder_name(name):
         return name
 
     return " ".join(name.split(", ", 1)[::-1])
+
 
 def get_profile_identifiers(profile: dict, provider: OAuthProvider):
     # Find email address and normalize it for further processing
@@ -44,6 +47,7 @@ def get_profile_identifiers(profile: dict, provider: OAuthProvider):
         email=email_adr,
         identity_id=identity_id
     )
+
 
 def parse_profile(profile: dict, provider: OAuthProvider):
     profile_identifiers = get_profile_identifiers(profile, provider)
@@ -92,7 +96,6 @@ def parse_profile(profile: dict, provider: OAuthProvider):
     # Generate user details based off auto-properties configuration
     access, user_type, roles, organization, groups, remove_roles, quotas, classification, default_metadata = process_autoproperties(provider.auto_properties, profile, cl_engine.UNRESTRICTED)
 
-
     # if not user type was assigned
     if not user_type:
         # if also no roles were assigned
@@ -127,17 +130,60 @@ def parse_profile(profile: dict, provider: OAuthProvider):
     )
 
 
-def fetch_avatar(url: str, provider: FlaskOAuth2App, provider_config:OAuthProvider):
-    if url.startswith(provider_config.api_base_url):
-        resp = provider.get(url[len(provider_config.api_base_url):])
-        if resp.ok and resp.headers.get("content-type") is not None:
-            b64_img = base64.b64encode(resp.content).decode()
-            avatar = f'data:{resp.headers.get("content-type")};base64,{b64_img}'
-            return avatar
+def _host_matches(hostname: str, allowed: str) -> bool:
+    allowed = allowed.lower().rstrip('.')
+    if allowed.startswith('*.'):
+        return hostname.endswith(allowed[1:]) or hostname == allowed[2:]
+    return hostname == allowed
 
-    elif url.startswith('https://') or url.startswith('http://'):
-        resp = requests.get(url)
-        if resp.ok and resp.headers.get("content-type") is not None:
-            b64_img = base64.b64encode(resp.content).decode()
-            avatar = f'data:{resp.headers.get("content-type")};base64,{b64_img}'
-            return avatar
+
+def _encode_avatar(url: str, resp, content: Optional[bytes] = None) -> Optional[str]:
+    if not resp.ok:
+        LOGGER.warning(f"Avatar download failed with status {resp.status_code}: {url}")
+        return None
+
+    content_type = resp.headers.get("content-type", "")
+    if not content_type.startswith("image/"):
+        LOGGER.warning(f"Avatar rejected, content-type '{content_type}' is not an image: {url}")
+        return None
+
+    if content is None:
+        content = resp.content
+    if len(content) > MAX_AVATAR_SIZE:
+        LOGGER.warning(f"Avatar rejected, response larger than {MAX_AVATAR_SIZE} bytes: {url}")
+        return None
+
+    b64_img = base64.b64encode(content).decode()
+    return f'data:{content_type};base64,{b64_img}'
+
+
+def fetch_avatar(url: str, provider: FlaskOAuth2App, provider_config: OAuthProvider):
+    parts = urlsplit(url)
+    if parts.scheme != 'https':
+        LOGGER.warning(f"Avatar rejected, only https:// URLs are allowed: {url}")
+        return None
+
+    hostname = (parts.hostname or "").lower().rstrip('.')
+    if not hostname:
+        LOGGER.warning(f"Avatar rejected, URL has no valid hostname: {url}")
+        return None
+
+    api_base_host = (urlsplit(provider_config.api_base_url or "").hostname or "").lower().rstrip('.')
+
+    # Avatars hosted on the provider's API are fetched with the user's OAuth token
+    if hostname == api_base_host and url.startswith(provider_config.api_base_url):
+        resp = provider.get(url[len(provider_config.api_base_url):])
+        return _encode_avatar(url, resp)
+
+    # Any other URL must target an explicitly allowed host
+    allowed_hosts = list(provider_config.avatar_allowed_hosts)
+    if config.auth.oauth.gravatar_enabled:
+        allowed_hosts.append("www.gravatar.com")
+
+    if not any(_host_matches(hostname, allowed) for allowed in allowed_hosts):
+        LOGGER.warning(f"Avatar rejected, host '{hostname}' is not in avatar_allowed_hosts: {url}")
+        return None
+
+    with requests.get(url, allow_redirects=False, timeout=5, stream=True) as resp:
+        content = resp.raw.read(MAX_AVATAR_SIZE + 1, decode_content=True)
+        return _encode_avatar(url, resp, content)
