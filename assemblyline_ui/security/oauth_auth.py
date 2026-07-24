@@ -164,4 +164,4 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False) -> tupl
 
         raise AuthenticationException("Invalid token - No matching signing key found")
 
-    return None, None
+    return None, None, None
