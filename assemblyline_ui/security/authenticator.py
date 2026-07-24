@@ -103,7 +103,7 @@ class BaseSecurityRenderer(object):
 
         self.extra_session_checks(session)
 
-        return session.get("username", None), session.get('roles_limit', [])
+        return session.get("username", None), session.get('roles_limit', []), session.get('impersonator', None)
 
     def test_require_role(self, user, r_type):
         if not self.require_role:
@@ -158,13 +158,14 @@ def default_authenticator(auth, req, ses, storage):
 
     try:
         roles_limit = None
+        impersonator = None
         # These steps skips 2FA
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
         if not validated_user:
-            validated_user, roles_limit = validate_oauth_token(oauth_token, oauth_provider)
+            validated_user, roles_limit, impersonator = validate_oauth_token(oauth_token, oauth_provider)
 
         if validated_user:
-            return validated_user, roles_limit
+            return validated_user, roles_limit, impersonator
 
         # Following steps will go through the 2FA process
         validated_user = validate_oauth_id(uname, oauth_token_id)
@@ -177,7 +178,7 @@ def default_authenticator(auth, req, ses, storage):
 
         if validated_user:
             validate_2fa(validated_user, otp, state, webauthn_auth_resp, storage)
-            return validated_user, roles_limit
+            return validated_user, roles_limit, impersonator
 
     except AuthenticationException:
         # Failure appended, push failure parameters

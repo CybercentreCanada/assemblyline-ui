@@ -151,8 +151,7 @@ class api_login(BaseSecurityRenderer):
                         abort(403, "Invalid pre-authenticated user")
 
                 self.test_readonly("API")
-                logged_in_uname, roles_limit = self.get_logged_in_user()
-                impersonator = None
+                logged_in_uname, roles_limit, impersonator = self.get_logged_in_user()
                 user = None
 
                 # Impersonate
@@ -161,36 +160,37 @@ class api_login(BaseSecurityRenderer):
                     ip = get_request_ip()
                     impersonator = logged_in_uname
                     bearer_token = authorization.split(" ")[-1]
+
+                    # The token provider is an optional header that can be used to specify which oAuth provider the token is associated with.
                     token_provider = request.environ.get("HTTP_X_TOKEN_PROVIDER", None)
-                    if token_provider:
-                        # Token has an associated provider, use it to validate the token
-                        try:
-                            user, token_roles_limit = validate_oauth_token(
-                                bearer_token, token_provider, return_user=True)
-                        except AuthenticationException as e:
-                            LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
-                            abort(403, str(e))
 
-                        # Combine role limits
-                        if roles_limit:
-                            roles_limit = [r for r in token_roles_limit if r in roles_limit]
+                    # Check if what kind of token we are dealing with
+                    try:
+                        # Check to see if the token is an oAuth token
+                        user, roles_limit, impersonator = validate_oauth_token(bearer_token,
+                                                                               token_provider, return_user=True)
+                    except AuthenticationException as oauth_e:
+                        # If it's not an oAuth token, check if it's an AL OBO token
+                        if str(oauth_e) == "Invalid token - Assemblyline generated token given, not an OAuth token.":
+                            try:
+                                user, roles_limit = self.parse_al_obo_token(bearer_token, roles_limit, impersonator)
+
+                                # Intersect impersonator and user classifications
+                                impersonator_user = STORAGE.user.get(impersonator, as_obj=False)
+                                user['classification'] = CLASSIFICATION.intersect_user_classification(
+                                    impersonator_user['classification'], user['classification']
+                                )
+                            except AuthenticationException as e:
+                                LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
+                                abort(403, str(e))
                         else:
-                            roles_limit = token_roles_limit
-                    else:
-                        # Use the internal AL token validator
-                        try:
-                            user, roles_limit = self.parse_al_obo_token(bearer_token, roles_limit, impersonator)
-                        except AuthenticationException as e:
-                            LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(e)}]")
-                            abort(403, str(e))
-
-                    # Intersect impersonator and user classifications
-                    impersonator_user = STORAGE.user.get(impersonator, as_obj=False)
-                    user['classification'] = CLASSIFICATION.intersect_user_classification(
-                        impersonator_user['classification'], user['classification'])
+                            LOGGER.warning(f"Authentication failure. (U:{logged_in_uname} - IP:{ip}) [{str(oauth_e)}]")
+                            abort(403, str(oauth_e))
 
                     # Set currently logged in user
                     logged_in_uname = user['uname']
+
+                if impersonator:
                     LOGGER.info(f"{impersonator} [{ip}] is impersonating "
                                 f"{logged_in_uname} for query: {request.path}")
 
