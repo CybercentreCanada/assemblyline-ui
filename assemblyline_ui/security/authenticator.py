@@ -75,9 +75,10 @@ class BaseSecurityRenderer(object):
         pass
 
     def get_logged_in_user(self):
+        impersonator = None
         auto_auth_uname, roles_limit = self.auto_auth_check()
         if auto_auth_uname is not None:
-            return auto_auth_uname, roles_limit
+            return auto_auth_uname, roles_limit, impersonator
 
 
         session_id = flask_session.get("session_id", None)
