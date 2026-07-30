@@ -129,35 +129,43 @@ def validate_oauth_token(oauth_token, oauth_provider, return_user=False) -> tupl
                     # Get user from it's email
                     users = STORAGE.user.search(f"{k}:{v}", fl="*", as_obj=False, rows=1)['items']
                     if users:
+                        user = users[0]
                         # Limit user logging in from external token to only user READ/WRITE APIs
                         roles = load_roles_form_acls(["R", "W"], [])
+                        if user['roles']:
+                            # Limit the user's effective roles to only those that they have within R/W
+                            roles = list(set(roles).intersection(set(user['roles'])))
 
                         # Check if the token has an authorized party (azp) claim, which indicates that the token was issued to a client on behalf of a user.
                         if jwt_data.get("azp"):
                             impersonator = jwt_data["azp"]
-                            LOGGER.info(f"Token was issued to a client [{impersonator}] on behalf of a user: {users[0]['uname']}")
+                            LOGGER.info(f"Token was issued to a client [{impersonator}] on behalf of a user: {user['uname']}")
 
                             # Check the scopes claim to see if we need to limit the session's roles based on the scopes provided in the token.
-                            if jwt_data.get("scope"):
+                            if oauth_provider_config.scope_field not in jwt_data:
+                                raise AuthenticationException(f"Token does not contain the expected '{oauth_provider_config.scope_field}' claim for oAuth provider '{oauth_provider}'.")
+                            else:
                                 # We want to explicitly check for the 'scope' field in the auto_properties configuration to limit roles based on the scope claim in the token.
+                                jwt_scopes = jwt_data[oauth_provider_config.scope_field]
                                 scope_props = [prop for prop in oauth_provider_config.auto_properties
-                                               if prop['field'] == 'scope']
+                                               if prop['field'] == oauth_provider_config.scope_field and prop['type'] == 'role']
+
                                 if not scope_props:
                                     # No auto_properties configuration for 'scope' was found, so we will not limit the roles based on the scopes in the token.
-                                    LOGGER.info(f"No auto_properties configuration for 'scope' found in oAuth provider '{oauth_provider}'. Not limiting roles based on token scopes.")
+                                    LOGGER.info(f"No auto_properties configuration for '{oauth_provider_config.scope_field }' found in oAuth provider '{oauth_provider}'. Not limiting roles based on token scopes.")
                                 else:
                                     limited_roles = set()
                                     for prop in scope_props:
                                         # Do exact value matches when determining limited role assignments
-                                        if prop['pattern'] in jwt_data['scope'] and prop['type'] == 'role':
+                                        if prop['pattern'] in jwt_scopes and prop['type'] == 'role':
                                             limited_roles.update(prop['value'])
 
                                     # The resulting role assignment should be the intersection of the roles derived from the token's scopes and the user's existing roles. This ensures that the user cannot gain additional privileges beyond what they already have via the middle-tier service.
                                     roles = list(set(roles).intersection(limited_roles))
 
                         if return_user:
-                            return users[0], roles, impersonator
-                        return users[0]['uname'], roles, impersonator
+                            return user, roles, impersonator
+                        return user['uname'], roles, impersonator
             msg = ", ".join([f"{k}={v}" for k, v in profile_identifiers.items() if v is not None])
             raise AuthenticationException(f"User not found - No matching user for the following identifiers ({msg})")
 
