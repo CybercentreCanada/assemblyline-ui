@@ -151,13 +151,16 @@ class api_login(BaseSecurityRenderer):
                         abort(403, "Invalid pre-authenticated user")
 
                 self.test_readonly("API")
+
+                # Check if the user is logged in using an API key or session cookie
                 logged_in_uname, roles_limit, impersonator = self.get_logged_in_user()
+                ip = get_request_ip()
                 user = None
 
-                # Impersonate
+                # Check if user is trying to authenticate using a bearer token (oAuth or AL OBO)
                 authorization = request.environ.get("HTTP_AUTHORIZATION", None)
-                if authorization:
-                    ip = get_request_ip()
+                if not logged_in_uname and authorization:
+                    # If we have an authorization header, we will try to validate it as a bearer token
                     impersonator = logged_in_uname
                     bearer_token = authorization.split(" ")[-1]
 

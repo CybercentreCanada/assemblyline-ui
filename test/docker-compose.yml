@@ -92,6 +92,7 @@ services:
       - "9000:9000"
     command: server /data
 
+# LDAP testing
 
   openldap:
     image: docker.io/bitnamilegacy/openldap:2.6
@@ -106,3 +107,13 @@ services:
       LDAP_USER_OU: people
 
   # ldapsearch -x -H ldap://localhost -b ou=people,dc=assemblyline,dc=local -D "cn=admin,dc=assemblyline,dc=local" -w admin
+
+# OAuth testing
+
+  keycloak:
+    image: keycloak/keycloak:26.7
+    volumes:
+      - ${PATH_REWRITE:-.}/config/keycloak-realm.json:/opt/keycloak/data/import/realm.json
+    command: start-dev --import-realm
+    ports:
+      - "8080:8080"
