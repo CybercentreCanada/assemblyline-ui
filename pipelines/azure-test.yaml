@@ -46,7 +46,7 @@ resources:
     - container: keycloak
       image: docker.io/keycloak/keycloak:26.7
       volumes:
-        - $(Pipeline.Workspace)/s/assemblyline-ui/test/config/keycloak-realm.json:/opt/keycloak/data/import/realm.json
+        - ./test/config/keycloak-realm.json:/opt/keycloak/data/import/realm.json
       command: start-dev --import-realm
       ports:
         - 8080:8080
