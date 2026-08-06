@@ -52,7 +52,7 @@ resources:
       command: start-dev --import-realm
       ports:
         - 8080:8080
-        - 8001:9000
+        - 8081:9000
 
 
   repositories:
