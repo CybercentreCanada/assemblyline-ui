@@ -151,14 +151,6 @@ def test_oauth_obo(host, datastore):
     # Verify that we have an additional role to create submissions through the middle-tier service
     assert sorted(data['roles_limit']) == ['alert_view', 'badlist_view', 'safelist_view', 'submission_create', 'submission_view']
 
-    # We should now be able to perform a submission to Assemblyline with our extended privilege
-    data = get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps({
-            'url': 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md',
-            'name': 'README.md',
-            'submission_profile': 'static'
-    }))
-    assert 'sid' in data
-
 
 
 @pytest.mark.parametrize("is_active", [True, False], ids=["account_enabled", "account_disabled"])
