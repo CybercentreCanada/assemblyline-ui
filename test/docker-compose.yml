@@ -111,9 +111,17 @@ services:
 # OAuth testing
 
   keycloak:
-    image: keycloak/keycloak:26.7
+    image: quay.io/keycloak/keycloak:26.7
+    environment:
+      - KC_HEALTH_ENABLED=true
     volumes:
       - ${PATH_REWRITE:-.}/config/keycloak-realm.json:/opt/keycloak/data/import/realm.json
     command: start-dev --import-realm
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "{ printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
