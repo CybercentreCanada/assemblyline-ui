@@ -8,8 +8,9 @@ import pytest
 import requests
 from assemblyline.common.security import get_totp_token
 from assemblyline.odm.models.apikey import get_apikey_id
+from assemblyline.odm.models.user import USER_ROLES_BASIC
 from assemblyline.odm.random_data import DEV_APIKEY_NAME, create_users, wipe_users
-from conftest import APIError, get_api_data, host
+from conftest import APIError, get_api_data
 
 
 @pytest.fixture(scope="module")
@@ -28,8 +29,11 @@ def datastore(datastore_connection):
             'uname': 'admin-keycloak',
             'name': 'Admin',
             'password': '__NO_PASSWORD__',
-            'email': 'admin@keycloak.com'
+            'email': 'admin@keycloak.com',
+            'roles': USER_ROLES_BASIC
         })
+
+        datastore_connection.user.commit()
 
         yield datastore_connection
     finally:
@@ -110,7 +114,7 @@ def test_oauth_obo(host, datastore):
     assert sorted(data['roles_limit']) == ['alert_view', 'badlist_view', 'safelist_view','submission_view']
 
     # Check that the role limit applied to the middle-tier server is enforced even though the user has more access (ie. create submissions)
-    user = datastore_connection.user.get(data['username'], as_obj=False)
+    user = datastore.user.get(data['username'], as_obj=False)
 
     # User's should never be granted additional access via a middle-tier service that they wouldn't have directly
     assert len(user['roles']) > len(data['roles_limit'])
