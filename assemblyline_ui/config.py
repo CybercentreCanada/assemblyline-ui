@@ -30,17 +30,25 @@ from assemblyline_ui.helper.ai.base import AIAgentPool
 from assemblyline_ui.helper.discover import get_apps_list
 
 
-def load_openid_configuration(old_config: OAuthProvider, url: str) -> OAuthProvider:
-    try:
-        with requests.request("GET", url) as resp:
+def load_openid_configuration(oauth_provider: str, oauth_config: OAuthProvider) -> OAuthProvider:
+    retries = 0
+    while retries < 5:
+        try:
+            resp = requests.get(oauth_config.openid_connect_discovery_url)
             config_data = resp.json()
-            # add associated values using open id configuration ONLY if value not configured in config
             for key_open_id, key_al_config in OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP.items():
-                if key_open_id in config_data and not old_config[key_al_config]:
-                    old_config[key_al_config] = config_data[key_open_id]
+                if key_open_id in config_data and not getattr(oauth_config, key_al_config):
+                    setattr(oauth_config, key_al_config, config_data[key_open_id])
+            break
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            # Connection issue occurred, retry later in the event the issue is transient
+            retries += 1
+            continue
+    if retries == 5:
+        raise Exception(f"Exceeded the number of retries while attempting to fetching OpenID configuration for {oauth_provider}.")
 
-    finally:
-        return old_config
+    # Return the modified configuration
+    return oauth_config
 
 
 config = forge.get_config()
@@ -120,11 +128,10 @@ REPLAY_SUBMISSION_QUEUE = NamedQueue("replay_submission", host=redis)
 REPLAY_CHECKPOINT_HASH = Hash("replay_checkpoint", host=redis_persistent)
 
 # Update OIDC config using discovery url if exist
-for oauth_provider in config.auth.oauth.providers:
-    old_config = config.auth.oauth.providers[oauth_provider]
-    if old_config.openid_connect_discovery_url:
+for oauth_provider, oauth_config in config.auth.oauth.providers.items():
+    if oauth_config.openid_connect_discovery_url:
         config.auth.oauth.providers[oauth_provider] = load_openid_configuration(
-            old_config, old_config.openid_connect_discovery_url
+            oauth_provider, oauth_config
         )
 
 
