@@ -142,7 +142,6 @@ def default_authenticator(auth, req, ses, storage):
     uname = auth.get('username', None)
     oauth_token_id = auth.get('oauth_token_id', None)
     oauth_token = auth.get('oauth_token', None)
-    oauth_provider = auth.get('oauth_provider', None)
     saml_token_id = auth.get('saml_token_id', None)
 
     if not uname and not oauth_token:
@@ -163,7 +162,7 @@ def default_authenticator(auth, req, ses, storage):
         # These steps skips 2FA
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
         if not validated_user:
-            validated_user, roles_limit, impersonator = validate_oauth_token(oauth_token, oauth_provider)
+            validated_user, roles_limit, impersonator = validate_oauth_token(oauth_token)
 
         if validated_user:
             return validated_user, roles_limit, impersonator

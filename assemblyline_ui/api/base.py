@@ -166,8 +166,6 @@ class api_login(BaseSecurityRenderer):
                     impersonator = logged_in_uname
                     bearer_token = authorization.split(" ")[-1]
 
-                    # The token provider is an optional header that can be used to specify which oAuth provider the token is associated with.
-
                     # Check if what kind of token we are dealing with
                     try:
                         # Check to see if the token is an oAuth token
