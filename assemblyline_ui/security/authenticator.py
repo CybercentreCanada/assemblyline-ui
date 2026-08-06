@@ -161,7 +161,7 @@ def default_authenticator(auth, req, ses, storage):
         impersonator = None
         # These steps skips 2FA
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
-        if not validated_user:
+        if not validated_user and oauth_token:
             validated_user, roles_limit, impersonator = validate_oauth_token(oauth_token)
 
         if validated_user:
