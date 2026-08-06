@@ -167,13 +167,11 @@ class api_login(BaseSecurityRenderer):
                     bearer_token = authorization.split(" ")[-1]
 
                     # The token provider is an optional header that can be used to specify which oAuth provider the token is associated with.
-                    token_provider = request.environ.get("HTTP_X_TOKEN_PROVIDER", None)
 
                     # Check if what kind of token we are dealing with
                     try:
                         # Check to see if the token is an oAuth token
-                        user, roles_limit, impersonator = validate_oauth_token(bearer_token,
-                                                                            token_provider, return_user=True)
+                        user, roles_limit, impersonator = validate_oauth_token(bearer_token, return_user=True)
                     except AuthenticationException as oauth_e:
                         # If it's not an oAuth token, check if it's an AL OBO token
                         if str(oauth_e) == "Invalid token - Assemblyline generated token given, not an OAuth token.":
