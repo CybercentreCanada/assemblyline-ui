@@ -23,6 +23,14 @@ def datastore(datastore_connection):
         user_data["otp_sk"] = base64.b32encode(os.urandom(25)).decode("UTF-8")
         datastore_connection.user.save(username, user_data)
 
+        # Create the keycloak user for OAuth-related sign-ins
+        datastore_connection.user.save('admin-keycloak', {
+            'uname': 'admin-keycloak',
+            'name': 'Admin',
+            'password': '__NO_PASSWORD__',
+            'email': 'admin@keycloak.com'
+        })
+
         yield datastore_connection
     finally:
         wipe_users(datastore_connection)
@@ -48,7 +56,7 @@ def test_ldap_login(host):
 
     assert data['username'] == 'ldap_user'
 
-def test_oauth_login(host):
+def test_oauth_login(host, datastore):
     # Obtain an access token for the 'admin' user in Keycloak using the password grant type
     oauth_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
     "grant_type": "password",
@@ -69,7 +77,7 @@ def test_oauth_login(host):
     assert data['username'] == "admin-keycloak"
 
 
-def test_oauth_obo(host, datastore_connection):
+def test_oauth_obo(host, datastore):
     # Get a token for a middle-tier service (Clue) for the "admin-keycloak" user
     clue_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
         "grant_type": "password",
