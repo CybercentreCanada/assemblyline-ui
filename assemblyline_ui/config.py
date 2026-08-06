@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import time
 
 import requests
 from assemblyline.common import forge
@@ -42,6 +43,7 @@ def load_openid_configuration(oauth_provider: str, oauth_config: OAuthProvider) 
             break
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             # Connection issue occurred, retry later in the event the issue is transient
+            time.sleep(min(5**retries, 30))  # Exponential backoff before retrying
             retries += 1
             continue
     if retries == 5:
