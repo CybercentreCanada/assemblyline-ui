@@ -84,7 +84,7 @@ class api_login(BaseSecurityRenderer):
                     login_logger = AUDIT_LOG if AUDIT_LOGIN else LOGGER
                     login_logger.warning(f"Authentication failure. (U:{uname} - IP:{ip}) [{str(ae)}]")
                     abort(401, str(ae))
-                    return
+                    return None, None
 
             if validated_user:
                 if not cached:
@@ -152,14 +152,16 @@ class api_login(BaseSecurityRenderer):
 
                 self.test_readonly("API")
 
-                # Check if the user is logged in using an API key or session cookie
-                logged_in_uname, roles_limit, impersonator = self.get_logged_in_user()
                 ip = get_request_ip()
-                user = None
+                logged_in_uname, roles_limit, impersonator = None, None, None
 
-                # Check if user is trying to authenticate using a bearer token (oAuth or AL OBO)
+                # Check if the user is authenticated via API key or session cookie
                 authorization = request.environ.get("HTTP_AUTHORIZATION", None)
-                if not logged_in_uname and authorization:
+                if not authorization:
+                    # Check if the user is logged in using an API key or session cookie
+                    logged_in_uname, roles_limit, impersonator = self.get_logged_in_user()
+                    user = None
+                else:
                     # If we have an authorization header, we will try to validate it as a bearer token
                     impersonator = logged_in_uname
                     bearer_token = authorization.split(" ")[-1]
@@ -171,7 +173,7 @@ class api_login(BaseSecurityRenderer):
                     try:
                         # Check to see if the token is an oAuth token
                         user, roles_limit, impersonator = validate_oauth_token(bearer_token,
-                                                                               token_provider, return_user=True)
+                                                                            token_provider, return_user=True)
                     except AuthenticationException as oauth_e:
                         # If it's not an oAuth token, check if it's an AL OBO token
                         if str(oauth_e) == "Invalid token - Assemblyline generated token given, not an OAuth token.":

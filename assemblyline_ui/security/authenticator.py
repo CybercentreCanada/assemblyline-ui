@@ -69,7 +69,7 @@ class BaseSecurityRenderer(object):
                                                       ", ".join(params_list)))
 
     def auto_auth_check(self):
-        return None
+        return None, None
 
     def extra_session_checks(self, session):
         pass

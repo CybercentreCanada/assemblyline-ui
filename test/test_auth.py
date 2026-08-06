@@ -80,6 +80,27 @@ def test_oauth_login(host, datastore):
     # Assert that the expected user is logged into the system
     assert data['username'] == "admin-keycloak"
 
+def test_oauth_request(host, datastore):
+    # Obtain an access token for the 'admin' user in Keycloak using the password grant type
+    oauth_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
+    "grant_type": "password",
+    "username": "admin",
+    "password": "admin",
+    "client_secret": "assemblyline",
+    "client_id": "assemblyline",
+    "scope": "openid email profile"
+}).json()['access_token']
+
+    # Initialize a session
+    session = requests.Session()
+    session.headers.update({'Authorization': f'Bearer {oauth_token}'})
+
+    # Make a request to the API using the authenticated session that isn't persisted on the backend (ie. no session cookie is set)
+    data = get_api_data(session, f"{host}/api/v4/user/whoami/")
+
+    # Assert that the expected user is logged into the system
+    assert data['username'] == "admin-keycloak"
+
 
 def test_oauth_obo(host, datastore):
     # Get a token for a middle-tier service (Clue) for the "admin-keycloak" user
