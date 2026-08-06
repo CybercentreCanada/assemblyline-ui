@@ -70,7 +70,7 @@ jobs:
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
           # Start up dependencies
-          sudo docker compose -f test/docker-compose.yml up -d elasticsearch redis nginx minio openldap keycloak
+          sudo docker compose -f test/docker-compose.yml up -d elasticsearch redis minio openldap keycloak
 
           # Start up API and SocketIO for host-based testing
           sudo cp test/config/classification.yml /etc/assemblyline
