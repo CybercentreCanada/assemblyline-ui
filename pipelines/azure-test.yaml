@@ -46,7 +46,6 @@ jobs:
           sudo mkdir -p /etc/assemblyline/
           sudo mkdir -p /var/cache/assemblyline/
           sudo mkdir -p /var/lib/assemblyline/
-          sudo cp pipelines/config.yml /etc/assemblyline
           sudo chmod a+rw /var/cache/assemblyline/
           sudo chmod a+rw /var/lib/assemblyline/
           sudo apt-get update
@@ -72,8 +71,11 @@ jobs:
           # Start up dependencies
           sudo docker compose -f test/docker-compose.yml up -d elasticsearch redis minio openldap keycloak
 
+          # Install configuration & classification files
+          sudo cp test/config/classification.yml /etc/assemblyline/classification.yml
+          sudo cp test/config/config.yml /etc/assemblyline/config.yml
+
           # Start up API and SocketIO for host-based testing
-          sudo cp test/config/classification.yml /etc/assemblyline
           python -m assemblyline_ui.app &
           wget https://localhost:5000/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
 

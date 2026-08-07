@@ -21,6 +21,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+    extra_hosts:
+      - "localhost:host-gateway"
 
   al_socketio:
     image: cccs/assemblyline_dev:4.7.1
@@ -38,6 +40,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+    extra_hosts:
+      - "localhost:host-gateway"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3

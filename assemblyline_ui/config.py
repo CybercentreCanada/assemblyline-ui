@@ -37,9 +37,10 @@ def load_openid_configuration(oauth_provider: str, oauth_config: OAuthProvider) 
         try:
             resp = requests.get(oauth_config.openid_connect_discovery_url)
             config_data = resp.json()
-            for key_open_id, key_al_config in OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP.items():
-                if key_open_id in config_data and not getattr(oauth_config, key_al_config):
-                    setattr(oauth_config, key_al_config, config_data[key_open_id])
+            for key_open_id, key_al_configs in OPEN_ID_CONFIGURATION_TO_OAUTH_PROVIDER_MAP.items():
+                for key_al_config in key_al_configs:
+                    if key_open_id in config_data and not getattr(oauth_config, key_al_config):
+                        setattr(oauth_config, key_al_config, config_data[key_open_id])
             break
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             # Connection issue occurred, retry later in the event the issue is transient

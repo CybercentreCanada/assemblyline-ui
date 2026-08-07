@@ -73,15 +73,15 @@ def validate_oauth_token(oauth_token, return_user=False) -> tuple[str|dict, list
         except jwt.PyJWTError as e:
             raise AuthenticationException(f"Invalid token - {str(e)}")
 
-        # With the issuer claim, find the corresponding oauth provider configuration that has a matching api_base_url
+        # With the issuer claim, find the corresponding oauth provider configuration that has a matching issuer_url
         for name, provider in config.auth.oauth.providers.items():
-            if provider.api_base_url == issuer:
+            if provider.issuer_url == issuer:
                 oauth_provider_config = provider
                 oauth_provider = name
                 break
 
         if not oauth_provider_config:
-            raise AuthenticationException(f"Invalid oAuth provider: {oauth_provider}")
+            raise AuthenticationException(f"Unable to determine oAuth provider from token issuer: {issuer}")
 
         if not oauth_provider_config.allow_external_tokens:
             raise AuthenticationException(f"External tokens are not accepted for oAuth provider: {oauth_provider}")
