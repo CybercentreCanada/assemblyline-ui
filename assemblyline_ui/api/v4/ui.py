@@ -137,7 +137,7 @@ def flowjs_upload_chunk(**kwargs):
         return make_api_response("", f"Invalid argument type: {e}", 412)
 
     # Evaluate if the chunk number is valid, if not return an error
-    if flow_chunk_number == 0 or flow_chunk_number > flow_total_chunks:
+    if flow_chunk_number <= 0 or flow_chunk_number > flow_total_chunks:
         return make_api_response("", "Invalid chunk number", 412)
 
     with forge.get_cachestore("flowjs", config) as cache:
@@ -219,7 +219,7 @@ def start_ui_submission(ui_sid, **kwargs):
         if not cache.exists(ui_sid):
             # No file was found for the given ID, return an error and decrement the submission quota for the user
             decrement_submission_quota(user)
-            return make_api_response({"started": False, "sid": None}, "No files where found for ID %s. "
+            return make_api_response({"started": False, "sid": None}, "No files were found for ID %s. "
                                                                         "Try again..." % ui_sid, 404)
         # Submit to dispatcher
         try:
