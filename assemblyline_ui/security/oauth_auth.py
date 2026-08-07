@@ -81,7 +81,7 @@ def validate_oauth_token(oauth_token, return_user=False) -> tuple[str|dict, list
                 break
 
         if not oauth_provider_config:
-            raise AuthenticationException(f"Invalid oAuth provider: {oauth_provider}")
+            raise AuthenticationException(f"Unable to determine oAuth provider from token issuer: {issuer}")
 
         if not oauth_provider_config.allow_external_tokens:
             raise AuthenticationException(f"External tokens are not accepted for oAuth provider: {oauth_provider}")
