@@ -93,7 +93,7 @@ def get_file_ascii(sha256, **kwargs):
     """
 
     user = kwargs['user']
-    index_type = None
+    index_type = Index.HOT
     if ROLES.archive_download in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
@@ -144,7 +144,7 @@ def download_file(sha256, **kwargs):
     <THE FILE BINARY ENCODED IN SPECIFIED FORMAT>
     """
     user = kwargs['user']
-    index_type = None
+    index_type = Index.HOT
     if ROLES.archive_download in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
@@ -276,7 +276,7 @@ def delete_file_from_filestore(sha256, **kwargs):
     {"success": True}
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT)
 
     if not file_obj:
         return make_api_response({}, "The file was not found in the system.", 404)
@@ -403,7 +403,7 @@ def summarize_code_snippet(sha256, **kwargs):
         ai_summary = CACHE.get(cache_key)
 
     if not ai_summary:
-        index_type = None
+        index_type = Index.HOT
         if ROLES.archive_download in user['roles']:
             # User is allowed to access archive, so we check both hot and archive
             index_type = Index.HOT_AND_ARCHIVE
@@ -464,7 +464,7 @@ def get_file_hex(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    index_type = None
+    index_type = Index.HOT
     if ROLES.archive_download in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
@@ -521,7 +521,7 @@ def get_file_image_datastream(sha256, **kwargs):
     data:image/png;base64,...
     """
     user = kwargs['user']
-    index_type = None
+    index_type = Index.HOT
     if ROLES.archive_download in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
@@ -566,7 +566,7 @@ def get_file_strings(sha256, **kwargs):
     """
     user = kwargs['user']
     hlen = request.args.get('len', "6")
-    index_type = None
+    index_type = Index.HOT
     if ROLES.archive_download in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
@@ -639,7 +639,12 @@ def get_file_children(sha256, **kwargs):
     ]
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if file_obj:
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
@@ -647,7 +652,7 @@ def get_file_children(sha256, **kwargs):
             response = STORAGE.result.grouped_search("response.service_name",
                                                      query=f"id:{sha256}* AND response.extracted:*", fl="*", rows=100,
                                                      sort="created desc", access_control=user['access_control'],
-                                                     as_obj=False)
+                                                     as_obj=False, index_type=index_type)
 
             processed_srl = []
             for r in response['items']:
@@ -702,7 +707,11 @@ def get_file_information(sha256, **kwargs):
     }
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if file_obj:
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
@@ -745,9 +754,14 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
-    index_type = None
+    index_type = Index.HOT
     if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
         index_type = Index.ARCHIVE
+    elif ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    else:
+        index_type = Index.HOT
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
@@ -884,7 +898,11 @@ def get_file_results_for_service(sha256, service, **kwargs):
      "results": {}}              # Full result list for the service
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)
@@ -892,7 +910,7 @@ def get_file_results_for_service(sha256, service, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         res = STORAGE.result.search(f"id:{sha256}.{service}*", sort="created desc", fl="*",
                                     rows=100 if "all" in request.args else 1,
-                                    access_control=user["access_control"], as_obj=False)
+                                    access_control=user["access_control"], as_obj=False, index_type=index_type)
 
         results = []
         for r in res['items']:
@@ -929,7 +947,11 @@ def get_file_score(sha256, **kwargs):
      "score": 0}                 # Latest score for the file
     """
     user = kwargs['user']
-    file_obj = STORAGE.file.get(sha256, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+    file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
     if not file_obj:
         return make_api_response([], "This file does not exists", 404)

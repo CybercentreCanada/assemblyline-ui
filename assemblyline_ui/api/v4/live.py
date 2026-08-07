@@ -1,10 +1,13 @@
 
-from assemblyline.remote.datatypes import validate_reply_queue_name
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION as Classification
-from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.models.user import ROLES
+from assemblyline.remote.datatypes import validate_reply_queue_name
+from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline_core.dispatching.client import DispatchClient
+
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.config import CLASSIFICATION as Classification
+from assemblyline_ui.config import STORAGE
 
 SUB_API = 'live'
 live_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -127,7 +130,7 @@ def outstanding_services(sid, **kwargs):
     Result example:
     {"MY SERVICE": 1, ... } # Dictionnary of services and number of files
     """
-    data = STORAGE.submission.get(sid, as_obj=False)
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=Index.HOT)
     user = kwargs['user']
 
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
@@ -154,7 +157,7 @@ def setup_watch_queue(sid, **kwargs):
     Result example:
     {"wq_id": "D-c7668cfa-...-c4132285142e-WQ"} #ID of the watch queue
     """
-    data = STORAGE.submission.get(sid, as_obj=False)
+    data = STORAGE.submission.get(sid, as_obj=False, index_type=Index.HOT)
     user = kwargs['user']
 
     if user and data and Classification.is_accessible(user['classification'], data['classification']):
