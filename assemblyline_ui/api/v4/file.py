@@ -964,7 +964,7 @@ def get_file_score(sha256, **kwargs):
         keys = []
         res = STORAGE.result.grouped_search("response.service_name", f"id:{sha256}*", fl="result.score,id",
                                             sort="created desc", access_control=user["access_control"],
-                                            rows=100, as_obj=False, index_type=Index.HOT)
+                                            rows=100, as_obj=False, index_type=index_type)
         for s in res['items']:
             for d in s['items']:
                 score += d['result']['score']
