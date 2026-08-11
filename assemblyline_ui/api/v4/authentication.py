@@ -370,7 +370,7 @@ def login(**_):
         logged_in_uname = None
         ip = get_request_ip()
         try:
-            logged_in_uname, roles_limit = default_authenticator(auth, request, flask_session, STORAGE)
+            logged_in_uname, roles_limit, impersonator = default_authenticator(auth, request, flask_session, STORAGE)
             xsrf_token = generate_random_secret()
             current_session = {
                 "ip": ip,
@@ -378,6 +378,7 @@ def login(**_):
                 "user_agent": request.headers.get("User-Agent", None),
                 "username": logged_in_uname,
                 "xsrf_token": xsrf_token,
+                "impersonator": impersonator
             }
             session_id = hashlib.sha512(str(current_session).encode("UTF-8")).hexdigest()
             flask_session["session_id"] = session_id
