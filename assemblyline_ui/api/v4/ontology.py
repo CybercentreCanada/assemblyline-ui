@@ -1,11 +1,12 @@
 import json
 from io import StringIO
 
-from flask import request
-
 from assemblyline.common.dict_utils import recursive_update
+from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.odm.models.user import ROLES
+from flask import request
+
 from assemblyline_ui.api.base import (
     api_login,
     make_api_response,
@@ -116,8 +117,13 @@ def get_ontology_for_alert(alert_id, **kwargs):
     if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
         return make_api_response("", f"There is no alert with this ID: {alert_id}", 404)
 
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
     # Get related submission
-    submission = STORAGE.submission.get(alert['sid'], as_obj=False)
+    submission = STORAGE.submission.get(alert['sid'], as_obj=False, index_type=index_type)
     if not submission or not Classification.is_accessible(user['classification'], submission['classification']):
         return make_api_response("", f"The submission related to the alert is missing: {alert_id}", 404)
 
@@ -140,7 +146,7 @@ def get_ontology_for_alert(alert_id, **kwargs):
 
     # Pull the results for the keys
     try:
-        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         results = e.partial_output
 
@@ -204,8 +210,13 @@ def get_ontology_for_submission(sid, **kwargs):
     sha256s = request.args.getlist('sha256', None)
     services = request.args.getlist('service', None)
 
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
     # Get submission for sid
-    submission = STORAGE.submission.get(sid, as_obj=False)
+    submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if not submission or not Classification.is_accessible(user['classification'], submission['classification']):
         return make_api_response("", f"There is no submission with sid: {sid}", 404)
 
@@ -228,7 +239,7 @@ def get_ontology_for_submission(sid, **kwargs):
 
     # Pull the results for the keys
     try:
-        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         results = e.partial_output
 
@@ -292,8 +303,13 @@ def get_ontology_for_file(sha256, **kwargs):
     services = request.args.getlist('service', None)
     all = request.args.get('all', 'false').lower() in ['true', '']
 
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
     # Get file data for hash
-    file_data = STORAGE.file.get(sha256, as_obj=False)
+    file_data = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
     if not file_data or not Classification.is_accessible(user['classification'], file_data['classification']):
         return make_api_response("", f"There is no file with this hash: {sha256}", 404)
 
@@ -309,17 +325,17 @@ def get_ontology_for_file(sha256, **kwargs):
             x['id']
             for x in STORAGE.result.stream_search(
                 query, fl="id", filters=filters, access_control=user["access_control"],
-                as_obj=False, item_buffer_size=1000)]
+                as_obj=False, item_buffer_size=1000, index_type=index_type)]
     else:
         service_resp = STORAGE.result.grouped_search("response.service_name", query=query, fl='id', filters=filters,
                                                      group_sort="created desc", access_control=user["access_control"],
-                                                     as_obj=False)
+                                                     as_obj=False, index_type=index_type)
 
         keys = [k for service in service_resp['items'] for k in service['items'][0].values()]
 
     # Pull the results for the keys
     try:
-        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False)
+        results = STORAGE.result.multiget(keys, as_dictionary=False, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         results = e.partial_output
 

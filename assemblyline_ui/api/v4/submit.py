@@ -3,13 +3,14 @@ import shutil
 import tempfile
 from typing import Tuple, Union
 
+from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
+from assemblyline.common.str_utils import safe_str
+from assemblyline.datastore.collection import Index
+from assemblyline.odm.messages.submission import Submission
+from assemblyline.odm.models.user import ROLES
 from assemblyline_core.submission_client import SubmissionClient, SubmissionException
 from flask import request
 
-from assemblyline.common.constants import MAX_PRIORITY, PRIORITIES
-from assemblyline.common.str_utils import safe_str
-from assemblyline.odm.messages.submission import Submission
-from assemblyline.odm.models.user import ROLES
 from assemblyline_ui.api.base import (
     Response,
     api_login,
@@ -53,7 +54,12 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
     if quota_error:
         return make_api_response("", quota_error, 503)
 
-    file_info = STORAGE.file.get(sha256, as_obj=False)
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
+    file_info = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
     if not file_info:
         return make_api_response({}, f"File {sha256} cannot be found on the server therefore it cannot be resubmitted.",
                                  status_code=404)
@@ -69,7 +75,7 @@ def create_resubmission_task(sha256: str, user: dict, copy_sid: str = None, name
     metadata = {}
     copy_sid = request.args.get('copy_sid', None)
     if copy_sid:
-        submission = STORAGE.submission.get(copy_sid, as_obj=False)
+        submission = STORAGE.submission.get(copy_sid, as_obj=False, index_type=index_type)
     else:
         submission = None
 
@@ -264,9 +270,14 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
     if quota_error:
         return make_api_response("", quota_error, 503)
 
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
     submit_result = None
     try:
-        submission = STORAGE.submission.get(sid, as_obj=False)
+        submission = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
 
         if submission:
             if not Classification.is_accessible(user['classification'], submission['classification']):
@@ -287,7 +298,7 @@ def resubmit_submission_for_analysis(sid, *args, **kwargs):
         # Ensure the files associated in the submission are present in the system
         for file in submission['files']:
             sha256 = file['sha256']
-            file_info = STORAGE.file.get(sha256, as_obj=False)
+            file_info = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
             # Check if this pertains to a file that's been archived and it's not currently in the filestore
             if file_info.get('from_archive', False) and not FILESTORE.exists(sha256):
                 # If the file in question doesn't exist in the filestore, then make a copy from the archivestore

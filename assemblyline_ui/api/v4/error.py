@@ -1,11 +1,11 @@
 
-from flask import request
-
+from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import SearchException
 from assemblyline.odm.models.user import ROLES
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, LOGGER
-from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from flask import request
 
+from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE
 
 SUB_API = 'error'
 error_api = make_subapi_blueprint(SUB_API, api_version=4)
@@ -39,7 +39,8 @@ def get_error(error_key, **kwargs):
         return make_api_response("", "The error was not found", 404)
 
     sha256 = error_key[:64]
-    file_info = STORAGE.file.get(sha256, as_obj=False)
+    # Errors should pertain to files that are in the hot index, so we only check there
+    file_info = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT)
     if not file_info:
         LOGGER.error(f"File {sha256} referenced by error {error_key} does not exist in the system")
         return make_api_response("", "The error was not found", 404)

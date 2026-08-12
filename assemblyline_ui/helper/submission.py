@@ -26,6 +26,7 @@ from assemblyline.common.iprange import is_ip_reserved
 from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.str_utils import safe_str
 from assemblyline.common.uid import get_random_id
+from assemblyline.datastore.collection import Index
 from assemblyline.odm.messages.submission import SubmissionMessage
 from assemblyline.odm.models.config import HASH_PATTERN_MAP, SubmissionProfile
 from assemblyline.odm.models.user import ROLES
@@ -245,9 +246,14 @@ def init_submission(request: Request, user: Dict, endpoint: str):
 
     if not fileinfo:
         fileinfo = IDENTIFY.fileinfo(out_file, skip_fuzzy_hashes=True, calculate_entropy=False)
-        if STORAGE.file.exists(fileinfo['sha256']):
+        index_type = Index.HOT
+        if ROLES.archive_view in user['roles']:
+            # User is allowed to access archive, so we check both hot and archive
+            index_type = Index.HOT_AND_ARCHIVE
+
+        if STORAGE.file.exists(fileinfo['sha256'], index_type=index_type):
             # Re-use existing file information
-            fileinfo = STORAGE.file.get(fileinfo['sha256'], as_obj=False)
+            fileinfo = STORAGE.file.get(fileinfo['sha256'], as_obj=False, index_type=index_type)
         elif endpoint == 'ingest':
             # If this is the ingest endpoint, then calculate the full file information
             fileinfo = IDENTIFY.fileinfo(out_file)
@@ -333,17 +339,23 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
                default_external_sources: List[str], name: str):
     sha256 = None
     fileinfo = None
+
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        # User is allowed to access archive, so we check both hot and archive
+        index_type = Index.HOT_AND_ARCHIVE
+
     # If the method is by SHA256 hash, check to see if we already have that file
     if method == "sha256":
-        fileinfo = STORAGE.file.get_if_exists(input, as_obj=False)
+        fileinfo = STORAGE.file.get_if_exists(input, as_obj=False, index_type=index_type)
     elif method == "url":
         # If the method is by URL, check if we have a file with matching `uri_info.uri` as input
-        res = STORAGE.file.search(f'uri_info.uri:"{input}"', rows=1, as_obj=False)
+        res = STORAGE.file.search(f'uri_info.uri:"{input}"', rows=1, as_obj=False, index_type=index_type)
         if res['total']:
             fileinfo = res['items'][0]
     elif method in FETCH_METHODS:
         # If the method is by a field that's known in our File model, query the datastore for the SHA256
-        res = STORAGE.file.search(f'{method}:"{input}"', rows=1, as_obj=False)
+        res = STORAGE.file.search(f'{method}:"{input}"', rows=1, as_obj=False, index_type=index_type)
         if res['total']:
             fileinfo = res['items'][0]
 

@@ -1,9 +1,10 @@
+from assemblyline.datastore.collection import Index
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.odm.models.user import ROLES
 from flask import request
 
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
-from assemblyline_ui.config import STORAGE, CLASSIFICATION, LOGGER
+from assemblyline_ui.config import CLASSIFICATION, LOGGER, STORAGE
 from assemblyline_ui.helper.result import format_result
 
 SUB_API = 'result'
@@ -36,16 +37,20 @@ def get_multiple_service_results(**kwargs):
     user = kwargs['user']
     data = request.json
 
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        index_type = Index.HOT_AND_ARCHIVE
+
     try:
-        errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False)
+        errors = STORAGE.error.multiget(data.get('error', []), as_dictionary=True, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         LOGGER.warning(f"Trying to get multiple errors but some are missing: {str(e.keys)}")
         errors = e.partial_output
-    results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False)
+    results = STORAGE.get_multiple_results(data.get('result', []), CLASSIFICATION, as_obj=False, index_type=index_type)
 
     required_file_hashes = list(set([x[:64] for x in results.keys()]) | set([x[:64] for x in errors.keys()]))
     try:
-        file_infos = STORAGE.file.multiget(required_file_hashes, as_dictionary=True, as_obj=False)
+        file_infos = STORAGE.file.multiget(required_file_hashes, as_dictionary=True, as_obj=False, index_type=index_type)
     except MultiKeyError as e:
         LOGGER.warning(f"Trying to get multiple files but some are missing: {str(e.keys)}")
         file_infos = e.partial_output
@@ -136,7 +141,8 @@ def get_service_error(cache_key, **kwargs):
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
     sha256 = cache_key[:64]
-    file_info = STORAGE.file.get(sha256, as_obj=False)
+    # Only need to check the 'hot' index since errors are only stored in the hot index
+    file_info = STORAGE.file.get(sha256, as_obj=False, index_type=Index.HOT)
     if not file_info:
         LOGGER.error(f"File {sha256} referenced by error {cache_key} does not exist in the system")
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
@@ -208,13 +214,20 @@ def get_service_result(cache_key, **kwargs):
     }
     """
     user = kwargs['user']
+    index_type = Index.HOT
+    if ROLES.archive_view in user['roles']:
+        index_type = Index.HOT_AND_ARCHIVE
 
-    data = STORAGE.get_single_result(cache_key, CLASSIFICATION, as_obj=False)
+    data = STORAGE.get_single_result(cache_key, CLASSIFICATION, as_obj=False, index_type=index_type)
 
     if data is None:
         return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
 
-    cur_file = STORAGE.file.get(cache_key[:64], as_obj=False) or {}
+    cur_file = STORAGE.file.get(cache_key[:64], as_obj=False, index_type=index_type)
+    if not cur_file:
+        LOGGER.error(f"File {cache_key[:64]} referenced by result {cache_key} does not exist in the system")
+        return make_api_response("", "Cache key %s does not exists." % cache_key, 404)
+
     data = format_result(user['classification'],
                          data,
                          cur_file.get('classification', CLASSIFICATION.UNRESTRICTED),
