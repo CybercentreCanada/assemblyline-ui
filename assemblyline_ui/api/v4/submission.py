@@ -371,7 +371,7 @@ def get_full_results(sid, **kwargs):
         while keys and retry < max_retry:
             if retry:
                 time.sleep(2 ** (retry - 7))
-            res.update(STORAGE.get_multiple_results(keys, Classification, as_obj=False))
+            res.update(STORAGE.get_multiple_results(keys, Classification, as_obj=False, index_type=index_type))
             keys = [x for x in keys if x not in res]
             retry += 1
 
