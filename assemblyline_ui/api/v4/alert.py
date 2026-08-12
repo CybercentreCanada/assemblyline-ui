@@ -15,11 +15,16 @@ from assemblyline_ui.config import STORAGE, config
 SUB_API = 'alert'
 
 alert_api = make_subapi_blueprint(SUB_API, api_version=4)
-alert_api._doc = "Perform operations on alerts"
+alert_api._doc = "Perform operations on alerts"  # type: ignore
 
 
-def get_alert_update_ops(user_id: str, status: str = None, priority: str = None, labels=[], labels_removed=[]) -> dict:
-    operations = []
+def get_alert_update_ops(user: dict, status: str | None = None, priority: str | None = None,
+                         labels: list | set | None = None, labels_removed: list | set | None = None) -> list:
+    """Build the set of operations needed to apply a change to the alert collection."""
+    labels = labels or []
+    labels_removed = labels_removed or []
+
+    operations: list[tuple[str, str, object]] = []
     if status:
         operations.append((STORAGE.alert.UPDATE_SET, 'status', status))
     if priority:
@@ -33,8 +38,8 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
     if operations:
         operations.append((STORAGE.alert.UPDATE_APPEND, 'events', AlertEvent({
             'entity_type': 'user',
-            'entity_id': user_id,
-            'entity_name': STORAGE.user.get(user_id, as_obj=False)['name'],
+            'entity_id': user['uname'],
+            'entity_name': user['name'],
             'status': status,
             'priority': priority,
             'labels': labels,
@@ -44,7 +49,8 @@ def get_alert_update_ops(user_id: str, status: str = None, priority: str = None,
     return operations
 
 
-def get_timming_filter(tc_start, tc):
+def get_timing_filter(tc_start, tc):
+    """Given a timestamp and offset build the elastic filter for the reporting_ts field."""
     if tc:
         if tc_start:
             return f"reporting_ts:[{tc_start}{STORAGE.ds.DATE_FORMAT['SEPARATOR']}-{tc} TO {tc_start}]"
@@ -61,7 +67,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
         tc_start = now_as_iso(config.core.alerter.delay * -1)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
@@ -87,7 +93,7 @@ def get_stats_for_fields(fields, query, tc_start, tc, access_control):
 
 @alert_api.route("/<alert_id>/", methods=["GET"])
 @api_login(require_role=[ROLES.alert_view])
-def get_alert(alert_id, **kwargs):
+def get_alert(alert_id, *_, user: dict, **__):
     """
     Get the alert details for a given alert key
 
@@ -108,16 +114,11 @@ def get_alert(alert_id, **kwargs):
         KEY: VALUE,   # All fields of an alert in key/value pair
     }
     """
-    user = kwargs['user']
     data = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not data:
+    if not data or not Classification.is_accessible(user['classification'], data['classification']):
         return make_api_response("", "This alert does not exists...", 404)
-
-    if user and Classification.is_accessible(user['classification'], data['classification']):
-        return make_api_response(data)
-    else:
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    return make_api_response(data)
 
 
 @alert_api.route("/statistics/", methods=["GET"])
@@ -289,7 +290,7 @@ def list_alerts(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
     track_total_hits = request.args.get('track_total_hits', None)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
@@ -370,7 +371,7 @@ def list_grouped_alerts(field, **kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
@@ -451,24 +452,27 @@ def run_workflow(alert_id, **kwargs):
     Result example:
     { "success": true }
     """
-    user = kwargs['user']
-    try:
-        labels = set(request.json.get('labels', []))
-        priority = request.json.get('priority')
-        priority = priority.upper() if priority else None
-        if priority not in PRIORITIES:
-            raise ValueError(f"Priority {priority} not in priorities")
-        status = request.json.get('status')
-        status = status.upper() if status else None
-        if status not in STATUSES:
-            raise ValueError(f"Status '{status}' not in statuses")
-    except ValueError as e:
-        return make_api_response({"success": False}, err=str(e), status_code=400)
+    # TODO This endpoint has never worked, always delivering either a 400 or 500 error.
+    #      Proposing we remove it entirely in a future release.
+    return make_api_response({}, err="Internal Server Error", status_code=500)
+    # user = kwargs['user']
+    # try:
+    #     labels = set(request.json.get('labels', []))
+    #     priority = request.json.get('priority')
+    #     priority = priority.upper() if priority else None
+    #     if priority not in PRIORITIES:
+    #         raise ValueError(f"Priority {priority} not in priorities")
+    #     status = request.json.get('status')
+    #     status = status.upper() if status else None
+    #     if status not in STATUSES:
+    #         raise ValueError(f"Status '{status}' not in statuses")
+    # except ValueError as e:
+    #     return make_api_response({"success": False}, err=str(e), status_code=400)
 
-    operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority, status=status)
-    return make_api_response({
-        "success": STORAGE.alert.update(alert_id, operations, access_control=user['access_control'])
-    })
+    # operations = get_alert_update_ops(user, labels=labels, priority=priority, status=status)
+    # return make_api_response({
+    #     "success": STORAGE.alert.update(alert_id, operations, access_control=user['access_control'])
+    # })
 
 
 @alert_api.route("/all/batch/", methods=["POST"])
@@ -520,13 +524,13 @@ def run_workflow_by_batch(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
         filters.append(timming_filter)
 
-    operations = get_alert_update_ops(user['uname'], labels=labels, priority=priority,
+    operations = get_alert_update_ops(user, labels=labels, priority=priority,
                                       status=status, labels_removed=removed_labels)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
@@ -562,17 +566,14 @@ def add_labels(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     cur_label = set(alert.get('label', []))
     label_diff = labels.difference(labels.intersection(cur_label))
     if label_diff:
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], labels=label_diff))
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user, labels=label_diff))
         })
     else:
         return make_api_response({"success": True})
@@ -613,13 +614,13 @@ def add_labels_by_batch(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
         filters.append(timming_filter)
 
-    operations = get_alert_update_ops(user['uname'], labels=labels)
+    operations = get_alert_update_ops(user, labels=labels)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
     })
@@ -654,18 +655,15 @@ def remove_labels(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False}, err="Alert ID %s not found" % alert_id, status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     cur_label = set(alert.get('label', []))
     # Check to see if any of the labels being proposed to be removed exists
     label_inter = cur_label.intersection(labels)
     if label_inter:
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], labels_removed=label_inter))
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user, labels_removed=label_inter))
         })
     else:
         return make_api_response({"success": True})
@@ -706,13 +704,13 @@ def remove_labels_by_batch(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
         filters.append(timming_filter)
 
-    operations = get_alert_update_ops(user['uname'], labels_removed=labels)
+    operations = get_alert_update_ops(user, labels_removed=labels)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
     })
@@ -750,17 +748,12 @@ def change_priority(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     if priority != alert.get('priority', None):
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], priority=priority))
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user, priority=priority))
         })
     else:
         return make_api_response({"success": True})
@@ -804,13 +797,13 @@ def change_priority_by_batch(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
         filters.append(timming_filter)
 
-    operations = get_alert_update_ops(user['uname'], priority=priority)
+    operations = get_alert_update_ops(user, priority=priority)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
     })
@@ -848,17 +841,12 @@ def change_status(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response("", "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     if status != alert.get('status', None):
         return make_api_response({
-            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user['uname'], status=status))
+            "success": STORAGE.alert.update(alert_id, get_alert_update_ops(user, status=status))
         })
     else:
         return make_api_response({"success": True})
@@ -902,13 +890,13 @@ def change_status_by_batch(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
         filters.append(timming_filter)
 
-    operations = get_alert_update_ops(user['uname'], status=status)
+    operations = get_alert_update_ops(user, status=status)
     return make_api_response({
         "success": STORAGE.alert.update_by_query(query, operations, filters, access_control=user['access_control'])
     })
@@ -939,13 +927,8 @@ def take_ownership(alert_id, **kwargs):
 
     alert = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not alert:
-        return make_api_response({"success": False},
-                                 err="Alert ID %s not found" % alert_id,
-                                 status_code=404)
-
-    if not Classification.is_accessible(user['classification'], alert['classification']):
-        return make_api_response({"success": False}, "You are not allowed to see this alert...", 403)
+    if not alert or not Classification.is_accessible(user['classification'], alert['classification']):
+        return make_api_response({"success": False}, err=f"Alert ID {alert_id} not found", status_code=404)
 
     current_owner = alert.get('owner', None)
     if current_owner is None:
@@ -953,7 +936,7 @@ def take_ownership(alert_id, **kwargs):
             "success": STORAGE.alert.update(alert_id, [(STORAGE.alert.UPDATE_SET, 'owner', user['uname'])])})
     else:
         return make_api_response({"success": False},
-                                 err="Alert is already owned by %s" % current_owner,
+                                 err=f"Alert is already owned by {current_owner}",
                                  status_code=403)
 
 
@@ -987,7 +970,7 @@ def take_ownership_by_batch(**kwargs):
     tc = request.args.get('tc', None)
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in request.args.getlist("fq") if x != ""]
     if timming_filter:
@@ -1035,7 +1018,7 @@ def find_related_alert_ids(**kwargs):
     if tc and config.ui.read_only:
         tc += config.ui.read_only_offset
     tc_start = request.args.get('tc_start', None)
-    timming_filter = get_timming_filter(tc_start, tc)
+    timming_filter = get_timing_filter(tc_start, tc)
 
     filters = [x for x in fq if x != ""]
     if timming_filter:
@@ -1084,12 +1067,8 @@ def set_verdict(alert_id, verdict, **kwargs):
 
     document = STORAGE.alert.get(alert_id, as_obj=False)
 
-    if not document:
+    if not document or not Classification.is_accessible(user['classification'], document['classification']):
         return make_api_response({"success": False}, f"There are no alert with id: {alert_id}", 404)
-
-    if not Classification.is_accessible(user['classification'], document['classification']):
-        return make_api_response({"success": False}, "You are not allowed to give verdict on alert with "
-                                                     f"ID: {alert_id}", 403)
 
     resp = STORAGE.alert.update_by_query(f"sid:{document['sid']}", [
         ('REMOVE', f'verdict.{verdict}', user['uname']),

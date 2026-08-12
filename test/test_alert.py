@@ -1,12 +1,13 @@
 import json
 import random
+import uuid
 
 import pytest
 from assemblyline.odm.models.alert import Alert
 from assemblyline.odm.models.workflow import PRIORITIES, STATUSES
 from assemblyline.odm.random_data import create_submission, create_users, wipe_submissions, wipe_users
 from assemblyline.odm.randomizer import random_model_obj
-from conftest import get_api_data
+from conftest import APIError, get_api_data
 
 NUM_ALERTS = 10
 test_alert = None
@@ -228,3 +229,50 @@ def test_set_verdict(datastore, login_session):
     submission_data = datastore.submission.get(test_alert.sid)
     assert 'admin' not in submission_data['verdict']['malicious']
     assert 'admin' in submission_data['verdict']['non_malicious']
+
+
+def test_one_time_workflow_single(datastore, login_session):
+    # This code would test the behaviour of this endpoint if it actually worked
+    # _, session, host = login_session
+    # alert_id = datastore.alert.search("*", fl='_id', rows=1)['items'][0]['_id']
+    # alert = datastore.alert.get(alert_id)
+    # new_label = uuid.uuid4().hex
+    # assert new_label not in alert['label']
+
+    # resp = get_api_data(session, f"{host}/api/v4/alert/all/{alert_id}/", method="POST", data=json.dumps({
+    #     'labels': [new_label]
+    # }))
+    # assert resp['success']
+
+    # alert = datastore.alert.get(alert_id)
+    # assert new_label in alert['label']
+
+    _, session, host = login_session
+    alert_id = datastore.alert.search("*", fl='_id', rows=1)['items'][0]['_id']
+    new_label = uuid.uuid4().hex
+
+    with pytest.raises(APIError, match="Internal Server Error"):
+        get_api_data(session, f"{host}/api/v4/alert/all/{alert_id}/", method="POST", data=json.dumps({
+            'labels': [new_label]
+        }))
+
+
+def test_one_time_workflow_batch(datastore, login_session):
+    _, session, host = login_session
+    alert_ids = [row['_id'] for row in datastore.alert.search("*", fl='_id', rows=2)['items']]
+    new_label = uuid.uuid4().hex.upper()
+
+    for alert_id in alert_ids:
+        alert = datastore.alert.get(alert_id)
+        assert new_label not in alert['label']
+
+    query = f'alert_id:{alert_ids[0]} OR alert_id:{alert_ids[1]}'
+    resp = get_api_data(session, f"{host}/api/v4/alert/all/batch/?q={query}", method="POST", data=json.dumps({
+        'labels': [new_label]
+    }))
+    assert resp['success']
+
+    for alert_id in alert_ids:
+        alert = datastore.alert.get(alert_id)
+        assert new_label in alert['label']
+

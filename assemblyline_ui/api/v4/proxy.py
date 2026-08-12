@@ -14,6 +14,21 @@ proxy_api._doc = "Proxy API requests to another server adding some metadata"
 DO_NOT_PROXY = {"authorization", "x-user", "x-apikey", "cookie", "host", "scheme", "server-port", "x-xsrf-token"}
 
 
+def get_proxied_url(base_url, path):
+    """Join path to base_url, ensuring the result cannot escape the configured server.
+
+    Returns None if the resulting URL is not on the same scheme/host or not under
+    the base URL's path prefix (e.g. absolute URLs or '../' escapes in path).
+    """
+    url = urllib.parse.urljoin(base_url, path)
+    base = urllib.parse.urlparse(base_url)
+    target = urllib.parse.urlparse(url)
+    base_dir = base.path if base.path.endswith("/") else base.path.rsplit("/", 1)[0] + "/"
+    if (target.scheme, target.netloc) != (base.scheme, base.netloc) or not target.path.startswith(base_dir):
+        return None
+    return url
+
+
 @proxy_api.route("/<server>/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "HEAD"])
 @api_login(count_toward_quota=False)
 def proxy(server, path, **kwargs):
@@ -50,21 +65,23 @@ def proxy(server, path, **kwargs):
         else:
             headers[header_cfg.name] = header_cfg.value
 
-    # Create URL
-    url = urllib.parse.urljoin(srv_config.url, path)
+    # Create URL and make sure it cannot escape the configured server
+    url = get_proxied_url(srv_config.url, path)
+    if url is None:
+        abort(400, "Proxied path is not relative to the configured server URL")
 
-    # Load up params if any
-    params = "&".join([f"{k}={v}" for k, v in request.args.items()])
-    if params:
-        url = f"{url}?{params}"
-
-    # Forward to the request to the new URL
-    req_kwargs = {"headers": headers}
+    # Forward the request to the new URL without following redirects so the
+    # server cannot be bounced to another host, the client can follow them itself
+    # This could happen in the case of a compromised upstream or an open-redirect
+    req_kwargs = {"headers": headers, "params": request.args.to_dict(flat=False), "allow_redirects": False}
     if not srv_config.verify:
         req_kwargs['verify'] = False
     if request.data:
         req_kwargs['data'] = request.data
     resp = requests.request(request.method, url, **req_kwargs)
 
-    # Return the response as is
-    return make_response(resp.content, resp.status_code)
+    # Return the response as is, keeping the location header so clients can follow redirects themselves
+    response = make_response(resp.content, resp.status_code)
+    if "location" in resp.headers:
+        response.headers["Location"] = resp.headers["location"]
+    return response
