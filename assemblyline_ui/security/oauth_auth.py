@@ -144,21 +144,33 @@ def validate_oauth_token(oauth_token, return_user=False) -> tuple[str|dict, list
                             else:
                                 # We want to explicitly check for the 'scope' field in the auto_properties configuration to limit roles based on the scope claim in the token.
                                 jwt_scopes = jwt_data[oauth_provider_config.scope_field].split(" ")
-                                scope_props = [prop for prop in oauth_provider_config.auto_properties
-                                               if prop['field'] == oauth_provider_config.scope_field and prop['type'] == 'role']
 
-                                if not scope_props:
-                                    # No auto_properties configuration for 'scope' was found, so we will not limit the roles based on the scopes in the token.
-                                    LOGGER.info(f"No auto_properties configuration for '{oauth_provider_config.scope_field }' found in oAuth provider '{oauth_provider}'. Not limiting roles based on token scopes.")
+                                # Check if the token's authorized party (azp) claim has any role limits defined in the oauth provider configuration.
+                                azp_role_limit = oauth_provider_config.azp_role_limits.get(impersonator)
+                                if not azp_role_limit:
+                                    # Token audience isn't limited, so we will not limit the roles based on the scopes in the token.
+                                    LOGGER.warning(f"No role limits defined for authorized party '{impersonator}' in oAuth provider '{oauth_provider}'. Not limiting roles based on token scopes.")
                                 else:
-                                    limited_roles = set()
-                                    for prop in scope_props:
+                                    requested_roles = set()
+                                    for prop in oauth_provider_config.auto_properties:
+                                        if prop['field'] != oauth_provider_config.scope_field:
+                                            # We're only concerned with auto_properties that are based on the scope field in the token, so we will skip any other auto_properties.
+                                            continue
+
                                         # Do exact value matches when determining limited role assignments
                                         if prop['pattern'] in jwt_scopes and prop['type'] == 'role':
-                                            limited_roles.update(prop['value'])
+                                            requested_roles.update(prop['value'])
 
-                                    # The resulting role assignment should be the intersection of the roles derived from the token's scopes and the user's existing roles. This ensures that the user cannot gain additional privileges beyond what they already have via the middle-tier service.
-                                    roles = list(set(roles).intersection(limited_roles))
+                                    # Limit the roles derived from the token scope based on the audience role limits
+                                    if requested_roles:
+                                        # If the token has limited roles based on its scopes, ensure it's limited to the roles defined in the azp role limits.
+                                        requested_roles = set(requested_roles).intersection(set(azp_role_limit))
+                                    else:
+                                        # Otherwise, just limit the roles to the azp role limits, as there are no specific scopes in the token that define role assignments.
+                                        requested_roles = set(azp_role_limit)
+
+                                    # The resulting role assignment should be the intersection of the roles derived from the token's scopes and the user's existing roles.
+                                    roles = list(set(roles).intersection(requested_roles))
 
                         if return_user:
                             return user, roles, impersonator
