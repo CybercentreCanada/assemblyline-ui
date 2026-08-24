@@ -69,15 +69,16 @@ class BaseSecurityRenderer(object):
                                                       ", ".join(params_list)))
 
     def auto_auth_check(self):
-        return None
+        return None, None
 
     def extra_session_checks(self, session):
         pass
 
     def get_logged_in_user(self):
+        impersonator = None
         auto_auth_uname, roles_limit = self.auto_auth_check()
         if auto_auth_uname is not None:
-            return auto_auth_uname, roles_limit
+            return auto_auth_uname, roles_limit, impersonator
 
 
         session_id = flask_session.get("session_id", None)
@@ -103,7 +104,7 @@ class BaseSecurityRenderer(object):
 
         self.extra_session_checks(session)
 
-        return session.get("username", None), session.get('roles_limit', [])
+        return session.get("username", None), session.get('roles_limit', []), session.get('impersonator', None)
 
     def test_require_role(self, user, r_type):
         if not self.require_role:
@@ -141,7 +142,6 @@ def default_authenticator(auth, req, ses, storage):
     uname = auth.get('username', None)
     oauth_token_id = auth.get('oauth_token_id', None)
     oauth_token = auth.get('oauth_token', None)
-    oauth_provider = auth.get('oauth_provider', None)
     saml_token_id = auth.get('saml_token_id', None)
 
     if not uname and not oauth_token:
@@ -158,13 +158,14 @@ def default_authenticator(auth, req, ses, storage):
 
     try:
         roles_limit = None
+        impersonator = None
         # These steps skips 2FA
         validated_user, roles_limit = validate_apikey(uname, apikey, storage)
-        if not validated_user:
-            validated_user, roles_limit = validate_oauth_token(oauth_token, oauth_provider)
+        if not validated_user and oauth_token:
+            validated_user, roles_limit, impersonator = validate_oauth_token(oauth_token)
 
         if validated_user:
-            return validated_user, roles_limit
+            return validated_user, roles_limit, impersonator
 
         # Following steps will go through the 2FA process
         validated_user = validate_oauth_id(uname, oauth_token_id)
@@ -177,7 +178,7 @@ def default_authenticator(auth, req, ses, storage):
 
         if validated_user:
             validate_2fa(validated_user, otp, state, webauthn_auth_resp, storage)
-            return validated_user, roles_limit
+            return validated_user, roles_limit, impersonator
 
     except AuthenticationException:
         # Failure appended, push failure parameters

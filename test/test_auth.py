@@ -8,6 +8,7 @@ import pytest
 import requests
 from assemblyline.common.security import get_totp_token
 from assemblyline.odm.models.apikey import get_apikey_id
+from assemblyline.odm.models.user import USER_ROLES_BASIC
 from assemblyline.odm.random_data import DEV_APIKEY_NAME, create_users, wipe_users
 from conftest import APIError, get_api_data
 
@@ -22,6 +23,17 @@ def datastore(datastore_connection):
         user_data = datastore_connection.user.get(username, as_obj=False)
         user_data["otp_sk"] = base64.b32encode(os.urandom(25)).decode("UTF-8")
         datastore_connection.user.save(username, user_data)
+
+        # Create the keycloak user for OAuth-related sign-ins
+        datastore_connection.user.save('admin-keycloak', {
+            'uname': 'admin-keycloak',
+            'name': 'Admin',
+            'password': '__NO_PASSWORD__',
+            'email': 'admin@keycloak.com',
+            'roles': USER_ROLES_BASIC
+        })
+
+        datastore_connection.user.commit()
 
         yield datastore_connection
     finally:
@@ -48,20 +60,118 @@ def test_ldap_login(host):
 
     assert data['username'] == 'ldap_user'
 
-# TODO: Add tests for OAuth and SAML once we have a test setup for them
-# def test_oauth_login(host):
-#     # Assert that login via OAuth works
-#     session = requests.Session()
-#     data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'oauth_user', 'oauth_token_id': 'oauth_password'})
+def test_oauth_login(host, datastore):
+    # Obtain an access token for the 'admin' user in Keycloak using the password grant type
+    oauth_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
+    "grant_type": "password",
+    "username": "admin",
+    "password": "admin",
+    "client_secret": "assemblyline",
+    "client_id": "assemblyline",
+    "scope": "openid email profile"
+}).json()['access_token']
 
-#     assert data['username'] == 'oauth_user'
+    # Initialize a session
+    session = requests.Session()
 
-# def test_saml_login(host):
-#     # Assert that login via SAML works
-#     session = requests.Session()
-#     data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'saml_user', 'saml_token_id': 'saml_password'})
+    # Login to the API and establish an authenticated session
+    data = get_api_data(session, f"{host}/api/v4/auth/login/", params={'oauth_token': oauth_token})
 
-#     assert data['username'] == 'saml_user'
+    # Assert that the expected user is logged into the system
+    assert data['username'] == "admin-keycloak"
+
+def test_oauth_request(host, datastore):
+    # Obtain an access token for the 'admin' user in Keycloak using the password grant type
+    oauth_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
+    "grant_type": "password",
+    "username": "admin",
+    "password": "admin",
+    "client_secret": "assemblyline",
+    "client_id": "assemblyline",
+    "scope": "openid email profile"
+}).json()['access_token']
+
+    # Initialize a session
+    session = requests.Session()
+    session.headers.update({'Authorization': f'Bearer {oauth_token}'})
+
+    # Make a request to the API using the authenticated session that isn't persisted on the backend (ie. no session cookie is set)
+    data = get_api_data(session, f"{host}/api/v4/user/whoami/")
+
+    # Assert that the expected user is logged into the system
+    assert data['username'] == "admin-keycloak"
+
+
+def test_oauth_obo(host, datastore):
+    # Get a token for a middle-tier service (Clue) for the "admin-keycloak" user
+    clue_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
+        "grant_type": "password",
+        "username": "admin",
+        "password": "admin",
+        "client_secret": "clue",
+        "client_id": "clue",
+    }).json()['access_token']
+
+    # Exchange it for a token for the resource server (Assemblyline) to facilitate On-Behalf-Of (OBO)
+    # Client is setup with custom scopes that limit it's authorized interaction with Assemblyline
+    al_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": clue_token,
+        "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+        "client_secret": "clue",
+        "client_id": "clue",
+    }).json()['access_token']
+
+    # Use that token to allow the Clue to login to Assemblyline OBO the Keycloak user for a persistent session
+    session = requests.Session()
+    data = get_api_data(session, f"{host}/api/v4/auth/login/", method="POST", data=json.dumps({
+        'oauth_token': al_token
+    }))
+
+    # Verify that the expected user is logged into the system
+    assert data['username'] == "admin-keycloak"
+
+    # Verify the the roles assigned for this session is limited based on what's defined by default for the client
+    assert sorted(data['roles_limit']) == ['alert_view', 'badlist_view', 'safelist_view','submission_view']
+
+    # Check that the role limit applied to the middle-tier server is enforced even though the user has more access (ie. create submissions)
+    user = datastore.user.get(data['username'], as_obj=False)
+
+    # User's should never be granted additional access via a middle-tier service that they wouldn't have directly
+    assert len(user['roles']) > len(data['roles_limit'])
+
+    # Roles given to the session should be a subset of the user's permissions in Assemblyline
+    assert set(data['roles_limit']).issubset(set(user['roles']))
+
+    # For this test, verify that the user does have the ability to create submissions in Assemblyline normally
+    assert 'submission_create' in user['roles']
+
+    # Assert that any attempt to create a submission will raise a permission issue from the API
+    with pytest.raises(APIError,
+                       match="requires one of the following roles: submission_create"):
+        get_api_data(session, f"{host}/api/v4/submit/", method="POST", data=json.dumps({
+            'url': 'https://raw.githubusercontent.com/CybercentreCanada/assemblyline-ui/master/README.md',
+            'name': 'README.md'
+        }))
+
+    # The middle-tier should be allowed to request additional scopes for incremental privileged escalation
+    # In this example, we want to grant the middle-tier service to be able to create submissions on the user's behalf along with the other default roles
+    al_extended_token = requests.post("http://localhost:8080/realms/master/protocol/openid-connect/token", data={
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": clue_token,
+        "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+        "client_secret": "clue",
+        "client_id": "clue",
+        "scope": "assemblyline_submission_create"
+    }).json()['access_token']
+
+    data = get_api_data(session, f"{host}/api/v4/auth/login/", method="POST", data=json.dumps({
+        'oauth_token': al_extended_token
+    }))
+
+    # Verify that we have an additional role to create submissions through the middle-tier service
+    assert sorted(data['roles_limit']) == ['alert_view', 'badlist_view', 'safelist_view', 'submission_create', 'submission_view']
+
 
 
 @pytest.mark.parametrize("is_active", [True, False], ids=["account_enabled", "account_disabled"])
@@ -204,8 +314,8 @@ def test_apikey_caching_repeated_requests(datastore, host):
 ])
 def test_safe_email_validation(malicious_email, should_block):
     """Verify _is_safe_email blocks Lucene metacharacters that pass is_valid_email."""
-    from assemblyline_ui.api.v4.authentication import _is_safe_lucene_email
     from assemblyline.common.net import is_valid_email
+    from assemblyline_ui.api.v4.authentication import _is_safe_lucene_email
 
     if should_block:
         # These pass structural validation but contain Lucene metacharacters

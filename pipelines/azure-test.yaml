@@ -11,39 +11,6 @@ variables:
   BRANCH_NAME: $[coalesce(variables['System.PullRequest.SourceBranch'], variables['System.PullRequest.TargetBranch'], replace(variables['Build.SourceBranch'], 'refs/heads/', ''))]
 
 resources:
-  containers:
-    - container: redis
-      image: redis
-      ports:
-        - 6379:6379
-    - container: elasticsearch
-      image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3
-      env:
-        xpack.security.enabled: true
-        discovery.type: single-node
-        ES_JAVA_OPTS: "-Xms256m -Xmx512m"
-        ELASTIC_PASSWORD: devpass
-      ports:
-        - 9200:9200
-    - container: minio
-      image: cccs/minio
-      env:
-        MINIO_ROOT_USER: al_storage_key
-        MINIO_ROOT_PASSWORD: Ch@ngeTh!sPa33w0rd
-      ports:
-        - 9000:9000
-    - container: openldap
-      image: docker.io/bitnamilegacy/openldap:2.6
-      env:
-        LDAP_PORT_NUMBER: 389
-        LDAP_ROOT: dc=assemblyline,dc=local
-        LDAP_ADMIN_PASSWORD: admin
-        LDAP_USERS: ldap_user
-        LDAP_PASSWORDS: ldap_password
-        LDAP_USER_OU: people
-      ports:
-        - 389:389
-
   repositories:
     - repository: assemblyline-base
       type: github
@@ -64,12 +31,6 @@ jobs:
           python.version: "3.11"
 
     timeoutInMinutes: 15
-    services:
-      elasticsearch: elasticsearch
-      redis: redis
-      minio: minio
-      openldap: openldap
-
     steps:
       - task: UsePythonVersion@0
         displayName: Set python version
@@ -85,7 +46,6 @@ jobs:
           sudo mkdir -p /etc/assemblyline/
           sudo mkdir -p /var/cache/assemblyline/
           sudo mkdir -p /var/lib/assemblyline/
-          sudo cp pipelines/config.yml /etc/assemblyline
           sudo chmod a+rw /var/cache/assemblyline/
           sudo chmod a+rw /var/lib/assemblyline/
           sudo apt-get update
@@ -108,17 +68,28 @@ jobs:
         displayName: Install assemblyline-ui
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
-          sudo cp test/config/classification.yml /etc/assemblyline
+          # Start up dependencies
+          sudo docker compose -f test/docker-compose.yml up -d elasticsearch redis minio openldap keycloak
+
+          # Install configuration & classification files
+          sudo cp test/config/classification.yml /etc/assemblyline/classification.yml
+          sudo cp test/config/config.yml /etc/assemblyline/config.yml
+
+          # Start up API and SocketIO for host-based testing
           python -m assemblyline_ui.app &
           wget https://localhost:5000/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
 
           python -m assemblyline_ui.socketsrv &
           wget https://localhost:5002/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
 
+          # Start up frontend and the ingress for routing
           sudo docker run -d --name frontend --network host --restart on-failure cccs/assemblyline-ui-frontend &
           sudo docker run -d --name nginx --network host --restart on-failure -e "FRONTEND_HOST=localhost" -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
+
+          # Check if the system is ready for testing
           wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
 
+          # Start test
           pytest -rsx -vv
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
         displayName: Test
