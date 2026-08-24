@@ -28,6 +28,7 @@ from assemblyline.remote.datatypes.user_quota_tracker import UserQuotaTracker
 
 from assemblyline_ui.helper.ai import get_ai_agent
 from assemblyline_ui.helper.ai.base import AIAgentPool
+from assemblyline_ui.helper.datastore import UIDatastore
 from assemblyline_ui.helper.discover import get_apps_list
 
 
@@ -83,6 +84,11 @@ BUNDLING_DIR = "/var/lib/assemblyline/bundling"
 
 TEMP_DIR = "/var/lib/assemblyline/flowjs/"
 TEMP_SUBMIT_DIR = "/var/lib/assemblyline/submit/"
+
+# Initialize all temporary directories used by the UI (mostly for testing purposes since Dockerfile creates them)
+for temp_dir in [TEMP_DIR, TEMP_SUBMIT_DIR, BUNDLING_DIR]:
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir, exist_ok=True)
 
 redis_persistent = get_client(config.core.redis.persistent.host, config.core.redis.persistent.port, False)
 redis = get_client(config.core.redis.nonpersistent.host, config.core.redis.nonpersistent.port, False)
@@ -229,7 +235,7 @@ if config.datastore.archive.enabled:
     ARCHIVESTORE: FileStore = forge.get_archivestore(config=config)
 else:
     ARCHIVESTORE = None
-STORAGE: AssemblylineDatastore = forge.get_datastore(config=config, archive_access=True)
+STORAGE: UIDatastore = UIDatastore(config)
 CACHE: Cache = Cache(prefix="flask_cache", host=redis, ttl=24 * 60 * 60)
 AI_AGENT: AIAgentPool = get_ai_agent(config, LOGGER, STORAGE, CLASSIFICATION)
 metadata_validator = MetadataValidator(STORAGE, METADATA_SUGGESTIONS)
