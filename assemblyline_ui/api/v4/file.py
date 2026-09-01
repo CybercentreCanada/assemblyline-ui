@@ -34,7 +34,7 @@ from assemblyline_ui.config import (
 from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import format_result
-from assemblyline_ui.helper.user import load_user_settings
+from assemblyline_ui.helper.user import get_user_settings
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 MAX_CONCURRENT_VECTORS = 5
@@ -155,7 +155,7 @@ def download_file(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        params = load_user_settings(user)
+        user_settings = get_user_settings(user)
 
         name = request.args.get('name', sha256) or sha256
         name = os.path.basename(name)
@@ -175,8 +175,8 @@ def download_file(sha256, **kwargs):
             file_metadata['classification'] = Classification.max_classification(submission_classification,
                                                                                 file_obj['classification'])
 
-        encoding = request.args.get('encoding', params['download_encoding'])
-        password = request.args.get('password', params['default_zip_password'])
+        encoding = request.args.get('encoding', user_settings['download_encoding'])
+        password = request.args.get('password', user_settings['default_zip_password'])
 
         if encoding not in FILE_DOWNLOAD_ENCODINGS:
             return make_api_response(

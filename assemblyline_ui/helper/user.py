@@ -322,11 +322,25 @@ def get_dynamic_classification(current_c12n, user_info):
     return new_c12n
 
 
-def get_default_user_settings(user: dict) -> dict:
-    settings = DEFAULT_USER_PROFILE_SETTINGS
-    settings.update({"default_zip_password": DEFAULT_ZIP_PASSWORD, "download_encoding": DOWNLOAD_ENCODING})
-    return UserSettings(settings).as_primitives()
+def get_user_settings(username: str) -> dict:
+    """Fetch the user settings for a given username.
 
+    Args:
+        username (str): The username of the user whose settings are to be fetched.
+
+    Returns:
+        dict: A dictionary containing the user's settings. If the user has no settings stored, the default settings will be returned.
+
+    """
+    user_settings = STORAGE.user_settings.get(username)
+    if not user_settings:
+        # The user has no settings stored, so we need to load the default settings for them
+        user_settings = DEFAULT_USER_PROFILE_SETTINGS
+        user_settings.update({"default_zip_password": DEFAULT_ZIP_PASSWORD, "download_encoding": DOWNLOAD_ENCODING})
+        user_settings = UserSettings(user_settings)
+
+    # Return the user settings as a dictionary of primitives
+    return user_settings.as_primitives()
 
 def get_user_api_keys_dict(uname):
     apikeys = get_user_api_keys(uname)
@@ -340,23 +354,17 @@ def get_user_api_keys(uname):
 
 
 def load_user_settings(user):
-    default_settings = get_default_user_settings(user)
+    """Build the user settings for a given user based on their classification and roles.
+
+    Args:
+        user (dict): The user object containing information about the user.
+
+    Returns:
+        dict: A dictionary containing the user's settings.
+    """
     user_classfication = user.get('classification', Classification.UNRESTRICTED)
     submission_customize = ROLES.submission_customize in user['roles']
-    settings = STORAGE.user_settings.get_if_exists(user['uname'])
-    if not settings:
-        settings = default_settings
-    else:
-        settings = settings.as_primitives(strip_null=True)
-        # Make sure all defaults are there
-        for key, item in default_settings.items():
-            if key not in settings:
-                settings[key] = item
-
-        # Remove all obsolete keys
-        for key in list(settings.keys()):
-            if key not in default_settings:
-                del settings[key]
+    settings = get_user_settings(user['uname'])
 
     srv_list = [x for x in SERVICE_LIST if x['enabled']]
     settings['default_zip_password'] = settings.get('default_zip_password', DEFAULT_ZIP_PASSWORD)
