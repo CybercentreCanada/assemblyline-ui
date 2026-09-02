@@ -5,7 +5,7 @@ import elasticapm
 from assemblyline.common import forge
 from assemblyline.common.dict_utils import flatten
 from assemblyline.common.tagging import tag_dict_to_ai_list
-from assemblyline.datastore.collection import log
+from assemblyline.datastore.collection import Index, log
 from assemblyline.datastore.exceptions import MultiKeyError
 from assemblyline.datastore.helper import JSON_SECTIONS, AssemblylineDatastore
 from assemblyline.datastore.store import ESStore
@@ -176,6 +176,12 @@ class UIDatastore(AssemblylineDatastore):
             min_score = -1000000
         else:
             min_score = 300
+
+        # Check where the submission is from to determine the appropriate index type to fetch related results
+        if not submission.get('from_archive', False):
+            index_type = Index.HOT
+        else:
+            index_type = Index.ARCHIVE
 
         # Parse results
         results = [

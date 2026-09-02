@@ -127,7 +127,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
 
     # Update the index type based on the origin of the submission record
-    if data.get('from_archive', False):
+    if not data.get('from_archive', False):
         # If the submission is from the live index, we will perform aggregations only on the live data
         index_type = Index.HOT
 
