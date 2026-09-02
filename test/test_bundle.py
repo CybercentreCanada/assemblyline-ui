@@ -1,14 +1,18 @@
 
-import pytest
 import random
 
+import pytest
+from assemblyline.common.bundling import create_bundle
+from assemblyline.odm.models.alert import Alert
+from assemblyline.odm.random_data import (
+    create_submission,
+    create_users,
+    wipe_submissions,
+    wipe_users,
+)
+from assemblyline.odm.randomizer import random_model_obj
 from cart import is_cart
 from conftest import get_api_data
-
-from assemblyline.common.bundling import create_bundle
-from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
-from assemblyline.odm.models.alert import Alert
-from assemblyline.odm.randomizer import random_model_obj
 
 ALERT_ID = "test_alert_id_ui"
 
@@ -49,7 +53,7 @@ def test_alert_import_bundle(datastore, login_session, filestore):
 
     # Delete associated alert and submission
     ds.alert.delete(ALERT_ID)
-    ds.delete_submission_tree(alert['sid'], transport=filestore)
+    ds.delete_submission_tree_bulk(alert['sid'], transport=filestore)
     ds.alert.commit()
     ds.error.commit()
     ds.file.commit()
@@ -89,7 +93,7 @@ def test_submission_import_bundle(datastore, login_session, filestore):
     bundle_file = create_bundle(submission['sid'], working_dir='/tmp/bundle')
 
     # Delete associated submission
-    ds.delete_submission_tree(submission['sid'], transport=filestore)
+    ds.delete_submission_tree_bulk(submission['sid'], transport=filestore)
     ds.error.commit()
     ds.file.commit()
     ds.result.commit()

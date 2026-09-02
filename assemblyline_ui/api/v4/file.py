@@ -34,7 +34,7 @@ from assemblyline_ui.config import (
 from assemblyline_ui.config import CLASSIFICATION as Classification
 from assemblyline_ui.helper.ai.base import APIException, EmptyAIResponse
 from assemblyline_ui.helper.result import format_result
-from assemblyline_ui.helper.user import load_user_settings
+from assemblyline_ui.helper.user import get_user_settings
 
 LABEL_CATEGORIES = ['attribution', 'technique', 'info']
 MAX_CONCURRENT_VECTORS = 5
@@ -155,7 +155,7 @@ def download_file(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        params = load_user_settings(user)
+        user_settings = get_user_settings(user)
 
         name = request.args.get('name', sha256) or sha256
         name = os.path.basename(name)
@@ -175,8 +175,8 @@ def download_file(sha256, **kwargs):
             file_metadata['classification'] = Classification.max_classification(submission_classification,
                                                                                 file_obj['classification'])
 
-        encoding = request.args.get('encoding', params['download_encoding'])
-        password = request.args.get('password', params['default_zip_password'])
+        encoding = request.args.get('encoding', user_settings['download_encoding'])
+        password = request.args.get('password', user_settings['default_zip_password'])
 
         if encoding not in FILE_DOWNLOAD_ENCODINGS:
             return make_api_response(
@@ -650,7 +650,7 @@ def get_file_children(sha256, **kwargs):
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
             output = []
             response = STORAGE.result.grouped_search("response.service_name",
-                                                     query=f"id:{sha256}* AND response.extracted:*", fl="*", rows=100,
+                                                     query=f"sha256:{sha256} AND response.extracted:*", fl="*", rows=100,
                                                      sort="created desc", access_control=user['access_control'],
                                                      as_obj=False, index_type=index_type)
 
@@ -754,14 +754,16 @@ def get_file_results(sha256, **kwargs):
      "file_viewer_only": True }  # UI switch to disable features
     """
     user = kwargs['user']
+    archive_only = str(request.args.get('archive_only', 'false')).lower() in ['true', '']
+
+    # Assume the user can only access the hot index by default
     index_type = Index.HOT
-    if str(request.args.get('archive_only', 'false')).lower() in ['true', '']:
+    if archive_only and ROLES.archive_view in user['roles']:
+        # User only wants to access the archive and has the appropriate access, so we check only the archive
         index_type = Index.ARCHIVE
     elif ROLES.archive_view in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
-    else:
-        index_type = Index.HOT
 
     file_obj = STORAGE.file.get(sha256, as_obj=False, index_type=index_type)
 
@@ -783,10 +785,11 @@ def get_file_results(sha256, **kwargs):
         with APMAwareThreadPoolExecutor(4) as executor:
             res_ac = executor.submit(STORAGE.list_file_active_keys, sha256,
                                      user["access_control"], index_type=index_type)
-            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"])
-            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"])
+            res_parents = executor.submit(STORAGE.list_file_parents, sha256, user["access_control"], index_type=index_type)
+            res_children = executor.submit(STORAGE.list_file_childrens, sha256, user["access_control"], index_type=index_type)
             res_meta = executor.submit(STORAGE.get_file_submission_meta, sha256,
-                                       config.ui.statistics.submission, user["access_control"])
+                                       config.ui.statistics.submission, user["access_control"],
+                                       index_type=index_type)
 
         active_keys, alternates = res_ac.result()
         output['parents'] = res_parents.result()
@@ -959,9 +962,9 @@ def get_file_score(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         score = 0
         keys = []
-        res = STORAGE.result.grouped_search("response.service_name", f"id:{sha256}*", fl="result.score,id",
+        res = STORAGE.result.grouped_search("response.service_name", f"sha256:{sha256}", fl="result.score,id",
                                             sort="created desc", access_control=user["access_control"],
-                                            rows=100, as_obj=False)
+                                            rows=100, as_obj=False, index_type=index_type)
         for s in res['items']:
             for d in s['items']:
                 score += d['result']['score']

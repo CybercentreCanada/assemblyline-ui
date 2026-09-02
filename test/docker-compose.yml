@@ -1,10 +1,5 @@
 
 services:
-  al_frontend:
-    image: cccs/assemblyline-ui-frontend
-    ports:
-      - "3000:3000"
-
   al_ui:
     image: cccs/assemblyline_dev:4.7.1
     ports:
@@ -21,6 +16,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import requests; requests.head(\"http://localhost:5000/healthz/live\", timeout=2).raise_for_status()' || exit 1"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
     extra_hosts:
       - "localhost:host-gateway"
 
@@ -40,6 +40,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import requests; requests.head(\"http://localhost:5002/healthz/live\", timeout=2).raise_for_status()' || exit 1"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
     extra_hosts:
       - "localhost:host-gateway"
 
