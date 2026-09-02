@@ -650,7 +650,7 @@ def get_file_children(sha256, **kwargs):
         if user and Classification.is_accessible(user['classification'], file_obj['classification']):
             output = []
             response = STORAGE.result.grouped_search("response.service_name",
-                                                     query=f"id:{sha256}* AND response.extracted:*", fl="*", rows=100,
+                                                     query=f"sha256:{sha256} AND response.extracted:*", fl="*", rows=100,
                                                      sort="created desc", access_control=user['access_control'],
                                                      as_obj=False, index_type=index_type)
 
@@ -962,7 +962,7 @@ def get_file_score(sha256, **kwargs):
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
         score = 0
         keys = []
-        res = STORAGE.result.grouped_search("response.service_name", f"id:{sha256}*", fl="result.score,id",
+        res = STORAGE.result.grouped_search("response.service_name", f"sha256:{sha256}", fl="result.score,id",
                                             sort="created desc", access_control=user["access_control"],
                                             rows=100, as_obj=False, index_type=index_type)
         for s in res['items']:
