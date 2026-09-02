@@ -120,11 +120,16 @@ def get_file_submission_results(sid, sha256, **kwargs):
     if ROLES.archive_view in user['roles']:
         # User is allowed to access archive, so we check both hot and archive
         index_type = Index.HOT_AND_ARCHIVE
-    
+
     # Check if submission exist
     data = STORAGE.submission.get(sid, as_obj=False, index_type=index_type)
     if not (data and user and Classification.is_accessible(user['classification'], data['classification'])):
         return make_api_response("", "Submission ID %s does not exists." % sid, 404)
+
+    # Update the index type based on the origin of the submission record
+    if data.get('from_archive', False):
+        # If the submission is from the live index, we will perform aggregations only on the live data
+        index_type = Index.HOT
 
     # Prepare output
     output = {
@@ -186,7 +191,7 @@ def get_file_submission_results(sid, sha256, **kwargs):
         output['errors'] = e.partial_output
 
     output['metadata'] = STORAGE.get_file_submission_meta(sha256, config.ui.statistics.submission,
-                                                          user["access_control"])
+                                                          user["access_control"], index_type=index_type)
 
     done_heuristics = set()
     for res in output['results']:
