@@ -90,3 +90,28 @@ class UIDatastore(AssemblylineDatastore):
                    for field in fields}
 
         return {k.split(".")[-1]: v.result() for k, v in res.items()}
+
+
+    @elasticapm.capture_span(span_type='datastore')
+    def list_file_active_keys(self, sha256, access_control=None, min_score=None, index_type=None):
+        query = f"sha256:{sha256}"
+        if min_score:
+            query += f" AND result.score:>={min_score}"
+
+        item_list = list(self.result.stream_search(query, fl="id,created,response.service_name,result.score",
+                                                          access_control=access_control, as_obj=False,
+                                                          index_type=index_type))
+
+        item_list.sort(key=lambda k: k["created"], reverse=True)
+
+        active_found = set()
+        active_keys = []
+        alternates = []
+        for item in item_list:
+            if item['response']['service_name'] not in active_found:
+                active_keys.append(item['id'])
+                active_found.add(item['response']['service_name'])
+            else:
+                alternates.append(item)
+
+        return active_keys, alternates
