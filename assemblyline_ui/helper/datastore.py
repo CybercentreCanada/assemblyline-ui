@@ -178,7 +178,7 @@ class UIDatastore(AssemblylineDatastore):
             min_score = 300
 
         # Check where the submission is from to determine the appropriate index type to fetch related results
-        if not submission.get('from_archive', False):
+        if not submission.from_archive:
             index_type = Index.HOT
         else:
             index_type = Index.ARCHIVE
