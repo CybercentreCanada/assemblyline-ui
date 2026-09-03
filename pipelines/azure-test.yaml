@@ -69,25 +69,11 @@ jobs:
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
       - script: |
           # Start up dependencies
-          sudo docker compose -f test/docker-compose.yml up -d elasticsearch redis minio openldap keycloak
+          sudo docker compose --progress=quiet -f test/docker-compose.yml up -d --wait
 
           # Install configuration & classification files
           sudo cp test/config/classification.yml /etc/assemblyline/classification.yml
           sudo cp test/config/config.yml /etc/assemblyline/config.yml
-
-          # Start up API and SocketIO for host-based testing
-          python -m assemblyline_ui.app &
-          wget https://localhost:5000/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
-
-          python -m assemblyline_ui.socketsrv &
-          wget https://localhost:5002/healthz/live --no-check-certificate --timeout=2 --waitretry=10 --retry-connrefused
-
-          # Start up frontend and the ingress for routing
-          sudo docker run -d --name frontend --network host --restart on-failure cccs/assemblyline-ui-frontend &
-          sudo docker run -d --name nginx --network host --restart on-failure -e "FRONTEND_HOST=localhost" -e "UI_HOST=localhost" -e "SOCKET_HOST=localhost" -e "TEMPLATE=minimal" -e "FQDN=localhost" cccs/nginx-ssl-frontend
-
-          # Check if the system is ready for testing
-          wget https://localhost --no-check-certificate --timeout=2 --retry-on-http-error=502 --waitretry=10 --retry-connrefused
 
           # Start test
           pytest -rsx -vv

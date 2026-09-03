@@ -100,6 +100,25 @@ def test_download_zip(datastore, login_session, from_archive):
         assert zf.namelist() == [rand_hash]
         assert zf.read(rand_hash, pwd=b'infected').decode() == rand_hash
 
+@pytest.mark.parametrize("use_system_defaults", [True, False])
+def test_download_from_settings(datastore, login_session, use_system_defaults):
+    user, session, host = login_session
+
+    if not use_system_defaults:
+        # Set the download settings for the user (ie. raw)
+        datastore.user_settings.update(user['username'],
+                                       [(datastore.user_settings.UPDATE_SET, 'download_encoding', 'raw')])
+
+    # If no encoding parameter is set, the API should default to using the user's settings
+    rand_hash = random.choice(file_list)['sha256']
+    resp = get_api_data(session, f"{host}/api/v4/file/download/{rand_hash}/", raw=True)
+
+    if use_system_defaults:
+        # When using system defaults, the response should be in the default encoding (ie. CART)
+        assert resp.startswith(b'CART')
+    else:
+        # Otherwise, we expect the response to be in the user's chosen encoding (ie. raw)
+        assert resp.decode() == rand_hash
 
 @pytest.mark.parametrize("name", ["@list", "-@", "-TT evil", "-i@list"])
 def test_download_zip_argv_injection(datastore, filestore, login_session, name):
