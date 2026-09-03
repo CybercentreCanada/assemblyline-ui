@@ -155,7 +155,7 @@ def download_file(sha256, **kwargs):
         return make_api_response({}, "The file was not found in the system.", 404)
 
     if user and Classification.is_accessible(user['classification'], file_obj['classification']):
-        user_settings = get_user_settings(user)
+        user_settings = get_user_settings(user['uname'])
 
         name = request.args.get('name', sha256) or sha256
         name = os.path.basename(name)
