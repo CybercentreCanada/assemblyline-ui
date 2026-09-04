@@ -340,7 +340,7 @@ def get_user_settings(username: str) -> dict:
         user_settings = UserSettings(user_settings)
 
     # Return the user settings as a dictionary of primitives
-    return user_settings.as_primitives()
+    return user_settings.as_primitives(strip_null=True)
 
 def get_user_api_keys_dict(uname):
     apikeys = get_user_api_keys(uname)
