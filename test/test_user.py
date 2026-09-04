@@ -5,6 +5,7 @@ import pytest
 from assemblyline.common.forge import get_classification
 from assemblyline.common.security import verify_password
 from assemblyline.odm.models.apikey import Apikey, get_apikey_id
+from assemblyline.odm.models.config import SubmissionProfileParams
 from assemblyline.odm.models.user import User
 from assemblyline.odm.models.user_favorites import Favorite, UserFavorites
 from assemblyline.odm.models.user_settings import (
@@ -192,6 +193,22 @@ def test_get_user_settings(datastore, login_session):
     # Ensure submission settings are present under "submission_profiles"
     for submission_profile in resp['submission_profiles'].values():
         assert set(DEFAULT_SUBMISSION_PROFILE_SETTINGS.keys()).issubset(set(submission_profile.keys()))
+
+def test_ensure_user_settings(datastore, login_session):
+    _, session, host = login_session
+    username = random.choice(user_list)
+
+    # Set the user's settings so there's a profile that's completely new but defaulting to optional values
+    settings = datastore.user_settings.get(username, as_obj=False)
+    settings['submission_profiles']['static'] = SubmissionProfileParams().as_primitives()
+    datastore.user_settings.save(username, settings)
+    datastore.user_settings.commit()
+
+    # We expect user settings in this state shouldn't break the API and should be setting values like classification
+    resp = get_api_data(session, f"{host}/api/v4/user/settings/{username}/")
+
+    # Check if the classification is given a value based on the API
+    resp['submission_profiles']['static']['classification']
 
 
 # noinspection PyUnusedLocal
