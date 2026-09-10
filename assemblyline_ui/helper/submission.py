@@ -353,12 +353,11 @@ def fetch_file(method: str, input: str, user: dict, s_params: dict, metadata: di
         res = STORAGE.file.search(f'uri_info.uri:"{input}"', rows=1, as_obj=False, index_type=index_type)
         if res['total']:
             fileinfo = res['items'][0]
-    elif method in FETCH_METHODS:
+    elif method in HASH_PATTERN_MAP:
         # If the method is by a field that's known in our File model, query the datastore for the SHA256
         query = f"{method}:{input}"
-        if method == "ssdeep" or method not in HASH_PATTERN_MAP:
+        if method == "ssdeep":
             # Switch to a Phrase query since there are some characters that break a Term query
-            # (ssdeep hashes contain ":", custom hash types can contain any reserved character)
             query = f'{method}:"{input}"'
 
         res = STORAGE.file.search(query, rows=1, as_obj=False, index_type=index_type)
