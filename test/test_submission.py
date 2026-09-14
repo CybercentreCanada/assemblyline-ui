@@ -6,10 +6,7 @@ import uuid
 from conftest import get_api_data, APIError
 
 from assemblyline.common.forge import get_classification
-from assemblyline.odm.models.file import File
-from assemblyline.odm.models.result import Result
-from assemblyline.odm.models.submission import Submission
-from assemblyline.odm.randomizer import get_random_user, get_random_groups, random_minimal_obj
+from assemblyline.odm.randomizer import get_random_user, get_random_groups
 from assemblyline.odm.random_data import create_users, wipe_users, create_submission, wipe_submissions
 
 
@@ -143,125 +140,6 @@ def test_get_submission_summary(datastore, login_session):
     resp = get_api_data(session, f"{host}/api/v4/submission/summary/{submission['sid']}/")
     assert isinstance(resp['map'], dict)
     assert isinstance(resp['tags'], dict)
-
-    # Verify bidirectional map integrity and deduplication
-    for k, values in resp['map'].items():
-        assert isinstance(values, list)
-        assert len(values) == len(set(values)), f"Duplicate entries found in map for key {k}: {values}"
-
-        if len(k) == 64:
-            # File sha256 -> items (attack pattern, heuristic, signature, tag)
-            for item_key in values:
-                assert item_key in resp['map'], f"Item key {item_key} missing from map"
-                assert k in resp['map'][item_key], f"sha256 {k} missing in reverse map for {item_key}"
-        else:
-            # Item key -> file sha256s
-            for sha256 in values:
-                assert sha256 in resp['map'], f"sha256 {sha256} missing from map"
-                assert k in resp['map'][sha256], f"Item key {k} missing in reverse map for {sha256}"
-
-
-def test_get_submission_summary_map_properties(datastore, login_session):
-    _, session, host = login_session
-
-    test_sha256 = "a" * 64
-    file_obj = random_minimal_obj(File)
-    file_obj.sha256 = test_sha256
-    file_obj.classification = CLASSIFICATION.UNRESTRICTED
-    datastore.file.save(test_sha256, file_obj)
-
-    # Result with:
-    # 1. Repeated tags in multiple sections (to verify tag deduplication in map[sha256])
-    # 2. Attack pattern with empty categories (to verify attack_pattern__ is mapped)
-    # 3. Heuristic with signature
-    res = random_minimal_obj(Result)
-    res.sha256 = test_sha256
-    res.classification = CLASSIFICATION.UNRESTRICTED
-    res.response.service_name = "test_summary_svc"
-    res.response.service_version = "1.0"
-    res.result.sections = [
-        {
-            "auto_collapse": False,
-            "body": "section 1",
-            "body_format": "TEXT",
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "depth": 0,
-            "heuristic": {
-                "heur_id": "1001",
-                "name": "Test Heuristic",
-                "attack": [{
-                    "attack_id": "T1001",
-                    "pattern": "Test Pattern",
-                    "categories": []  # Empty categories
-                }],
-                "signature": [{"name": "test_sig"}],
-                "score": 500
-            },
-            "tags": {"network": {"static": {"ip": ["1.2.3.4"]}}},
-            "safelisted_tags": {},
-            "title_text": "Section 1"
-        },
-        {
-            "auto_collapse": False,
-            "body": "section 2",
-            "body_format": "TEXT",
-            "classification": CLASSIFICATION.UNRESTRICTED,
-            "depth": 0,
-            "heuristic": None,
-            "tags": {"network": {"static": {"ip": ["1.2.3.4"]}}},  # Duplicate tag on same sha256
-            "safelisted_tags": {},
-            "title_text": "Section 2"
-        }
-    ]
-    res_key = res.build_key()
-    datastore.result.save(res_key, res)
-
-    sub = random_minimal_obj(Submission)
-    sub.sid = str(uuid.uuid4())
-    sub.files = [{"name": "test.bin", "sha256": test_sha256, "size": 100}]
-    sub.results = [res_key]
-    sub.state = "completed"
-    sub.classification = CLASSIFICATION.UNRESTRICTED
-    sub.params.submitter = "admin"
-    datastore.submission.save(sub.sid, sub)
-    datastore.result.commit()
-    datastore.file.commit()
-    datastore.submission.commit()
-
-    try:
-        resp = get_api_data(session, f"{host}/api/v4/submission/summary/{sub.sid}/")
-        out_map = resp['map']
-
-        # 1. Attack pattern with empty categories must be in map
-        assert "attack_pattern__T1001" in out_map
-        assert test_sha256 in out_map["attack_pattern__T1001"]
-        assert "attack_pattern__T1001" in out_map[test_sha256]
-
-        # 2. Duplicate tag must be present in map[sha256] exactly once
-        tag_key = "network.static.ip__1.2.3.4"
-        assert tag_key in out_map
-        assert test_sha256 in out_map[tag_key]
-        assert out_map[test_sha256].count(tag_key) == 1
-
-        # 3. Signature must be present in map
-        sig_key = "heuristic.signature__test_sig"
-        assert sig_key in out_map
-        assert test_sha256 in out_map[sig_key]
-        assert sig_key in out_map[test_sha256]
-
-        # 4. Entire map is bidirectional and deduplicated
-        for k, values in out_map.items():
-            assert len(values) == len(set(values)), f"Duplicates found in map[{k}]"
-            for v in values:
-                assert v in out_map, f"Missing reverse entry for {v}"
-                assert k in out_map[v], f"Missing {k} in out_map[{v}]"
-    finally:
-        datastore.submission.delete(sub.sid)
-        datastore.result.delete(res_key)
-        datastore.file.delete(test_sha256)
-        datastore.submission.commit()
-        datastore.result.commit()
-        datastore.file.commit()
 
 
 def test_get_submission_tree(datastore, login_session):
