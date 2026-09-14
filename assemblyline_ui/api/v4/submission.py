@@ -688,17 +688,17 @@ def get_summary(sid, **kwargs):
         sha256 = item['key'][:64]
         attack_id = item['attack_id']
 
-        key = f"attack_pattern__{attack_id}"
-        output['map'].setdefault(sha256, [])
-        output['map'].setdefault(key, [])
-
-        if sha256 not in output['map'][key]:
-            output['map'][key].append(sha256)
-
-        if key not in output['map'][sha256]:
-            output['map'][sha256].append(key)
-
         for cat in item['categories']:
+            key = f"attack_pattern__{attack_id}"
+            output['map'].setdefault(sha256, [])
+            output['map'].setdefault(key, [])
+
+            if sha256 not in output['map'][key]:
+                output['map'][key].append(sha256)
+
+            if key not in output['map'][sha256]:
+                output['map'][sha256].append(key)
+
             output['attack_matrix'].setdefault(cat, [])
             if (attack_id, item['name'], item['h_type']) not in output['attack_matrix'][cat]:
                 output['attack_matrix'][cat].append((attack_id, item['name'], item['h_type']))
@@ -757,7 +757,7 @@ def get_summary(sid, **kwargs):
 
         # Tag map
         output['map'].setdefault(sha256, [])
-        if tag_key not in output['map'][sha256]:
+        if sha256 not in output['map'][sha256]:
             output['map'][sha256].append(tag_key)
 
         # Tags
