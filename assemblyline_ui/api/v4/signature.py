@@ -695,7 +695,7 @@ def update_signature_source(service, name, **_):
     return make_api_response({"success": success})
 
 @signature_api.route("/sources/enable/<service>/<name>/", methods=["PUT"])
-@api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
+@api_login(allow_readonly=False, require_role=[ROLES.signature_manage])
 def set_signature_source_status(service, name, **_):
     """
     Set the enabled status of a signature source
