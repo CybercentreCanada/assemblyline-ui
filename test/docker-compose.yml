@@ -1,12 +1,114 @@
 
 services:
+  minio:
+    image: cccs/minio
+    environment:
+      MINIO_ROOT_USER: al_storage_key
+      MINIO_ROOT_PASSWORD: Ch@ngeTh!sPa33w0rd
+    ports:
+      - "9000:9000"
+    command: server /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3
+    environment:
+      - xpack.security.enabled=true
+      - discovery.type=single-node
+      - logger.level=WARN
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ELASTIC_PASSWORD=devpass
+    tmpfs:
+      - /usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --silent --fail -u elastic:$$ELASTIC_PASSWORD localhost:9200/_cluster/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: cccs/nginx-ssl-frontend
+    environment:
+      TEMPLATE: minimal
+    ports:
+      - "443:443"
+      - "80:80"
+
+# LDAP testing
+  openldap:
+    image: docker.io/bitnamilegacy/openldap:2.6
+    ports:
+      - '389:389'
+    environment:
+      LDAP_PORT_NUMBER: 389
+      LDAP_ROOT: dc=assemblyline,dc=local
+      LDAP_ADMIN_PASSWORD: admin
+      LDAP_USERS: ldap_user
+      LDAP_PASSWORDS: ldap_password
+      LDAP_USER_OU: people
+    healthcheck:
+      test: ["CMD", "ldapwhoami", "-xH", "ldapi:///"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  # ldapsearch -x -H ldap://localhost -b ou=people,dc=assemblyline,dc=local -D "cn=admin,dc=assemblyline,dc=local" -w admin
+
+# OAuth testing
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    environment:
+      - KC_HEALTH_ENABLED=true
+    volumes:
+      - ${PATH_REWRITE:-.}/config/keycloak-realm.json:/opt/keycloak/data/import/realm.json
+    command: start-dev --import-realm
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "{ printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+
   al_ui:
-    image: cccs/assemblyline_dev:4.7.1
+    build:
+      context: ../..
+      dockerfile: assemblyline-ui/test/Dockerfile
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.14}
+    environment:
+      PYTHONUNBUFFERED: "1"
     ports:
       - "5000:5000"
     volumes:
       - ${PATH_REWRITE:-.}/config/:/etc/assemblyline/
-      - ${ROOT_REWRITE:-../..}:/opt/alv4/
+      - ${ROOT_REWRITE:-../../assemblyline-base}:/opt/alv4/assemblyline-base
+      - ${ROOT_REWRITE:-../../assemblyline-core}:/opt/alv4/assemblyline-core
+      - ${ROOT_REWRITE:-../}:/opt/alv4/assemblyline-ui
     working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
     command: python3 app.py
     depends_on:
@@ -16,6 +118,10 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      openldap:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import requests; requests.head(\"http://localhost:5000/healthz/live\", timeout=2).raise_for_status()' || exit 1"]
       interval: 30s
@@ -25,12 +131,20 @@ services:
       - "localhost:host-gateway"
 
   al_socketio:
-    image: cccs/assemblyline_dev:4.7.1
+    build:
+      context: ../..
+      dockerfile: assemblyline-ui/test/Dockerfile
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.14}
+    environment:
+      PYTHONUNBUFFERED: "1"
     ports:
       - "5002:5002"
     volumes:
       - ${PATH_REWRITE:-.}/config/:/etc/assemblyline/
-      - ${ROOT_REWRITE:-../..}:/opt/alv4/
+      - ${ROOT_REWRITE:-../../assemblyline-base}:/opt/alv4/assemblyline-base
+      - ${ROOT_REWRITE:-../../assemblyline-core}:/opt/alv4/assemblyline-core
+      - ${ROOT_REWRITE:-../}:/opt/alv4/assemblyline-ui
     working_dir: /opt/alv4/assemblyline-ui/assemblyline_ui/
     command: python3 socketsrv.py
     depends_on:
@@ -48,89 +162,24 @@ services:
     extra_hosts:
       - "localhost:host-gateway"
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3
+  pytest:
+    build:
+      context: ../..
+      dockerfile: assemblyline-ui/test/Dockerfile
+      args:
+        - PYTHON_VERSION=${PYTHON_VERSION:-3.14}
     environment:
-      - xpack.security.enabled=true
-      - discovery.type=single-node
-      - logger.level=WARN
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - ELASTIC_PASSWORD=devpass
-    ports:
-      - "9200:9200"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -u elastic:devpass --silent --fail localhost:9200/_cluster/health || exit 1"
-        ]
-      interval: 30s
-      timeout: 30s
-      retries: 3
-
-  redis:
-    image: redis
-    ports:
-      - "6380:6379"
-      - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx:
-    image: cccs/nginx-ssl-frontend
-    environment:
-      TEMPLATE: minimal
-    ports:
-      - "443:443"
-      - "80:80"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ${PATH_REWRITE:-.}/config/:/etc/assemblyline/
+      - ${ROOT_REWRITE:-../../assemblyline-base}:/opt/alv4/assemblyline-base
+      - ${ROOT_REWRITE:-../../assemblyline-core}:/opt/alv4/assemblyline-core
+      - ${ROOT_REWRITE:-../}:/opt/alv4/assemblyline-ui
+    working_dir: /opt/alv4/assemblyline-ui
+    command: "pytest -vv --full-trace"
     depends_on:
       al_ui:
-        condition: service_started
+        condition: service_healthy
       al_socketio:
-        condition: service_started
-
-  minio:
-    image: minio/minio
-    environment:
-      MINIO_ROOT_USER: al_storage_key
-      MINIO_ROOT_PASSWORD: Ch@ngeTh!sPa33w0rd
-    ports:
-      - "9000:9000"
-    command: server /data
-
-# LDAP testing
-
-  openldap:
-    image: docker.io/bitnamilegacy/openldap:2.6
-    ports:
-      - '389:389'
-    environment:
-      LDAP_PORT_NUMBER: 389
-      LDAP_ROOT: dc=assemblyline,dc=local
-      LDAP_ADMIN_PASSWORD: admin
-      LDAP_USERS: ldap_user
-      LDAP_PASSWORDS: ldap_password
-      LDAP_USER_OU: people
-
-  # ldapsearch -x -H ldap://localhost -b ou=people,dc=assemblyline,dc=local -D "cn=admin,dc=assemblyline,dc=local" -w admin
-
-# OAuth testing
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.7
-    environment:
-      - KC_HEALTH_ENABLED=true
-    volumes:
-      - ${PATH_REWRITE:-.}/config/keycloak-realm.json:/opt/keycloak/data/import/realm.json
-    command: start-dev --import-realm
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD-SHELL", "{ printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+        condition: service_healthy
+    network_mode: "host"

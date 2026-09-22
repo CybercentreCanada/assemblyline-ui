@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "assemblyline-ui"
+version = "4.0.0.dev0"
+description = "Assemblyline 4 - API and Socket IO server"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "CCCS Assemblyline development team", email = "assemblyline@cyber.gc.ca" },
+]
+keywords = [
+    "assemblyline",
+    "automated",
+    "malware",
+    "analysis",
+    "gc",
+    "canada",
+    "cse-cst",
+    "cse",
+    "cst",
+    "cyber",
+    "cccs",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "assemblyline",
+    "assemblyline-core",
+    "werkzeug",
+    "flask<3.0.0",
+    "pyqrcode",
+    "markdown",
+    "python-ldap",
+    "python3-saml",
+    "Authlib>=1.3.1",
+    "fido2<1.0.0",
+    "PyJWT",
+    "gunicorn==24.1.1",
+    "gevent",
+    "xmlsec",
+    "lxml",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-mock",
+    "cart",
+]
+socketio = [
+    "python-socketio",
+    "flask-socketio",
+    "gevent-websocket",
+]
+
+[project.urls]
+Repository = "https://github.com/CybercentreCanada/assemblyline-ui/"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["assemblyline_ui*"]
+
+[tool.setuptools.package-data]
+assemblyline_ui = [
+    "VERSION",
+]
