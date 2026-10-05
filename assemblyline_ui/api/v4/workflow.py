@@ -50,9 +50,16 @@ def verify_query(query):
     return True
 
 
+def workflow_does_not_exist(workflow_id):
+    """Create an api response for when we want to report a workflow as not existing."""
+    return make_api_response({"success": False},
+                             err=f"Workflow ID {workflow_id} does not exist",
+                             status_code=404)
+
+
 @workflow_api.route("/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
-def add_workflow(**kwargs):
+def add_workflow(user, **_):
     """
     Add a workflow to the system
 
@@ -92,10 +99,15 @@ def add_workflow(**kwargs):
     if not verify_query(query):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
 
+    # Check that users are only creating workflows they can themselves see, if not set it will be UNRESTRICTED
+    if 'classification' in data:
+        if not CLASSIFICATION.is_accessible(user['classification'], data['classification']):
+            return make_api_response({"success": False}, err="Query contains an error", status_code=400)
+
     data.update({
         "workflow_id": get_random_id(),
-        "creator": kwargs['user']['uname'],
-        "edited_by": kwargs['user']['uname'],
+        "creator": user['uname'],
+        "edited_by": user['uname'],
         "priority": data['priority'] or None,
         "status": data['status'] or None,
         "origin": data.get('origin') or config.ui.fqdn
@@ -118,7 +130,7 @@ def add_workflow(**kwargs):
 
 @workflow_api.route("/<workflow_id>/", methods=["POST"])
 @api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
-def edit_workflow(workflow_id, **kwargs):
+def edit_workflow(workflow_id, user, **_):
     """
     Edit a workflow.
 
@@ -154,27 +166,23 @@ def edit_workflow(workflow_id, **kwargs):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
 
     wf = STORAGE.workflow.get(workflow_id, as_obj=False)
-    if wf:
-        uname = kwargs['user']['uname']
-        wf.update(data)
-        wf.update({
-            "edited_by": uname,
-            "last_edit": now_as_iso(),
-            "workflow_id": workflow_id
-        })
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf['classification']):
+        return workflow_does_not_exist(workflow_id)
+
+    wf.update(data)
+    wf.update({
+        "edited_by": user['uname'],
+        "last_edit": now_as_iso(),
+        "workflow_id": workflow_id
+    })
 
     success = STORAGE.workflow.save(workflow_id, wf)
-    if success:
-        return make_api_response({"success": success})
-    else:
-        return make_api_response({"success": False},
-                                 err="Workflow ID %s does not exist" % workflow_id,
-                                 status_code=404)
+    return make_api_response({"success": success})
 
 
 @workflow_api.route("/enable/<workflow_id>/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
-def set_workflow_status(workflow_id, **_):
+def set_workflow_status(workflow_id, user, **_):
     """
     Set the enabled status of a workflow
 
@@ -197,17 +205,22 @@ def set_workflow_status(workflow_id, **_):
 
     if enabled is None:
         return make_api_response({"success": False}, err="Enabled field is required", status_code=400)
-    else:
-        return make_api_response({'success': STORAGE.workflow.update(
-            workflow_id, [
-                (STORAGE.workflow.UPDATE_SET, 'enabled', enabled),
-                (STORAGE.workflow.UPDATE_SET, 'last_edit', now_as_iso()),
-            ])})
+
+    wf = STORAGE.workflow.get(workflow_id, as_obj=False)
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf['classification']):
+        return workflow_does_not_exist(workflow_id)
+
+    return make_api_response({'success': STORAGE.workflow.update(
+        workflow_id, [
+            (STORAGE.workflow.UPDATE_SET, 'enabled', enabled),
+            (STORAGE.workflow.UPDATE_SET, 'last_edit', now_as_iso()),
+        ]
+    )})
 
 
 @workflow_api.route("/<workflow_id>/", methods=["GET"])
 @api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_view])
-def get_workflow(workflow_id, **kwargs):
+def get_workflow(workflow_id, user, **_):
     """
     Load the user account information.
 
@@ -231,18 +244,11 @@ def get_workflow(workflow_id, **kwargs):
     }
     """
     wf = STORAGE.workflow.get(workflow_id, as_obj=False)
-    if wf:
-        wf['origin'] = wf.get('origin', config.ui.fqdn)
-        if CLASSIFICATION.is_accessible(kwargs['user']['classification'], wf['classification']):
-            return make_api_response(wf)
-        else:
-            return make_api_response({},
-                                     err="You're not allowed to view workflow ID: %s" % workflow_id,
-                                     status_code=403)
-    else:
-        return make_api_response({},
-                                 err="Workflow ID %s does not exist" % workflow_id,
-                                 status_code=404)
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf['classification']):
+        return workflow_does_not_exist(workflow_id)
+
+    wf['origin'] = wf.get('origin', config.ui.fqdn)
+    return make_api_response(wf)
 
 
 @workflow_api.route("/labels/", methods=["GET"])
@@ -273,7 +279,7 @@ def list_workflow_labels(**kwargs):
 
 @workflow_api.route("/<workflow_id>/", methods=["DELETE"])
 @api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_manage])
-def remove_workflow(workflow_id, **_):
+def remove_workflow(workflow_id, user, **_):
     """
     Remove the specified workflow.
 
@@ -291,18 +297,16 @@ def remove_workflow(workflow_id, **_):
      "success": true  # Was the remove successful?
     }
     """
-    wf = STORAGE.workflow.get(workflow_id)
-    if wf:
-        return make_api_response({"success": STORAGE.workflow.delete(workflow_id)})
-    else:
-        return make_api_response({"success": False},
-                                 err="Workflow ID %s does not exist" % workflow_id,
-                                 status_code=404)
+    wf: Workflow = STORAGE.workflow.get(workflow_id)
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf.classification):
+        return workflow_does_not_exist(workflow_id)
+
+    return make_api_response({"success": STORAGE.workflow.delete(workflow_id)})
 
 
 @workflow_api.route("/<workflow_id>/run/", methods=["GET"])
 @api_login(audit=False, allow_readonly=False, require_role=[ROLES.workflow_manage])
-def run_workflow(workflow_id, **_):
+def run_workflow(workflow_id, user, **_):
     """
     Run the specified workflow against all existing alerts that match the query
 
@@ -320,12 +324,10 @@ def run_workflow(workflow_id, **_):
      "success": true  # Was the run successful?
     }
     """
-    wf = STORAGE.workflow.get(workflow_id)
-    if wf:
-        # Process workflow against all alerts in the system matching the query
-        ret_value = STORAGE.alert.update_by_query(query=wf['query'], operations=get_alert_update_ops(wf))
-        return make_api_response({"success": ret_value is not False})
-    else:
-        return make_api_response({"success": False},
-                                 err="Workflow ID %s does not exist" % workflow_id,
-                                 status_code=404)
+    wf: Workflow = STORAGE.workflow.get(workflow_id)
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf.classification):
+        return workflow_does_not_exist(workflow_id)
+
+    # Process workflow against all alerts in the system matching the query
+    ret_value = STORAGE.alert.update_by_query(query=wf.query, operations=get_alert_update_ops(wf))
+    return make_api_response({"success": ret_value is not False})
