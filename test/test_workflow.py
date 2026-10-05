@@ -101,13 +101,13 @@ def test_restricted_workflow(datastore, login_session, login_user_session):
     """
     Make a shallow use of most workflow APIs in a context where it is permitted or blocked.
 
-    This test does not intend to
+    This test does not intend to verify that each endpoint is correct, just that its access control is enforced
     """
 
     _, session, host = login_session
-    ENABLE_BODY = json.dumps({'enabled': True})
+    ebody = json.dumps({'enabled': True})
 
-    # Create, enable, and fetch a restricted workflow
+    # Create, enable, edit, and fetch a restricted workflow
     workflow = random_model_obj(Workflow).as_primitives()
     workflow['query'] = "file.sha256:*"
     workflow['classification'] = 'RESTRICTED'
@@ -118,7 +118,7 @@ def test_restricted_workflow(datastore, login_session, login_user_session):
 
     resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="POST", data=json.dumps(workflow))
     assert resp['success']
-    resp = get_api_data(session, f"{host}/api/v4/workflow/enable/{workflow_id}/", method="PUT", data=ENABLE_BODY)
+    resp = get_api_data(session, f"{host}/api/v4/workflow/enable/{workflow_id}/", method="PUT", data=ebody)
     assert resp['success']
 
     datastore.workflow.commit()
@@ -126,15 +126,16 @@ def test_restricted_workflow(datastore, login_session, login_user_session):
     resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
     assert resp == datastore.workflow.get(workflow_id, as_obj=False)
 
-    # Fail to fetch, enable, or remove the same workflow as a user that shouldn't have access
+    # Fail to fetch, edit, enable, or remove the same workflow as a user that shouldn't have access
     _, session, host = login_user_session
     with pytest.raises(APIError, match='does not exist'):
         get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
     with pytest.raises(APIError, match='does not exist'):
-        resp = get_api_data(session, f"{host}/api/v4/workflow/enable/{workflow_id}/", method="PUT", data=ENABLE_BODY)
+        resp = get_api_data(session, f"{host}/api/v4/workflow/enable/{workflow_id}/", method="PUT", data=ebody)
     with pytest.raises(APIError, match='does not exist'):
         get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="DELETE")
-    with pytest.raises(APIError):
+    with pytest.raises(APIError, match='does not exist'):
+        workflow['classification'] = 'UNRESTRICTED'
         get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="POST", data=json.dumps(workflow))
 
     # Remove the restricted workflow
