@@ -154,6 +154,7 @@ def login_user_session(host):
     except requests.ConnectionError as err:
         pytest.skip(str(err))
 
+
 def get_api_data(session, url, params=None, data=None, method="GET", raw=False, headers=None, files=None):
 
     if headers is None:

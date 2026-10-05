@@ -102,7 +102,7 @@ def add_workflow(user, **_):
     # Check that users are only creating workflows they can themselves see, if not set it will be UNRESTRICTED
     if 'classification' in data:
         if not CLASSIFICATION.is_accessible(user['classification'], data['classification']):
-            return make_api_response({"success": False}, err="Query contains an error", status_code=400)
+            return make_api_response({"success": False}, err="Verify classification field", status_code=400)
 
     data.update({
         "workflow_id": get_random_id(),
@@ -164,6 +164,10 @@ def edit_workflow(workflow_id, user, **_):
 
     if not verify_query(query):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
+
+    if 'classification' in data:
+        if not CLASSIFICATION.is_accessible(user['classification'], data['classification']):
+            return make_api_response({"success": False}, err="Verify classification field", status_code=400)
 
     wf = STORAGE.workflow.get(workflow_id, as_obj=False)
     if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf['classification']):
@@ -298,7 +302,7 @@ def remove_workflow(workflow_id, user, **_):
     }
     """
     wf: Workflow = STORAGE.workflow.get(workflow_id)
-    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf.classification):
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf.classification.value):
         return workflow_does_not_exist(workflow_id)
 
     return make_api_response({"success": STORAGE.workflow.delete(workflow_id)})
@@ -325,7 +329,7 @@ def run_workflow(workflow_id, user, **_):
     }
     """
     wf: Workflow = STORAGE.workflow.get(workflow_id)
-    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf.classification):
+    if not wf or not CLASSIFICATION.is_accessible(user['classification'], wf.classification.value):
         return workflow_does_not_exist(workflow_id)
 
     # Process workflow against all alerts in the system matching the query
