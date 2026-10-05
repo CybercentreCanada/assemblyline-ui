@@ -59,7 +59,7 @@ def workflow_does_not_exist(workflow_id):
 
 @workflow_api.route("/", methods=["PUT"])
 @api_login(allow_readonly=False, require_role=[ROLES.workflow_manage])
-def add_workflow(**kwargs):
+def add_workflow(user, **_):
     """
     Add a workflow to the system
 
@@ -99,10 +99,15 @@ def add_workflow(**kwargs):
     if not verify_query(query):
         return make_api_response({"success": False}, err="Query contains an error", status_code=400)
 
+    # Check that users are only creating workflows they can themselves see, if not set it will be UNRESTRICTED
+    if 'classification' in data:
+        if not CLASSIFICATION.is_accessible(user['classification'], data['classification']):
+            return make_api_response({"success": False}, err="Query contains an error", status_code=400)
+
     data.update({
         "workflow_id": get_random_id(),
-        "creator": kwargs['user']['uname'],
-        "edited_by": kwargs['user']['uname'],
+        "creator": user['uname'],
+        "edited_by": user['uname'],
         "priority": data['priority'] or None,
         "status": data['status'] or None,
         "origin": data.get('origin') or config.ui.fqdn
