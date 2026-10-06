@@ -52,8 +52,8 @@ setup(
         'PyJWT',
         'gunicorn==24.1.1',
         'gevent',
-        'xmlsec==1.3.14',
-        'lxml==5.3.2'
+        'xmlsec',
+        'lxml'
     ],
     extras_require={
         'test': [

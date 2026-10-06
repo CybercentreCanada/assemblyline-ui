@@ -25,17 +25,17 @@ jobs:
   - job: run_test
     strategy:
       matrix:
-        Python3_10:
-          python.version: "3.10"
         Python3_11:
           python.version: "3.11"
+        Python3_12:
+          python.version: "3.12"
+        Python3_13:
+          python.version: "3.13"
+        Python3_14:
+          python.version: "3.14"
 
     timeoutInMinutes: 15
     steps:
-      - task: UsePythonVersion@0
-        displayName: Set python version
-        inputs:
-          versionSpec: "$(python.version)"
       - checkout: self
         displayName: Checkout assemblyline-ui
       - checkout: assemblyline-base
@@ -43,39 +43,31 @@ jobs:
       - checkout: assemblyline-core
         displayName: Checkout assemblyline-core
       - script: |
-          sudo mkdir -p /etc/assemblyline/
-          sudo mkdir -p /var/cache/assemblyline/
-          sudo mkdir -p /var/lib/assemblyline/
-          sudo chmod a+rw /var/cache/assemblyline/
-          sudo chmod a+rw /var/lib/assemblyline/
-          sudo apt-get update
-          sudo apt-get install -y build-essential libffi-dev libfuzzy-dev python3-dev libldap2-dev libsasl2-dev wget
-          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install -U pip setuptools wheel
-        displayName: Setup Environment
-        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
-      - script: |
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
-          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install --no-cache-dir -e .
+          git status
         displayName: Install assemblyline
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-base
       - script: |
           git checkout -b $BRANCH_NAME -t origin/$BRANCH_NAME || true
-          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install --no-cache-dir -e .
+          git status
         displayName: Install assemblyline-core
         workingDirectory: $(Pipeline.Workspace)/s/assemblyline-core
       - script: |
-          sudo env "PATH=$PATH" "PIP_USE_PEP517=true" python -m pip install --no-cache-dir -e .[test,socketio]
-        displayName: Install assemblyline-ui
-        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+          # Start all services except pytest
+          docker compose up -d --wait $(docker compose config --services | grep -v pytest)
+        displayName: Setup environment
+        workingDirectory: $(System.DefaultWorkingDirectory)/assemblyline-ui/test
+
       - script: |
-          # Start up dependencies
-          sudo docker compose --progress=quiet -f test/docker-compose.yml up -d --wait
-
-          # Install configuration & classification files
-          sudo cp test/config/classification.yml /etc/assemblyline/classification.yml
-          sudo cp test/config/config.yml /etc/assemblyline/config.yml
-
-          # Start test
-          pytest -rsx -vv
-        workingDirectory: $(Pipeline.Workspace)/s/assemblyline-ui
+          # Start up pytest service from Docker Compose and run the tests
+          docker compose run --build pytest pytest --durations=10 -rsx -vv --color=yes --junitxml=/opt/alv4/assemblyline-ui/test/test-results.xml
         displayName: Test
+        workingDirectory: $(System.DefaultWorkingDirectory)/assemblyline-ui/test
+
+      - task: PublishTestResults@2
+        condition: always()
+        displayName: Publish test results
+        inputs:
+          testResultsFiles: "assemblyline-ui/test/test-results.xml"
+          searchFolder: $(System.DefaultWorkingDirectory)
+          testRunTitle: "python$(PYTHON_VERSION)"
