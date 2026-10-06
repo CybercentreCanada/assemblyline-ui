@@ -84,6 +84,7 @@ class LiveSubmissionNamespace(SecureNamespace):
         if ROLES.submission_view not in user_info['roles']:
             LOGGER.warning("SocketIO:%s - %s - User denied access to submission streaming.",
                            self.namespace, user_info['display'])
+            self.disconnect(user_info['sid'], self.namespace)
             return
 
         if not validate_reply_queue_name(queue_id, prefix="D", suffix="WQ"):
