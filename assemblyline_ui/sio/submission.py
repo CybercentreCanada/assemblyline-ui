@@ -54,6 +54,7 @@ class SubmissionMonitoringNamespace(SecureNamespace):
         if ROLES.submission_view not in user_info['roles']:
             LOGGER.warning("SocketIO:%s - %s - User denied access to submission streaming.",
                            self.namespace, user_info['display'])
+            self.disconnect(user_info['sid'], self.namespace)
             return
 
         LOGGER.info("SocketIO:%s - %s - User as started monitoring submissions...",
