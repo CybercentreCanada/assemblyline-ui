@@ -1,9 +1,12 @@
 import pytest
 import requests
+import json
 import socketio
 import socketio.exceptions
+import threading
 import time
 
+from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes import reply_queue_name
 from conftest import get_api_data
 
@@ -72,6 +75,7 @@ def test_alert_namespace(datastore, sio):
     updated.msg_type = "AlertUpdated"
 
     test_res_array = []
+    disconnected = threading.Event()
 
     @sio.on('monitoring', namespace='/alerts')
     def on_monitoring(data):
@@ -86,6 +90,10 @@ def test_alert_namespace(datastore, sio):
     def on_alert_updated(data):
         test_res_array.append(('on_alert_updated', data == updated.as_primitives()['msg']))
 
+    @sio.on('disconnect', namespace='/alerts')
+    def disconnect(data):
+        disconnected.set()
+
     try:
         sio.emit('alert', test_id, namespace='/alerts')
         sio.sleep(1)
@@ -95,7 +103,7 @@ def test_alert_namespace(datastore, sio):
 
         start_time = time.time()
 
-        while len(test_res_array) < 3 or time.time() - start_time < 5:
+        while len(test_res_array) < 3 and time.time() - start_time < 5 and not disconnected.is_set():
             sio.sleep(0.1)
 
         assert len(test_res_array) == 3
@@ -119,6 +127,7 @@ def test_live_namespace(datastore, sio):
     cachekeyerr_msg = {'status_code': 200, 'msg': get_random_id()}
 
     test_res_array = []
+    disconnected = threading.Event()
 
     @sio.on('start', namespace='/live_submission')
     def on_start(data):
@@ -133,8 +142,12 @@ def test_live_namespace(datastore, sio):
         test_res_array.append(('on_cachekey', data == cachekey_msg))
 
     @sio.on('cachekeyerr', namespace='/live_submission')
-    def on_stop(data):
+    def on_cachekeyerr(data):
         test_res_array.append(('on_cachekeyerr', data == cachekeyerr_msg))
+
+    @sio.on('disconnect', namespace='/live_submission')
+    def disconnect(data):
+        disconnected.set()
 
     try:
         sio.emit('listen', wq_data, namespace='/live_submission')
@@ -147,7 +160,7 @@ def test_live_namespace(datastore, sio):
 
         start_time = time.time()
 
-        while len(test_res_array) < 4 and time.time() - start_time < 5:
+        while len(test_res_array) < 4 and time.time() - start_time < 5 and not disconnected.is_set():
             sio.sleep(0.1)
 
         assert len(test_res_array) == 4
@@ -172,6 +185,7 @@ def test_status_namspace(datastore, sio):
     service_hb_msg = random_model_obj(ServiceMessage).as_primitives()
 
     test_res_array = []
+    disconnected = threading.Event()
 
     @sio.on('monitoring', namespace='/status')
     def on_monitoring(data):
@@ -198,6 +212,10 @@ def test_status_namspace(datastore, sio):
     def on_service_heartbeat(data):
         test_res_array.append(('on_service_heartbeat', data == service_hb_msg['msg']))
 
+    @sio.on('disconnect', namespace='/status')
+    def disconnect(data):
+        disconnected.set()
+
     try:
         sio.emit('monitor', monitoring, namespace='/status')
         sio.sleep(1)
@@ -210,7 +228,7 @@ def test_status_namspace(datastore, sio):
 
         start_time = time.time()
 
-        while len(test_res_array) < 6 and time.time() - start_time < 5:
+        while len(test_res_array) < 6 and time.time() - start_time < 5 and not disconnected.is_set():
             sio.sleep(0.1)
 
         assert len(test_res_array) == 6
@@ -237,6 +255,7 @@ def test_submission_namespace(datastore, sio):
     started['msg_type'] = "SubmissionStarted"
 
     test_res_array = []
+    disconnected = threading.Event()
 
     @sio.on('monitoring', namespace='/submissions')
     def on_monitoring(data):
@@ -259,6 +278,10 @@ def test_submission_namespace(datastore, sio):
     def on_submission_started(data):
         test_res_array.append(('on_submission_started', data == started['msg']))
 
+    @sio.on('disconnect', namespace='/submissions')
+    def disconnect(data):
+        disconnected.set()
+
     try:
         sio.emit('monitor', monitoring, namespace='/submissions')
         sio.sleep(1)
@@ -270,7 +293,7 @@ def test_submission_namespace(datastore, sio):
 
         start_time = time.time()
 
-        while len(test_res_array) < 5 and time.time() - start_time < 5:
+        while len(test_res_array) < 5 and time.time() - start_time < 5 and not disconnected.is_set():
             sio.sleep(0.1)
 
         assert len(test_res_array) == 5
@@ -280,3 +303,59 @@ def test_submission_namespace(datastore, sio):
                 pytest.fail(f"{test} failed.")
     finally:
         sio.disconnect()
+
+
+@pytest.fixture(scope="function")
+def limited_sio(datastore, login_session):
+    # Create a very limited api key
+    _, session, host = login_session
+    key_name = 'siodevkey' + get_random_id()
+
+    test_apikey = dict({
+        "priv": ['C'],
+        "key_name": key_name,
+        "uname": "admin",
+        "expiry_ts": None,
+        "roles": [ROLES.file_download]
+    })
+
+    resp = get_api_data(session, f"{host}/api/v4/apikey/add/",
+                        data=json.dumps(test_apikey), method="PUT")
+    apikey = resp['keypassword']
+
+    # Replace the session and relogin with this limited apikey
+    session = requests.Session()
+    _ = get_api_data(session, f"{host}/api/v4/auth/login/", params={'user': 'admin', 'apikey': apikey})
+
+    sio = socketio.Client()
+    headers = {
+        'Cookie': f"session={session.cookies.get('session', None)}",
+        'X-XSRF-TOKEN': session.headers.get('X-XSRF-TOKEN', None),
+        # 'X-APIKEY': apikey,
+        # 'X-USER': 'admin',
+    }
+
+    sio_host = None
+    for api_host, _sio in SIO_HOSTS.items():
+        if api_host in host:
+            sio_host = _sio
+            break
+
+    assert sio_host
+    sio.connect(sio_host, namespaces=['/alerts', '/live_submission', "/submissions", '/status'], headers=headers)
+    return sio
+
+
+def test_alert_namespace_refused(datastore, limited_sio):
+    with pytest.raises(AssertionError):
+        test_alert_namespace(datastore, limited_sio)
+
+
+def test_live_namespace_refused(datastore, limited_sio):
+    with pytest.raises(AssertionError):
+        test_live_namespace(datastore, limited_sio)
+
+
+def test_submission_namespace_refused(datastore, limited_sio):
+    with pytest.raises(AssertionError):
+        test_submission_namespace(datastore, limited_sio)
