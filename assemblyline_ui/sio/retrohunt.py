@@ -43,6 +43,7 @@ class RetrohuntNamespace(SecureNamespace):
         if ROLES.retrohunt_view not in user_info['roles']:
             LOGGER.warning("SocketIO:%s - %s - User denied access to retrohunt streaming.",
                            self.namespace, user_info['display'])
+            self.disconnect(user_info['sid'], self.namespace)
             return
 
         doc = datastore.retrohunt.get(search_key, as_obj=False)
