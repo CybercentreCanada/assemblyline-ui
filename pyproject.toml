@@ -71,7 +71,7 @@ Repository = "https://github.com/CybercentreCanada/assemblyline-ui/"
 include-package-data = true
 
 [tool.setuptools.dynamic]
-version = { file = ["VERSION"] }
+version = { file = ["assemblyline_ui/VERSION"] }
 
 [tool.setuptools.packages.find]
 include = ["assemblyline_ui*"]
