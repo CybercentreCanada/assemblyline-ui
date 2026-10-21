@@ -658,7 +658,13 @@ def get_service(servicename, **_):
                 if "update_interval" not in s:
                     s["update_interval"] = service["update_config"]["update_interval_seconds"]
 
-        service["auto_update"] = service.get("auto_update", config.services.default_auto_update)
+        # Ensure service auto_update is set
+        service["auto_update"] = (
+            config.services.default_auto_update
+            if service.get("auto_update") is None
+            else service["auto_update"]
+        )
+
         # Ensure service classification is set in response
         service["classification"] = service.get("classification", Classification.UNRESTRICTED)
         return make_api_response(service)
@@ -708,7 +714,13 @@ def get_service_defaults(servicename, version, **_):
     service = STORAGE.service.get(f"{servicename}_{version}", as_obj=False)
     append_source_status(service)
     if service:
-        service["auto_update"] = service.get("auto_update", config.services.default_auto_update)
+        # Ensure service auto_update is set
+        service["auto_update"] = (
+            config.services.default_auto_update
+            if service.get("auto_update") is None
+            else service["auto_update"]
+        )
+
         # Ensure service classification is set in response
         service["classification"] = service.get("classification", Classification.UNRESTRICTED)
         return make_api_response(service)
