@@ -712,11 +712,8 @@ def get_service_defaults(servicename, version, **_):
     append_source_status(service)
     if service:
         # Ensure service auto_update is set
-        service["auto_update"] = (
-            config.services.default_auto_update
-            if service.get("auto_update") is None
-            else service["auto_update"]
-        )
+        if service.get("auto_update") is None:
+            service["auto_update"] = config.services.default_auto_update
 
         # Ensure service classification is set in response
         service["classification"] = service.get("classification", Classification.UNRESTRICTED)
