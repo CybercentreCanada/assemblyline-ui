@@ -3,7 +3,7 @@ ARG base=cccs/assemblyline
 FROM $base:$branch AS base
 # Switch to root to install common dependancies
 USER root
-RUN apt-get update && apt-get install -yy libldap-2.5-0 libsasl2-2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -yy libldap2 libsasl2-2 && rm -rf /var/lib/apt/lists/*
 
 # Create a temporarary image to compile dependencies
 FROM base AS builder
@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -yy build-essential libldap2-dev libsasl2-
 # Install assemblyline UI into local so it merges new and old packages
 USER assemblyline
 RUN touch /tmp/before-pip
-COPY setup.py dist* dist/
+COPY pyproject.toml dist* dist/
 RUN pip install --no-cache-dir -f dist --user assemblyline-core==$version assemblyline-ui[socketio]==$version
 
 # Remove files that existed before the pip install so that our copy command below doesn't take a snapshot of
