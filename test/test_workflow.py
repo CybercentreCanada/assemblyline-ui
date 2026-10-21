@@ -59,6 +59,33 @@ def test_add_workflow(datastore, login_session):
     assert new_workflow == workflow
 
 
+def test_user_add_workflow(datastore, login_user_session):
+    _, session, host = login_user_session
+
+    workflow = random_model_obj(Workflow).as_primitives()
+    workflow['query'] = "file.sha256:*"
+    workflow['creator'] = 'admin'  # This should be overwritten by the correct user
+    workflow['edited_by'] = 'admin'
+    workflow['classification'] = 'RESTRICTED'  # This should be blocked as the 'user' user can't see this
+
+    with pytest.raises(APIError):
+        resp = get_api_data(session, f"{host}/api/v4/workflow/", method="PUT", data=json.dumps(workflow))
+
+    workflow['classification'] = 'UNRESTRICTED'
+    resp = get_api_data(session, f"{host}/api/v4/workflow/", method="PUT", data=json.dumps(workflow))
+    assert resp['success']
+    workflow['workflow_id'] = resp['workflow_id']
+    workflow_list.append(resp['workflow_id'])
+
+    datastore.workflow.commit()
+
+    new_workflow = datastore.workflow.get(resp['workflow_id'], as_obj=False)
+    workflow['creator'] = 'user'
+    workflow['edited_by'] = 'user'
+    workflow['classification'] = 'TLP:CLEAR'
+    assert new_workflow == workflow
+
+
 # noinspection PyUnusedLocal
 def test_get_workflow(datastore, login_session):
     _, session, host = login_session
@@ -67,6 +94,59 @@ def test_get_workflow(datastore, login_session):
 
     resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
     assert resp == datastore.workflow.get(workflow_id, as_obj=False)
+
+
+# noinspection PyUnusedLocal
+def test_restricted_workflow(datastore, login_session, login_user_session):
+    """
+    Make a shallow use of most workflow APIs in a context where it is permitted or blocked.
+
+    This test does not intend to verify that each endpoint is correct, just that its access control is enforced
+    """
+
+    _, session, host = login_session
+    ebody = json.dumps({'enabled': True})
+
+    # Create, enable, edit, and fetch a restricted workflow
+    workflow = random_model_obj(Workflow).as_primitives()
+    workflow['query'] = "file.sha256:*"
+    workflow['classification'] = 'RESTRICTED'
+    resp = get_api_data(session, f"{host}/api/v4/workflow/", method="PUT", data=json.dumps(workflow))
+    assert resp['success']
+    workflow_id = resp['workflow_id']
+    workflow_list.append(workflow_id)
+
+    resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="POST", data=json.dumps(workflow))
+    assert resp['success']
+    resp = get_api_data(session, f"{host}/api/v4/workflow/enable/{workflow_id}/", method="PUT", data=ebody)
+    assert resp['success']
+
+    datastore.workflow.commit()
+
+    resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
+    assert resp == datastore.workflow.get(workflow_id, as_obj=False)
+
+    # Fail to fetch, edit, enable, or remove the same workflow as a user that shouldn't have access
+    _, session, host = login_user_session
+    with pytest.raises(APIError, match='does not exist'):
+        get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
+    with pytest.raises(APIError, match='does not exist'):
+        resp = get_api_data(session, f"{host}/api/v4/workflow/enable/{workflow_id}/", method="PUT", data=ebody)
+    with pytest.raises(APIError, match='does not exist'):
+        get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="DELETE")
+    with pytest.raises(APIError, match='does not exist'):
+        workflow['classification'] = 'UNRESTRICTED'
+        get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="POST", data=json.dumps(workflow))
+
+    # Remove the restricted workflow
+    _, session, host = login_session
+    resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
+    assert resp == datastore.workflow.get(workflow_id, as_obj=False)
+    resp = get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/", method="DELETE")
+    assert resp['success']
+    with pytest.raises(APIError, match='does not exist'):
+        get_api_data(session, f"{host}/api/v4/workflow/{workflow_id}/")
+    workflow_list.remove(workflow_id)
 
 
 # noinspection PyUnusedLocal

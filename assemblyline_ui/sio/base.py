@@ -73,35 +73,39 @@ class SecureNamespace(Namespace):
         pass
 
 
-def get_request_id(request_p):
+def get_request_id(request_p) -> str | None:
     if hasattr(request_p, "sid"):
         return request_p.sid
     return None
 
 
-def get_user_info(request_p, session_p):
+def get_user_info(request_p, session_p) -> dict:
     src_ip = request_p.headers.get("X-Forwarded-For", request_p.remote_addr)
 
     if "," in src_ip:
         # Extract the first IP in case of multiple proxies from X-Forwarded-For
         src_ip = src_ip.split(",")[0].strip()
 
+    # Make sure we can identify the request and the session
     sid = get_request_id(request_p)
-    uname = None
     session_id = session_p.get("session_id", None)
-    if session_id:
-        current_session = FLASK_SESSIONS.get(session_id)
-        if current_session:
-            if config.ui.validate_session_ip and src_ip != current_session.get('ip', None):
-                raise AuthenticationFailure(f"IP {src_ip} does not match session IP {current_session.get('ip', None)}")
+    if not sid or not session_id:
+        raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
 
-            if config.ui.validate_session_useragent and \
-                    request_p.headers.get("User-Agent", None) != current_session.get('user_agent', None):
-                raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
+    current_session = FLASK_SESSIONS.get(session_id)
+    if not current_session:
+        raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
 
-            uname = current_session['username']
+    # Since we have a session, make sure the ip and user agent haven't shifted if we are validating this
+    if config.ui.validate_session_ip and src_ip != current_session.get('ip', None):
+        raise AuthenticationFailure(f"IP {src_ip} does not match session IP {current_session.get('ip', None)}")
 
-    user_classification = None
+    if config.ui.validate_session_useragent and \
+            request_p.headers.get("User-Agent", None) != current_session.get('user_agent', None):
+        raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
+
+    # Load the user information
+    uname = current_session['username']
     if not uname:
         raise AuthenticationFailure(f"Un-authenticated connection attempt rejected from ip: {src_ip}")
 
@@ -111,6 +115,10 @@ def get_user_info(request_p, session_p):
 
     user_classification = user['classification']
     user_roles = load_roles(user['type'], user['roles'])
+
+    limits = current_session.get('roles_limit', None)
+    if limits is not None:
+        user_roles = list(set(limits).intersection(set(user_roles)))
 
     return {
         'uname': uname,

@@ -21,6 +21,7 @@ apikey_list = [get_apikey_id(DEV_APIKEY_NAME, "admin"), get_apikey_id(DEV_APIKEY
 DEFAULT_ACL = ["R"]
 DEFAULT_ROLES = [r for r in load_roles_form_acls(DEFAULT_ACL, [])]
 
+
 @pytest.fixture(scope="module")
 def datastore(datastore_connection):
     global apikey_list
@@ -61,6 +62,7 @@ def test_apikey_list(datastore, login_session):
         # make sure api is not returning password
         assert 'password' not in item.keys()
 
+
 # noinspection PyUnusedLocal
 def test_not_allowed_apikey_list(datastore, login_user_session):
     user_info , session, host = login_user_session
@@ -69,6 +71,7 @@ def test_not_allowed_apikey_list(datastore, login_user_session):
 
     with pytest.raises(APIError):
         resp = get_api_data(session, f"{host}/api/v4/apikey/list/")
+
 
 # noinspection PyUnusedLocal
 def test_admin_get_apikey(datastore, login_session):
@@ -85,6 +88,7 @@ def test_admin_get_apikey(datastore, login_session):
     assert resp['uname'] == "user"
     assert resp["key_name"] == DEV_APIKEY_NAME
     assert resp["id"] == user_apikey_id
+
 
 # noinspection PyUnusedLocal
 def test_get_apikey(datastore, login_user_session):
@@ -123,7 +127,6 @@ def test_list_user_apikey(datastore, login_user_session):
     assert len(resp) == NUM_KEYS+1
     for key in resp:
         assert key["uname"] == username
-
 
 
 # noinspection PyUnusedLocal
@@ -188,7 +191,7 @@ def test_admin_add_apikey(datastore, login_session):
 
     apikey = datastore.apikey.get(key_id, as_obj=False)
 
-    roles = set( [r for r in load_roles_form_acls(["W"], [])])
+    roles = set(r for r in load_roles_form_acls(["W"], []))
 
     # updating key should not update password
     assert old_password == apikey["password"]
@@ -196,7 +199,6 @@ def test_admin_add_apikey(datastore, login_session):
     assert apikey["expiry_ts"] == None
     assert set(apikey["acl"]).issubset(set(["W"])) and set(apikey["acl"]).issuperset(set(["W"]))
     assert set(apikey["roles"]).issubset(roles) and set(apikey["roles"]).issuperset(roles)
-
 
     # make new key
     random_apikey = dict({

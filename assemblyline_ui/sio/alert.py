@@ -55,6 +55,7 @@ class AlertMonitoringNamespace(SecureNamespace):
         if ROLES.alert_view not in user_info['roles']:
             LOGGER.warning("SocketIO:%s - %s - User denied access to alert streaming.",
                            self.namespace, user_info['display'])
+            self.disconnect(user_info['sid'], self.namespace)
             return
 
         LOGGER.info(f"SocketIO:{self.namespace} - {user_info['display']} - User as started monitoring alerts...")
