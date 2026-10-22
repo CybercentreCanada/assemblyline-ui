@@ -797,7 +797,7 @@ def remove_service(servicename, **_):
         success = True
         if not STORAGE.service_delta.delete(servicename):
             success = False
-        if not STORAGE.service.delete_by_query(f"id:{servicename}_4*"):
+        if not STORAGE.service.delete_by_query(f"id:{servicename}_{FRAMEWORK_VERSION}*"):
             success = False
         STORAGE.heuristic.delete_by_query(f"id:{servicename.upper()}.*")
         STORAGE.signature.delete_by_query(f"type:{servicename.lower()}")
