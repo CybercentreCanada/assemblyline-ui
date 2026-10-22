@@ -1,7 +1,7 @@
 
 services:
   minio:
-    image: cccs/minio
+    image: cgr.dev/chainguard/minio
     environment:
       MINIO_ROOT_USER: al_storage_key
       MINIO_ROOT_PASSWORD: Ch@ngeTh!sPa33w0rd
@@ -18,7 +18,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.3
     environment:
-      - xpack.security.enabled=true
+      - xpack.security.enabled=false
       - discovery.type=single-node
       - logger.level=WARN
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
@@ -41,7 +41,7 @@ services:
       retries: 3
 
   redis:
-    image: redis
+    image: valkey/valkey:8.1.4
     ports:
       - "6379:6379"
     healthcheck:
