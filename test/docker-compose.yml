@@ -23,9 +23,6 @@ services:
       - logger.level=WARN
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - ELASTIC_PASSWORD=devpass
-      - "cluster.routing.allocation.disk.watermark.low=10gb"
-      - "cluster.routing.allocation.disk.watermark.high=5gb"
-      - "cluster.routing.allocation.disk.watermark.flood_stage=1gb"
     tmpfs:
       - /usr/share/elasticsearch/data
     ports:
