@@ -288,3 +288,66 @@ def test_remove_service_sources(datastore, login_session, suricata_init_config):
             break
 
     assert old_not_found
+
+
+def test_add_service_normalizes_source_private_key(datastore, login_session):
+    _, session, host = login_session
+    name = "PrivateKeyTest"
+    version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
+    manifest = {
+        "name": name,
+        "version": version,
+        "enabled": False,
+        "docker_config": {"image": "cccs/assemblyline-service-privatekeytest:latest"},
+        "update_config": {
+            "update_interval_seconds": 3600,
+            "sources": [
+                {
+                    "name": "keyed",
+                    "uri": "git@example.com:org/rules.git",
+                    # Not a real key; no trailing newline, as secrets are often stored
+                    "private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nNOT-A-KEY\n-----END OPENSSH PRIVATE KEY-----",
+                },
+                {"name": "unkeyed", "uri": "https://example.com/rules.tar.gz"},
+            ],
+        },
+    }
+
+    try:
+        resp = get_api_data(session, f"{host}/api/v4/service/", method="PUT", data=yaml.safe_dump(manifest))
+        assert resp["service_name"] == name
+        datastore.service.commit()
+
+        sources = datastore.get_service_with_delta(name, as_obj=False)["update_config"]["sources"]
+        keys = {s["name"]: s["private_key"] for s in sources}
+        assert keys["keyed"].endswith("-----END OPENSSH PRIVATE KEY-----\n")
+        assert keys["unkeyed"] in ("", None)
+    finally:
+        datastore.service.delete(f"{name}_{version}")
+        datastore.service_delta.delete(name)
+        datastore.service.commit()
+        datastore.service_delta.commit()
+
+
+@pytest.mark.parametrize("update_config", ["omitted", None, {"sources": [], "update_interval_seconds": 3600}])
+def test_add_service_without_update_sources(datastore, login_session, update_config):
+    _, session, host = login_session
+    name = "NoSourcesTest"
+    version = f"{FRAMEWORK_VERSION}.{SYSTEM_VERSION}.{BUILD_MINOR}.1"
+    manifest = {
+        "name": name,
+        "version": version,
+        "enabled": False,
+        "docker_config": {"image": "cccs/assemblyline-service-nosourcestest:latest"},
+    }
+    if update_config != "omitted":
+        manifest["update_config"] = update_config
+
+    try:
+        resp = get_api_data(session, f"{host}/api/v4/service/", method="PUT", data=yaml.safe_dump(manifest))
+        assert resp["service_name"] == name
+    finally:
+        datastore.service.delete(f"{name}_{version}")
+        datastore.service_delta.delete(name)
+        datastore.service.commit()
+        datastore.service_delta.commit()
