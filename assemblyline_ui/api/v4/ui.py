@@ -170,8 +170,7 @@ def flowjs_upload_chunk(**kwargs):
 
                 # Once the file is reconstructed, save it to the cache with the original identifier
                 target_file.flush()
-                target_file.seek(0)
-                cache.save(ui_sid, target_file.read())
+                cache.upload(ui_sid, target_file.name)
 
     return make_api_response({'success': True, 'completed': completed})
 
