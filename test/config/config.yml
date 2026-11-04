@@ -90,10 +90,11 @@ filestore:
     ]
 
 logging:
-  log_level: DISABLED
+  log_level: DEBUG
   log_to_console: true
   log_to_file: false
   log_to_syslog: false
+  log_as_json: false
 
 submission:
   metadata:

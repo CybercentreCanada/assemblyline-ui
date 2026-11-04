@@ -99,7 +99,8 @@ def test_backup_and_restore(datastore, login_session, full):
     assert 'server' in backup_data
     assert 'data' in backup_data
 
-    service = random.choice(list(TEMP_SERVICES.keys()))
+    # Pick a service from the backup to remove
+    service = random.choice(list(backup_data['data'].keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/{service}/", method="DELETE")
     assert resp['success']
     datastore.service_delta.commit()
@@ -159,11 +160,12 @@ def test_get_service_constants(datastore, login_session, config):
 def test_get_all_services(datastore, login_session):
     _, session, host = login_session
 
-    svc_list = sorted(list(TEMP_SERVICES.keys()))
     resp = get_api_data(session, f"{host}/api/v4/service/all/")
-    assert len(resp) == len(svc_list)
-    for svc in resp:
-        assert svc['name'] in svc_list
+
+    expected_svc_list = sorted(list(TEMP_SERVICES.keys()))
+    actual_svc_list = sorted([svc['name'] for svc in resp])
+
+    assert actual_svc_list == expected_svc_list
 
 
 # noinspection PyUnusedLocal
