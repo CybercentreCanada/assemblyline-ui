@@ -5,6 +5,7 @@ import random
 from io import BytesIO
 
 import pytest
+from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.random_data import (
@@ -93,6 +94,21 @@ def upload_file_flowjs(session, host, data=None):
 
     return ui_id, data
 
+def test_flowjs_upload_chunk(datastore, login_session, tmp_path):
+    _, session, host = login_session
+    ui_id, data = upload_file_flowjs(session, host)
+    assert ui_id is not None
+
+    # Assert an entry was created for the uploaded file
+    assert datastore.cached_file.exists(f"flowjs_{ui_id}")
+
+    # Download the content from the cache to ensure it matches
+    with forge.get_cachestore("flowjs") as cache:
+        download_path = tmp_path / "test_file"
+        cache.download(ui_id, download_path)
+
+        with open(download_path, "r") as f:
+            assert data == f.read()
 
 # noinspection PyUnusedLocal
 def test_ui_submission(datastore, login_session):
