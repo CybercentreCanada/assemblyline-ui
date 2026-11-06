@@ -322,6 +322,9 @@ def add_service(**_):
             dep["container"]["registry_type"] = dep.get("registry_type", config.services.preferred_registry_type)
         service["enabled"] = service["enabled"] and enable_allowed
 
+        # OpenSSH rejects a private key without a trailing newline (set_service also does this)
+        check_private_keys((service.get("update_config") or {}).get("sources") or [])
+
         # Load service info
         service = Service(service)
 
