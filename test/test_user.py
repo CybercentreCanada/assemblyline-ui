@@ -323,7 +323,7 @@ def test_remove_user_password(datastore, login_session, login_user_session):
     # A user can remove their own password
     plaintext_password = "user"
     original_password_hash = datastore.user.get('user', as_obj=False)['password']
-    assert original_password not in ("", "__NO_PASSWORD__")
+    assert original_password_hash not in ("", "__NO_PASSWORD__")
     assert verify_password(plaintext_password, original_password_hash)
     try:
         resp = get_api_data(user_session, f"{host}/api/v4/user/password/user/", method="DELETE")
