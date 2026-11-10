@@ -214,7 +214,7 @@ def login(uname, roles_limit, user=None):
     user['allow_apikeys'] = config.auth.allow_apikeys
     user['allow_security_tokens'] = config.auth.allow_security_tokens
     user['c12n_enforcing'] = Classification.enforce
-    user['has_password'] = user.pop('password', "") != ""
+    user['has_password'] = user.pop('password', "") not in ("", "__NO_PASSWORD__")
     user['has_tos'] = config.ui.tos is not None and config.ui.tos != ""
     user['tos_auto_notify'] = config.ui.tos_lockout_notify is not None and config.ui.tos_lockout_notify != []
     user['internal_auth_enabled'] = config.auth.internal.enabled
