@@ -159,19 +159,22 @@ def flowjs_upload_chunk(**kwargs):
         if completed:
             # Attempt file reconstruction and save to cache with the original identifier
             ui_sid = get_cache_name(flow_identifier)
+            chunk_names = []
             with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
                 # Iterate through the chunks in order to reconstruct the file
                 for chunk in range(int(flow_total_chunks)):
                     chunk_name = get_cache_name(flow_identifier, chunk+1)
+                    chunk_names.append(chunk_name)
                     # Write chunks to temporary file
                     target_file.write(cache.get(chunk_name))
-                    # Delete the chunk from the cache
-                    cache.delete(chunk_name)
 
                 # Once the file is reconstructed, save it to the cache with the original identifier
                 target_file.flush()
-                target_file.seek(0)
-                cache.save(ui_sid, target_file.read())
+                cache.upload(ui_sid, target_file.name)
+
+                # Delete the chunk from the cache after file reconstruction
+                for chunk_name in chunk_names:
+                    cache.delete(chunk_name)
 
     return make_api_response({'success': True, 'completed': completed})
 
