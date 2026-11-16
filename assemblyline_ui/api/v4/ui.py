@@ -153,21 +153,21 @@ def flowjs_upload_chunk(**kwargs):
         chunk_name = get_cache_name(flow_identifier, flow_chunk_number)
         cache.save(chunk_name, file_obj.stream.read())
 
+        # Check if all chunks have been received, assume complete until proven otherwise
+        completed = True
+
+        # Test in reverse order to fail fast
+        for chunk in range(flow_total_chunks, 0, -1):
+            chunk_name = get_cache_name(flow_identifier, chunk)
+            if not cache.exists(chunk_name):
+                completed = False
+                break
+
         ui_sid = get_cache_name(flow_identifier)
         with Lock(f"flowjs_reconstruct_{ui_sid}", timeout=300, host=redis):
             if cache.exists(ui_sid):
                 # If the reconstructed file already exists, another thread completed the work
                 return make_api_response({'success': True, 'completed': True})
-
-            # Check if all chunks have been received, assume complete until proven otherwise
-            completed = True
-
-            # Test in reverse order to fail fast
-            for chunk in range(flow_total_chunks, 0, -1):
-                chunk_name = get_cache_name(flow_identifier, chunk)
-                if not cache.exists(chunk_name):
-                    completed = False
-                    break
 
             if completed:
                 # Attempt file reconstruction and save to cache with the original identifier
