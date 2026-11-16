@@ -118,7 +118,7 @@ def flowjs_upload_chunk(**kwargs):
     --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
     Content-Disposition: form-data; name="flowTotalSize"        <-- Total size of the file
 
-    10
+    1000
     --0b34a3c50d3c02dd804a172329a0b2aa
     Content-Disposition: form-data; name="file"; filename="testfile.txt" <-- File part
     Content-Type: application/octet-stream
