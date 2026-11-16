@@ -110,13 +110,13 @@ def flowjs_upload_chunk(**kwargs):
     --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
     Content-Disposition: form-data; name="flowIdentifier"       <-- File unique identifier
 
-    8
-    --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
-    Content-Disposition: form-data; name="flowTotalSize"        <-- Total size of the file
-
     00000000-0000-0000-0000-000000000000_000000000_testfile.txt
     --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
     Content-Disposition: form-data; name="flowTotalChunks"      <-- Total number of chunks
+
+    8
+    --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
+    Content-Disposition: form-data; name="flowTotalSize"        <-- Total size of the file
 
     10
     --0b34a3c50d3c02dd804a172329a0b2aa
