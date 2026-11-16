@@ -110,6 +110,10 @@ def flowjs_upload_chunk(**kwargs):
     --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
     Content-Disposition: form-data; name="flowIdentifier"       <-- File unique identifier
 
+    8
+    --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
+    Content-Disposition: form-data; name="flowTotalSize"        <-- Total size of the file
+
     00000000-0000-0000-0000-000000000000_000000000_testfile.txt
     --0b34a3c50d3c02dd804a172329a0b2aa                          <-- Switch to next part, file part
     Content-Disposition: form-data; name="flowTotalChunks"      <-- Total number of chunks
@@ -159,7 +163,7 @@ def flowjs_upload_chunk(**kwargs):
             completed = True
 
             # Test in reverse order to fail fast
-            for chunk in range(int(flow_total_chunks), 0, -1):
+            for chunk in range(flow_total_chunks, 0, -1):
                 chunk_name = get_cache_name(flow_identifier, chunk)
                 if not cache.exists(chunk_name):
                     completed = False
@@ -170,7 +174,7 @@ def flowjs_upload_chunk(**kwargs):
                 chunk_names = []
                 with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
                     # Iterate through the chunks in order to reconstruct the file
-                    for chunk in range(int(flow_total_chunks)):
+                    for chunk in range(flow_total_chunks):
                         chunk_name = get_cache_name(flow_identifier, chunk+1)
                         chunk_names.append(chunk_name)
                         # Write chunks to temporary file

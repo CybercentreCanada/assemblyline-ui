@@ -45,7 +45,8 @@ def upload_file_flowjs(session, host, data=None):
         if len(data) % total_chunk != 0:
             data = data[: -(len(data) % total_chunk)]
 
-    chunk_size = math.ceil(len(data) / total_chunk)
+    data_size = len(data)
+    chunk_size = math.ceil(data_size / total_chunk)
     ui_id = get_random_id()
 
     # Purposefully shuffle the chunk order to ensure that the server is able to handle out of order chunks
@@ -56,7 +57,7 @@ def upload_file_flowjs(session, host, data=None):
             params = {
                 "flowChunkNumber": f"{x + 1}",
                 "flowChunkSize": f"{chunk_size}",
-                "flowTotalSize": f"{chunk_size*total_chunk}",
+                "flowTotalSize": f"{data_size}",
                 "flowFilename": "test.txt",
                 "flowTotalChunks": f"{total_chunk}",
                 "flowIdentifier": ui_id,
@@ -73,7 +74,7 @@ def upload_file_flowjs(session, host, data=None):
                     "flowChunkNumber": f"{x + 1}",
                     "flowChunkSize": f"{chunk_size}",
                     "flowCurrentChunkSize": f"{chunk_size}",
-                    "flowTotalSize": f"{chunk_size*total_chunk}",
+                    "flowTotalSize": f"{data_size}",
                     "flowIdentifier": ui_id,
                     "flowFilename": "test.txt",
                     "flowRelativePath": "/tmp/test/test.txt",
