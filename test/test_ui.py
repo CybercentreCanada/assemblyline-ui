@@ -10,6 +10,7 @@ import pytest
 import requests
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.random_data import (
     create_services,
@@ -199,6 +200,9 @@ def test_ui_bundle_submission(datastore, login_session):
 
     submission = datastore.submission.search("*", rows=1, fl="sid,expiry_ts", as_obj=False)['items'][0]
     sid = submission['sid']
+    submission = datastore.submission.get(sid, as_obj=False)
+    submission['expiry_ts'] = now_as_iso(24 * 60 * 60)
+    datastore.submission.save(sid, submission)
     # Create a bundle file from a random submission
     bundle_path = create_bundle(sid)
 
@@ -212,14 +216,16 @@ def test_ui_bundle_submission(datastore, login_session):
         'ui_params': get_api_data(session, f"{host}/api/v4/user/settings/admin/")['submission_profiles']['static'],
         'filename': f'{sid}.al_bundle'
     }
+    ui_params['ui_params']['ttl'] = 2
     resp = get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(ui_params))
     assert resp['started']
+    assert resp['sid'] == sid
 
     # The expectation is that the submission is restored from the bundle and the expiry_ts is extended
     imported_submission = datastore.submission.get(sid, as_obj=False)
 
     # Check to see if the results have been preserved upon import
-    assert imported_submission['results'] is not None
+    assert imported_submission['results'] == submission['results']
 
     # Check that the expiry timestamp has been extended
     assert parser.parse(imported_submission['expiry_ts']) > parser.parse(submission['expiry_ts'])

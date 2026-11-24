@@ -153,15 +153,12 @@ def flowjs_upload_chunk(**kwargs):
         chunk_name = get_cache_name(flow_identifier, flow_chunk_number)
         cache.save(chunk_name, file_obj.stream.read())
 
-        # Check if all chunks have been received, assume complete until proven otherwise
-        completed = True
-
         # Test in reverse order to fail fast
         for chunk in range(flow_total_chunks, 0, -1):
             chunk_name = get_cache_name(flow_identifier, chunk)
             if not cache.exists(chunk_name):
-                completed = False
-                break
+                # Some chunks are missing, the upload has not yet complete
+                return make_api_response({'success': True, 'completed': False})
 
         ui_sid = get_cache_name(flow_identifier)
         with Lock(f"flowjs_reconstruct_{ui_sid}", timeout=300, host=redis):
@@ -169,34 +166,33 @@ def flowjs_upload_chunk(**kwargs):
                 # If the reconstructed file already exists, another thread completed the work
                 return make_api_response({'success': True, 'completed': True})
 
-            if completed:
-                # Attempt file reconstruction and save to cache with the original identifier
-                chunk_names = []
-                with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
-                    # Iterate through the chunks in order to reconstruct the file
-                    for chunk in range(flow_total_chunks):
-                        chunk_name = get_cache_name(flow_identifier, chunk+1)
-                        chunk_names.append(chunk_name)
-                        # Write chunks to temporary file
-                        target_file.write(cache.get(chunk_name))
+            # Attempt file reconstruction and save to cache with the original identifier
+            chunk_names = []
+            with tempfile.NamedTemporaryFile(dir=TEMP_DIR) as target_file:
+                # Iterate through the chunks in order to reconstruct the file
+                for chunk in range(flow_total_chunks):
+                    chunk_name = get_cache_name(flow_identifier, chunk+1)
+                    chunk_names.append(chunk_name)
+                    # Write chunks to temporary file
+                    target_file.write(cache.get(chunk_name))
 
-                    target_file.flush()
+                target_file.flush()
 
-                    # Ensure the reconstructed file has the expected size
-                    reconstructed_size = os.fstat(target_file.fileno()).st_size
-                    if reconstructed_size != flow_total_size:
-                        # The file size does not match the expected total size
-                        # Assume another thread is still writing its chunk
-                        return make_api_response({'success': True, 'completed': False})
+                # Ensure the reconstructed file has the expected size
+                reconstructed_size = os.fstat(target_file.fileno()).st_size
+                if reconstructed_size != flow_total_size:
+                    # The file size does not match the expected total size
+                    # Assume another thread is still writing its chunk
+                    return make_api_response({'success': True, 'completed': False})
 
-                    # Once the file is reconstructed, save it to the cache with the original identifier
-                    cache.upload(ui_sid, target_file.name)
+                # Once the file is reconstructed, save it to the cache with the original identifier
+                cache.upload(ui_sid, target_file.name)
 
-                    # Delete the chunk from the cache after file reconstruction
-                    for chunk_name in chunk_names:
-                        cache.delete(chunk_name)
+                # Delete the chunk from the cache after file reconstruction
+                for chunk_name in chunk_names:
+                    cache.delete(chunk_name)
 
-    return make_api_response({'success': True, 'completed': completed})
+    return make_api_response({'success': True, 'completed': True})
 
 
 # noinspection PyBroadException
