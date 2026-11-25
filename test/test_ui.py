@@ -8,6 +8,7 @@ from threading import Barrier
 
 import pytest
 import requests
+
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle
 from assemblyline.common.isotime import now_as_iso
@@ -134,7 +135,6 @@ def test_flowjs_upload_chunk(datastore, login_session, tmp_path):
         with open(download_path, "r") as f:
             assert data == f.read()
 
-
 def test_flowjs_upload_chunk_already_completed(datastore, login_session):
     _, session, host = login_session
     ui_id, data = upload_file_flowjs(session, host)
@@ -173,7 +173,6 @@ def test_flowjs_upload_chunk_parallel(datastore, login_session, tmp_path):
         cache.download(ui_id, download_path)
         assert download_path.read_bytes() == data
         assert all(not cache.exists(f"{ui_id}_part{chunk}") for chunk in range(1, 6))
-
 
 # noinspection PyUnusedLocal
 def test_ui_submission(datastore, login_session):
