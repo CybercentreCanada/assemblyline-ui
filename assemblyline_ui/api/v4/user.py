@@ -477,7 +477,7 @@ def get_user_account(username, **kwargs):
     get_default_user_quotas(user)
 
     user['2fa_enabled'] = user.pop('otp_sk', None) is not None
-    user['has_password'] = user.pop('password', "") != ""
+    user['has_password'] = user.pop('password', "") not in ("", "__NO_PASSWORD__")
     security_tokens = user.get('security_tokens', {}) or {}
     user['security_tokens'] = list(security_tokens.keys())
     user['security_token_enabled'] = len(security_tokens) != 0
@@ -531,6 +531,39 @@ def remove_user_account(username, **_):
         return make_api_response({"success": False},
                                  err=f"User {username} does not exist",
                                  status_code=404)
+
+
+@user_api.route("/password/<username>/", methods=["DELETE"])
+@api_login(require_role=[ROLES.self_manage, ROLES.administration], count_toward_quota=False)
+def remove_user_password(username, **kwargs):
+    """
+    Remove the password of a given user. This disables username/password
+    authentication for the account without affecting any other authentication method.
+
+    Variables:
+    username       => Name of the user to remove the password from
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "success": true  # Was the password removed?
+    }
+    """
+    user = kwargs['user']
+    if username != user['uname'] and ROLES.administration not in user['roles']:
+        raise AccessDeniedException("You are not allowed to remove the password of another user than yourself.")
+
+    user_data = STORAGE.user.get(username, as_obj=False)
+    if not user_data:
+        return make_api_response({"success": False}, f"User {username} does not exist", 404)
+
+    user_data['password'] = "__NO_PASSWORD__"
+    return make_api_response({"success": STORAGE.user.save(username, user_data)})
 
 
 @user_api.route("/<username>/", methods=["POST"])
