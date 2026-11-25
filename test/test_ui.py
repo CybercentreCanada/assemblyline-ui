@@ -2,11 +2,16 @@ import hashlib
 import json
 import math
 import random
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from threading import Barrier
 
 import pytest
+import requests
+
 from assemblyline.common import forge
 from assemblyline.common.bundling import create_bundle
+from assemblyline.common.isotime import now_as_iso
 from assemblyline.common.uid import get_random_id
 from assemblyline.odm.random_data import (
     create_services,
@@ -35,7 +40,7 @@ def datastore(datastore_connection, filestore):
 
 
 
-def upload_file_flowjs(session, host, data=None):
+def upload_file_flowjs(session, host, data=None, parallel=False):
     total_chunk = random.randint(2, 5)
 
     if data is None:
@@ -45,24 +50,26 @@ def upload_file_flowjs(session, host, data=None):
         if len(data) % total_chunk != 0:
             data = data[: -(len(data) % total_chunk)]
 
-    chunk_size = math.ceil(len(data) / total_chunk)
+    data_size = len(data)
+    chunk_size = math.ceil(data_size / total_chunk)
     ui_id = get_random_id()
 
     # Purposefully shuffle the chunk order to ensure that the server is able to handle out of order chunks
     chunk_parts = list(range(total_chunk))
     random.shuffle(chunk_parts)
-    for x in chunk_parts:
+
+    def upload_chunk(x, upload_session):
         try:
             params = {
                 "flowChunkNumber": f"{x + 1}",
                 "flowChunkSize": f"{chunk_size}",
-                "flowTotalSize": f"{chunk_size*total_chunk}",
+                "flowTotalSize": f"{data_size}",
                 "flowFilename": "test.txt",
                 "flowTotalChunks": f"{total_chunk}",
                 "flowIdentifier": ui_id,
                 "flowCurrentChunkSize": f"{chunk_size}",
             }
-            resp = get_api_data(session, f"{host}/api/v4/ui/flowjs/", params=params)
+            resp = get_api_data(upload_session, f"{host}/api/v4/ui/flowjs/", params=params)
         except APIError as e:
             if (
                 str(e) == "Chunk does not exist, please send it!"
@@ -73,7 +80,7 @@ def upload_file_flowjs(session, host, data=None):
                     "flowChunkNumber": f"{x + 1}",
                     "flowChunkSize": f"{chunk_size}",
                     "flowCurrentChunkSize": f"{chunk_size}",
-                    "flowTotalSize": f"{chunk_size*total_chunk}",
+                    "flowTotalSize": f"{data_size}",
                     "flowIdentifier": ui_id,
                     "flowFilename": "test.txt",
                     "flowRelativePath": "/tmp/test/test.txt",
@@ -84,13 +91,31 @@ def upload_file_flowjs(session, host, data=None):
                 else:
                     bio = BytesIO(data[x * chunk_size : (x * chunk_size) + chunk_size].encode())
                 resp = get_api_data(
-                    session, f"{host}/api/v4/ui/flowjs/", method="POST", data=params, headers={}, files={"file": bio}
+                    upload_session, f"{host}/api/v4/ui/flowjs/", method="POST", data=params,
+                    headers={}, files={"file": bio}
                 )
                 assert resp["success"]
-                if resp["completed"]:
-                    break
             else:
                 raise
+        return resp
+
+    if parallel:
+        barrier = Barrier(total_chunk)
+
+        def upload_parallel_chunk(x):
+            with requests.Session() as upload_session:
+                upload_session.cookies.update(session.cookies)
+                upload_session.headers.update(session.headers)
+                barrier.wait(timeout=10)
+                return upload_chunk(x, upload_session)
+
+        with ThreadPoolExecutor(max_workers=total_chunk) as executor:
+            responses = list(executor.map(upload_parallel_chunk, chunk_parts))
+        assert any(response.get("completed") for response in responses)
+    else:
+        for chunk in chunk_parts:
+            if upload_chunk(chunk, session).get("completed"):
+                break
 
     return ui_id, data
 
@@ -109,6 +134,45 @@ def test_flowjs_upload_chunk(datastore, login_session, tmp_path):
 
         with open(download_path, "r") as f:
             assert data == f.read()
+
+def test_flowjs_upload_chunk_already_completed(datastore, login_session):
+    _, session, host = login_session
+    ui_id, data = upload_file_flowjs(session, host)
+    resp = get_api_data(
+        session, f"{host}/api/v4/ui/flowjs/", method="POST", headers={},
+        data={"flowIdentifier": ui_id, "flowChunkNumber": "1", "flowTotalChunks": "1", "flowTotalSize": "1"},
+        files={"file": BytesIO(b"x")},
+    )
+    assert resp == {"success": True, "completed": True}
+    with forge.get_cachestore("flowjs") as cache:
+        assert cache.get(ui_id) == data.encode()
+
+
+def test_flowjs_upload_chunk_size_mismatch(datastore, login_session):
+    _, session, host = login_session
+    ui_id = get_random_id()
+    data = b"incomplete upload"
+    resp = get_api_data(
+        session, f"{host}/api/v4/ui/flowjs/", method="POST", headers={},
+        data={"flowIdentifier": ui_id, "flowChunkNumber": "1", "flowTotalChunks": "1",
+              "flowTotalSize": str(len(data) + 1)},
+        files={"file": BytesIO(data)},
+    )
+    assert resp == {"success": True, "completed": False}
+    with forge.get_cachestore("flowjs") as cache:
+        assert not cache.exists(ui_id)
+        assert cache.get(f"{ui_id}_part1") == data
+
+
+def test_flowjs_upload_chunk_parallel(datastore, login_session, tmp_path):
+    _, session, host = login_session
+    data = bytes(range(256)) * 4096
+    ui_id, _ = upload_file_flowjs(session, host, data=data, parallel=True)
+    with forge.get_cachestore("flowjs") as cache:
+        download_path = tmp_path / "parallel_upload"
+        cache.download(ui_id, download_path)
+        assert download_path.read_bytes() == data
+        assert all(not cache.exists(f"{ui_id}_part{chunk}") for chunk in range(1, 6))
 
 # noinspection PyUnusedLocal
 def test_ui_submission(datastore, login_session):
@@ -135,6 +199,9 @@ def test_ui_bundle_submission(datastore, login_session):
 
     submission = datastore.submission.search("*", rows=1, fl="sid,expiry_ts", as_obj=False)['items'][0]
     sid = submission['sid']
+    submission = datastore.submission.get(sid, as_obj=False)
+    submission['expiry_ts'] = now_as_iso(24 * 60 * 60)
+    datastore.submission.save(sid, submission)
     # Create a bundle file from a random submission
     bundle_path = create_bundle(sid)
 
@@ -148,14 +215,16 @@ def test_ui_bundle_submission(datastore, login_session):
         'ui_params': get_api_data(session, f"{host}/api/v4/user/settings/admin/")['submission_profiles']['static'],
         'filename': f'{sid}.al_bundle'
     }
+    ui_params['ui_params']['ttl'] = 2
     resp = get_api_data(session, f"{host}/api/v4/ui/start/{ui_id}/", method="POST", data=json.dumps(ui_params))
     assert resp['started']
+    assert resp['sid'] == sid
 
     # The expectation is that the submission is restored from the bundle and the expiry_ts is extended
     imported_submission = datastore.submission.get(sid, as_obj=False)
 
     # Check to see if the results have been preserved upon import
-    assert imported_submission['results'] is not None
+    assert imported_submission['results'] == submission['results']
 
     # Check that the expiry timestamp has been extended
     assert parser.parse(imported_submission['expiry_ts']) > parser.parse(submission['expiry_ts'])
