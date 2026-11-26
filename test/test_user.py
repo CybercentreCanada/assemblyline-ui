@@ -2,6 +2,7 @@ import json
 import random
 
 import pytest
+import requests
 from assemblyline.common.forge import get_classification
 from assemblyline.common.security import verify_password
 from assemblyline.odm.models.apikey import Apikey, get_apikey_id
@@ -290,6 +291,59 @@ def test_remove_user_favorite(datastore, login_session, login_user_session, publ
     user_favs = datastore.user_favorites.get(username, as_obj=False)
     for f in user_favs[fav_type]:
         assert f['name'] != to_be_removed
+
+
+def test_remove_user_password(datastore, login_session, login_user_session):
+    _, session, host = login_session
+    username = random.choice(user_list)
+
+    # The targeted user must start with a password, otherwise removing it proves nothing
+    assert datastore.user.get(username, as_obj=False)['password'] not in ("", "__NO_PASSWORD__")
+    profile = get_api_data(session, f"{host}/api/v4/user/{username}/")
+    assert profile['has_password']
+
+    # A user cannot remove the password of another user and the response does
+    # not reveal whether the targeted user exists
+    _, user_session, _ = login_user_session
+    for target in [username, "user_that_does_not_exist"]:
+        with pytest.raises(APIError, match="Your username does not match requested username"):
+            get_api_data(user_session, f"{host}/api/v4/user/password/{target}/", method="DELETE")
+
+    # An admin can remove the password of any user
+    resp = get_api_data(session, f"{host}/api/v4/user/password/{username}/", method="DELETE")
+    assert resp['success']
+
+    datastore.user.commit()
+    assert datastore.user.get(username, as_obj=False)['password'] == "__NO_PASSWORD__"
+
+    # The user profile should now report that the user has no password
+    profile = get_api_data(session, f"{host}/api/v4/user/{username}/")
+    assert not profile['has_password']
+
+    # A user can remove their own password
+    plaintext_password = "user"
+    original_password_hash = datastore.user.get('user', as_obj=False)['password']
+    assert original_password_hash not in ("", "__NO_PASSWORD__")
+    assert verify_password(plaintext_password, original_password_hash)
+    try:
+        resp = get_api_data(user_session, f"{host}/api/v4/user/password/user/", method="DELETE")
+        assert resp['success']
+
+        datastore.user.commit()
+        new_user = datastore.user.get('user', as_obj=False)
+        assert new_user['password'] == "__NO_PASSWORD__"
+
+        # Username/password authentication is now disabled for that account
+        assert not verify_password(plaintext_password, new_user['password'])
+        with pytest.raises(APIError):
+            get_api_data(requests.Session(), f"{host}/api/v4/auth/login/",
+                         params={'user': 'user', 'password': plaintext_password})
+    finally:
+        # Restore the password so later tests can still login as 'user'
+        user_data = datastore.user.get('user', as_obj=False)
+        user_data['password'] = original_password_hash
+        datastore.user.save('user', user_data)
+        datastore.user.commit()
 
 
 # noinspection PyUnusedLocal
