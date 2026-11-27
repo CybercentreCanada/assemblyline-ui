@@ -321,7 +321,8 @@ def get_system_status(component, **_):
             {c: system.get(f'{c}.active') or False for c in PAUSABLE_COMPONENTS})
     else:
         if component not in PAUSABLE_COMPONENTS:
-            make_api_response({}, err=f"Component {component} does not exist or is always active.")
+            return make_api_response({}, err=f"Component {component} does not exist or is always active.",
+                                     status_code=404)
 
         status = system.get(f'{component}.active') or False
 
