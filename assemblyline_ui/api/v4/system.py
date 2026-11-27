@@ -3,6 +3,7 @@ import hashlib
 import os
 import re
 import tempfile
+import time
 
 from flask import request
 import magic
@@ -10,8 +11,10 @@ import yara
 import yaml
 
 from assemblyline.common import forge
-from assemblyline.common.constants import CONFIG_HASH, POST_PROCESS_CONFIG_KEY
+from assemblyline.common.archiving import ARCHIVE_QUEUE_NAME
+from assemblyline.common.constants import CONFIG_HASH, DISPATCH_TASK_HASH, POST_PROCESS_CONFIG_KEY, SUBMISSION_QUEUE
 from assemblyline.common.digests import get_sha256_for_file
+from assemblyline.common.dispatcher import DISPATCH_DIRECTORY, Dispatcher
 from assemblyline.common.identify_defaults import magic_patterns, trusted_mimes
 from assemblyline.common.postprocess import SubmissionFilter
 from assemblyline.common.str_utils import safe_str
@@ -20,8 +23,21 @@ from assemblyline.odm.models.tagging import Tagging
 from assemblyline.odm.models.user import ROLES
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.events import EventSender
+from assemblyline.remote.datatypes.queues.named import NamedQueue
+from assemblyline.remote.datatypes.queues.priority import PriorityQueue
 from assemblyline_core import PAUSABLE_COMPONENTS
-from assemblyline_ui.config import LOGGER, METADATA_SUGGESTIONS, STORAGE, UI_MESSAGING, CLASSIFICATION_ALIASES, config, redis_persistent
+from assemblyline_core.alerter.run_alerter import ALERT_QUEUE_NAME, ALERT_RETRY_QUEUE_NAME
+from assemblyline_core.ingester.constants import COMPLETE_QUEUE_NAME, INGEST_QUEUE_NAME
+from assemblyline_ui.config import (
+    CLASSIFICATION_ALIASES,
+    LOGGER,
+    METADATA_SUGGESTIONS,
+    STORAGE,
+    UI_MESSAGING,
+    config,
+    redis,
+    redis_persistent,
+)
 from assemblyline_ui.api.base import api_login, make_api_response, make_subapi_blueprint
 
 
@@ -32,6 +48,9 @@ system_api._doc = "Perform system actions"
 ADMIN_FILE_TTL = 60 * 60 * 24 * 365 * 100  # Just keep the file for 100 years...
 al_re = re.compile(r"^[a-z]+(?:/[a-z0-9\-.+]+)+$")
 constants = forge.get_constants()
+
+# Matches the dispatcher's work guard timeout; past this, other dispatchers may take over its submissions.
+DISPATCHER_GUARD_TIMEOUT = 60 * 2
 
 event_sender = EventSender('system',
                            host=config.core.redis.nonpersistent.host,
@@ -326,6 +345,117 @@ def get_system_status(component, **_):
         status = system.get(f'{component}.active') or False
 
         return make_api_response({component: status})
+
+
+@system_api.route("/health/", methods=["GET"])
+@api_login(count_toward_quota=False)
+def get_system_health(**_):
+    """
+    Get a pollable summary of system health, read directly from Redis.
+
+    Field names follow the dashboard heartbeat messages.
+
+    Variables:
+    None
+
+    Arguments:
+    None
+
+    Data Block:
+    None
+
+    Result example:
+    {
+     "status": "ok",                    # degraded (no dispatcher, or one is stale), paused, or ok
+     "paused": [],                      # Pausable components that are not active
+     "stale_dispatchers": [],           # Dispatchers that have not checked in within the guard timeout
+     "components": {
+       "dispatcher": {
+         "active": true,
+         "instances": 1,
+         "last_seen": {"<instance_id>": 3},
+         "inflight": {"max": 1000, "outstanding": 5, "per_instance": [5]},
+         "queues": {"ingest": 0, "start": [0], "result": [0], "command": [0]}
+       },
+       "ingester": {
+         "active": true,
+         "processing": {"inflight": 2},
+         "queues": {"critical": 0, "high": 0, "medium": 0, "low": 0, "ingest": 0, "complete": 0}
+       },
+       "alerter": {
+         "queues": {"alert": 0, "alert_retry": 0}
+       },
+       "archiver": {
+         "queued": 0
+       }
+     }
+    }
+    """
+    now = time.time()
+    system = Hash("system", host=redis_persistent)
+    active = {c: system.get(f'{c}.active') or False for c in PAUSABLE_COMPONENTS}
+
+    directory = Hash(DISPATCH_DIRECTORY, host=redis_persistent).items()
+    instances = sorted(directory)
+    last_seen = {i: max(0, int(now - directory[i])) for i in instances}
+    stale = [i for i in instances if last_seen[i] > DISPATCHER_GUARD_TIMEOUT]
+    queue_lengths = {i: Dispatcher.all_queue_lengths(redis, i) for i in instances}
+
+    unique_queue = PriorityQueue('m-unique', redis_persistent)
+    priority_counts = {
+        level: unique_queue.count(*constants.PRIORITY_RANGES[level])
+        for level in ('critical', 'high', 'medium', 'low')
+    }
+
+    paused = [c for c in PAUSABLE_COMPONENTS if not active[c]]
+    if not instances or stale:
+        status = 'degraded'
+    elif paused:
+        status = 'paused'
+    else:
+        status = 'ok'
+
+    return make_api_response({
+        'status': status,
+        'paused': paused,
+        'stale_dispatchers': stale,
+        'components': {
+            'dispatcher': {
+                'active': active['dispatcher'],
+                'instances': len(instances),
+                'last_seen': last_seen,
+                'inflight': {
+                    'max': config.core.dispatcher.max_inflight,
+                    'outstanding': Hash(DISPATCH_TASK_HASH, redis_persistent).length(),
+                    'per_instance': [Dispatcher.instance_assignment_size(redis_persistent, i) for i in instances],
+                },
+                'queues': {
+                    'ingest': NamedQueue(SUBMISSION_QUEUE, redis).length(),
+                    'start': [queue_lengths[i]['start'] for i in instances],
+                    'result': [queue_lengths[i]['result'] for i in instances],
+                    'command': [queue_lengths[i]['command'] for i in instances],
+                },
+            },
+            'ingester': {
+                'active': active['ingester'],
+                'processing': {'inflight': Hash('m-scanning-table', redis_persistent).length()},
+                'queues': {
+                    **priority_counts,
+                    'ingest': NamedQueue(INGEST_QUEUE_NAME, redis_persistent).length(),
+                    'complete': NamedQueue(COMPLETE_QUEUE_NAME, redis).length(),
+                },
+            },
+            'alerter': {
+                'queues': {
+                    'alert': NamedQueue(ALERT_QUEUE_NAME, redis_persistent).length(),
+                    'alert_retry': NamedQueue(ALERT_RETRY_QUEUE_NAME, redis_persistent).length(),
+                },
+            },
+            'archiver': {
+                'queued': NamedQueue(ARCHIVE_QUEUE_NAME, redis_persistent).length(),
+            },
+        },
+    })
 
 
 @system_api.route("/classification_aliases/", methods=["PUT", "POST"])
