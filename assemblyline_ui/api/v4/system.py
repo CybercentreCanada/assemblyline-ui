@@ -27,6 +27,7 @@ from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.queues.priority import PriorityQueue
 from assemblyline_core import PAUSABLE_COMPONENTS
 from assemblyline_core.alerter.run_alerter import ALERT_QUEUE_NAME, ALERT_RETRY_QUEUE_NAME
+from assemblyline_core.metrics.heartbeat_formatter import HEARTBEAT_HASH
 from assemblyline_core.ingester.constants import COMPLETE_QUEUE_NAME, INGEST_QUEUE_NAME
 from assemblyline_ui.config import (
     CLASSIFICATION_ALIASES,
@@ -388,7 +389,12 @@ def get_system_health(**_):
        "archiver": {
          "queued": 0
        }
-     }
+     },
+     "heartbeats": {                    # Latest heartbeat per "<type>.<name>"; absent if never reported or expired
+       "ingester.ingester": {"msg_type": "IngestHeartbeat", "msg": {...}, "sender": "heartbeat_manager",
+                             "timestamp": 1700000000.0, "age": 4, "stale": false}
+     },
+     "stale_heartbeats": []             # Heartbeats older than two export intervals
     }
     """
     now = time.time()
@@ -406,6 +412,14 @@ def get_system_health(**_):
         level: unique_queue.count(*constants.PRIORITY_RANGES[level])
         for level in ('critical', 'high', 'medium', 'low')
     }
+
+    heartbeat_ttl = config.core.metrics.export_interval * 2
+    heartbeats = {}
+    for key, beat in Hash(HEARTBEAT_HASH, host=redis).items().items():
+        age = max(0, int(now - beat.get('timestamp', 0)))
+        heartbeats[key] = {**beat, 'age': age, 'stale': age > heartbeat_ttl}
+    # Kept out of the overall status: entries for removed services stay stale until the whole hash expires.
+    stale_heartbeats = sorted(k for k, beat in heartbeats.items() if beat['stale'])
 
     paused = [c for c in PAUSABLE_COMPONENTS if not active[c]]
     if not instances or stale:
@@ -455,6 +469,8 @@ def get_system_health(**_):
                 'queued': NamedQueue(ARCHIVE_QUEUE_NAME, redis_persistent).length(),
             },
         },
+        'heartbeats': heartbeats,
+        'stale_heartbeats': stale_heartbeats,
     })
 
 

@@ -15,6 +15,7 @@ from assemblyline.remote.datatypes import get_client
 from assemblyline.remote.datatypes.hash import Hash
 from assemblyline.remote.datatypes.queues.named import NamedQueue
 from assemblyline.remote.datatypes.queues.priority import PriorityQueue
+from assemblyline_core.metrics.heartbeat_formatter import HEARTBEAT_HASH
 from conftest import get_api_data
 
 LIVE_DISPATCHER = "test-health-dispatcher-live"
@@ -47,7 +48,7 @@ def system_state(redis_persistent, redis_volatile):
         DISPATCH_TASK_ASSIGNMENT + LIVE_DISPATCHER, DISPATCH_TASK_ASSIGNMENT + STALE_DISPATCHER,
         "m-scanning-table", "m-unique", "m-ingest", "m-alert", "m-alert-retry", "m-archive",
     ]
-    volatile_keys = [SUBMISSION_QUEUE, "m-complete"] + [
+    volatile_keys = [SUBMISSION_QUEUE, "m-complete", HEARTBEAT_HASH] + [
         prefix + instance
         for prefix in (DISPATCH_START_EVENTS, DISPATCH_RESULT_QUEUE, DISPATCH_COMMAND_QUEUE)
         for instance in (LIVE_DISPATCHER, STALE_DISPATCHER)
@@ -201,3 +202,37 @@ def test_health_readable_without_admin_role(system_state, redis_persistent, redi
     add_dispatcher(redis_persistent, redis_volatile, LIVE_DISPATCHER, time.time())
 
     assert get_health(session, host)["status"] == "ok"
+
+
+def test_health_includes_cached_heartbeats(system_state, redis_persistent, redis_volatile, config, login_session):
+    _, session, host = login_session
+    add_dispatcher(redis_persistent, redis_volatile, LIVE_DISPATCHER, time.time())
+    interval = config.core.metrics.export_interval
+    cache = Hash(HEARTBEAT_HASH, host=redis_volatile)
+    fresh = {"msg_type": "IngestHeartbeat", "sender": "heartbeat_manager",
+             "msg": {"instances": 2}, "timestamp": time.time()}
+    old = {"msg_type": "ScalerHeartbeat", "sender": "heartbeat_manager",
+           "msg": {"instances": 1}, "timestamp": time.time() - interval * 10}
+    cache.set("ingester.ingester", fresh)
+    cache.set("scaler.scaler", old)
+
+    resp = get_health(session, host)
+    heartbeats = resp["heartbeats"]
+
+    assert heartbeats["ingester.ingester"]["msg"] == {"instances": 2}
+    assert heartbeats["ingester.ingester"]["msg_type"] == "IngestHeartbeat"
+    assert heartbeats["ingester.ingester"]["stale"] is False
+    assert 0 <= heartbeats["ingester.ingester"]["age"] <= interval
+    assert heartbeats["scaler.scaler"]["stale"] is True
+    assert resp["stale_heartbeats"] == ["scaler.scaler"]
+    assert resp["status"] == "ok"
+
+
+def test_health_heartbeats_empty_when_cache_missing(system_state, redis_persistent, redis_volatile, login_session):
+    _, session, host = login_session
+    add_dispatcher(redis_persistent, redis_volatile, LIVE_DISPATCHER, time.time())
+
+    resp = get_health(session, host)
+
+    assert resp["heartbeats"] == {}
+    assert resp["stale_heartbeats"] == []
