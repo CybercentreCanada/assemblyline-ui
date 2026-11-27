@@ -11,6 +11,7 @@ import yara
 import yaml
 
 from assemblyline.common import forge
+from assemblyline.common.archiving import ARCHIVE_QUEUE_NAME
 from assemblyline.common.constants import CONFIG_HASH, DISPATCH_TASK_HASH, POST_PROCESS_CONFIG_KEY, SUBMISSION_QUEUE
 from assemblyline.common.digests import get_sha256_for_file
 from assemblyline.common.dispatcher import DISPATCH_DIRECTORY, Dispatcher
@@ -383,6 +384,9 @@ def get_system_health(**_):
        },
        "alerter": {
          "queues": {"alert": 0, "alert_retry": 0}
+       },
+       "archiver": {
+         "queued": 0
        }
      }
     }
@@ -446,6 +450,9 @@ def get_system_health(**_):
                     'alert': NamedQueue(ALERT_QUEUE_NAME, redis_persistent).length(),
                     'alert_retry': NamedQueue(ALERT_RETRY_QUEUE_NAME, redis_persistent).length(),
                 },
+            },
+            'archiver': {
+                'queued': NamedQueue(ARCHIVE_QUEUE_NAME, redis_persistent).length(),
             },
         },
     })

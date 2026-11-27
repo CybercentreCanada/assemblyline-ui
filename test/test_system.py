@@ -45,7 +45,7 @@ def system_state(redis_persistent, redis_volatile):
     persistent_keys = [
         "system", DISPATCH_DIRECTORY, DISPATCH_TASK_HASH,
         DISPATCH_TASK_ASSIGNMENT + LIVE_DISPATCHER, DISPATCH_TASK_ASSIGNMENT + STALE_DISPATCHER,
-        "m-scanning-table", "m-unique", "m-ingest", "m-alert", "m-alert-retry",
+        "m-scanning-table", "m-unique", "m-ingest", "m-alert", "m-alert-retry", "m-archive",
     ]
     volatile_keys = [SUBMISSION_QUEUE, "m-complete"] + [
         prefix + instance
@@ -140,6 +140,15 @@ def test_health_reports_alerter(system_state, redis_persistent, login_session):
     alerter = get_health(session, host)["components"]["alerter"]
 
     assert alerter["queues"] == {"alert": 2, "alert_retry": 1}
+
+
+def test_health_reports_archiver(system_state, redis_persistent, login_session):
+    _, session, host = login_session
+    fill_named("m-archive", redis_persistent, 3)
+
+    archiver = get_health(session, host)["components"]["archiver"]
+
+    assert archiver == {"queued": 3}
 
 
 def test_health_status_ok(system_state, redis_persistent, redis_volatile, login_session):
